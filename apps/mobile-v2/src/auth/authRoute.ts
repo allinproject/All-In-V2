@@ -11,3 +11,11 @@ export function authRouteState(input: {
   const userId = String(input.userId ?? '').trim();
   return userId ? { state: 'signed_in', userId } : { state: 'signed_out' };
 }
+/** A confirmation-resend offer belongs to the email that failed sign-in. */
+export function shouldOfferV2ConfirmationResend(
+  pendingEmail: string | null,
+  currentEmail: string,
+): boolean {
+  return Boolean(pendingEmail)
+    && pendingEmail === currentEmail.trim().toLowerCase();
+}
