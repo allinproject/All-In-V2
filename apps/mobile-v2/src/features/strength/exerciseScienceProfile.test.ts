@@ -101,3 +101,15 @@ test('a profile without claims or references is never Coach-eligible',()=>{
  assert.equal(result.valid,true);
  if(result.valid)assert.equal(result.coachEligible,false);
 });
+
+test('malformed persisted profile collections return validation errors instead of throwing',()=>{
+ const profile=valid() as any;
+ profile.sources={bad:'shape'};
+ profile.muscleGroups=[null];
+ profile.jointDemands={bad:'shape'};
+ profile.cautionFlags=[null];
+ profile.claims={bad:'shape'};
+ assert.doesNotThrow(()=>validateExerciseScienceProfile(profile));
+ const result=validateExerciseScienceProfile(profile);
+ assert.equal(result.valid,false);
+});
