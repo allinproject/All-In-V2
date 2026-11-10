@@ -17,7 +17,7 @@ function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: HEADERS });
 }
 function normalizeQuery(value: unknown): string {
-  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, MAX_QUERY_LENGTH) : "";
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 }
 function validFdcId(value: unknown): string | null {
   const id = typeof value === "number" || typeof value === "string" ? String(value).trim() : "";
