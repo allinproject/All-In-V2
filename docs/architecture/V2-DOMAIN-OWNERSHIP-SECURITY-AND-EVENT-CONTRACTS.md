@@ -545,3 +545,16 @@ The proposed aggregate contains one canonical completed-activity identity, multi
 The ownership boundary is explicit: Training (ALL-246) owns plans and live execution; ALL-243 owns the finished activity and metric truth; Devices (ALL-245) supplies observations; Athlete History (ALL-232), Progress, Coach, Today and Community consume the canonical activity identity. Provider-specific activity stores and duplicate source records are not permitted.
 
 **Not approved / not deployed:** no Activity DDL, registry seed, Storage bucket, RPC or policy was created. ALL-243 remains blocked by ALL-222. Before DDL, resolve source dedupe/merge rules, metric registry/value typing/versioning, semantic segment taxonomy, series/route storage/retention, source-quality conflict rules, privacy/deletion and the exact ALL-246 completion-outbox consumer contract.
+
+
+## 31. Goals physical ERD and security proposal — 2026-11-10
+
+A first physical ERD/security proposal for ALL-239 is committed for owner review:
+
+[ V2 Goals — Physical ERD & Security Proposal ](https://github.com/allinproject/All-In-V2/blob/integration/v2-foundation/docs/architecture/V2-GOALS-PHYSICAL-ERD-AND-SECURITY-PROPOSAL.md)
+
+The proposal separates stable goal identity, immutable goal revisions, typed baseline/target measures, effective-dated relationships between concurrent goals and typed evidence links. It makes primary/secondary/maintenance priority revision-scoped, preserves evidence provenance, and requires the exact metric definition/version and comparator before evidence can advance or complete a goal.
+
+The ownership boundary is explicit: Goals owns outcome intent and target revisions; Training owns plan/calendar/session revisions; Completed Activity owns actual sport measurements and metric definitions; Race/Route owns race/course/result facts; Exercise Library owns canonical movement IDs; Athlete History supplies coverage-aware history; Progress owns user-facing PR/Badge/Milestone projections. Goals stores no duplicate workout, activity, metric catalog, course, exercise, progress or achievement records.
+
+**Not approved / not deployed:** no Goals DDL, metric seed, RPC or RLS policy was created. ALL-239 remains blocked by ALL-232 and ALL-222. Decisions before DDL include the canonical goal-kind vocabulary, supported non-activity measures (skill/consistency), evidence sources/baseline acceptance, comparator/tolerance rules, metric registry FK contracts, revision-scoped priority semantics and downstream Training/Progress notification behavior.
