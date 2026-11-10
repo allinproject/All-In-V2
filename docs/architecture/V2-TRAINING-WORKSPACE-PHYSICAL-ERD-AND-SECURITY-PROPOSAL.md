@@ -308,3 +308,36 @@ For an authenticated athlete and an explicit athlete-local date window `[fromDat
 * Add a single Training-owner read adapter and a single Completed Activity-owner read adapter, each returning a verified complete-scope result compatible with existing `OwnerCalendarRead` and `combineCalendarReads`; avoid another calendar table or client-side inferred source.
 * Verify empty week, two scheduled sessions, multi-sport day, unrelated manually logged activity, same-day linked completion, moved/cross-day completion, duplicate/mismatched links, missed/rest/recovery/cancelled, stale revision, partial pagination, month-grid spillover, DST/timezone, cross-owner visibility and mid-fetch sign-out.
 * Only then connect live readers to `apps/mobile-v2/app/train.tsx`, remove the current explicit unavailable adapters, and run automated, database/RLS, Expo and device acceptance with ALL-224/254. **No implementation completion claim until those checks actually pass.**
+
+
+## 11. Minimal Training read-only migration review slice — 2026-11-10
+
+**Review-only design; NO migration, runtime schema or RLS change is authorized.** This is a constrained subset of the existing Sections 3, 5, 7 and 10, not a new owner or source of truth. V2 project `xarhuczrtzuiljmtdaeu` still has no Training or Completed Activity tables.
+
+### Minimal owning tables, in dependency order
+
+1. `public.v2_training_plans`: immutable `id`, `user_id`, plan `status`, `active_revision_id`, monotonic `version`; `unique(id,user_id)`. Only authenticated plan owner reads.
+2. `public.v2_training_plan_revisions`: immutable `id`, `plan_id`, `user_id`, `revision_number`, explicit `status`, reviewed `accepted_at`; `unique(id,plan_id,user_id)`, `unique(plan_id,revision_number)`, composite same-owner plan FK. Plan's `active_revision_id` must reference this plan's own revision after approval, never an arbitrary revision.
+3. `public.v2_training_session_slots`: stable `id`, `plan_id`, `user_id`, `slot_key`, `status`; composite same-owner FK to plan and `unique(plan_id,slot_key)`. Stable identity across reschedules; no slot re-use for unrelated activities.
+4. `public.v2_training_revision_days`: explicit `plan_revision_id`, `user_id`, `athlete_local_date DATE`, `day_state`, `sort_order`; same-owner revision FK and `unique(plan_revision_id,athlete_local_date)`. Preserve `rest`, `recovery`, `unavailable`, `race` and `review_required` separately. This source is not a finished workout.
+5. `public.v2_training_revision_sessions`: immutable `id`, `plan_revision_id`, `session_slot_id`, `user_id`, `athlete_local_date DATE`, `timezone`, `sport`, `sort_order`, registered `intent_schema_version` and validated versioned intent, with same-plan/same-owner revision and slot FKs. Only the revision linked through the plan's active revision contributes to the **current** calendar. Finished activities do not live here.
+
+Do **not** include active-session telemetry, raw GPS, metric registry, Completed Activity rows, or Coach proposal stores in this first migration. Their owners retain their later slices. If required stable ID semantics or planned/rest mapping differ from Section 3, resolve them **before** writing the migration.
+
+### Migration and runtime invariants to review
+
+- All five public tables must have RLS enabled, explicit least-privilege `SELECT` to `authenticated`, policies binding `user_id = (select auth.uid())`, and **no** `anon` access. Do not grant general client write access; source mutations require the later reviewed Training owner writer.
+- Composite FKs guarantee plan, revision, slot and day all belong to the **same user**. Validate the active-revision backreference after creating both dependent tables. Enforce only one authoritative accepted/current revision per plan; a candidate or superseded revision must not leak into calendar reads.
+- Return an owner-attested **complete date-window snapshot**, not a client-gathered partial join. The certified snapshot must explicitly identify plan/current revision(s), athlete timezone, first/last covered athlete-local dates, source version, unconsumed cursor (null only on completion), and the auth session generation at fetch start. The existing `certifyCalendarOwnerRead` is a **client guard**, not a replacement for RLS, server scope enforcement or snapshot consistency.
+- The calendar's `PlannedCalendarItem.state` (`planned/missed/rest/recovery/cancelled`) and the proposed `revision_days.day_state` (`planned/rest/recovery/unavailable/race/review_required`) are **not the same vocabulary**. Never pretend `unavailable`, `race` or `review_required` are completed/missed workouts. Owner must publish a typed translation/expansion contract (or widen the presenter state) before connecting real reads. In particular `missed` and `cancelled` require explicit lifecycle evidence, not a past date or missing record.
+- A read-only Training schema **cannot** make the full calendar ready while ALL-243 Completed Activity remains absent. Show planned data as partial; combined month completed indicators stay unavailable. No fake completed data, no manual-entry success claim, and no permanent duplicate read store.
+
+### Required evidence before approval/deployment
+
+1. Owner decision record on stable slot identity, revision immutability/acceptance semantics, timezone/travel policy, `day_state` translation, plan-current precedence and exact completion link.
+2. A versioned migration generated by the existing repository/CLI workflow, reviewed for schema ownership, grants, FK consistency and transactional safety; no invented migration filenames.
+3. Clean replay of existing seven V2 migrations plus the proposed slice in an isolated database; two-user, unauthenticated and wrong-owner SELECT/INSERT/UPDATE/DELETE denial checks; current/superseded revision checks.
+4. Owner-scoped empty and populated date-window read checks including multiple sports/day, explicit rest/recovery, month spillover and timezone; paginated/partial fetch must refuse `ready`.
+5. Only after ALL-243's canonical Completed Activity read contract is approved and available should `app/train.tsx` replace its explicit unavailable source with live reads. Then execute registered Training tests, TypeScript/Expo/device checks, with evidence in ALL-224 and founder acceptance in ALL-254.
+
+**Status:** candidate review slice only. Do not mark ALL-222, ALL-243 or ALL-246 complete from this document.
