@@ -86,7 +86,7 @@
 
 ## Remaining research and validation debt — explicit
 
-This document now covers five evidence themes in two increments, **not all 17 historical evidence domains**. The next research audit must inventory each prior registry topic against current primary reviews/guidelines, record checked year/source/claim/population, mark retained/revised/retired/unknown, name a canonical V2 decision owner and require at least one positive and one negative executable scenario. The 2024 heat guidance and 2026 mental-health consensus are **source reviews only**; they have not yet been tested against live Coach generations or verified on a device.
+This document covers seven evidence themes across several increments, **not all 17 historical evidence domains**. The next research audit must inventory each prior registry topic against current primary reviews/guidelines, record checked year/source/claim/population, mark retained/revised/retired/unknown, name a canonical V2 decision owner and require at least one positive and one negative executable scenario. The 2024 heat guidance and 2026 mental-health consensus are **source reviews only**; they have not yet been tested against live Coach generations or verified on a device.
 
 
 ## Evidence 6 — acute/chronic workload and injury inference (2026 synthesis)
