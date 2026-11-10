@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   EMPTY_ONBOARDING_ANSWERS,
   V2_ONBOARDING_FOCUS_OPTIONS,
+  createOnboardingSaveGuard,
   firstIncompleteOnboardingStep,
   isOnboardingAnswerComplete,
   matchesOnboardingRetryScope,
@@ -105,4 +106,15 @@ test('onboarding retry preserves action IDs only for the identical owner, step, 
   assert.equal(matchesOnboardingRetryScope(original, { ...original, action: 'skip' }), false);
   assert.equal(matchesOnboardingRetryScope(original, { ...original, settingsVersion: 3 }), false);
   assert.equal(matchesOnboardingRetryScope(original, { ...original, progressVersion: 4 }), false);
+});
+
+test('onboarding save guard rejects rapid complete/skip attempts until the current save settles', () => {
+  const guard = createOnboardingSaveGuard();
+  assert.equal(guard.tryEnter(), true);
+  assert.equal(guard.tryEnter(), false);
+  assert.equal(guard.tryEnter(), false);
+  guard.leave();
+  assert.equal(guard.tryEnter(), true);
+  guard.leave();
+  assert.equal(guard.tryEnter(), true);
 });
