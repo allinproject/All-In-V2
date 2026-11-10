@@ -3,7 +3,7 @@
 **Status:** Live-verified foundation slice; not the physical schema for future Training/Coach/Nutrition domains  
 **Repository:** `allinproject/All-In-V2`  
 **Branch:** `integration/v2-foundation`  
-**Branch head at initial physical audit:** `cf6b241db39af5400ce1854d14185a520d4aa997`  \n**Refreshed against branch head:** `820936636cfc48ddfd26a995aabe332882be60b4` (2026-11-10; includes migration 006 and provider-cache cleanup verification).
+**Branch head at initial physical audit:** `cf6b241db39af5400ce1854d14185a520d4aa997`  \n**Refreshed against branch head:** `054e08fb5fbd91e6d1caffe863c423e3c95b0fdc` (2026-11-10; includes migration 007 and Cron scheduling).
 **Generated public database types:** `apps/mobile-v2/src/types/database.types.ts` (generated from live schema on 2026-11-10; includes five public tables and six public RPCs; private schema intentionally excluded).  
 **Supabase project:** `xarhuczrtzuiljmtdaeu` (All-In-V2)  
 **Verification date:** 2026-11-10  
@@ -23,6 +23,7 @@ The source filenames and Supabase migration history use different timestamps. Th
 | `20261110000400_v2_onboarding_progress_writer.sql` | `20261110101200` | Private onboarding action ledger and authenticated owner-only step writer with complete/skip/reset, expected-version and idempotent retry semantics. |
 | `20261110000500_v2_expected_owner_mutation_guards.sql` | `20261110105423` | Replaces the three authenticated mutation RPC signatures with expected-owner UUIDs checked against `auth.uid()` inside PostgreSQL. |
 | `20261110000600_v2_provider_cache_expired_cleanup.sql` | `20261110122952` | Adds a bounded service-role-only RPC to delete expired provider-cache rows without direct cache-table grants. |
+| `20261110000700_v2_provider_cache_cron_schedule.sql` | `20261110124420` | Installs pg_cron 1.6.4 and schedules the private bounded purge helper hourly as postgres. |
 
 No V1 migration or object is part of this schema.
 
@@ -127,7 +128,7 @@ Notes:
 | `public.v2_legal_acceptances` | Legal/account lifecycle; user-private immutable receipt | RLS enabled. SELECT own rows only. | Authenticated SELECT only. No direct INSERT/UPDATE/DELETE. | `v2_accept_legal_documents(expected_user_id, terms, privacy, founder_terms, age_confirmed, action_id)` checks expected owner equals `auth.uid()`, age attestation, exact latest published versions and actor; per-user client action is unique and idempotent. |
 | `allin_private.v2_profile_settings_actions` | Profile settings infrastructure; private operational metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. Owner `postgres` retains migration/function-owner privileges. | Only reached from `v2_patch_profile_settings_section` SECURITY DEFINER path. Never add permissive policies to silence no-policy INFO. |
 | `allin_private.v2_onboarding_actions` | Onboarding infrastructure; private per-user idempotency metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only reached from `v2_set_onboarding_step` SECURITY DEFINER path. |
-| `allin_private.v2_provider_cache` | Provider infrastructure; private operational cache | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only service-role-only `v2_provider_cache_get/put/prune_expired` SECURITY DEFINER RPCs. Not canonical ingredient/nutrition truth. |
+| `allin_private.v2_provider_cache` | Provider infrastructure; private operational cache | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Service-role-only `v2_provider_cache_get/put/prune_expired` SECURITY DEFINER RPCs; a private SECURITY INVOKER purge helper is executed only by its postgres owner through pg_cron. Not canonical ingredient/nutrition truth. |
 
 ### Verified table constraints and indexes
 
@@ -154,7 +155,8 @@ All listed functions are owned by `postgres` and have an empty function search p
 | `public.v2_accept_legal_documents(uuid,text,text,text,boolean,text)` | Yes | authenticated only | Requires `p_expected_user_id = auth.uid()` and fails SQLSTATE 42501 on mismatch; exact latest current published Terms/Privacy/Founder Beta Terms; age attestation; bounded per-user idempotency key; changed-payload reuse fails. |
 | `public.v2_provider_cache_get(text,text)` | Yes | service_role only | Explicitly checks `auth.role()='service_role'`; returns unexpired cache plus source/license/freshness metadata. |
 | `public.v2_provider_cache_put(text,text,jsonb,text,text,timestamptz,timestamptz)` | Yes | service_role only | Explicitly checks service role; provider allowlist, key, payload size/type and fetch/expiry bounds; upsert by provider/cache key. |
-| `public.v2_provider_cache_prune_expired(integer)` | Yes | service_role only | Explicitly checks service role; batch 1–5,000; deletes only expired rows in expiry order with `FOR UPDATE SKIP LOCKED`; no direct table grant or automatic scheduler. |
+| `public.v2_provider_cache_prune_expired(integer)` | Yes | service_role only | Explicitly checks service role; delegates to private bounded helper; no direct table grant. |
+| `allin_private.v2_provider_cache_prune_expired(integer)` | No | Owner only (postgres) | SECURITY INVOKER, empty search_path, batch 1–5,000, deletes only expired rows with `FOR UPDATE SKIP LOCKED`; no anon/authenticated/service_role EXECUTE. Invoked by pg_cron as postgres. |
 | `public.v2_set_updated_at()` | No | No API EXECUTE | Trigger helper for Profile, Settings and Onboarding timestamps. |
 | `public.v2_prevent_published_legal_content_change()` | No | No API EXECUTE | Trigger rejects changes to published document key/version/title/content/hash/effective timestamp. |
 
@@ -173,7 +175,8 @@ Verified against the live project catalog on 2026-11-10:
 - `authenticated` can update `display_name` and `avatar_path`; cannot update `user_id`, `created_at` or `updated_at`. Whole-table UPDATE privilege is false.
 - Authenticated users cannot directly INSERT into Settings, Onboarding or Legal Acceptances. No anonymous direct reads exist for private user rows.
 - The public API functions with authenticated EXECUTE are the four per-user RPCs listed above. Provider cache RPCs are service_role-only. Trigger helpers have no API EXECUTE grant.
-- `v2_provider_cache_prune_expired(integer)` is postgres-owned SECURITY DEFINER, empty search_path, anon/authenticated EXECUTE=false, service_role EXECUTE=true. A rollback-only live fixture passed; no recurring cleanup job is installed because no approved scheduler/cron extension is present.
+- The public `v2_provider_cache_prune_expired(integer)` wrapper is postgres-owned SECURITY DEFINER, empty search_path, anon/authenticated EXECUTE=false, service_role EXECUTE=true. Its private SECURITY INVOKER helper is executable only by the postgres owner. A rollback-only live fixture passed.
+- pg_cron 1.6.4 is installed. Active job `allin-v2-provider-cache-expired-purge` is owned by postgres, runs `select allin_private.v2_provider_cache_prune_expired(5000);` at minute 17 of every hour UTC. The schedule is verified in `cron.job`; the first actual run is pending, not yet claimed as passed.
 - Supabase security advisor's three private-table `rls_enabled_no_policy` INFO notices are intentional. Its four authenticated SECURITY DEFINER RPC WARN notices are documented; each per-user RPC checks actor identity and scopes reads/writes to that identity. Do not grant authenticated direct private-schema access or add permissive policies to silence the advisor.
 - All eight tables have zero rows. The onboarding writer was replay-tested with two synthetic authenticated users; those users, their progress rows and action-ledger records were rolled back. This is a structural/security verification, not proof of real user signup, published legal-document acceptance or installed-client lifecycle.
 
@@ -210,3 +213,17 @@ Committed rollback-only regression fixtures:
 - `supabase/tests/v2_onboarding_progress_writer_replay.sql`: the complete onboarding lifecycle/retry/isolation replay now passes the explicit expected owner.
 
 Both fixtures executed against V2 without SQL errors. The synthetic accounts, progress/settings rows, legal receipts and both action ledgers were verified at zero after rollback. Live signature/grant inspection confirms only the new argument signatures exist; anon/service_role cannot execute them, authenticated can. The three private-table INFO and four per-user SECURITY DEFINER WARN advisor findings remain the expected documented posture.
+
+
+## 8. Cron expiry cleanup — migration 007 and live job verification
+
+- Source: `supabase/migrations/20261110000700_v2_provider_cache_cron_schedule.sql`.
+- Applied database version: `20261110124420`.
+- Installed extension: pg_cron 1.6.4.
+- Job name: `allin-v2-provider-cache-expired-purge`.
+- Schedule: `17 * * * *` (minute 17 every hour, UTC).
+- Job owner/username and database: `postgres` / `postgres`.
+- Command: `select allin_private.v2_provider_cache_prune_expired(5000);`.
+- Cron schema USAGE is true for postgres only; anon, authenticated and service_role are false.
+- The private SECURITY INVOKER helper has no EXECUTE for anon/authenticated/service_role. The owner-run job can execute it. The public wrapper remains callable only by service_role.
+- Metadata and grant assertion passed; postgres direct helper smoke test returned 0. No successful scheduled `cron.job_run_details` row has yet been observed; first hourly run is pending.
