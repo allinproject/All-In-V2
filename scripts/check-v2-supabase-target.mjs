@@ -27,7 +27,7 @@ assert.equal(project[1], V2_REF, 'Refusing a non-V2 Supabase project in config.t
 const templateUrl = onlyLine(template, 'EXPO_PUBLIC_SUPABASE_URL');
 assert.equal(templateUrl, `https://${V2_REF}.supabase.co`, 'V2 app example must target the V2 Supabase project');
 assert.ok(!config.includes(V1_REF) && !template.includes(V1_REF), 'V1 Supabase ref must not appear in V2 configuration');
-assert.ok(!/^EXPO_PUBLIC_.*(?:SERVICE_ROLE|SECRET|PRIVATE_KEY)\s*=/mi.test(template), 'Do not expose privileged secrets via EXPO_PUBLIC_ keys');
+assert.ok(!/^EXPO_PUBLIC_[A-Z0-9_]*(?:SERVICE_ROLE|SECRET|PRIVATE_KEY)[A-Z0-9_]*\s*=/mi.test(template), 'Do not expose privileged secrets via EXPO_PUBLIC_ keys');
 
 if (process.env.EXPO_PUBLIC_SUPABASE_URL) {
   assert.equal(process.env.EXPO_PUBLIC_SUPABASE_URL.trim(), templateUrl, 'Refusing to run with a non-V2 public Supabase URL');
