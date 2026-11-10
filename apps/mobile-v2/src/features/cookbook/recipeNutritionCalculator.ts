@@ -227,6 +227,17 @@ export function calculateRecipeIngredientNutrition(input: {
         fat_g: round3(totals.fat_g / edibleWeight * 100),
       }
     : null;
+  // Finite batch values can still overflow when divided by a tiny measured mass.
+  // Never publish a validated recipe with non-finite derived nutrition.
+  if (Object.values(batchTotals).some(value => !Number.isFinite(value)) ||
+      (per100g && Object.values(per100g).some(value => !Number.isFinite(value)))) {
+    return {
+      status: 'insufficient_evidence',
+      recipe_id: recipeId,
+      recipe_state_version: recipeVersion,
+      reasons: ['finite_derived_nutrition_required'],
+    };
+  }
 
   return {
     status: 'validated',
