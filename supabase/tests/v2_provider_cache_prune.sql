@@ -15,7 +15,7 @@ set payload = excluded.payload,
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
-do $$
+do $auth$
 begin
   begin
     perform public.v2_provider_cache_prune_expired(10);
@@ -24,12 +24,12 @@ begin
     null;
   end;
 end;
-$$;
+$auth$;
 
 reset role;
 set local role service_role;
 select set_config('request.jwt.claim.role', 'service_role', true);
-do $$
+do $svc$
 declare
   v_deleted integer;
 begin
@@ -44,13 +44,13 @@ begin
   if v_deleted <> 1 then
     raise exception 'expected one expired row deleted, got %', v_deleted;
   end if;
-
 end;
-$;
+$svc$;
+
 reset role;
 
 -- Verify table state as the migration owner; service_role intentionally has no direct table grants.
-do $
+do $readback$
 begin
   if exists (
     select 1 from allin_private.v2_provider_cache
@@ -69,5 +69,5 @@ begin
     raise exception 'fresh provider cache probe row was incorrectly removed';
   end if;
 end;
-$;
+$readback$;
 rollback;
