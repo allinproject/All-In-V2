@@ -5,7 +5,7 @@ import { Redirect, Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
-import { createV2AuthActionGuard } from '../src/auth/authRoute';
+import { canStartV2SignedOutAction, createV2AuthActionGuard } from '../src/auth/authRoute';
 import { colors, radius, spacing } from '../src/theme/tokens';
 import { assertV2SessionOwner, assertV2SignupLegalSnapshotCurrent, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2SignupConsentScope, type V2LegalDocument } from '../src/auth/accessGateClient';
 import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
@@ -70,7 +70,7 @@ export default function SignUpScreen() {
   const reviewScope = v2SignupConsentScope(email, documents);
   const ageConfirmed = ageConfirmedScope === reviewScope;
   const allReviewed = documents.length === 3 && documents.every(doc => reviewed[reviewKey(doc)]);
-  const ready = !loadingDocuments && !submitting && documents.length === 3
+  const ready = canStartV2SignedOutAction(loading, user?.id ?? null) && !loadingDocuments && !submitting && documents.length === 3
     && allReviewed && ageConfirmed && email.trim().length > 0 && meetsV2PasswordMinimum(password);
 
   async function createAccount() {
