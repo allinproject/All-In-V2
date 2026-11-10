@@ -61,12 +61,19 @@ export type ExerciseSuitabilityResult =
       movementId: string;
       variationId: string;
       displayName: string;
+      variationDescription: string;
+      requiredEquipmentIds: readonly string[];
+      optionalEquipmentIds: readonly string[];
       matchedGoalIds: readonly string[];
       matchedSports: readonly ExerciseSport[];
       transfer: 'direct_sport_evidence' | 'general_adaptation_indirect_transfer';
       whyThisFits: readonly string[];
       muscleRoles: ExerciseScienceProfile['muscleGroups'];
       jointDemands: ExerciseScienceProfile['jointDemands'];
+      cautionFlags: ExerciseScienceProfile['cautionFlags'];
+      alternativeVariationIds: readonly string[];
+      regressionVariationIds: readonly string[];
+      progressionVariationIds: readonly string[];
       coachingCues: ExerciseScienceProfile['coachingCues'];
       sources: ExerciseScienceProfile['sources'];
       evidence: readonly {
@@ -400,6 +407,7 @@ export function evaluateExerciseSuitability(
     ...selected.flatMap((match) => match.claim.sourceIds),
     ...profile.muscleGroups.flatMap((muscle) => muscle.sourceIds),
     ...profile.jointDemands.flatMap((demand) => demand.sourceIds),
+    ...profile.cautionFlags.flatMap((flag) => flag.sourceIds),
   ]);
 
   return {
@@ -407,12 +415,19 @@ export function evaluateExerciseSuitability(
     movementId: profile.movementId,
     variationId: profile.variationId,
     displayName: profile.displayName,
+    variationDescription: profile.variationDescription,
+    requiredEquipmentIds: profile.equipmentRequiredIds,
+    optionalEquipmentIds: profile.equipmentOptionalIds,
     matchedGoalIds: [...new Set(selected.flatMap((match) => match.goalIds))],
     matchedSports: [...new Set(selected.flatMap((match) => match.sports))],
     transfer: directClaims.length > 0 ? 'direct_sport_evidence' : 'general_adaptation_indirect_transfer',
     whyThisFits,
     muscleRoles: profile.muscleGroups,
     jointDemands: profile.jointDemands,
+    cautionFlags: profile.cautionFlags,
+    alternativeVariationIds: profile.alternativeVariationIds,
+    regressionVariationIds: profile.regressionVariationIds,
+    progressionVariationIds: profile.progressionVariationIds,
     coachingCues: profile.coachingCues,
     sources: profile.sources.filter((source) => sourceIds.has(source.id)),
     evidence: selected.map((match) => ({
