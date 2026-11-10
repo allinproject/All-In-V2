@@ -47,7 +47,7 @@ test('parallel switchback sections without continuity evidence are ambiguous',()
   [44.95,-93.0999,250],
  ]);
  const result=matchRaceCourseGpsPosition(route,fix({longitude:-93.09995,horizontalAccuracyMeters:15}));
- assert.equal(result.status,'untrusted');
+ assert.equal(result.status,'untrusted',result.status==='trusted'?JSON.stringify({segmentIndex:result.segmentIndex,distance:result.distanceOnCourseMeters,crossTrack:result.crossTrackDistanceMeters}):result.reason);
  if(result.status==='untrusted')assert.match(result.reason,/ambiguous/);
 });
 
