@@ -140,3 +140,30 @@ test('invalid selected day does not show source data',()=>{
  assert.equal(x.scheduled.status,'unavailable');
  assert.equal(x.completed.status,'unavailable');
 });
+
+test('selected day outside verified request range is unknown, never a verified empty day',()=>{
+ const x=combineCalendarReads(input);
+ for(const day of ['2026-10-31','2026-12-01']){
+  const sections=calendarDaySections(x,day);
+  assert.equal(sections.scheduled.status,'unavailable');
+  assert.equal(sections.completed.status,'unavailable');
+  assert.equal(indicatorsForCalendarDay(x,day).kind,'unavailable');
+ }
+});
+test('verified empty day within the certified range remains genuinely empty',()=>{
+ const x=combineCalendarReads(input);
+ const sections=calendarDaySections(x,'2026-11-18');
+ assert.equal(sections.scheduled.status,'ready');
+ assert.equal(sections.completed.status,'ready');
+ if(sections.scheduled.status==='ready'&&sections.completed.status==='ready'){
+  assert.deepEqual(sections.scheduled.records,[]);
+  assert.deepEqual(sections.completed.records,[]);
+ }
+ assert.equal(indicatorsForCalendarDay(x,'2026-11-18').kind,'known');
+});
+test('invalid date range blocks selected-day and marker availability',()=>{
+ const x=combineCalendarReads({...input,fromDate:'2026-12-01',throughDate:'2026-11-01'});
+ assert.equal(x.requestedRange,null);
+ assert.equal(calendarDaySections(x,'2026-11-10').scheduled.status,'unavailable');
+ assert.equal(indicatorsForCalendarDay(x,'2026-11-10').kind,'unavailable');
+});
