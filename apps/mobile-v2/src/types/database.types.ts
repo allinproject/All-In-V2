@@ -1,7 +1,7 @@
 /**
  * Generated from the live ALL IN 365 V2 Supabase public schema.
  * Project: xarhuczrtzuiljmtdaeu
- * Applied migrations through: 20261110101200 (v2_onboarding_progress_writer)
+ * Applied migrations through: 20261110105423 (v2_expected_owner_mutation_guards)
  * Generated: 2026-11-10
  *
  * Regenerate after approved V2 migrations. The allin_private schema is
@@ -173,6 +173,7 @@ export type Database = {
         Args: {
           p_age_18_confirmed: boolean
           p_client_action_id: string
+          p_expected_user_id: string
           p_founder_beta_terms_version: string
           p_privacy_version: string
           p_terms_version: string
@@ -183,6 +184,7 @@ export type Database = {
       v2_patch_profile_settings_section: {
         Args: {
           p_client_action_id: string
+          p_expected_user_id: string
           p_expected_version: number
           p_patch: Json
           p_section: string
@@ -209,6 +211,7 @@ export type Database = {
         Args: {
           p_action: string
           p_client_action_id: string
+          p_expected_user_id: string
           p_expected_version: number
           p_step: string
         }
