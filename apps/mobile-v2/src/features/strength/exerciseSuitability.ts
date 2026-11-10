@@ -110,6 +110,45 @@ function stop(
   };
 }
 
+const SPORT_VALUES = ['running','cycling','swimming','triathlon','walking','hiking','rucking','rowing','strength_sport','general_fitness'] as const;
+const GOAL_VALUES = ['maximal_strength','hypertrophy','power','muscular_endurance','balance','mobility','sport_performance','general_function'] as const;
+const RESTRICTION_CATEGORIES = ['exercise','equipment','schedule','pain_or_return','preference'] as const;
+
+function nonEmpty(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function ownerSnapshotIsValid(context: ExerciseSuitabilityOwnerSnapshots): boolean {
+  if (!context || !context.location || !context.goals || !context.restrictions ||
+      !context.strengthExperience || !context.trainingLoad) return false;
+  if (!nonEmpty(context.location.selectedLocationId) ||
+      !Array.isArray(context.location.confirmedEquipmentIds) ||
+      !context.location.confirmedEquipmentIds.every(nonEmpty) ||
+      new Set(context.location.confirmedEquipmentIds).size !== context.location.confirmedEquipmentIds.length) return false;
+  if (!Array.isArray(context.goals.active) || context.goals.active.length === 0 ||
+      !context.goals.active.every((goal) =>
+        Boolean(goal) && nonEmpty(goal.goalId) &&
+        ['primary','secondary','maintenance'].includes(goal.role) &&
+        Array.isArray(goal.sports) && goal.sports.length > 0 &&
+        goal.sports.every((sport) => (SPORT_VALUES as readonly string[]).includes(sport)) &&
+        Array.isArray(goal.exerciseGoals) && goal.exerciseGoals.length > 0 &&
+        goal.exerciseGoals.every((goalType) => (GOAL_VALUES as readonly string[]).includes(goalType))
+      )) return false;
+  if (!Array.isArray(context.restrictions.active) ||
+      !context.restrictions.active.every((restriction) =>
+        Boolean(restriction) &&
+        ['active','inactive'].includes(restriction.status) &&
+        (restriction.status !== 'active' ||
+          (RESTRICTION_CATEGORIES as readonly string[]).includes(restriction.category) &&
+          nonEmpty(restriction.subject))
+      )) return false;
+  if (!['beginner','intermediate','advanced','unknown'].includes(context.strengthExperience.skillLevel)) return false;
+  if (!['clear','conflict','unknown'].includes(context.trainingLoad.nextSessionConflict) ||
+      !Array.isArray(context.trainingLoad.conflictingMuscleGroupIds) ||
+      !context.trainingLoad.conflictingMuscleGroupIds.every(nonEmpty)) return false;
+  return true;
+}
+
 function ownerContextIsComplete(context: ExerciseSuitabilityOwnerSnapshots): boolean {
   return Boolean(
     context &&
@@ -117,7 +156,8 @@ function ownerContextIsComplete(context: ExerciseSuitabilityOwnerSnapshots): boo
     context.location?.owner === 'ALL-251' && context.location.status === 'complete' &&
     context.restrictions?.owner === 'ALL-232' && context.restrictions.status === 'complete' &&
     context.strengthExperience?.owner === 'ALL-257' && context.strengthExperience.status === 'complete' &&
-    context.trainingLoad?.owner === 'ALL-246' && context.trainingLoad.status === 'complete'
+    context.trainingLoad?.owner === 'ALL-246' && context.trainingLoad.status === 'complete' &&
+    ownerSnapshotIsValid(context)
   );
 }
 
@@ -350,7 +390,9 @@ export function evaluateExerciseSuitability(
   }
 
   const directClaims = evidenceMatches.filter((match) => match.claim.directness === 'direct_sport_outcome');
-  const selected = directClaims.length > 0 ? directClaims : evidenceMatches;
+  // Keep both direct sport-outcome and general-adaptation evidence visible.
+  // A direct result does not erase useful context; the transfer label remains explicit.
+  const selected = evidenceMatches;
   const limitations = [...new Set(selected.map((match) => match.claim.limitations))];
   const whyThisFits = selected.map((match) => match.claim.statement);
 
