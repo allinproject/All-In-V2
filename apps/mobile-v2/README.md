@@ -26,13 +26,13 @@ Current source foundation:
 
 ## Supabase foundation
 
-Three migrations have been applied to the dedicated V2 project:
+Four migrations have been applied to the dedicated V2 project:
 
 1. `20261110000100_v2_auth_profile_legal_foundation.sql` — Auth-linked Profile, Settings, Onboarding and Legal foundation.
 2. `20261110000200_v2_tighten_profile_privileges_and_legal_versions.sql` — narrowed Profile privileges and immutable published legal versions.
-3. `20261110000300_v2_provider_cache_and_private_rls.sql` — private provider cache and defense-in-depth RLS on private operational tables.
+3. `20261110000300_v2_provider_cache_and_private_rls.sql` — private provider cache and defense-in-depth RLS on private operational tables.\n4. `20261110000400_v2_onboarding_progress_writer.sql` — private onboarding idempotency ledger and authenticated versioned complete/skip/reset writer.
 
-They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/onboarding, versioned legal document store, immutable acceptance receipts, RLS and guarded versioned/idempotent RPCs.
+They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/onboarding, versioned legal document store, immutable acceptance receipts, private Settings/Onboarding action ledgers, RLS and guarded versioned/idempotent RPCs. Onboarding writes use `v2_set_onboarding_step`; the actual six-step UI is not yet built.
 
 **Current legal status:** no legal documents have been published. Public signup and private app access must remain closed until the working V1 legal draft is reviewed/finalized and the three exact V2 versions are deliberately published. Do not seed or publish draft legal text automatically.
 
@@ -49,4 +49,4 @@ The package lockfile, clean install, TypeScript/app test execution, Expo bundle 
 
 ## Security note
 
-Public API tables use least-privilege grants and owner RLS. The private tables `allin_private.v2_profile_settings_actions` and `allin_private.v2_provider_cache` have RLS enabled and no schema usage or direct table privileges granted to `anon` or `authenticated`. They intentionally have no direct API policies; only the narrowly scoped owning SECURITY DEFINER/service-role RPC paths access them. See Linear ALL-223 for applied migration, grant verification, and rolled-back idempotent-writer replay evidence. Supabase's remaining no-policy INFO notices for these private tables are intentional; do not add permissive policies to silence them. Three authenticated per-user SECURITY DEFINER RPC advisor warnings are documented; these functions check `auth.uid()` and are required by the current client flow.
+Public API tables use least-privilege grants and owner RLS. The private tables `allin_private.v2_profile_settings_actions`, `allin_private.v2_onboarding_actions` and `allin_private.v2_provider_cache` have RLS enabled and no schema usage or direct table privileges granted to `anon` or `authenticated`. They intentionally have no direct API policies; only the narrowly scoped owning SECURITY DEFINER/service-role RPC paths access them. See Linear ALL-223 for applied migration, grant verification, and rolled-back idempotent-writer replay evidence. Supabase's remaining three no-policy INFO notices for these private tables are intentional; do not add permissive policies to silence them. Four authenticated per-user SECURITY DEFINER RPC advisor warnings are documented; these functions check `auth.uid()` and are required by the current client flow.
