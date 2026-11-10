@@ -5,6 +5,7 @@ import { Redirect, Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
+import { createV2AuthActionGuard } from '../src/auth/authRoute';
 import { colors, radius, spacing } from '../src/theme/tokens';
 import { assertV2SessionOwner, assertV2SignupLegalSnapshotCurrent, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2SignupConsentScope, type V2LegalDocument } from '../src/auth/accessGateClient';
 import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
@@ -32,6 +33,7 @@ export default function SignUpScreen() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const pendingAcceptance = useRef<{ scope: string; id: string } | null>(null);
+  const requestGuard = useRef(createV2AuthActionGuard());
 
   useEffect(() => {
     let active = true;
@@ -72,7 +74,7 @@ export default function SignUpScreen() {
     && allReviewed && ageConfirmed && email.trim().length > 0 && meetsV2PasswordMinimum(password);
 
   async function createAccount() {
-    if (!ready || submitting || !documents.length) return;
+    if (!ready || submitting || !documents.length || !requestGuard.current.tryEnter()) return;
     const submittedEmail = email.trim().toLowerCase();
     const submittedPassword = password;
     const reviewedDocuments = documents;
@@ -142,6 +144,7 @@ export default function SignUpScreen() {
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
+      requestGuard.current.leave();
       setSubmitting(false);
     }
   }
@@ -161,7 +164,7 @@ export default function SignUpScreen() {
                 <ScrollView nestedScrollEnabled style={styles.documentBody}>
                   <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
                 </ScrollView>
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!reviewed[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => setReviewed(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] }))} style={styles.reviewRow}>
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!reviewed[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => { if (requestGuard.current.isBusy()) return; setReviewed(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] })); }} style={styles.reviewRow}>
                   <Text style={styles.checkbox}>{reviewed[reviewKey(doc)] ? '☑' : '☐'}</Text>
                   <Text style={styles.reviewText}>I have read and reviewed this document</Text>
                 </Pressable>
@@ -169,12 +172,12 @@ export default function SignUpScreen() {
             ))}
             {documents.length === 3 ? (
               <>
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed, disabled: submitting }} disabled={submitting} onPress={() => setAgeConfirmedScope(current => current === reviewScope ? null : reviewScope)} style={styles.reviewRow}>
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed, disabled: submitting }} disabled={submitting} onPress={() => { if (requestGuard.current.isBusy()) return; setAgeConfirmedScope(current => current === reviewScope ? null : reviewScope); }} style={styles.reviewRow}>
                   <Text style={styles.checkbox}>{ageConfirmed ? '☑' : '☐'}</Text>
                   <Text style={styles.reviewText}>I confirm that I am at least 18 years old.</Text>
                 </Pressable>
-                <TextInput accessibilityLabel="Email" editable={!submitting} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.mutedText} style={styles.input} value={email} onChangeText={setEmail} />
-                <TextInput accessibilityLabel="Password (at least 12 characters)" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Password (at least 12 characters)" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={setPassword} />
+                <TextInput accessibilityLabel="Email" editable={!submitting} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.mutedText} style={styles.input} value={email} onChangeText={value => { if (requestGuard.current.isBusy()) return; setEmail(value); }} />
+                <TextInput accessibilityLabel="Password (at least 12 characters)" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Password (at least 12 characters)" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={value => { if (requestGuard.current.isBusy()) return; setPassword(value); }} />
                 <Pressable accessibilityRole="button" accessibilityState={{ disabled: !ready, busy: submitting }} disabled={!ready} onPress={() => void createAccount()} style={[styles.button, !ready && styles.disabled]}>
                   {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Create V2 account</Text>}
                 </Pressable>
