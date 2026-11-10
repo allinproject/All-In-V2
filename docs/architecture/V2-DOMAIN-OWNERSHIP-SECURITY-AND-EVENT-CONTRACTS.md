@@ -461,3 +461,10 @@ Slice 1 now includes:
 The existing Expo scheme is `allin365v2`. The V2 Supabase Auth Redirect URLs allowlist must include `allin365v2://**`. The Supabase project-details API available in this execution environment does not expose the Auth redirect allowlist, so this setting remains externally unverified/unconfigured until checked in the Supabase Auth dashboard. Native deep-link acceptance must use a development build or installed app; Expo Go uses a transient development URL.
 
 Pure callback resolver tests pass for signup/email confirmation, recovery routing, missing code and provider errors. Actual SMTP delivery, redirect allowlist, phone link handling, password update and email-confirmation-to-legal-gate remain unvalidated until configured and tested on device.
+
+
+## 26. Explicit PKCE configuration for native email auth deep links
+
+The shared V2 Supabase client now sets `auth.flowType = 'pkce'` with `detectSessionInUrl: false` and performs an explicit code exchange in `app/auth/callback.tsx`. This is deliberate: Supabase JS defaults to implicit flow in a client-only JavaScript app, while the callback implementation consumes a PKCE authorization code. The existing `expo-sqlite/localStorage/install` provides persistent storage for the code verifier on the originating device. The one-time code must be redeemed on that same device where the flow began.
+
+Do not change this client to implicit flow while retaining the current code-exchange callback. Auth redirect allowlist and installed-device validation remain external acceptance gates.
