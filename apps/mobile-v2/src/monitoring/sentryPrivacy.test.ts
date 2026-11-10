@@ -11,7 +11,7 @@ test('crash telemetry redacts account, athlete and request information', () => {
     tags: { workout: 'private' },
     breadcrumbs: [{ message: 'food log' }],
     message: 'Email athlete@example.test',
-    exception: { values: [{ type: 'TypeError', value: 'private training note' }] },
+    exception: { values: [{ type: 'TypeError', value: 'private training note', stacktrace: { frames: [{ filename: 'app.tsx', vars: { token: 'secret' }, context_line: 'private', pre_context: ['secret'], post_context: ['private'] }] } }] },
   };
   const result = scrubCrashEvent(event);
   for (const key of ['user','request','contexts','extra','tags','breadcrumbs','message']) {
@@ -19,6 +19,7 @@ test('crash telemetry redacts account, athlete and request information', () => {
   }
   assert.equal(result.exception.values[0].type,'TypeError');
   assert.equal(result.exception.values[0].value,'[redacted]');
+  assert.deepEqual(result.exception.values[0].stacktrace.frames, [{ filename: 'app.tsx' }]);
 });
 
 test('empty and missing events scrub safely', () => {
