@@ -9,6 +9,7 @@ import { buildAthleteHistoryReadModel, type AthleteRestriction } from './athlete
 import { synthesizeTrainingWeek, adaptTrainingDay, type TrainingSessionIntent } from './trainingPlanSynthesis.ts';
 import { validateRaceCourseEvidence, type RaceCourseEvidence } from './raceCourseEvidence.ts';
 import { V2_ACTIVITY_SPORTS, activityEntryOptions } from './activityEntryContract.ts';
+import { unavailableForecastReason, type ScheduledForecastEvidence } from './forecastEvidence.ts';
 import { calculateRecipeFromLocalCatalog, type LocalIngredientCatalog } from '../cookbook/localIngredientProfiles.ts';
 
 const keyRun = ():TrainingSessionIntent=>({
@@ -138,6 +139,26 @@ test('each supported activity sport is accepted by both entry options and Coach 
   assert.deepEqual(draft.days.flatMap(day=>day.sessions.map(session=>session.sport)),[sport]);
   assert.equal(draft.invariants.noAutomaticPlanWrite,true);
  }
+});
+
+test('unconfirmed or mistimed weather never becomes workout-specific coaching evidence',()=>{
+ const evidence:ScheduledForecastEvidence={
+  provider:'nws',workoutAreaConfirmed:true,
+  workoutTime:'2026-11-12T07:00:00-06:00',
+  forecastStart:'2026-11-12T06:00:00-06:00',forecastEnd:'2026-11-12T08:00:00-06:00',
+  forecastIssuedAt:'2026-11-11T10:00:00-06:00',evaluatedAt:'2026-11-11T11:00:00-06:00',
+ };
+ assert.equal(unavailableForecastReason(evidence),null);
+ assert.equal(unavailableForecastReason({...evidence,workoutAreaConfirmed:false}),'workout_area_unconfirmed');
+ assert.equal(unavailableForecastReason({...evidence,workoutTime:'2026-11-13T07:00:00-06:00'}),'workout_outside_forecast');
+ const draft=synthesizeTrainingWeek({
+  primaryGoal:{id:'trail-run',label:'Trail event',sports:['running']},
+  secondaryGoals:[],availableDays:['thursday'],requiredSports:['running'],activeRestrictions:[],
+ },[keyRun()]);
+ assert.equal(draft.status,'review_required');
+ assert.equal(draft.invariants.noAutomaticPlanWrite,true);
+ // Validating a Training proposal does not itself validate future weather data.
+ assert.notEqual(unavailableForecastReason({...evidence,workoutAreaConfirmed:false}),null);
 });
 
 test('incomplete wearable recovery does not rewrite a key session, but pain prompts review',()=>{
