@@ -597,3 +597,12 @@ ALL-227 remains In Progress for USDA quota-header telemetry and cross-isolate th
 ALL-239 is the single goal owner for measurable outcomes and broad lifestyle intentions alike. A person may start with “eat better,” “get in shape,” “become more active,” “lose some weight,” “build muscle,” “work toward a six-pack” or “feel healthier.” Such a goal may be active without a numeric metric, baseline, deadline, calorie target or body-weight target.
 
 Goals can be progressively refined into one or two user-approved behaviors and optional cadence, then into measurable outcomes only when helpful. Training, Fuel, Kitchen, Recovery and Progress consume the same goal identity/revision; none creates a duplicate lifestyle/habit system. Weight/body tracking and calorie/macro logging remain optional. Progress must show unknown/untracked honestly and avoid invented percentages, punitive streaks or universal wellness scores. Physique guidance does not promise a six-pack or claim spot reduction.
+
+
+## 35. Multiple simultaneous goals, including multiple primary goals
+
+One athlete may pursue multiple active goals at once. It is valid for a race goal and a physique goal to both be marked primary. The Goals owner must not enforce exactly one active primary goal per athlete.
+
+The goal proposal supports multiple independent goal identities/revisions and allows equal priority. An optional athlete-selected priority order may help Coach explain scheduling emphasis, but ties are permitted and no primary goal is silently demoted. Each goal keeps its own optional target window, baseline, behavior targets, evidence and Progress view.
+
+Coach coordinates one accepted Training plan and one coherent nutrition/Recovery approach across the active goal set. If goals compete, it explains the real tradeoff and offers user-controlled alternatives; it does not automatically choose one, change a deadline, increase training, or impose a calorie deficit. Example: a race and a six-pack/physique goal remain separate, concurrently active primary goals, with the race phase informing safe pacing of body-composition changes. The athlete may change priority or timing only after seeing the implications and approving the change.
