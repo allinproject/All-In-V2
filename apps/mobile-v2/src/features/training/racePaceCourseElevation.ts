@@ -177,6 +177,7 @@ export function racePaceCourseElevation(
     let coveredMeters = 0;
     let measuredMeters = 0;
     let missingMeters = 0;
+    let hasAnyElevationSample = false;
     let gainMeters = 0;
     let lossMeters = 0;
     let firstElevation: number | null = null;
@@ -195,6 +196,7 @@ export function racePaceCourseElevation(
       if (overlapMeters <= 0) continue;
 
       coveredMeters += overlapMeters;
+      if (start.elevationMeters !== null || end.elevationMeters !== null) hasAnyElevationSample = true;
       if (start.elevationMeters === null || end.elevationMeters === null) {
         missingMeters += overlapMeters;
         continue;
@@ -233,7 +235,7 @@ export function racePaceCourseElevation(
     const elevationStatus: RacePaceSectionElevation['elevationStatus'] =
       missingMeters <= SAMPLE_COVERAGE_TOLERANCE_METERS
         ? 'complete'
-        : measuredMeters > SAMPLE_COVERAGE_TOLERANCE_METERS
+        : hasAnyElevationSample || measuredMeters > SAMPLE_COVERAGE_TOLERANCE_METERS
           ? 'partial'
           : 'missing';
     const complete = elevationStatus === 'complete';
