@@ -56,6 +56,17 @@ export function monthCalendarWeeks(day: string): string[][] {
   }
   return weeks;
 }
+/** Complete visible date scope for the requested calendar view, including month-grid spillover. */
+export function visibleCalendarReadRange(view: 'week' | 'month', day: string): {
+  fromDate: string;
+  throughDate: string;
+} | null {
+  if (!validAthleteLocalDate(day)) return null;
+  const dates = view === 'month' ? monthCalendarWeeks(day).flat() : weekDaysForDate(day);
+  if (!dates.length || !dates[0] || !dates[dates.length - 1]) return null;
+  return {fromDate:dates[0],throughDate:dates[dates.length - 1]};
+}
+
 export function formatCalendarMonth(day: string): string {
   const first = firstOfMonth(day);
   return first ? new Intl.DateTimeFormat('en-US', {month: 'long', year: 'numeric', timeZone: 'UTC'}).format(new Date(first + 'T12:00:00Z')) : 'Invalid month';
