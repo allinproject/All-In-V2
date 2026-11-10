@@ -92,6 +92,35 @@ test('Cookbook calculates reviewed local food only; missing profile cannot becom
   assert.ok(incomplete.reasons.includes('local_ingredient_state_mismatch:sauce-line'));
 });
 
+test('walking entries stay walking when Coach constructs a multisport training proposal',()=>{
+ const walkingHistory=buildAthleteHistoryReadModel({
+  generatedAt:'2026-11-10T12:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
+  sports:['walking'],currentPlan:null,restrictions:[],
+  coverage:[{sport:'walking',fromDate:'2026-10-01',throughDate:'2026-11-09',
+   status:'complete',lastSyncAt:'2026-11-09T12:00:00Z',missingIntervals:[]}],
+  events:[{id:'walk-1',kind:'completed_session',sport:'walking',
+   occurredAt:'2026-11-08T08:00:00Z',recordedAt:'2026-11-08T09:00:00Z',
+   source:'manual_entry',sourceRef:'walk-entry',canonicalRef:'activity-walk-1',
+   planId:null,planRevision:null,summary:'Walk on treadmill',
+   metrics:{durationMinutes:35},confidence:'high'}],
+ });
+ assert.equal(walkingHistory.completeness,'complete_for_requested_scope');
+ assert.deepEqual(walkingHistory.events.map(e=>e.sport),['walking']);
+ const walkSession:TrainingSessionIntent={
+  ...keyRun(),id:'walk-next',sport:'walking',label:'Easy walk',priority:'supporting',intensity:'easy',
+  demand:{aerobic:'low',mechanicalImpact:'low',localMuscular:'low',technicalSkill:'not_applicable'},
+  stressTags:['walking'],evidenceRefs:['confirmed-walk-entry'],
+ };
+ const draft=synthesizeTrainingWeek({
+  primaryGoal:{id:'walking-health',label:'Build walking consistency',sports:['walking']},
+  secondaryGoals:[],requiredSports:['walking'],availableDays:['monday','tuesday','wednesday'],
+  activeRestrictions:walkingHistory.restrictions.map(r=>r.subject),
+ },[walkSession]);
+ assert.equal(draft.status,'review_required');
+ assert.deepEqual(draft.days.flatMap(d=>d.sessions.map(x=>x.sport)),['walking']);
+ assert.equal(draft.invariants.noAutomaticPlanWrite,true);
+});
+
 test('incomplete wearable recovery does not rewrite a key session, but pain prompts review',()=>{
  const history=buildAthleteHistoryReadModel({
   generatedAt:'2026-11-10T12:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
