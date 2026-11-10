@@ -400,3 +400,17 @@ Implementation:
 Explicit answer destinations use the existing Settings owner: Training focus/current sports/availability → `training_preferences`; Coach style → `coach_preferences`; food-safety selection/details → `nutrition_preferences`; reminder preference → `notification_preferences`. Progress remains in `v2_onboarding_progress`. No new schema or preference store was added. Device permissions remain contextual and are not requested by this wizard.
 
 The four pure onboarding helper tests passed in an isolated Node 22.16 type-stripping harness. This is not yet the full repository `npm run test:auth`, TypeScript typecheck, Expo build, live signed-in UI journey or physical-device acceptance; those remain ALL-224/ALL-209 acceptance.
+
+
+## 23. Authenticated identity checks around auth-sensitive writes
+
+A reusable client guard `assertV2SessionOwner(client, expectedUserId)` is defined in `apps/mobile-v2/src/auth/accessGateClient.ts`. It reads the active Supabase session and fails closed if the account is signed out, switched or unavailable; lookup errors propagate rather than being treated as a valid identity.
+
+Use this guard immediately before auth-sensitive writes and before continuing after an awaited write where a screen may have remained mounted during an account switch. It is now used by:
+- Onboarding before both the Profile Settings preference write and onboarding-progress mutation.
+- Signup before writing the acceptance receipt for the newly created account.
+- Legal acceptance before and after the legal receipt RPC.
+
+Three new unit cases cover the matching identity, missing/switched identity and session lookup failure. The shared guard reduces divergent account-switch behavior across screen-specific write flows. This source-level integration is not yet a mounted race test or installed-device acceptance.
+
+The V2 route/auth-provider source scan found and fixed invalid bare theme-object JSX props in both the sign-in and root loading indicators. The source scan then returned no remaining instances of the checked invalid JSX attribute pattern. Do not substitute source scans for TypeScript/Expo compilation.
