@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
-import { shouldOfferV2ConfirmationResend } from '../src/auth/authRoute';
+import { createV2AuthActionGuard, shouldOfferV2ConfirmationResend } from '../src/auth/authRoute';
 import { colors } from '../src/theme/tokens';
 
 function messageFor(error: unknown) {
@@ -26,6 +26,7 @@ export default function SignInScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmationPendingEmail, setConfirmationPendingEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+  const requestGuard = useRef(createV2AuthActionGuard());
 
   if (!loading && user) return <Redirect href="/home" />;
 
@@ -37,6 +38,8 @@ export default function SignInScreen() {
       return;
     }
 
+    if (!requestGuard.current.tryEnter()) return;
+    const submittedPassword = password;
     setSubmitting(true);
     setError(null);
     setNotice(null);
@@ -44,7 +47,7 @@ export default function SignInScreen() {
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
-        password,
+        password: submittedPassword,
       });
       if (signInError) {
         const errorCode = (signInError as { code?: string }).code;
@@ -59,6 +62,7 @@ export default function SignInScreen() {
     } catch (caught) {
       setError(messageFor(caught));
     } finally {
+      requestGuard.current.leave();
       setSubmitting(false);
     }
   }
@@ -75,6 +79,7 @@ export default function SignInScreen() {
       return;
     }
 
+    if (!requestGuard.current.tryEnter()) return;
     setResending(true);
     setError(null);
     setNotice(null);
@@ -98,6 +103,7 @@ export default function SignInScreen() {
     } catch (caught) {
       setError(messageFor(caught));
     } finally {
+      requestGuard.current.leave();
       setResending(false);
     }
   }
@@ -111,8 +117,8 @@ export default function SignInScreen() {
             <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
             <Text accessibilityRole="header" style={styles.title}>Welcome back</Text>
             <Text style={styles.body}>Sign in to your ALL IN 365 V2 account.</Text>
-            <TextInput accessibilityLabel="Email" editable={!submitting && !resending} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor="#929292" style={styles.input} value={email} onChangeText={value => { setEmail(value); setConfirmationPendingEmail(null); setError(null); setNotice(null); }} />
-            <TextInput accessibilityLabel="Password" editable={!submitting && !resending} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder="Password" placeholderTextColor="#929292" style={styles.input} value={password} onChangeText={setPassword} onSubmitEditing={() => void signIn()} />
+            <TextInput accessibilityLabel="Email" editable={!submitting && !resending} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor="#929292" style={styles.input} value={email} onChangeText={value => { if (requestGuard.current.isBusy()) return; setEmail(value); setConfirmationPendingEmail(null); setError(null); setNotice(null); }} />
+            <TextInput accessibilityLabel="Password" editable={!submitting && !resending} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder="Password" placeholderTextColor="#929292" style={styles.input} value={password} onChangeText={value => { if (requestGuard.current.isBusy()) return; setPassword(value); }} onSubmitEditing={() => void signIn()} />
             {visibleError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{visibleError}</Text> : null}
             {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || resending, busy: submitting || resending }} disabled={submitting || resending} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, (submitting || resending) && styles.disabled]}>
