@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../src/lib/supabase';
-import { resolveAuthCallback } from '../../src/auth/authCallback';
+import { authCallbackRequestKey, resolveAuthCallback } from '../../src/auth/authCallback';
 import { colors } from '../../src/theme/tokens';
 
 export default function AuthCallbackScreen() {
@@ -14,19 +14,20 @@ export default function AuthCallbackScreen() {
     error_description?: string | string[];
   }>();
   const router = useRouter();
-  const processed = useRef(false);
+  const processedKey = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const requestKey = authCallbackRequestKey(params);
 
   useEffect(() => {
-    if (processed.current) return;
+    if (processedKey.current === requestKey) return;
+    processedKey.current = requestKey;
+    setError(null);
     const resolution = resolveAuthCallback(params);
     if (resolution.kind === 'error') {
-      processed.current = true;
       setError(resolution.message);
       return;
     }
 
-    processed.current = true;
     let active = true;
     void supabase.auth.exchangeCodeForSession(resolution.code)
       .then(({ error: exchangeError }) => {
@@ -41,7 +42,7 @@ export default function AuthCallbackScreen() {
         if (active) setError('The email link could not be verified. Check your connection and request a new link if needed.');
       });
     return () => { active = false; };
-  }, [params.code, params.error, params.error_description, params.type, router]);
+  }, [requestKey, router]);
 
   return (
     <SafeAreaView style={styles.safe}>
