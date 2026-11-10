@@ -28,7 +28,7 @@ Current source foundation:
 
 ## Supabase foundation
 
-Six migrations have been applied to the dedicated V2 project:
+Seven migrations have been applied to the dedicated V2 project:
 
 1. `20261110000100_v2_auth_profile_legal_foundation.sql` — Auth-linked Profile, Settings, Onboarding and Legal foundation.
 2. `20261110000200_v2_tighten_profile_privileges_and_legal_versions.sql` — narrowed Profile privileges and immutable published legal versions.
@@ -36,8 +36,9 @@ Six migrations have been applied to the dedicated V2 project:
 4. `20261110000400_v2_onboarding_progress_writer.sql` — private onboarding idempotency ledger and authenticated versioned complete/skip/reset writer.
 5. `20261110000500_v2_expected_owner_mutation_guards.sql` — replaces Settings, Legal Acceptance and Onboarding mutation RPC signatures with database-enforced expected-user identity checks.
 6. `20261110000600_v2_provider_cache_expired_cleanup.sql` — adds the bounded service-role-only expired provider-cache purge RPC.
+7. `20261110000700_v2_provider_cache_cron_schedule.sql` — installs pg_cron 1.6.4 and schedules hourly private cache expiry cleanup as postgres.
 
-They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/onboarding, versioned legal document store, immutable acceptance receipts, private Settings/Onboarding/provider-cache records, RLS and guarded versioned/idempotent RPCs. Provider cache reads/writes and expiry pruning are restricted to service-role-only functions; cache cleanup is not yet scheduled. The six-step onboarding UI uses `v2_set_onboarding_step` for progress and the existing Profile Settings writer for selected answers.
+They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/onboarding, versioned legal document store, immutable acceptance receipts, private Settings/Onboarding/provider-cache records, RLS and guarded versioned/idempotent RPCs. Provider cache reads/writes remain service-role-only; a bounded private expiry helper is scheduled through pg_cron as postgres once per hour. The Cron job is active; its first scheduled run has not yet been observed. The six-step onboarding UI uses `v2_set_onboarding_step` for progress and the existing Profile Settings writer for selected answers.
 
 **Current legal status:** no legal documents have been published. Public signup and private app access must remain closed until the working V1 legal draft is reviewed/finalized and the three exact V2 versions are deliberately published. Do not seed or publish draft legal text automatically.
 
