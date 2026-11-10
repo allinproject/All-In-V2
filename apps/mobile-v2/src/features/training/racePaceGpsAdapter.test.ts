@@ -12,9 +12,9 @@ const plan=():RacePacePackage=>({
  ],
 });
 const trusted=(patch:Partial<Extract<RaceCourseGpsMatch,{status:'trusted'}>>={}):RaceCourseGpsMatch=>({
- status:'trusted',reason:null,confidence:'high',raceId:'race-1',courseVersion:'course-v4',
+ status:'trusted',reason:null,confidence:'high',raceId:'race-1',routeId:'route-race-1',courseVersion:'course-v4',
  distanceOnCourseMeters:900,crossTrackDistanceMeters:3,segmentIndex:4,
- state:{raceId:'race-1',courseVersion:'course-v4',segmentIndex:4,capturedAtMs:1000,distanceOnCourseMeters:900},
+ state:{raceId:'race-1',routeId:'route-race-1',courseVersion:'course-v4',segmentIndex:4,capturedAtMs:1000,distanceOnCourseMeters:900},
  ...patch,
 });
 
@@ -35,7 +35,7 @@ test('trusted exact-race/course fix binds to the same planned workout and route 
 test('untrusted and off-course fixes never become numeric pace observations',()=>{
  const match:RaceCourseGpsMatch={
   status:'untrusted',reason:'GPS fix is too far from the approved course',
-  confidence:'untrusted',raceId:'race-1',courseVersion:'course-v4',
+  confidence:'untrusted',raceId:'race-1',routeId:'route-race-1',courseVersion:'course-v4',
   distanceOnCourseMeters:null,crossTrackDistanceMeters:130,state:null,
  };
  const result=racePaceObservationFromGpsMatch(plan(),'race-1',match,420,false);
@@ -49,6 +49,7 @@ test('untrusted and off-course fixes never become numeric pace observations',()=
 test('different race or course version is rejected before workout guidance',()=>{
  assert.equal(racePaceObservationFromGpsMatch(plan(),'another-race',trusted(),420,false).status,'unavailable');
  assert.equal(racePaceObservationFromGpsMatch(plan(),'race-1',trusted({courseVersion:'old'}),420,false).status,'unavailable');
+ assert.equal(racePaceObservationFromGpsMatch(plan(),'race-1',trusted({routeId:'another-route'}),420,false).status,'unavailable');
 });
 
 test('invalid workout time, disabled guidance and out-of-course distance fail closed',()=>{
