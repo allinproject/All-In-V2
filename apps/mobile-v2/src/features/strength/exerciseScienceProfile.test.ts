@@ -96,7 +96,7 @@ test('invalid runtime taxonomy values fail closed even when data bypasses TypeSc
  }
 });
 test('a profile without claims or references is never Coach-eligible',()=>{
- const profile=valid();profile.claims=[];profile.sources=[];
+ const profile=valid();profile.claims=[];
  const result=validateExerciseScienceProfile(profile);
  assert.equal(result.valid,true);
  if(result.valid)assert.equal(result.coachEligible,false);
