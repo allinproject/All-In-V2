@@ -44,9 +44,9 @@ function HomeOwnerScreen() {
         <Text accessibilityRole="header" style={styles.title}>V2 foundation</Text>
         <Text style={styles.body}>Your existing account is connected and its current access and onboarding checks have passed. This is the new app shell; Coach and recipe workflows will be added as the next verified slices.</Text>
         <Text style={styles.email}>{user?.email ?? 'Loading account…'}</Text>
-        <Link href="/add-workout" asChild>
+        <Link href="/train" asChild>
           <Pressable accessibilityRole="button" style={styles.button}>
-            <Text style={styles.buttonText}>+ Add Workout</Text>
+            <Text style={styles.buttonText}>Training Calendar</Text>
           </Pressable>
         </Link>
         {signOutError ? <Text accessibilityRole="alert" style={styles.error}>{signOutError}</Text> : null}
