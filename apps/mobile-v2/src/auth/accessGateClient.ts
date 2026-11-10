@@ -167,9 +167,12 @@ export async function assertV2SessionOwner(
 export async function readV2OwnedProfileState(
   client: SupabaseClient<Database>,
   expectedUserId: string,
+  isCurrent: () => boolean = () => true,
 ): Promise<Record<string, unknown>> {
   if (!expectedUserId.trim()) throw new Error('A V2 account identity is required.');
+  if (!isCurrent()) throw new Error('The onboarding request is no longer active.');
   const { data, error } = await client.rpc('v2_my_profile_state');
+  if (!isCurrent()) throw new Error('The onboarding request is no longer active.');
   if (error) throw error;
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     throw new Error('V2 account state could not be verified.');
@@ -181,5 +184,6 @@ export async function readV2OwnedProfileState(
     throw new Error('The account changed while onboarding was open. Private access remains closed.');
   }
   await assertV2SessionOwner(client, expectedUserId);
+  if (!isCurrent()) throw new Error('The onboarding request is no longer active.');
   return state;
 }
