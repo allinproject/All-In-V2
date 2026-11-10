@@ -6,7 +6,7 @@ import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { colors, radius, spacing } from '../src/theme/tokens';
-import { assertV2SessionOwner, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2SignupConsentScope, type V2LegalDocument } from '../src/auth/accessGateClient';
+import { assertV2SessionOwner, assertV2SignupLegalSnapshotCurrent, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2SignupConsentScope, type V2LegalDocument } from '../src/auth/accessGateClient';
 import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
 
 function errorMessage(error: unknown) {
@@ -73,6 +73,10 @@ export default function SignUpScreen() {
 
   async function createAccount() {
     if (!ready || submitting || !documents.length) return;
+    const submittedEmail = email.trim().toLowerCase();
+    const submittedPassword = password;
+    const reviewedDocuments = documents;
+    const submittedScope = reviewScope;
     setSubmitting(true);
     setError(null);
     setNotice(null);
@@ -83,10 +87,30 @@ export default function SignUpScreen() {
         throw new Error('A V2 account is already signed in. Sign out before creating another account.');
       }
 
-      const normalizedEmail = email.trim().toLowerCase();
+      // A publication may have changed since signup first displayed the legal text.
+      // Never create an account using a stale consent snapshot.
+      const { data: currentLegal, error: legalError } = await supabase.from('v2_legal_documents')
+        .select('document_key,version,title,content_markdown,content_sha256,effective_at')
+        .eq('status', 'published')
+        .lte('effective_at', new Date().toISOString());
+      if (legalError) throw new Error('The current V2 legal documents could not be verified. Check your connection and retry.');
+      try {
+        assertV2SignupLegalSnapshotCurrent(reviewedDocuments, currentLegal);
+      } catch (legalSnapshotError) {
+        // Refresh or close signup rather than allowing stale checkmarks to be submitted.
+        try {
+          setDocuments(parsePublishedV2LegalDocuments(currentLegal));
+        } catch {
+          setDocuments([]);
+        }
+        setReviewed({});
+        setAgeConfirmedScope(null);
+        throw legalSnapshotError;
+      }
+
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email: normalizedEmail,
-        password,
+        email: submittedEmail,
+        password: submittedPassword,
         options: {
           emailRedirectTo: Linking.createURL('/auth/callback'),
         },
@@ -95,11 +119,11 @@ export default function SignUpScreen() {
 
       if (data.session) {
         await assertV2SessionOwner(supabase, data.session.user.id);
-        const action = pendingAcceptance.current?.scope === reviewScope
+        const action = pendingAcceptance.current?.scope === submittedScope
           ? pendingAcceptance.current.id
           : `signup-legal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-        pendingAcceptance.current = { scope: reviewScope, id: action };
-        const byKey = new Map(documents.map(doc => [doc.document_key, doc.version]));
+        pendingAcceptance.current = { scope: submittedScope, id: action };
+        const byKey = new Map(reviewedDocuments.map(doc => [doc.document_key, doc.version]));
         const { error: acceptanceError } = await supabase.rpc('v2_accept_legal_documents', {
           p_expected_user_id: data.session.user.id,
           p_terms_version: byKey.get('terms'),
@@ -137,7 +161,7 @@ export default function SignUpScreen() {
                 <ScrollView nestedScrollEnabled style={styles.documentBody}>
                   <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
                 </ScrollView>
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!reviewed[reviewKey(doc)] }} onPress={() => setReviewed(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] }))} style={styles.reviewRow}>
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!reviewed[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => setReviewed(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] }))} style={styles.reviewRow}>
                   <Text style={styles.checkbox}>{reviewed[reviewKey(doc)] ? '☑' : '☐'}</Text>
                   <Text style={styles.reviewText}>I have read and reviewed this document</Text>
                 </Pressable>
@@ -145,12 +169,12 @@ export default function SignUpScreen() {
             ))}
             {documents.length === 3 ? (
               <>
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed }} onPress={() => setAgeConfirmedScope(current => current === reviewScope ? null : reviewScope)} style={styles.reviewRow}>
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed, disabled: submitting }} disabled={submitting} onPress={() => setAgeConfirmedScope(current => current === reviewScope ? null : reviewScope)} style={styles.reviewRow}>
                   <Text style={styles.checkbox}>{ageConfirmed ? '☑' : '☐'}</Text>
                   <Text style={styles.reviewText}>I confirm that I am at least 18 years old.</Text>
                 </Pressable>
-                <TextInput accessibilityLabel="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.mutedText} style={styles.input} value={email} onChangeText={setEmail} />
-                <TextInput accessibilityLabel="Password (at least 12 characters)" autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Password (at least 12 characters)" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={setPassword} />
+                <TextInput accessibilityLabel="Email" editable={!submitting} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.mutedText} style={styles.input} value={email} onChangeText={setEmail} />
+                <TextInput accessibilityLabel="Password (at least 12 characters)" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Password (at least 12 characters)" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={setPassword} />
                 <Pressable accessibilityRole="button" accessibilityState={{ disabled: !ready, busy: submitting }} disabled={!ready} onPress={() => void createAccount()} style={[styles.button, !ready && styles.disabled]}>
                   {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Create V2 account</Text>}
                 </Pressable>
