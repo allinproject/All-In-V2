@@ -1,16 +1,8 @@
 name: V2 Engineering validation (no deploy)
 
 on:
-  push:
-    branches:
-      - integration/v2-foundation
-    paths:
-      - 'apps/mobile-v2/**'
-      - 'supabase/config.toml'
-      - 'scripts/check-v2-supabase-target.mjs'
-      - 'scripts/check-v2-supabase-target.test.mjs'
-      - '.github/workflows/v2-engineering.yml'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'apps/mobile-v2/**'
       - 'supabase/config.toml'
@@ -23,11 +15,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: v2-engineering-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: v2-engineering-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   validation:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: npm install, tests, TypeScript and Expo bundles
     runs-on: ubuntu-latest
     timeout-minutes: 20
