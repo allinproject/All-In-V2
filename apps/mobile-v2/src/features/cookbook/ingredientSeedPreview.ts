@@ -39,8 +39,10 @@ const positiveFdcId = /^[0-9]{1,12}$/;
 const keyOf = (r: Pick<IngredientSeedCandidate, 'provider'|'source_data_type'|'external_record_id'>) =>
   JSON.stringify([r.provider, r.source_data_type, r.external_record_id]);
 function validCandidate(row: IngredientSeedCandidate): boolean {
-  if (!row || !row.description?.trim() || !hexSha.test(row.payload_sha256) ||
-    !row.external_record_id?.trim()) return false;
+  // Provider JSON is not guaranteed to honor the TypeScript contract at runtime.
+  if (!row || typeof row.description !== 'string' || !row.description.trim() ||
+    typeof row.payload_sha256 !== 'string' || !hexSha.test(row.payload_sha256) ||
+    typeof row.external_record_id !== 'string' || !row.external_record_id.trim()) return false;
   if (row.provider === 'usda_fdc') {
     return ['Foundation', 'SR Legacy', 'Branded'].includes(row.source_data_type) &&
       positiveFdcId.test(row.external_record_id) && Number(row.external_record_id) > 0;
@@ -60,7 +62,8 @@ export function previewIngredientSeed(input: {
   candidates: readonly IngredientSeedCandidate[];
   existing: readonly ExistingIngredientSource[];
 }): IngredientSeedPreview {
-  if (!input?.snapshot_id?.trim() || !input.importer_version?.trim() ||
+  if (typeof input?.snapshot_id !== 'string' || !input.snapshot_id.trim() ||
+      typeof input.importer_version !== 'string' || !input.importer_version.trim() ||
       !Array.isArray(input.candidates) || !Array.isArray(input.existing)) {
     throw new Error('A versioned ingredient source snapshot and collections are required.');
   }
@@ -90,7 +93,7 @@ export function previewIngredientSeed(input: {
     let reason: string;
     if (rows.length !== 1 || !validCandidate(candidate) ||
         (candidate.mapped_ingredient_id !== null && candidate.mapped_ingredient_id !== undefined &&
-          !candidate.mapped_ingredient_id.trim())) {
+          (typeof candidate.mapped_ingredient_id !== 'string' || !candidate.mapped_ingredient_id.trim()))) {
       action = 'conflict';
       reason = 'Malformed or duplicate provider source identity requires review.';
     } else {
