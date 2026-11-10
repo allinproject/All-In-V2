@@ -11,3 +11,18 @@ test('invalid query range is rejected',()=>{assert.throws(()=>buildAthleteHistor
 
 test('malformed history events are excluded without crashing the context builder',()=>{const r=buildAthleteHistoryReadModel({generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running'],currentPlan:null,restrictions:[],coverage:[coverage('running')],events:[event({id:'bad',occurredAt:'not-a-date'}),event({id:'good'})]});assert.deepEqual(r.events.map(x=>x.id),['good'])});
 test('no requested provider coverage is unavailable, not proof of no exercise',()=>{const r=buildAthleteHistoryReadModel({generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['cycling'],currentPlan:null,restrictions:[],coverage:[],events:[]});assert.equal(r.completeness,'unavailable');assert.ok(r.warnings.some(x=>x.includes('missing records as zero activity')))});
+
+test('impossible calendar dates cannot count as complete athlete history coverage',()=>{
+ const valid={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running' as const],currentPlan:null,restrictions:[],coverage:[coverage('running')],events:[event()]};
+ assert.throws(()=>buildAthleteHistoryReadModel({...valid,fromDate:'2026-02-30'}),/Valid athlete-history scope/);
+ const badCoverage={...coverage('running'),fromDate:'2026-02-30'};
+ const result=buildAthleteHistoryReadModel({...valid,coverage:[badCoverage]});
+ assert.equal(result.completeness,'unavailable');
+});
+
+test('invalid context event limits must fail closed rather than silently suppressing history',()=>{
+ const valid={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running' as const],currentPlan:null,restrictions:[],coverage:[coverage('running')],events:[event()]};
+ assert.throws(()=>buildAthleteHistoryReadModel({...valid,maxEvents:Number.NaN}),/Valid athlete-history scope/);
+ assert.throws(()=>buildAthleteHistoryReadModel({...valid,maxEvents:0}),/Valid athlete-history scope/);
+ assert.equal(buildAthleteHistoryReadModel({...valid,maxEvents:1}).events.length,1);
+});
