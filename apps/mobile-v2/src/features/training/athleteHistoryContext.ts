@@ -61,6 +61,8 @@ function safeEvent(e:AthleteHistoryEvent):boolean{
  return Boolean(e&&typeof e.id==='string'&&e.id.trim()&&typeof e.summary==='string'&&e.summary.trim()&&
  typeof e.occurredAt==='string'&&Number.isFinite(Date.parse(e.occurredAt))&&validDate(e.occurredAt.slice(0,10))&&
  typeof e.recordedAt==='string'&&Number.isFinite(Date.parse(e.recordedAt))&&
+ ['completed_session','race_result','strength_session','plan_change','adaptation_outcome'].includes(e.kind)&&
+ (e.sport===null||['running','cycling','swimming','strength','hiking','rucking','rowing','elliptical','stair','yoga','mobility','other'].includes(e.sport))&&
  ['canonical_training','device_import','manual_entry','race_result'].includes(e.source)&&
  ['low','moderate','high'].includes(e.confidence)&&e.metrics&&typeof e.metrics==='object'&&!Array.isArray(e.metrics)&&
  Object.values(e.metrics).every(value=>value===null||typeof value==='string'||typeof value==='boolean'||
