@@ -82,6 +82,13 @@ const validNonnegative = (value: unknown): value is number =>
 const validPositive = (value: unknown): value is number =>
   validNonnegative(value) && value > 0;
 
+/** A validated profile must contain at least one source detail, not an empty placeholder. */
+function hasNutritionProvenance(value: unknown): boolean {
+  if (typeof value === 'string') return value.trim().length > 0;
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).length > 0;
+}
+
 /**
  * Calculate validated batch and per-serving nutrition.
  *
@@ -175,9 +182,7 @@ export function calculateRecipeIngredientNutrition(input: {
       !validNonnegative(profile.protein_g) ||
       !validNonnegative(profile.carbs_g) ||
       !validNonnegative(profile.fat_g) ||
-      profile.provenance === null ||
-      profile.provenance === undefined ||
-      (typeof profile.provenance === 'string' && !profile.provenance.trim())
+      !hasNutritionProvenance(profile.provenance)
     ) {
       reasons.push('validated_matching_profile_required:' + id);
       continue;
