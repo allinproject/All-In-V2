@@ -128,6 +128,38 @@ V2 now stages five exact source-linked variations in `apps/mobile-v2/src/feature
 
 The calf-raise profiles use the explicit evidence tier `within_subject_controlled_intervention`; the deadlift profiles use `biomechanical_study` with mechanistic-only claims. All five records remain `publicationState: 'draft'`; they are source/structure research records only and are deliberately **not Coach-eligible**. They are not yet canonical database rows, and their cues/equipment/anatomy still need library-owner review. The evidence-tier vocabulary was expanded so a within-subject controlled intervention is not mislabeled as a randomized controlled trial or a biomechanical study.
 
+
+
+### Exact variation comparison — seated versus prone leg curl
+
+**Maeo et al., 2021, within-subject controlled intervention.** Twenty healthy adults trained one leg with a seated leg curl and the other with a prone leg curl at 70% condition-specific 1RM, 10 repetitions per set, five sets per session, twice weekly for 12 weeks. MRI measured individual and whole-hamstring volume. Whole-hamstring volume increased 14% with seated training versus 9% with prone training. The biarticular hamstrings grew more in the seated condition; the monoarticular hamstring response was similar. A separate eccentric-exercise test found similar muscle-damage protection after the two training conditions.
+
+**Allowed use:** a narrow variation-level comparison for hamstring hypertrophy in the studied healthy adults; it supports preserving seated and prone curl as separate exercise identities and explaining the hip-position/muscle-length difference.
+
+**Not allowed:** claiming the seated curl improves running speed, sprinting, injury prevention or rehabilitation outcomes; claiming prone curls are ineffective; generalizing the magnitude to trained athletes or every machine and training protocol.
+
+Source: [PubMed 33009197](https://pubmed.ncbi.nlm.nih.gov/33009197/) · [Full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC7969179/) · DOI: 10.1249/MSS.0000000000002523
+
+### Exact variation comparison — overhead versus neutral-arm cable elbow extension
+
+**Maeo et al., 2023, within-subject controlled intervention.** Twenty-one adults trained one arm in an overhead cable-elbow-extension position and the other in a neutral-arm position. Both conditions used 70% condition-specific 1RM, 10 repetitions per set, five sets per session, twice weekly for 12 weeks, with load increased as tolerated. MRI-measured whole-triceps volume increased 19.9% in the overhead condition versus 13.9% in the neutral condition; long-head volume increased 28.5% versus 19.6%. The overhead condition achieved these increases despite lower absolute training loads.
+
+**Allowed use:** a bounded variation-level comparison for triceps hypertrophy in the studied adult sample, with the shoulder position and intervention details retained. It supports separate overhead and neutral-arm variation identities.
+
+**Not allowed:** claiming the overhead position improves swimming, throwing, cycling or general sport performance; promising injury prevention; assuming the overhead position is suitable for every shoulder or user; treating neutral-arm extensions as ineffective.
+
+Source: [PubMed 35819335](https://pubmed.ncbi.nlm.nih.gov/35819335/) · [Full text](https://onlinelibrary.wiley.com/doi/10.1080/17461391.2022.2100279) · DOI: 10.1080/17461391.2022.2100279
+
+## Additional staged variation-profile status
+
+The V2 draft register now contains nine exact variation profiles:
+- machine standing and seated calf raise;
+- barbell Romanian, step-Romanian and stiff-leg deadlift;
+- seated and prone leg curl;
+- overhead and neutral-arm cable triceps extension.
+
+The new leg-curl and cable-elbow-extension claims are general hypertrophy adaptations supported by within-subject controlled interventions, not direct sport-performance evidence. The deadlift claims remain biomechanical/EMG mechanistic rationale only. All entries remain `publicationState: 'draft'`, are deliberately unavailable to Coach, and are not canonical database rows. Their final equipment IDs, anatomy/joint-demand detail, cueing and safety/modification notes still require the Exercise Library owner review.
+
 ## Sport and athlete gaps still requiring research
 
 The sources above do **not** establish exercise-to-performance mappings for every population ALL IN serves. Dedicated reviews and evidence grading are still needed for trail/ultra running, hiking, rucking, triathlon/multisport scheduling, rowing, beginners and older athletes with varied capability, strength/power sports, and athlete-specific restrictions. Do not fill those gaps with plausible-sounding muscle-transfer assumptions.
