@@ -155,3 +155,20 @@ test('does not calculate weighed portions without measured validated batch mass'
     reasons: ['valid_measured_portion_weight_required'],
   });
 });
+
+test('refuses non-finite derived per-100g nutrition from an implausibly tiny measured batch', () => {
+  const result = calculate([line('chicken', 100)], { measured_edible_weight_g: Number.MIN_VALUE });
+  assert.equal(result.status, 'insufficient_evidence');
+  if (result.status === 'insufficient_evidence') {
+    assert.ok(result.reasons.includes('finite_derived_nutrition_required'));
+  }
+});
+
+test('refuses overflow in total nutrition accumulated from individually finite profiles', () => {
+  const large = profile({ basis_g: 1, calories_kcal: 1e308 });
+  const result = calculate([line('large-a', 1, large), line('large-b', 1, large)]);
+  assert.equal(result.status, 'insufficient_evidence');
+  if (result.status === 'insufficient_evidence') {
+    assert.ok(result.reasons.includes('finite_batch_nutrition_required'));
+  }
+});
