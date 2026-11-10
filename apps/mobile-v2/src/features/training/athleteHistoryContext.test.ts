@@ -45,3 +45,23 @@ test('malformed numeric or nested activity metrics never reach Coach as trusted 
  ]});
  assert.deepEqual(result.events.map(e=>e.id),['good']);
 });
+
+test('contradictory provider coverage cannot turn partial history into complete athlete knowledge',()=>{
+ const base={
+  generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
+  sports:['running' as const],currentPlan:null,restrictions:[],events:[event()],
+ };
+ const primary=coverage('running');
+ for(const conflicting of [
+  coverage('running','partial'),
+  coverage('running','unknown'),
+  coverage('running','none'),
+  {...coverage('running'),missingIntervals:[{fromDate:'2026-10-20',throughDate:'2026-10-21',reason:'device gap'}]},
+ ]){
+  const result=buildAthleteHistoryReadModel({...base,coverage:[primary,conflicting]});
+  assert.equal(result.completeness,'partial');
+  assert.ok(result.warnings.some(w=>w.includes('incomplete')));
+ }
+ const clean=buildAthleteHistoryReadModel({...base,coverage:[primary]});
+ assert.equal(clean.completeness,'complete_for_requested_scope');
+});
