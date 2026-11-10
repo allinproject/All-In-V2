@@ -215,3 +215,13 @@ The repository now includes `apps/mobile-v2/src/features/training/coachCrossDoma
 2. Preserve the existing V2 Coach capability manifest and task-gated decision boundaries; map knowledge domains to the appropriate canonical reader and safe proposal, without duplicating Training, Fueling or Recovery calculations.
 3. Run the existing ten ALL-241 scenario suites at progressively stronger levels: deterministic fixture, canonical domain-reader integration, real-model response, authenticated/app/device acceptance.
 4. Only commission focused updated research for claims with changed science, missing population, contradictory guidance or known beta safety holes. Do not use a theme count as release readiness.
+
+## Deployed V1 Coach v18 selector versus 17-entry evidence registry
+
+**Exact source reference:** `docs/migration/reference/coach-v18/knowledge.ts` was captured from deployed V1 Coach v18 and is **immutable reference code**, not an authorized V2 runtime dependency. Its `KnowledgeDomain` union contains 14 values:
+
+`recovery_sleep`, `environment`, `return_to_training`, `causal_confidence`, `mental_performance`, `body_composition`, `race_tactics`, `masters`, `female_optional`, `travel_jetlag`, `technique`, `gear`, `sport_nutrition`, `cross_training`.
+
+The October V1 research registry lists **17 reviewed source domains**. The three additional registry labels **Competition Nutrition**, **Sport Supplements**, and **Sport Intelligence** are **not separate cases in this v18 `KnowledgeDomain` union**. They could be supplied through other contextual modules, route helpers or prompt logic; the union comparison alone does **not** establish absence of those capabilities. It does establish that a one-to-one V2 registry mapping from this v18 selector is incomplete.
+
+**ALL-217/241 implementation gate:** Audit those three domains against the actual captured v18 `sportNutritionContext.ts`, `sportTrainingContext.ts`, provider and `index.ts` call paths; map them to the existing V2 canonical Endurance Fueling Brain, training decisions and evidence selection. Record source version/hash and task gating separately. Never silently drop an evidence domain, invent a v18 domain member, or port the V1 selector as a second V2 registry. Real Coach model responses must prove source relevance, accuracy, safety and no duplicated source-of-truth calculations before integration acceptance.
