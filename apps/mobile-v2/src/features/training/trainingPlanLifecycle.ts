@@ -40,7 +40,10 @@ export function buildRacePlanCalendar(input:{
  if(totalWeeks>max)throw new Error('The selected race horizon exceeds the supported planning window.');
  const days:RacePlanCalendarDay[]=Array.from({length:totalDays},(_,offset)=>{
   const date=shiftDate(startDate,offset),weekStart=mondayOf(date),weekNumber=Math.min(totalWeeks,Math.floor(offset/7)+1);
-  const isRaceDay=date===raceDate;\n  const state=input.dayStates?.[date]??(isRaceDay?'race':'review_required');\n  if((isRaceDay&&state!=='race')||(!isRaceDay&&state==='race'))throw new Error('Only the exact goal date may carry the race state.');\n  return{date,day:dayNames[(new Date(date+'T12:00:00Z').getUTCDay()+6)%7],weekStart,weekNumber,phase:input.phaseByWeekStart?.[weekStart]??'review_required',state,isRaceDay};
+  const isRaceDay=date===raceDate;
+  const state=input.dayStates?.[date]??(isRaceDay?'race':'review_required');
+  if((isRaceDay&&state!=='race')||(!isRaceDay&&state==='race'))throw new Error('Only the exact goal date may carry the race state.');
+  return{date,day:dayNames[(new Date(date+'T12:00:00Z').getUTCDay()+6)%7],weekStart,weekNumber,phase:input.phaseByWeekStart?.[weekStart]??'review_required',state,isRaceDay};
  });
  if(days[days.length-1]?.date!==raceDate||days.filter(d=>d.isRaceDay).length!==1)throw new Error('Calendar must include the race date exactly once as its final day.');
  return{startDate,raceDate,totalDays,totalWeeks,days};
