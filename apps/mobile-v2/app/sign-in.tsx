@@ -5,6 +5,7 @@ import { Redirect, Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
+import { startGoogleSignIn } from '../src/auth/googleSignIn';
 import { canStartV2SignedOutAction, createV2AuthActionGuard, shouldOfferV2ConfirmationResend } from '../src/auth/authRoute';
 import { colors } from '../src/theme/tokens';
 
@@ -60,6 +61,26 @@ export default function SignInScreen() {
           setError(messageFor(signInError));
         }
       }
+    } catch (caught) {
+      setError(messageFor(caught));
+    } finally {
+      requestGuard.current.leave();
+      setSubmitting(false);
+    }
+  }
+
+  async function signInGoogle() {
+    if (!signedOutReady || submitting || resending) return;
+    if (!requestGuard.current.tryEnter()) return;
+    setSubmitting(true);
+    setError(null);
+    setNotice(null);
+    setConfirmationPendingEmail(null);
+    try {
+      const result = await startGoogleSignIn();
+      if (result === 'cancelled') setNotice('Google sign-in was cancelled. You can try again.');
+      // Successful redirects are handled only by /auth/callback to avoid
+      // consuming one-time PKCE codes twice.
     } catch (caught) {
       setError(messageFor(caught));
     } finally {
@@ -125,6 +146,9 @@ export default function SignInScreen() {
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: !signedOutReady || submitting || resending, busy: submitting || resending }} disabled={!signedOutReady || submitting || resending} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, (submitting || resending) && styles.disabled]}>
               {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Sign in</Text>}
             </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Continue with Google" accessibilityState={{ disabled: !signedOutReady || submitting || resending, busy: submitting || resending }} disabled={!signedOutReady || submitting || resending} onPress={() => void signInGoogle()} style={({ pressed }) => [styles.googleButton, pressed && styles.pressed, (submitting || resending) && styles.disabled]}>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </Pressable>
             {signedOutReady && shouldOfferV2ConfirmationResend(confirmationPendingEmail, email) ? (
               <Pressable accessibilityRole="button" disabled={resending} onPress={() => void resendConfirmation()} style={styles.resendButton}>
                 {resending ? <ActivityIndicator color={colors.gold} /> : <Text style={styles.link}>Resend confirmation email</Text>}
@@ -151,6 +175,8 @@ const styles = StyleSheet.create({
   input: { backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: 14, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 15, paddingVertical: 14 },
   error: { color: colors.danger, fontSize: 14, lineHeight: 19 },
   notice: { color: colors.goldSoft, fontSize: 14, lineHeight: 19 },
+  googleButton: { minHeight: 52, borderRadius: 14, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  googleButtonText: { color: colors.warmWhite, fontWeight: '800', fontSize: 16 },
   resendButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
   button: { minHeight: 52, borderRadius: 14, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.9 },
