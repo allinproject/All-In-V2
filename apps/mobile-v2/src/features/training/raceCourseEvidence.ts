@@ -11,6 +11,8 @@ export type RaceAidStation={
 export type RaceCourseEvidence={
  version:1;
  raceId:string;
+ /** Canonical route-owner identity for this exact course version. */
+ routeId?:string|null;
  eventDate:string;
  sourceUrls:string[];
  routeFile:{kind:'gpx'|'fit'|'tcx'|'geojson';fileRef:string;source:RaceCourseFieldSource}|null;
@@ -36,6 +38,7 @@ function validField<T>(field:RaceCourseField<T>,valid:(v:T)=>boolean):boolean{
 /** Fail closed when field provenance is absent, aid stations are outside course, or identity is malformed. */
 export function validateRaceCourseEvidence(raw:RaceCourseEvidence):RaceCourseEvidence{
  if(!raw||raw.version!==1||typeof raw.raceId!=='string'||!raw.raceId.trim()||!validDate(raw.eventDate)||typeof raw.courseVersion!=='string'||!raw.courseVersion.trim()||!Array.isArray(raw.sourceUrls)||!Array.isArray(raw.aidStations))throw new Error('Race identity, event date, source URLs and course version are required.');
+ if(raw.routeId!==undefined&&raw.routeId!==null&&(typeof raw.routeId!=='string'||!raw.routeId.trim()))throw new Error('Canonical race route identity is invalid.');
  if(!Array.isArray(raw.warnings)||!raw.warnings.every(w=>typeof w==='string')||
     !Array.isArray(raw.missingFields)||!raw.missingFields.every(w=>typeof w==='string'))throw new Error('Race evidence warnings and missing fields must be string lists.');
  if(raw.routeFile!==null&&(!raw.routeFile||!['gpx','fit','tcx','geojson'].includes(raw.routeFile.kind)||
