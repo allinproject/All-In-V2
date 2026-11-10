@@ -72,7 +72,9 @@ export function resolveLocalIngredient(
   request: IngredientRequest,
 ): LocalIngredientResolution {
   const state = typeof request?.preparation_state === 'string' ? request.preparation_state.trim() : '';
-  if (typeof request?.line_id !== 'string' || !request.line_id.trim() || !state) {
+  if (typeof request?.line_id !== 'string' || !request.line_id.trim() || !state ||
+      !catalog || !Array.isArray(catalog.ingredients) || !Array.isArray(catalog.aliases) ||
+      !Array.isArray(catalog.profiles) || !Array.isArray(catalog.nutrients)) {
     return { status: 'missing' };
   }
   if (request.ingredient_id != null && typeof request.ingredient_id !== 'string') {
@@ -84,7 +86,7 @@ export function resolveLocalIngredient(
     const locale = typeof request.locale === 'string' ? request.locale : 'en';
     if (!label) return { status: 'missing' };
     const matching = new Set(catalog.aliases.filter(alias =>
-      alias.status === 'active' && alias.locale === locale &&
+      alias && alias.status === 'active' && alias.locale === locale &&
       normalizeLabel(alias.normalized_alias) === label &&
       (alias.preparation_state === null || alias.preparation_state === state)
     ).map(alias => alias.ingredient_id));
@@ -92,10 +94,10 @@ export function resolveLocalIngredient(
     if (matching.size > 1) return { status: 'ambiguous' };
     identityId = [...matching][0];
   }
-  const identities = catalog.ingredients.filter(row => row.id === identityId && row.status === 'active');
+  const identities = catalog.ingredients.filter(row => row && row.id === identityId && row.status === 'active');
   if (identities.length !== 1) return { status: 'missing' };
 
-  const ownedProfiles = catalog.profiles.filter(p => p.ingredient_id === identityId);
+  const ownedProfiles = catalog.profiles.filter(p => p && p.ingredient_id === identityId);
   const stateProfiles = ownedProfiles.filter(p => p.preparation_state === state);
   if (!stateProfiles.length) return { status: 'state_mismatch', ingredient_id: identityId };
 
@@ -110,7 +112,7 @@ export function resolveLocalIngredient(
   // nutrient rows are joined by profile ID, so the wrong food could inherit
   // another ingredient's nutrition even if both state/default flags look valid.
   if (!profile.id?.trim() ||
-      catalog.profiles.filter(row => row.id === profile.id).length !== 1) {
+      catalog.profiles.filter(row => row && row.id === profile.id).length !== 1) {
     return { status: 'profile_conflict', ingredient_id: identityId };
   }
   if (profile.basis_unit === 'ml') return { status: 'conversion_required', ingredient_id: identityId };
@@ -118,17 +120,19 @@ export function resolveLocalIngredient(
     positive(profile.basis_quantity) && positive(request.quantity_g!) &&
     request.quantity_each == null;
   const count = profile.basis_unit === 'each' &&
-    profile.basis_quantity === 1 && Boolean(profile.basis_label.trim()) &&
+    profile.basis_quantity === 1 && typeof profile.basis_label === 'string' &&
+    Boolean(profile.basis_label.trim()) &&
     positive(request.quantity_each!) && request.quantity_g == null;
   if (!mass && !count) return { status: 'invalid_quantity', ingredient_id: identityId };
   if (!Number.isSafeInteger(profile.profile_revision) || profile.profile_revision < 1 ||
-      !profile.id?.trim() || !profile.source_record_id?.trim()) {
+      typeof profile.id !== 'string' || !profile.id.trim() ||
+      typeof profile.source_record_id !== 'string' || !profile.source_record_id.trim()) {
     return { status: 'review_required', ingredient_id: identityId };
   }
 
   const names = ['energy_kcal', 'protein_g', 'carbohydrate_g', 'total_fat_g'] as const;
   const found: Record<string, number> = {};
-  const rows = catalog.nutrients.filter(row => row.profile_id === profile.id);
+  const rows = catalog.nutrients.filter(row => row && row.profile_id === profile.id);
   for (const nutrient of names) {
     const matches = rows.filter(row => row.nutrient_code === nutrient);
     if (matches.length !== 1 || !good(matches[0].amount)) {
