@@ -322,3 +322,18 @@ These distinctions are owned by ALL-246 (authored plans/session lifecycle), ALL-
 ## 17. Product-scope evidence guardrail
 
 The V1 backlog contains many competitive research/design handoffs that explicitly disclaim live implementation, physical-device validation or release readiness. V2 transfer must preserve those scope labels: a requirement or research finding is not evidence that a feature was shipped or validated. Each issue/report must distinguish source-presence, deterministic/unit tests, authenticated integration, live provider, and physical-device acceptance.
+
+
+## 18. Physical ERD and live security matrix — deployed Auth/Profile/Legal foundation
+
+A separate physical schema record is now committed and verified against the live V2 Supabase catalog:
+
+[docs/architecture/V2-AUTH-PROFILE-LEGAL-PHYSICAL-ERD-AND-SECURITY-MATRIX.md](https://github.com/allinproject/All-In-V2/blob/integration/v2-foundation/docs/architecture/V2-AUTH-PROFILE-LEGAL-PHYSICAL-ERD-AND-SECURITY-MATRIX.md)
+
+Commit: `3f071af97d56943a63147ed910c9fc114caa40ae`.
+
+This physical slice covers the seven deployed tables only: Profile, Settings, Onboarding, Legal Documents, Legal Acceptances, private Settings action ledger and private Provider Cache. It records exact deployed migration version mapping, table columns/types/keys/FKs/indexes/checks, physical ERD, all public RLS policies, role/column grants, SECURITY DEFINER function EXECUTE grants/search paths/owner checks, and trigger map. The live catalog confirms all seven tables currently contain zero rows; no legal documents have been published.
+
+Important explicit gap discovered: Onboarding has owner-only SELECT, Auth-trigger initialization and no direct client mutation grants, but there is not yet a dedicated versioned onboarding mutation RPC. Do not implement client step writes until its canonical writer/idempotency/version contract and tests exist. Legal publication is also operator-controlled and remains unpopulated.
+
+This completes the physical ERD/security record for the deployed foundation slice. **It does not complete ALL-222's entire acceptance.** Each future Coach, Cookbook, Training, Food, Recovery, Community, device, billing and privacy schema still requires its own reviewed physical object/policy/function matrix before DDL. ALL-224 still owns clean-reset/type generation/npm install/CI/app validation; those checks are not claimed passed here.
