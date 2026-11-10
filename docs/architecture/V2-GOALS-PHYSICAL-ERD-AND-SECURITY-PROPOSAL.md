@@ -217,7 +217,9 @@ Rules:
 - Both goals must belong to the same user. Self-link is invalid.
 - Unique active relationship per exact pair/type/time scope.
 - Relationships are explanatory/planning context, not a numeric conversion between sports or an instruction to add training volume.
-- Relative priority role is explicitly stored on a goal revision. A relationship does not automatically make one goal primary or lower another's role.
+- Relative priority role is explicitly stored on a goal revision and may also have a user-selected order within the active planning context. A relationship does not automatically make one goal primary or lower another's role.
+- **Multiple active primary goals are allowed.** The athlete may actively pursue a race and a physique goal at the same time. The product must not impose a one-primary-goal-per-user database constraint.
+- Primary/secondary/maintenance is a planning-priority signal, not a one-goal-only selector. The athlete may mark multiple goals primary; the order is used to explain tradeoffs and schedule emphasis, not to discard other primary goals.
 - A goal can be secondary/maintenance to one active training context and primary in another later context. Do not hard-code one global forever-primary flag.
 
 ### 3.6 public.v2_goal_measure_evidence — provenance and review lifecycle
@@ -272,6 +274,26 @@ A goal may move through a progressive refinement path:
 6. Review and revise based on actual experience and the athlete's feedback.
 
 An athlete may remain at any stage. Not every goal must become a performance plan. Multiple goals may coexist with primary/secondary/maintenance roles and effective dates; Coach must explain tradeoffs rather than collapsing them into a universal score.
+
+## 3.9 Multiple simultaneous goals and coordinated priority
+
+An athlete owns one goal collection with many independently versioned goal identities. More than one goal may be active and important at the same time, including more than one primary goal. The system must not require the athlete to select exactly one life goal.
+
+Example: a user is preparing for a fall marathon and also wants to develop visible abdominal definition. These remain two separate active goals:
+- The race goal owns event identity, course evidence, performance outcome and race target date.
+- The physique goal owns its own qualitative or optional measurable body-composition direction, with optional behaviors/measures and no forced scale/photo/calorie tracking.
+- The athlete may mark both primary. Coach uses their preferred priority order and the actual training/recovery/nutrition context to coordinate the plan.
+
+Coordination rules:
+1. Keep each goal's outcome, revision, measures, behavior targets, dates, evidence and progress distinct. Do not merge them into one composite goal or universal score.
+2. Build one coordinated Training plan/calendar and one coordinated nutrition/recovery approach when the user approves them. Do not generate separate conflicting plans for each goal.
+3. Assess compatibility using the actual goals, available time, current training load, recovery, nutrition evidence and safety context. A physique goal does not automatically mean an aggressive calorie deficit, especially during heavy race preparation.
+4. When goals compete (for example a performance peak and a desired rate of weight change), explain the specific tradeoff and offer realistic alternatives: maintain body weight while prioritizing race performance, pursue gradual body-composition change with adjusted expectations, or change the athlete-selected priority/order or timing. Coach must not silently demote, pause or alter either goal.
+5. Respect the athlete's chosen importance. If more than one goal is marked primary, preserve that choice and communicate where compromises are required; never force a false hierarchy to simplify scheduling.
+6. Secondary and maintenance goals remain visible and supported. Maintenance means a deliberate minimum viable commitment, not abandonment.
+7. Each goal can have its own optional timeframe/check-in, but changing one goal's date or state must not silently rewrite another goal's revision.
+8. Progress presents separate progress/evidence for each goal and may offer a coordinated summary of how the plan supports the set of goals; it must not invent a combined percentage.
+9. Goal relationships such as supports/competes_with are contextual evidence for Coach planning, not automatic mathematical conversion or priority mutation.
 
 ## 4. Cross-domain ownership and no-duplicate rules
 
@@ -392,3 +414,15 @@ Required behavior:
 - Progress presents goal-specific evidence and optional self-assessment. It avoids punitive streaks or shame for missed habits, and never celebrates dangerous restriction/overtraining.
 
 No new global habit engine, calorie engine or body-composition scoring system is authorized. Behavior evidence reuses existing Training, Food Log, Meal Prep and user-check-in sources.
+
+
+## 11. Founder-approved multi-goal example — race + physique
+
+A user may say: “My goal is to run this race and work toward a six-pack.” The onboarding/Coach flow should create or retain two distinct active goals under the same athlete, allow both to be marked primary, and then coordinate them:
+- Preserve the race as a sport/event-specific Training objective with its own date and course requirements.
+- Preserve the physique direction as a separate body-composition goal with optional weight/measurement behaviors.
+- Coach checks the race phase and demands before suggesting nutrition or training changes. During high-volume or peak race preparation it should avoid aggressive weight-loss prescriptions and explain where physique changes may need to be slower or deferred.
+- Offer a user-controlled priority/order or timing change only after explaining the tradeoff; no silent pause, demotion or target adjustment.
+- Both goals remain separately visible in Progress and share only the actual canonical Training/Fuel/Recovery evidence.
+
+No separate goal collection or parallel plans per domain are allowed.
