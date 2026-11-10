@@ -50,6 +50,7 @@ export default function ForgotPasswordScreen() {
             <Text style={styles.body}>Enter your V2 account email. We’ll send a secure reset link that opens back in ALL IN 365.</Text>
             <TextInput
               accessibilityLabel="Email"
+              editable={!submitting}
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
@@ -57,7 +58,7 @@ export default function ForgotPasswordScreen() {
               placeholderTextColor={colors.mutedText}
               style={styles.input}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={value => { setEmail(value); setError(null); setNotice(null); }}
             />
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
             {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
