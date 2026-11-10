@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { authRouteState, shouldOfferV2ConfirmationResend } from './authRoute.ts';
+import { authRouteState, shouldApplyV2AuthEvent, shouldOfferV2ConfirmationResend } from './authRoute.ts';
 
 test('auth routing remains loading until session restoration settles', () => {
   assert.deepEqual(authRouteState({ loading: true, userId: null }), { state: 'loading' });
@@ -23,4 +23,13 @@ test('confirmation resend remains available only for the email rejected as uncon
   assert.equal(shouldOfferV2ConfirmationResend('athlete@example.com', ' Athlete@Example.COM '), true);
   assert.equal(shouldOfferV2ConfirmationResend('athlete@example.com', 'other@example.com'), false);
   assert.equal(shouldOfferV2ConfirmationResend('athlete@example.com', ''), false);
+});
+
+test('bootstrap auth state cannot overwrite a later sign-in, token refresh or sign-out', () => {
+  assert.equal(shouldApplyV2AuthEvent('INITIAL_SESSION', false), true);
+  assert.equal(shouldApplyV2AuthEvent('SIGNED_IN', false), true);
+  assert.equal(shouldApplyV2AuthEvent('SIGNED_OUT', true), true);
+  assert.equal(shouldApplyV2AuthEvent('TOKEN_REFRESHED', true), true);
+  assert.equal(shouldApplyV2AuthEvent('USER_UPDATED', true), true);
+  assert.equal(shouldApplyV2AuthEvent('INITIAL_SESSION', true), false);
 });
