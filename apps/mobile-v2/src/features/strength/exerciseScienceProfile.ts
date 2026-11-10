@@ -9,6 +9,7 @@ export type ExerciseEvidenceTier =
   | 'position_stand_or_guideline'
   | 'systematic_review_or_meta_analysis'
   | 'randomized_controlled_trial'
+  | 'within_subject_controlled_intervention'
   | 'observational_study'
   | 'biomechanical_study'
   | 'expert_consensus';
@@ -141,6 +142,7 @@ const EVIDENCE_TIERS: readonly ExerciseEvidenceTier[] = [
   'position_stand_or_guideline',
   'systematic_review_or_meta_analysis',
   'randomized_controlled_trial',
+  'within_subject_controlled_intervention',
   'observational_study',
   'biomechanical_study',
   'expert_consensus',
