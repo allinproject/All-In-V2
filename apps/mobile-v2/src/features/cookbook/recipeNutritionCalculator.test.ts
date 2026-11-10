@@ -172,3 +172,15 @@ test('refuses overflow in total nutrition accumulated from individually finite p
     assert.ok(result.reasons.includes('finite_batch_nutrition_required'));
   }
 });
+
+test('empty or malformed source provenance cannot validate a nutrition profile', () => {
+  for (const provenance of [{}, [], '', '  ', null, 42]) {
+    const candidate = profile({ provenance });
+    const result = calculate([line('chicken', 100, candidate)]);
+    assert.equal(result.status, 'insufficient_evidence');
+    if (result.status === 'insufficient_evidence') {
+      assert.ok(result.reasons.includes('validated_matching_profile_required:chicken'));
+    }
+  }
+  assert.equal(calculate([line('chicken', 100)]).status, 'validated');
+});
