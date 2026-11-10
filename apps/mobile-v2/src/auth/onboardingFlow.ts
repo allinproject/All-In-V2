@@ -66,6 +66,9 @@ export function matchesOnboardingRetryScope(
 export function createOnboardingSaveGuard() {
   let inFlight = false;
   return {
+    isBusy(): boolean {
+      return inFlight;
+    },
     tryEnter(): boolean {
       if (inFlight) return false;
       inFlight = true;
