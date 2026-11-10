@@ -8,6 +8,7 @@ import {
   shouldEnterV2Onboarding,
   v2LegalAcceptanceMatches,
   v2LegalReviewKey,
+  v2LegalReviewSetKey,
 } from './accessGateClient.ts';
 
 const docs = [
@@ -47,6 +48,20 @@ test('legal review checkmarks are scoped to document versions, content and curre
   const reviewed = { [current]: true };
   assert.equal(Boolean(reviewed[v2LegalReviewKey('user-a', { ...terms, version: 'terms-v3' })]), false);
   assert.equal(Boolean(reviewed[v2LegalReviewKey('user-b', terms)]), false);
+});
+
+test('legal age confirmation applies only to the current account and legal revision set', () => {
+  const confirmedSet = v2LegalReviewSetKey('user-a', docs);
+  assert.equal(confirmedSet, v2LegalReviewSetKey('user-a', docs.map(doc => ({ ...doc }))));
+  assert.notEqual(confirmedSet, v2LegalReviewSetKey('user-b', docs));
+  assert.notEqual(confirmedSet, v2LegalReviewSetKey('user-a', [
+    { ...docs[0], version: 'terms-v3' },
+    ...docs.slice(1),
+  ]));
+  assert.notEqual(confirmedSet, v2LegalReviewSetKey('user-a', [
+    { ...docs[0], content_sha256: 'changed-content' },
+    ...docs.slice(1),
+  ]));
 });
 
 test('all six canonical onboarding steps are required', () => {
