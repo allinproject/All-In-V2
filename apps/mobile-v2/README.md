@@ -4,14 +4,14 @@ This is the independent ALL IN 365 V2 Expo application.
 
 ## Current scope
 
-- Existing-account sign-in screen and session adapter scaffold.
+- V2 sign-in screen and session adapter scaffold; fresh V2 account creation is a separate, upcoming slice.
 - Persistent local session storage.
 - Fail-closed legal acceptance and onboarding access gate.
 - No Coach writes, recipe writes, or data migration yet.
 
 ## Backend warning
 
-The dedicated V2 Supabase project (`xarhuczrtzuiljmtdaeu`) is currently empty and does not contain existing V1 users or history. Do not assume existing credentials work against it. Do not connect this app to V2 for real-user sign-in until the identity and data-continuity strategy is approved. Never place V1 production secrets or service-role keys in this repository.
+The dedicated V2 Supabase project (`xarhuczrtzuiljmtdaeu`) is currently empty and does not contain existing V1 users or history. The founder will create a fresh V2 account; V1 account credentials and Coach history are not being migrated. Signup remains disabled until the V2 schema and approved legal package are ready. Never place V1 production secrets or service-role keys in this repository.
 
 ## Local checks
 
@@ -20,4 +20,4 @@ The dedicated V2 Supabase project (`xarhuczrtzuiljmtdaeu`) is currently empty an
 3. Run `npm run test:auth` and `npm run typecheck`.
 4. Start with `npm run start`.
 
-Real-user authentication, Coach continuity, canonical history and device installation are not yet validated.
+Fresh V2 signup, live authentication, Coach operation, cookbook seed, canonical history and device installation are not yet validated.
