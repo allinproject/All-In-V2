@@ -298,3 +298,10 @@ Founder-approved requirements:
 - When a workout is missed or availability changes, review the remaining accepted plan through race day using whole-athlete history and current recovery. Mark skipped only when confirmed, do not cram/move the missed workout automatically, protect key sessions, and present versioned changes for athlete approval.
 
 V2 source: `trainingPlanLifecycle.ts` provides the exact-date inclusive calendar and missed-session reflow proposal; `raceCourseEvidence.ts` validates field-level course/aid provenance. Their tests are part of `test:training-logic`, not yet executed. See [Coach Training Intelligence and History](../architecture/V2-COACH-TRAINING-INTELLIGENCE-AND-HISTORY.md) sections 9.
+
+
+## Coach Nutrition Intelligence — founder-approved scope — 2026-11-09
+
+Nutrition is a core Coach domain: training-aware daily food/meal recommendations, meal composition from the V2 Cookbook/Ingredient Database, session-specific fueling, recovery nutrition and race nutrition. Daily Sport Nutrition Intelligence and the existing Endurance Fueling Brain remain distinct coordinated layers; the latter stays canonical for numerical carbohydrate/hour, fluid/hour and sodium precision. Recipe/meal nutrition comes from the Ingredient Database and deterministic calculator, never model-invented macros. Coach must use primary/secondary sports, complete calendar, Food Log, Pantry, preferences/allergies and feedback. Preserve the current Fuel landing/actions; no new top-level nutrition tab. Do not log suggested food as consumed without confirmation.
+
+V1 contains substantial research and staged code, not proof of live end-to-end integration. Implementation is tracked in ALL-235 under ALL-217, with dependencies ALL-222, ALL-231/232, ALL-225/228 and ALL-234.

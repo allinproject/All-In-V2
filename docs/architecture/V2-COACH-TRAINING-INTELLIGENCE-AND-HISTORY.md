@@ -193,3 +193,23 @@ When an athlete says they cannot get to the gym, skipped a run, missed a swim/ri
 - `trainingPlanLifecycle.ts`: inclusive exact-date race calendar plus missed-session reflow proposal, with no make-up auto-rescheduling or canonical write.
 - `raceCourseEvidence.ts`: field-level source/provenance and aid-station validation; course gaps remain partial/unverified.
 - Both have focused tests registered in `test:training-logic`; the suite is not yet executed in a reproducible dependency install.
+
+
+## 10. Nutrition intelligence is part of whole-athlete Coach
+
+Coach nutrition must be based on the same primary/secondary/maintenance goal hierarchy and complete multi-sport calendar as Training. Do not create a nutrition-only copy of sport priorities.
+
+Coordinate three distinct owners:
+1. Daily Sport Nutrition Intelligence — training-aware daily energy/macronutrient/meal timing guidance and recovery meals.
+2. Existing reviewed Endurance Fueling Brain — the sole numeric owner for prolonged-session carbohydrate/hour, fluid/hour and sodium precision.
+3. Cookbook/Ingredient Database + Nutrition Calculator — authoritative composition and derived nutrition for meal recommendations.
+
+Coach recommends meals from the user's V2 Cookbook, food preferences, hard allergies/exclusions, Food Log, Pantry, budget, schedule and cooking constraints. The calculator—not model prose—provides recipe/meal nutrient values. Missing food log data is unknown, not zero. A suggested meal is not a consumed meal; no Food Log write until confirmed.
+
+Nutrition must support running, trail/ultra, cycling, swimming, strength, multisport/triathlon, hiking/rucking, and other supported training patterns. Primary/secondary sport priority governs recommendations. Do not simply sum the maximum calorie needs of each sport or use cross-sport equivalency ratios. Periodize carbohydrates around actual key sessions and total workload, preserve adequate energy availability and support protein distribution for strength/concurrent training.
+
+Race fueling uses canonical event/course/aid station information. Never invent station services, fluid/sodium targets or GI tolerance. Preserve existing Fuel navigation (five approved actions) and contextual UI; no new permanent Sports Nutrition tab. Training-aware target changes must be explained and continue to respect the fixed vs adaptive daily budget mode.
+
+Existing V1 inventory: reviewed Sport Nutrition, Competition Nutrition, Supplements and hydration/GI research; 17-domain Evidence Registry; staged v13 sportNutritionContext builder and numerous sport-specific/context/safety tests; versioned Endurance Fueling evidence planner with preferences, plans, feedback and prompt decision persistence. These are significant assets, but research/design/staged code do not prove production workflow integration.
+
+See Linear ALL-235 for acceptance.
