@@ -14,13 +14,11 @@ export default function AuthCallbackScreen() {
     error_description?: string | string[];
   }>();
   const router = useRouter();
-  const processedKey = useRef<string | null>(null);
+  const exchangeRef = useRef<{ key: string; result: ReturnType<typeof supabase.auth.exchangeCodeForSession> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const requestKey = authCallbackRequestKey(params);
 
   useEffect(() => {
-    if (processedKey.current === requestKey) return;
-    processedKey.current = requestKey;
     setError(null);
     const resolution = resolveAuthCallback(params);
     if (resolution.kind === 'error') {
@@ -29,7 +27,15 @@ export default function AuthCallbackScreen() {
     }
 
     let active = true;
-    void supabase.auth.exchangeCodeForSession(resolution.code)
+    // Reuse the same exchange across effect restarts (including React Strict Mode).
+    // A different incoming link gets its own request and supersedes stale UI results.
+    if (exchangeRef.current?.key !== requestKey) {
+      exchangeRef.current = {
+        key: requestKey,
+        result: supabase.auth.exchangeCodeForSession(resolution.code),
+      };
+    }
+    void exchangeRef.current.result
       .then(({ error: exchangeError }) => {
         if (!active) return;
         if (exchangeError) {
