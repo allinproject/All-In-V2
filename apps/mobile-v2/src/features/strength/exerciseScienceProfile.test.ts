@@ -9,7 +9,11 @@ const valid=():ExerciseScienceProfile=>({
  variationDescription:'Dumbbell held at chest; bilateral squat through athlete-tolerated range.',
  movementPattern:'squat',laterality:'bilateral',contractionModes:['concentric','eccentric'],
  skillLevel:'beginner',equipmentRequiredIds:['dumbbell'],equipmentOptionalIds:['box'],
- primaryMuscleGroupIds:['quadriceps','gluteals'],secondaryMuscleGroupIds:['trunk'],
+ muscleGroups:[
+  {muscleGroupId:'quadriceps',role:'primary',sourceIds:['review-1']},
+  {muscleGroupId:'gluteals',role:'primary',sourceIds:['review-1']},
+  {muscleGroupId:'trunk',role:'secondary',sourceIds:['review-1']},
+ ],
  jointDemands:[{jointId:'knee',action:'flexion and extension',plane:'sagittal',rangeOfMotion:'variable',relativeDemand:'moderate',sourceIds:['review-1']}],
  cautionFlags:[{flagId:'deep-knee-flexion-demand',description:'Depth changes knee and hip demands; adapt only to the athlete-approved range.',sourceIds:['review-1']}],
  coachingCues:{setup:['Hold the dumbbell close to the chest.'],execution:['Brace and sit between the hips.'],commonErrors:['Allowing the dumbbell to drift away from the torso.']},
@@ -69,4 +73,31 @@ test('invalid alias duplication, equipment and self-referencing substitutions fa
  const result=validateExerciseScienceProfile(profile);
  assert.equal(result.valid,false);
  if(!result.valid)assert.ok(result.errors.length>=3);
+});
+
+test('muscle emphasis must be variation-specific and source-linked',()=>{
+ const profile=valid();
+ profile.muscleGroups[0].sourceIds=['unknown-source'];
+ const result=validateExerciseScienceProfile(profile);
+ assert.equal(result.valid,false);
+ if(!result.valid)assert.ok(result.errors.some((error)=>error.includes('muscle-group role')));
+});
+test('invalid runtime taxonomy values fail closed even when data bypasses TypeScript types',()=>{
+ const profile=valid() as any;
+ profile.movementPattern='generic_everything';
+ profile.jointDemands[0].plane='unknown_plane';
+ profile.claims[0].confidence='certain';
+ const result=validateExerciseScienceProfile(profile);
+ assert.equal(result.valid,false);
+ if(!result.valid){
+  assert.ok(result.errors.some((error)=>error.includes('Movement pattern')));
+  assert.ok(result.errors.some((error)=>error.includes('joint')));
+  assert.ok(result.errors.some((error)=>error.includes('confidence')));
+ }
+});
+test('a profile without claims or references is never Coach-eligible',()=>{
+ const profile=valid();profile.claims=[];profile.sources=[];
+ const result=validateExerciseScienceProfile(profile);
+ assert.equal(result.valid,true);
+ if(result.valid)assert.equal(result.coachEligible,false);
 });
