@@ -36,7 +36,6 @@ export default function LegalAcceptanceScreen() {
       actionId.current = id;
       const { error } = await supabase.rpc('v2_accept_legal_documents', {
         p_expected_user_id: user.id,
-        p_expected_user_id: user.id,
         p_terms_version: versions.get('terms'),
         p_privacy_version: versions.get('privacy'),
         p_founder_beta_terms_version: versions.get('founder_beta_terms'),
