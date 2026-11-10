@@ -1,4 +1,4 @@
-name: V2 Auth smoke (dependency-free)
+name: V2 Node smoke (dependency-free)
 
 on:
   push:
@@ -6,11 +6,17 @@ on:
       - integration/v2-foundation
     paths:
       - 'apps/mobile-v2/src/auth/**'
+      - 'apps/mobile-v2/src/features/cookbook/**'
+      - 'apps/mobile-v2/src/features/training/**'
+      - 'apps/mobile-v2/package.json'
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
   pull_request:
     paths:
       - 'apps/mobile-v2/src/auth/**'
+      - 'apps/mobile-v2/src/features/cookbook/**'
+      - 'apps/mobile-v2/src/features/training/**'
+      - 'apps/mobile-v2/package.json'
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
   workflow_dispatch:
@@ -24,7 +30,7 @@ concurrency:
 
 jobs:
   auth-smoke:
-    name: Node-only Auth route, legal and onboarding tests
+    name: Node-only Auth, Cookbook and Training tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     defaults:
@@ -35,5 +41,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
-      - name: Run dependency-free Auth tests
+      - name: Run Auth tests
         run: npm run test:auth
+      - name: Run Cookbook calculator tests
+        run: npm run test:calculator
+      - name: Run Training logic tests
+        run: npm run test:training-logic
