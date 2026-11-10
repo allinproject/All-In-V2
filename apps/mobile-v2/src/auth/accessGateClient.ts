@@ -25,7 +25,10 @@ export type V2AccessResult = {
 };
 
 function normalizedText(value: unknown, max = 50000): string {
-  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+  if (typeof value !== 'string') return '';
+  const text = value.trim();
+  // Never silently shorten a legal document: consent requires the full text.
+  return text.length <= max ? text : '';
 }
 
 export function parsePublishedV2LegalDocuments(value: unknown): V2LegalDocument[] {
