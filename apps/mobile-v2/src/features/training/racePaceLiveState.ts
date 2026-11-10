@@ -48,7 +48,7 @@ export function updateRacePaceLive(
  const t=sample.elapsedSeconds,d=sample.distanceOnCourseMeters;
  if(previous){
   const dt=t-previous.lastElapsedSeconds,dd=d-previous.lastDistanceMeters;
-  if(!validNumber(dt)||!validNumber(dd)||dt<=0||dd< -2)return {
+  if(!validNumber(dt)||!validNumber(dd)||dt<=0||dd<0)return {
    state:previous,indicator:unavailable(plan,'Stale or backwards race location update'),
    acceptance:'held',reason:'out_of_order_or_backwards',
   };
