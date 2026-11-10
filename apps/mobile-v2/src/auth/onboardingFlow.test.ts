@@ -110,10 +110,13 @@ test('onboarding retry preserves action IDs only for the identical owner, step, 
 
 test('onboarding save guard rejects rapid complete/skip attempts until the current save settles', () => {
   const guard = createOnboardingSaveGuard();
+  assert.equal(guard.isBusy(), false);
   assert.equal(guard.tryEnter(), true);
+  assert.equal(guard.isBusy(), true);
   assert.equal(guard.tryEnter(), false);
   assert.equal(guard.tryEnter(), false);
   guard.leave();
+  assert.equal(guard.isBusy(), false);
   assert.equal(guard.tryEnter(), true);
   guard.leave();
   assert.equal(guard.tryEnter(), true);
