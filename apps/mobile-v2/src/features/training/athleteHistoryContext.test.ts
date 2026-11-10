@@ -57,6 +57,16 @@ test('malformed coverage for a requested sport invalidates another source comple
  assert.ok(result.warnings.some(w=>w.includes('malformed')));
 });
 
+test('future-recorded and impossible event chronology cannot become completed athlete history',()=>{
+ const base={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running' as const],currentPlan:null,restrictions:[],coverage:[coverage('running')]};
+ const result=buildAthleteHistoryReadModel({...base,events:[
+  event({id:'recorded-before-activity',occurredAt:'2026-11-05T07:00:00Z',recordedAt:'2026-11-04T08:00:00Z'}),
+  event({id:'recorded-after-context',occurredAt:'2026-11-08T07:00:00Z',recordedAt:'2026-11-10T08:00:00Z'}),
+  event({id:'valid-delayed-import',occurredAt:'2026-11-01T07:00:00Z',recordedAt:'2026-11-09T14:00:00Z'}),
+ ]});
+ assert.deepEqual(result.events.map(e=>e.id),['valid-delayed-import']);
+});
+
 test('unrecognized event types or sports cannot enter Coach as trusted activity',()=>{
  const base={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running' as const],currentPlan:null,restrictions:[],coverage:[coverage('running')]};
  const result=buildAthleteHistoryReadModel({...base,events:[
