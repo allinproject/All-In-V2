@@ -73,9 +73,9 @@ export function parseBrandedFoodNutritionCandidate(
   const retrievedAt = clean(row.retrieved_at);
   if (
     row.status !== 'found' ||
-    row.barcode !== requestedBarcode ||
+    row.barcode !== requestedBarcode || !validateGtin(requestedBarcode) ||
     (source !== 'usda_fdc' && source !== 'open_food_facts') ||
-    (quality !== 'reference_unverified' && quality !== 'community_unverified') ||
+    (source === 'usda_fdc' ? quality !== 'reference_unverified' : quality !== 'community_unverified') ||
     (basis !== '100g' && basis !== '100ml' && basis !== 'serving' && basis !== null) ||
     row.review_required !== true ||
     !clean(row.product_name) ||
