@@ -78,9 +78,9 @@ try {
     $name = [string]$member.name
     $parts = $name.Split('/')
     if ([string]::IsNullOrWhiteSpace($name) -or $name.StartsWith('/') -or
-        $name.StartsWith('\\') -or $name.Contains('\\') -or
+        $name.StartsWith('\') -or $name.Contains('\') -or
         $name -match '^[A-Za-z]:' -or
-        $name -match '[\\x00-\\x1F]' -or
+        $name -match '[\x00-\x1F]' -or
         $parts -contains '.' -or $parts -contains '..' -or
         -not $seenMembers.Add($name)) {
       throw "Unsafe or duplicate ZIP member metadata: $name"
