@@ -131,3 +131,65 @@ Committed: `apps/mobile-v2/src/features/training/trainingPlanSynthesis.ts` with 
 - proposes review-only day adaptations while preserving the accepted plan.
 
 The tests are committed but have not yet executed in a reproducible V2 install. This module is not wired to the V2 database, Coach UI, canonical Training writer, Athlete History or a complete periodized planner. Do not mark multi-sport plan generation complete until those steps and end-to-end scenarios pass.
+
+
+## 9. Race-course evidence intake, full-horizon calendar and missed-session adaptation
+
+### Race-course information is an input to plan generation
+
+When an athlete requests a race plan, Coach/Training first resolves the canonical race identity and event date, then acquires the course evidence **before claiming to produce a course-specific plan**.
+
+Preferred evidence order:
+1. Official race/organizer website and linked official course pages/files.
+2. Official organizer GPX/course file or organizer-published elevation/aid-station chart.
+3. User-supplied GPX/route file, screenshots, PDFs, links or explicitly confirmed manual facts.
+4. Verified routing provider only as a clearly labeled fallback/corroboration—not as proof of the official race course.
+
+The intake must capture field-level provenance and version:
+- Course identity, distance, route/geometry/file reference.
+- Elevation gain and loss, elevation profile/source resolution when available.
+- Surface/terrain and technicality.
+- Aid-station names, exact course distances and services (water, electrolytes, food, gels, medical, drop bags, crew, etc.) only when published or confirmed.
+- Event date, course revision/version, event rules/cutoffs when available.
+- Source URL, provider/file identity, retrieval time, confirmation status and data freshness.
+
+The athlete may provide or correct route/course/aid facts. Manual aid entries require explicit confirmation. A user GPX can establish route geometry/elevation, but it does not automatically establish official aid station locations/services. Conflicts between official site, uploaded file and user statements must be surfaced; do not silently select one.
+
+Coach must not invent aid stations, elevation, course surface, cutoffs or route characteristics. Missing fields remain explicit unknowns. A plan may still be created as a bounded/provisional general preparation plan, but must not label workouts course-specific until verified course demands are present. Race fueling/aid strategy must use only verified or user-confirmed station data.
+
+Course version changes invalidate affected route segments, elevation-specific sessions, race execution cues and station-linked fueling reminders. Reacquire/review before reattaching strategy.
+
+### Complete plan duration and start-date choice
+
+When a goal has a target race date, ask the athlete for the exact date they want the training plan to begin. Do not silently assume today, next Monday or a standard template start. Confirm athlete-local date, availability and any ramp/return-to-training constraints.
+
+The accepted plan horizon covers every calendar date from the user-selected first training date **through and including race day**. Every date has an explicit state (planned session, rest/recovery, unavailable, event/race, or intentionally unplanned); no gaps caused by an arbitrary 8/10/12-week template. The opening partial week begins on the selected date, not the previous Monday. The final week ends on the exact race date. Retain the calendar's week grouping separately from the exact daily date range.
+
+For a race 36 weeks away, create the full approximately 36-week progression (plus the race-day date as required by the inclusive calendar), not a short plan that stops early. Validate:
+- start date < or = race date and selected start is not elapsed without explicit rebuild;
+- every calendar date exists exactly once; race day appears exactly once and is the final date;
+- phase sequence is appropriate to the horizon (foundation/base, build, race-specific, recovery/deload, peak, taper, race week where duration supports them);
+- all planned sessions and rest/unavailable days have valid daily identities;
+- no training is scheduled after race day;
+- no past workouts are backfilled;
+- long plans contain meaningful progression and recovery, not repeated identical weeks or a simple linear ramp.
+
+### Missed session / unavailable day reflow
+
+When an athlete says they cannot get to the gym, skipped a run, missed a swim/ride or has to change availability, Coach must fetch the current accepted plan revision and whole-athlete history, then review the **remaining plan through the goal event**, not only answer for that day.
+
+- Mark the missed activity as skipped only after the athlete confirms it was not completed; preserve actual imported/completed activities.
+- Never automatically move the missed session to tomorrow or stack it onto another hard/key day.
+- Reassess the remaining days against availability, recent actual load, fatigue/soreness/sleep, next key session, sport-specific exposures and race countdown.
+- Preserve primary goal and critical sport-specific sessions where safe. Remove/adjust optional/supporting load before adding more load to the week.
+- A schedule-only miss is not lost fitness. Do not invent make-up volume.
+- Repeated fatigue, soreness, pain/illness or underperformance triggers broader load/return-to-training review; do not diagnose or invent clearance.
+- A cross-training replacement must explain which adaptation is retained and which sport-specific adaptation is lost.
+- The full proposed changes are versioned and previewed; accepted calendar stays unchanged until the athlete approves through Training's canonical writer.
+- Future fixed commitments, race day and completed history cannot be silently moved or rewritten.
+
+### V2 source slices added
+
+- `trainingPlanLifecycle.ts`: inclusive exact-date race calendar plus missed-session reflow proposal, with no make-up auto-rescheduling or canonical write.
+- `raceCourseEvidence.ts`: field-level source/provenance and aid-station validation; course gaps remain partial/unverified.
+- Both have focused tests registered in `test:training-logic`; the suite is not yet executed in a reproducible dependency install.

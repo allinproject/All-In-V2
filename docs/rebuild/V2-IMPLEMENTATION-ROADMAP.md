@@ -288,3 +288,13 @@ V1 source audit:
 V2 deterministic Training slice committed: `apps/mobile-v2/src/features/training/trainingPlanSynthesis.ts` + tests. It accepts Coach-proposed intents, preserves distinct sport demand, schedules across declared goals/sports, blocks restrictions/duplicates/unavailable fixed days, flags high-demand density and proposes review-only day adaptations. Source tests are committed but not yet executed. The slice does not yet prescribe session dose, connect Athlete History, write canonical plans, generate complete periodization or pass end-to-end scenarios.
 
 Linear: ALL-230 plan/restriction reliability; ALL-231 plan synthesis; ALL-232 athlete history; ALL-233 prediction; ALL-234 race/route coherence. ALL-232 supplies evidence to ALL-231/ALL-233/ALL-234. ALL-222 owns schema/security. ALL-217 owns Coach runtime port.
+
+
+## Race-course intake, full-horizon calendar and missed-session adaptation — 2026-11-10
+
+Founder-approved requirements:
+- A race plan request triggers course evidence acquisition from the official race website/organizer first, or user-supplied GPX/files/links/confirmed manual information. Capture route, elevation gain/loss, surface/technicality, event date/version and aid stations with field-level provenance, retrieval date and confirmation. Never invent stations or course facts; missing details remain unknown and any unsupported course-specific plan remains provisional.
+- Ask the user for the exact first training date. Build the entire daily calendar from that selected date through and including race day, including long horizons such as 36 weeks; include rest/unavailable states, phase progression, recovery weeks, peak/taper and no post-race work. Do not silently start next Monday or use a short template.
+- When a workout is missed or availability changes, review the remaining accepted plan through race day using whole-athlete history and current recovery. Mark skipped only when confirmed, do not cram/move the missed workout automatically, protect key sessions, and present versioned changes for athlete approval.
+
+V2 source: `trainingPlanLifecycle.ts` provides the exact-date inclusive calendar and missed-session reflow proposal; `raceCourseEvidence.ts` validates field-level course/aid provenance. Their tests are part of `test:training-logic`, not yet executed. See [Coach Training Intelligence and History](../architecture/V2-COACH-TRAINING-INTELLIGENCE-AND-HISTORY.md) sections 9.
