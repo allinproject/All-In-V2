@@ -342,3 +342,17 @@ Migration 007 has now installed pg_cron 1.6.4 and scheduled the private purge he
 **Licensing:** USDA [states FoodData Central data are public domain under CC0 1.0](https://fdc.nal.usda.gov/api-guide/), and asks for source attribution. Cite USDA/FoodData Central in the published ingredient source metadata; verify independent rights for other providers such as OFF rather than transferring USDA licensing assumptions to them.
 
 **Required import review and reconciliation:** The existing dry-run `ingredientSeedPreview.ts` accepts candidates with exact provider+data-type+ID and payload hash; candidates remain unreviewed. Do not publish an automatically chosen USDA nutrient profile, assume SR Legacy is newer than Foundation, or turn missing values into zero. Store full, verified source-mapping/provenance and reviewed nutrient completeness only through the approved ALL-228 writer after ALL-222 authorization.
+
+## 13. Guarded Windows archive acquisition — helper ready, ZIP not acquired
+
+A source-only Windows PowerShell helper now exists at `scripts/prepare-v2-usda-foundation-snapshot.ps1` to complete the blocked official October 2026 Foundation Foods download. It writes to an **explicit user-chosen directory outside the Git checkout**, downloads only the official HTTPS ZIP, validates it can be opened as an archive, enumerates member filenames/sizes, computes the actual archive SHA-256 and writes a versioned local manifest. It does not extract or import ingredients, create or approve a nutrition profile, access Supabase, call providers beyond the official download, or deploy anything.
+
+From the V2 repository root on Windows, the intended manual invocation is:
+
+```powershell
+.\scripts\prepare-v2-usda-foundation-snapshot.ps1 -DestinationDirectory "$env:USERPROFILE\Downloads\ALL-IN-365-USDA"
+```
+
+**No automatic invocation** as part of npm install, CI, or the app. The helper intentionally refuses to overwrite a previously created manifest or to use an in-repository destination; if an archive or manifest exists, preserve it and inspect before any retry. Do not run this until the Windows PC source-acquisition checkpoint is available. A separate low-cost static safety test is registered in the existing dependency-free smoke workflow; [run 42886098954](https://github.com/allinproject/All-In-V2/actions/runs/42886098954) passed. This checks source guardrails, **not** PowerShell execution or archive bytes.
+
+**Still required:** Execute on Windows with network access, confirm manifest SHA-256 and archive member names/lengths, inspect official JSON structure and count source food IDs/nutrients, approve source snapshot and canonical catalog schema/review roles, then implement the controlled canonical importer and two-user/RLS acceptance. Source archive status remains **not acquired** in this conversation.
