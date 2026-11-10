@@ -25,6 +25,18 @@ test('source helper verifies actual archive bytes, ZIP structure and SHA256', ()
   assert.match(script, /source_archive_only_not_imported_not_reviewed/);
 });
 
+test('source acquisition refuses unsafe ZIP inventory before manifest publication', () => {
+  assert.match(script, /\$seenMembers = \[System\.Collections\.Generic\.HashSet\[string\]\]::new/);
+  assert.match(script, /\$parts -contains '\.\.'/);
+  assert.match(script, /\$parts -contains '\.'/);
+  assert.match(script, /\-not \$seenMembers\.Add\(\$name\)/);
+  assert.match(script, /\$name\.StartsWith\('\/'\)/);
+  assert.match(script, /\$name\.Contains/);
+  assert.match(script, /\$hasJson = \$true/);
+  assert.match(script, /if \(\-not \$hasJson\)/);
+  assert.match(script, /nonempty JSON member/);
+});
+
 test('helper cannot overwrite a source snapshot or publish nutrition', () => {
   assert.match(script, /if \(Test-Path -LiteralPath \$manifestPath\)/);
   assert.match(script, /if \(-not \(Test-Path -LiteralPath \$zipPath\)\)/);
