@@ -16,14 +16,14 @@ export function activityEntryOptions(sport: ActivitySport): readonly ActivityEnt
 }
 
 /** Photo capture is optional input to the MANUAL entry workflow, never an automatic workout. */
-export function machinePhotoSport(machine: MachineSubtype): ActivitySport {
+export function machinePhotoSportChoices(machine: MachineSubtype): readonly ActivitySport[] {
   switch (machine) {
-    case 'treadmill': return 'running';
-    case 'rowing_machine': return 'rowing';
-    case 'stair_stepper': return 'stair';
-    case 'elliptical': return 'elliptical';
-    case 'stationary_bike': return 'cycling';
-    default: return 'other';
+    case 'treadmill': return ['walking', 'running'];
+    case 'rowing_machine': return ['rowing'];
+    case 'stair_stepper': return ['stair'];
+    case 'elliptical': return ['elliptical'];
+    case 'stationary_bike': return ['cycling'];
+    default: return ['other'];
   }
 }
 
