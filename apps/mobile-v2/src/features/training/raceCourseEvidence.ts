@@ -35,7 +35,11 @@ function validField<T>(field:RaceCourseField<T>,valid:(v:T)=>boolean):boolean{
 }
 /** Fail closed when field provenance is absent, aid stations are outside course, or identity is malformed. */
 export function validateRaceCourseEvidence(raw:RaceCourseEvidence):RaceCourseEvidence{
- if(!raw||raw.version!==1||!raw.raceId||!validDate(raw.eventDate)||!raw.courseVersion||!Array.isArray(raw.sourceUrls)||!Array.isArray(raw.aidStations))throw new Error('Race identity, event date, source URLs and course version are required.');
+ if(!raw||raw.version!==1||typeof raw.raceId!=='string'||!raw.raceId.trim()||!validDate(raw.eventDate)||typeof raw.courseVersion!=='string'||!raw.courseVersion.trim()||!Array.isArray(raw.sourceUrls)||!Array.isArray(raw.aidStations))throw new Error('Race identity, event date, source URLs and course version are required.');
+ if(!Array.isArray(raw.warnings)||!raw.warnings.every(w=>typeof w==='string')||
+    !Array.isArray(raw.missingFields)||!raw.missingFields.every(w=>typeof w==='string'))throw new Error('Race evidence warnings and missing fields must be string lists.');
+ if(raw.routeFile!==null&&(!raw.routeFile||!['gpx','fit','tcx','geojson'].includes(raw.routeFile.kind)||
+    typeof raw.routeFile.fileRef!=='string'||!raw.routeFile.fileRef.trim()||!validSource(raw.routeFile.source)))throw new Error('Race route file metadata is invalid.');
  if(!raw.sourceUrls.every(validUrl)||raw.sourceUrls.some(x=>x===null))throw new Error('Race source URLs must be HTTPS.');
  if(!validField(raw.distance,(n)=>Number.isFinite(n)&&n>0&&n<=1000000))throw new Error('Course distance needs a value and source provenance.');
  if(!validField(raw.elevationGain,(n)=>Number.isFinite(n)&&n>=0&&n<=100000))throw new Error('Elevation gain needs a valid sourced value or explicit unknown.');
@@ -44,10 +48,11 @@ export function validateRaceCourseEvidence(raw:RaceCourseEvidence):RaceCourseEvi
  if(!validField(raw.technicality,(v)=>['low','moderate','high','unknown'].includes(v)))throw new Error('Technicality value or provenance is invalid.');
  if(!validField(raw.aidStationStatus,(v)=>['available','none','unknown'].includes(v)))throw new Error('Aid-station availability needs sourced or confirmed status.');
  if(raw.aidStationStatus.value==='none'&&raw.aidStations.length>0)throw new Error('A course confirmed to have no aid stations cannot contain aid station entries.');
+ if(raw.aidStationStatus.value!=='available'&&raw.aidStations.length>0)throw new Error('Aid stations require sourced available status before they can be used.');
  const distance=raw.distance.value;
  const ids=new Set<string>();
  const stations=raw.aidStations.map(s=>{
-  if(!s||!s.id||ids.has(s.id)||!Number.isFinite(s.distanceMeters)||s.distanceMeters<0||distance===null||s.distanceMeters>distance||
+  if(!s||typeof s.id!=='string'||!s.id.trim()||ids.has(s.id)||typeof s.confirmedByUser!=='boolean'||!Number.isFinite(s.distanceMeters)||s.distanceMeters<0||distance===null||s.distanceMeters>distance||
     !validSource(s.source)||!validUrl(s.sourceUrl)||(s.retrievedAt!==null&&!Number.isFinite(Date.parse(s.retrievedAt)))||
     !Array.isArray(s.services)||!s.services.every(x=>typeof x==='string'))throw new Error('Aid station identity, distance, source or course bounds are invalid.');
   ids.add(s.id);
