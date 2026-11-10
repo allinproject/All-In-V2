@@ -31,7 +31,10 @@
 |---|---|---|
 | `20261110021548` | `20261110000100_v2_auth_profile_legal_foundation.sql` | Auth-linked Profile, Settings, Onboarding, Legal Documents, Legal Acceptances and private profile-settings action ledger; owner read policies and canonical RPCs. |
 | `20261110022457` | `20261110000200_v2_tighten_profile_privileges_and_legal_versions.sql` | Profile column-level update privilege, immutable published legal content, updated-at triggers and hardened legal/profile RPC behavior. |
-| `20261110032039` | `20261110000300_v2_provider_cache_and_private_rls.sql` | RLS on the private settings ledger and provider cache; service-role-only cache RPCs. |\n| `20261110101200` | `20261110000400_v2_onboarding_progress_writer.sql` | Private onboarding idempotency ledger and authenticated complete/skip/reset writer with expected-version and exact-retry behavior. |\n| `20261110105423` | `20261110000500_v2_expected_owner_mutation_guards.sql` | Replaces Settings, Legal Acceptance and Onboarding mutation RPC signatures with database-enforced expected-owner checks against `auth.uid()`; drops unbound overloads. |
+| `20261110032039` | `20261110000300_v2_provider_cache_and_private_rls.sql` | RLS on the private settings ledger and provider cache; service-role-only cache RPCs. |
+| `20261110101200` | `20261110000400_v2_onboarding_progress_writer.sql` | Private onboarding idempotency ledger and authenticated complete/skip/reset writer with expected-version and exact-retry behavior. |
+| `20261110105423` | `20261110000500_v2_expected_owner_mutation_guards.sql` | Replaces Settings, Legal Acceptance and Onboarding mutation RPC signatures with database-enforced expected-owner checks against `auth.uid()`; drops unbound overloads. |
+| `20261110122952` | `20261110000600_v2_provider_cache_expired_cleanup.sql` | Adds a bounded, service-role-only expired provider-cache purge RPC. Scheduling remains a separate operations decision. |
 
 ### Current tables
 
@@ -43,7 +46,7 @@
 | `public.v2_legal_documents` | Legal/Product operations | Product-published content | SELECT published/effective versions to anon/authenticated | Reviewed operator/server publication process; published content is immutable. |
 | `public.v2_legal_acceptances` | Legal/Account lifecycle | User-private, immutable receipt | Authenticated owner SELECT only | `v2_accept_legal_documents` validates exact current published versions and owner. |
 | `allin_private.v2_profile_settings_actions` | Auth/Profile settings idempotency | Private operational metadata | No anon/authenticated schema usage or table grants; RLS enabled; no policies by design | Only the owning settings RPC accesses it. |
-| `allin_private.v2_provider_cache` | Provider infrastructure | Private cached external reference responses | No anon/authenticated/service-role table grants; RLS enabled; no policies by design | Service-role-only `v2_provider_cache_get/put` RPCs. Cache is not canonical reviewed ingredient truth. |
+| `allin_private.v2_provider_cache` | Provider infrastructure | Private cached external reference responses | No anon/authenticated/service-role table grants; RLS enabled; no policies by design | Service-role-only `v2_provider_cache_get/put/prune_expired` RPCs. Cache is not canonical reviewed ingredient truth. |
 
 The V2 project currently has zero rows in the verified eight-table foundation schema (five public and three private). No legal documents are published, so real signup remains intentionally gated.
 
@@ -479,3 +482,12 @@ A first ALL-228 physical ERD/security proposal is now committed for owner review
 It proposes stable V2 food identities, exact aliases, preparation/basis-specific nutrition profiles, normalized nutrient values, source provenance, reviewed measurement conversions and private review/seed audit records. It explicitly keeps provider response cache in the existing private cache, user custom foods in ALL-247, recipes in ALL-218, Cooking Yield in ALL-225/ALL-229 and Pantry lots in ALL-248. It does not add DDL or claim a deployed Ingredient Database.
 
 Key unresolved approval: ALL-251 must define the authorized reviewer/operator identity and publication workflow. Until then, canonical profile writes must remain controlled release/seed operations; authenticated athletes are read-only consumers and cannot publish nutrition facts. ALL-228 remains blocked by this architecture/security decision, and ALL-225/ALL-226/ALL-218 remain downstream.
+
+
+## 19. Provider-cache expiry maintenance — 2026-11-10
+
+Migration `20261110000600_v2_provider_cache_expired_cleanup.sql` is applied as database version `20261110122952`. It adds `public.v2_provider_cache_prune_expired(integer)`, a postgres-owned SECURITY DEFINER RPC with an empty search_path, explicit `auth.role()='service_role'` enforcement, an inclusive 1–5,000 row batch bound, ordered expired-row selection and `FOR UPDATE SKIP LOCKED`. EXECUTE is granted only to service_role; the service role still has no direct private-table grants.
+
+The rollback-only live test verified authenticated invocation fails with SQLSTATE 42501, invalid batch size fails with 22023, one expired row is deleted, a fresh row remains, and probe rows are rolled back. The live advisor remains at three intentional private-table INFO notices and four existing per-user authenticated SECURITY DEFINER WARN notices; the purge function introduces no new authenticated warning.
+
+**Not yet scheduled:** this V2 database has no pg_cron/pg_net/pgmq extension and no cron job catalog. The new RPC is a safe bounded maintenance primitive, not a recurring job. Choose an approved scheduler/maintenance invocation before cache volume grows; do not describe the cache as automatically pruned yet. ALL-227 remains In Progress until scheduling, provider quota controls, cross-isolate miss behavior, tests and deployment gates are complete.
