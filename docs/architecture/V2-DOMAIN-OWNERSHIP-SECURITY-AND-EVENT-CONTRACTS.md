@@ -533,3 +533,16 @@ The security matrix makes all athlete Training facts owner-readable and RPC-writ
 The most consequential open contract is completion: Training commits its terminal session/event plus an outbox handoff; ALL-243 must create the one canonical Completed Activity idempotently. ALL-245 must approve source-event identity, offline replay and device binding. ALL-251 must approve timezone/availability/location and deletion semantics. ALL-232 remains a read-only history consumer; ALL-231/ALL-240 remain proposal/authorization consumers.
 
 **Not approved / not deployed:** no Training migration, table, RPC or RLS policy was created. ALL-246 remains blocked by ALL-222. The owner must resolve stable slot/revision semantics, versioned session-intent validation, athlete-local timezone rules, active-session/repeat cardinality, multisport-leg normalization, offline/abandoned session recovery and synchronous-vs-outbox completion before DDL.
+
+
+## 30. Completed Activity physical ERD and security proposal — 2026-11-10
+
+A first physical ERD/security proposal for ALL-243 is committed for owner review:
+
+[ V2 Completed Activity — Physical ERD & Security Proposal ](https://github.com/allinproject/All-In-V2/blob/integration/v2-foundation/docs/architecture/V2-COMPLETED-ACTIVITY-PHYSICAL-ERD-AND-SECURITY-PROPOSAL.md)
+
+The proposed aggregate contains one canonical completed-activity identity, multiple source/provenance links, a versioned metric-definition registry, typed metric values, semantic segments (splits/laps/intervals/swim lengths/multisport legs/transitions), structured strength set results, and private Storage references for bounded route/series objects. It preserves capture time vs receipt time, source quality, measurement kind, canonical units, comparison eligibility, calculation authority/version and the missing-vs-zero distinction.
+
+The ownership boundary is explicit: Training (ALL-246) owns plans and live execution; ALL-243 owns the finished activity and metric truth; Devices (ALL-245) supplies observations; Athlete History (ALL-232), Progress, Coach, Today and Community consume the canonical activity identity. Provider-specific activity stores and duplicate source records are not permitted.
+
+**Not approved / not deployed:** no Activity DDL, registry seed, Storage bucket, RPC or policy was created. ALL-243 remains blocked by ALL-222. Before DDL, resolve source dedupe/merge rules, metric registry/value typing/versioning, semantic segment taxonomy, series/route storage/retention, source-quality conflict rules, privacy/deletion and the exact ALL-246 completion-outbox consumer contract.
