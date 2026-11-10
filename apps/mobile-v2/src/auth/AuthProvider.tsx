@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { shouldApplyV2AuthEvent } from './authRoute';
 
 export type AuthContextValue = {
   session: Session | null;
@@ -29,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     const { data: authSubscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (!mounted) return;
+      if (!mounted || !shouldApplyV2AuthEvent(event, authoritativeEvent.current)) return;
       const nextUserId = nextSession?.user?.id ?? null;
       if (event !== 'INITIAL_SESSION') authoritativeEvent.current = true;
       if (nextUserId !== currentUserId.current || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
