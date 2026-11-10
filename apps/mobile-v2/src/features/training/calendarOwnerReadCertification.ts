@@ -8,6 +8,8 @@ import type { OwnerCalendarRead } from './trainingCalendarReadModel.ts';
  */
 export type OwnerCalendarWindowSnapshot<T> = {
   ownerId: string;
+  /** Auth session generation that initiated this read, not the current render generation. */
+  authSessionGeneration: number;
   fromDate: string;
   throughDate: string;
   /** Non-empty authoritative owner revision / snapshot token. */
@@ -22,13 +24,14 @@ export type OwnerCalendarWindowSnapshot<T> = {
 export function certifyCalendarOwnerRead<T>(input: {
   expectedOwnerId: string;
   authenticatedOwnerId: string | null;
+  activeSessionGeneration: number;
   accessGateReady: boolean;
   requestedFromDate: string;
   requestedThroughDate: string;
   snapshot: OwnerCalendarWindowSnapshot<T> | null | undefined;
 }): OwnerCalendarRead<T> {
   const {
-    expectedOwnerId, authenticatedOwnerId, accessGateReady,
+    expectedOwnerId, authenticatedOwnerId, activeSessionGeneration, accessGateReady,
     requestedFromDate, requestedThroughDate, snapshot,
   } = input;
   if (!accessGateReady || !expectedOwnerId || !authenticatedOwnerId
@@ -38,6 +41,8 @@ export function certifyCalendarOwnerRead<T>(input: {
     || requestedFromDate > requestedThroughDate
     || !snapshot
     || snapshot.ownerId !== expectedOwnerId
+    || !Number.isSafeInteger(activeSessionGeneration) || activeSessionGeneration < 0
+    || snapshot.authSessionGeneration !== activeSessionGeneration
     || !validAthleteLocalDate(snapshot.fromDate)
     || !validAthleteLocalDate(snapshot.throughDate)
     || snapshot.fromDate > requestedFromDate
