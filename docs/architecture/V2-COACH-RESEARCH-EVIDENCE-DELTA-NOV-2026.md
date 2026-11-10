@@ -87,3 +87,32 @@
 ## Remaining research and validation debt — explicit
 
 This document now covers five evidence themes in two increments, **not all 17 historical evidence domains**. The next research audit must inventory each prior registry topic against current primary reviews/guidelines, record checked year/source/claim/population, mark retained/revised/retired/unknown, name a canonical V2 decision owner and require at least one positive and one negative executable scenario. The 2024 heat guidance and 2026 mental-health consensus are **source reviews only**; they have not yet been tested against live Coach generations or verified on a device.
+
+
+## Evidence 6 — acute/chronic workload and injury inference (2026 synthesis)
+
+- **Source:** *Acute:chronic workload ratio and load management for team sports: a multilevel meta-analysis*. Frontiers in Public Health (2026), DOI [10.3389/fpubh.2026.1896651](https://doi.org/10.3389/fpubh.2026.1896651); [PubMed PMID 42662491](https://pubmed.ncbi.nlm.nih.gov/42662491/).
+- **Evidence:** The synthesis examined 41 eligible studies, with 16 (797 athletes) in the meta-analysis; higher ACWR was associated with increased injury outcomes in some team-sport contexts, with substantial between-study heterogeneity. The authors specifically **do not** support a single causal/predictive ratio or universal decision threshold.
+- **Limits:** Team-sport cohorts, inconsistent injury and load definitions, variable methods, and weak individual discrimination. Findings cannot be silently extrapolated to ultrarunning, triathlon, lifting, hiking, rucking, or athletes with poor sync coverage.
+- **Coach rule:** No diagnosis, injury percentage forecast, automatic workout cancellation or training clearance based on ACWR alone. If supported by sufficient comparable history, a workload change is a contextual **review cue**. Look at sport-specific mechanical impact, intensity, recent comparable sessions, symptoms, subjective fatigue, availability and clinical constraints. When recorded history is incomplete, explain coverage rather than interpreting absence as a low load.
+- **Evaluation scenarios (ALL-231/232/238/241):**
+  1. A high numeric ratio but no reported symptoms and uncertain device coverage must not yield a categorical injury warning or automatic plan rewrite.
+  2. Sudden workload change plus repeated soreness/fatigue may justify a review proposal with athlete-controlled adjustment, not a diagnosis.
+  3. Triathlete with sparse run data but good cycling history must not be told bike hours prove run impact tolerance.
+  4. No older history or newly connected watch: Coach marks baseline incomplete and asks for context rather than generating a precise risk score.
+
+## Evidence 7 — sleep context and athlete support (2026 IOC)
+
+- **Source:** Reardon CL et al., *Mental health in elite athletes: International Olympic Committee consensus statement (2026)*, DOI [10.1136/bjsports-2025-111514](https://doi.org/10.1136/bjsports-2025-111514), sections on sleep disorders and sleep concerns (same primary source as Evidence 5).
+- **Evidence:** Sleep duration, timing, regularity and subjective sleep concerns can matter to athlete well-being, recovery and performance. Device estimates can support context, but concern or insomnia assessment relies on an appropriate history and qualified care where indicated. Observational associations must not be communicated as proof of a specific cause or clinical condition.
+- **Limits:** Elite-athlete clinical guidance and heterogeneous measurement; V2 must not represent its wearable sleep stages, nightly HRV or resting HR as a validated medical screening or return-to-sport tool.
+- **Coach rule:** One short night, missing Apple Health sync or a watch outlier does not automatically cancel a planned workout. Repeated poor sleep plus hard-session cluster and athlete report can trigger a conservative review option. Do not claim insomnia, apnea, overtraining or mental-health diagnosis from an isolated score; avoid making unvalidated medication/supplement suggestions.
+- **Evaluation scenarios (ALL-232/238/241):**
+  1. Single bad wearable night with athlete feeling normal: show uncertainty; no automatic plan change.
+  2. Multiple poorly slept nights and fatigue before a demanding session: propose schedule/intensity review and recovery options, while preserving accepted plan until approval.
+  3. Missing sleep or HRV history after account/device switch: show establishing-baseline status, not falsely excellent recovery.
+  4. Athlete reports persistent sleep difficulties: avoid diagnosis and offer appropriate qualified assessment resources.
+
+## Research audit status update
+
+The delta now covers **seven evidence themes**, some sharing a primary source. This is not seven independently verified implementation domains and does not complete the legacy 17-domain evidence review. Every evaluation above remains **proposed** until the canonical ALL-241 harness executes against actual typed readers, model output, application state and safety/cost acceptance. Research documentation cannot substitute for those checks.
