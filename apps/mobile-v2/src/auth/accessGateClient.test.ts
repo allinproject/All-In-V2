@@ -4,6 +4,7 @@ import {
   assertV2SessionOwner,
   parsePublishedV2LegalDocuments,
   resolveV2Access,
+  readV2OwnedProfileState,
   shouldEnterV2Onboarding,
   v2LegalAcceptanceMatches,
   v2LegalReviewKey,
@@ -171,4 +172,44 @@ test('access resolver refuses a signed-out session despite matching returned pro
     resolveV2Access(mockAccessClient(completeAccessState, null, null), { id: 'user-a' }),
     /account changed/i,
   );
+});
+
+test('onboarding profile read refuses switched session after a matching RPC response', async () => {
+  const client = {
+    rpc: async () => ({
+      data: { profile: { user_id: 'user-a' }, settings: { version: 1 } },
+      error: null,
+    }),
+    auth: {
+      getSession: async () => ({ data: { session: { user: { id: 'user-b' } } }, error: null }),
+    },
+  } as unknown as Parameters<typeof readV2OwnedProfileState>[0];
+  await assert.rejects(readV2OwnedProfileState(client, 'user-a'), /account changed/i);
+});
+
+test('onboarding profile read rejects foreign RPC rows, signed-out and unavailable sessions', async () => {
+  const makeClient = (rpcOwner: string, sessionOwner: string | null, sessionError: Error | null = null) => ({
+    rpc: async () => ({ data: { profile: { user_id: rpcOwner } }, error: null }),
+    auth: {
+      getSession: async () => ({
+        data: { session: sessionOwner ? { user: { id: sessionOwner } } : null },
+        error: sessionError,
+      }),
+    },
+  }) as unknown as Parameters<typeof readV2OwnedProfileState>[0];
+
+  await assert.rejects(readV2OwnedProfileState(makeClient('user-b', 'user-a'), 'user-a'), /account changed/i);
+  await assert.rejects(readV2OwnedProfileState(makeClient('user-a', null), 'user-a'), /account changed/i);
+  await assert.rejects(readV2OwnedProfileState(makeClient('user-a', 'user-a', new Error('offline')), 'user-a'), /offline/);
+});
+
+test('onboarding profile read only returns a matching owner snapshot while session is active', async () => {
+  const state = { profile: { user_id: 'user-a' }, settings: { version: 4 } };
+  const client = {
+    rpc: async () => ({ data: state, error: null }),
+    auth: {
+      getSession: async () => ({ data: { session: { user: { id: 'user-a' } } }, error: null }),
+    },
+  } as unknown as Parameters<typeof readV2OwnedProfileState>[0];
+  assert.deepEqual(await readV2OwnedProfileState(client, 'user-a'), state);
 });
