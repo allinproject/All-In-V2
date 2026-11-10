@@ -27,13 +27,13 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#090909' },
+  safe: { flex: 1, backgroundColor: '#0B0B0B' },
   content: { flex: 1, justifyContent: 'center', padding: 24, gap: 18 },
-  brand: { color: '#F5F1E8', fontSize: 18, fontWeight: '800', letterSpacing: 1.4 },
-  gold: { color: '#B99A58' },
-  title: { color: '#F5F1E8', fontSize: 30, fontWeight: '800' },
-  body: { color: '#B4B0A8', fontSize: 15, lineHeight: 22 },
-  email: { color: '#B99A58', fontSize: 14 },
-  button: { minHeight: 48, backgroundColor: '#222222', borderColor: '#454545', borderWidth: 1, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  buttonText: { color: '#F5F1E8', fontWeight: '700' }
+  brand: { color: '#F7F4EC', fontSize: 18, fontWeight: '800', letterSpacing: 1.4 },
+  gold: { color: '#B79A57' },
+  title: { color: '#F7F4EC', fontSize: 30, fontWeight: '800' },
+  body: { color: '#AAA69D', fontSize: 15, lineHeight: 22 },
+  email: { color: '#B79A57', fontSize: 14 },
+  button: { minHeight: 48, backgroundColor: '#1D1D1D', borderColor: '#30302E', borderWidth: 1, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  buttonText: { color: '#F7F4EC', fontWeight: '700' }
 });

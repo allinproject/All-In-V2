@@ -23,10 +23,10 @@ export default function OnboardingRequiredScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#090909' },
+  safe: { flex: 1, backgroundColor: '#0B0B0B' },
   content: { flex: 1, justifyContent: 'center', padding: 24, gap: 18 },
-  brand: { color: '#F5F1E8', fontSize: 18, fontWeight: '800', letterSpacing: 1.4 },
-  gold: { color: '#B99A58' },
-  title: { color: '#F5F1E8', fontSize: 28, fontWeight: '800' },
-  body: { color: '#B4B0A8', fontSize: 15, lineHeight: 23 },
+  brand: { color: '#F7F4EC', fontSize: 18, fontWeight: '800', letterSpacing: 1.4 },
+  gold: { color: '#B79A57' },
+  title: { color: '#F7F4EC', fontSize: 28, fontWeight: '800' },
+  body: { color: '#AAA69D', fontSize: 15, lineHeight: 23 },
 });
