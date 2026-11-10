@@ -162,3 +162,14 @@ V1 provider runtime was also confirmed:
 - Generic ingredient lookup: USDA FoodData Central; packaged branded search: Open Food Facts / Search-a-licious.
 - Exact barcode lookup is a distinct path: USDA Branded candidate followed by Open Food Facts Product API v3.
 - V2 requires its own USDA FDC API key stored as an Edge Function secret; the V1 key is not copied or exposed.
+
+
+## Recipe quantity / yield / Pantry-to-Shopping founder decision — 2026-11-10
+
+Standard Cookbook recipes must store cooked/prepared finished edible target quantities on their recipe cards. When added to the Meal Plan, planned servings scale those cooked target amounts. The planner first consumes usable exact-state cooked/prepared Pantry stock, converts only the remaining cooked target to raw/dry/as-purchased amount with exact reviewed Cooking Yield evidence, then consumes compatible raw/dry Pantry stock and adds only the final shortage to Shopping. Cooked and raw lots must never be treated as the same stock or netted in the same unit without explicit conversion. Reserved/expired/unusable stock does not count. Missing/ambiguous yield evidence remains manual review, not a guessed purchase quantity.
+
+Freezer kits are explicitly exempt from the standard cooked-target recipe-card rule. Their raw/dry ingredients and freeze/defrost/cook lifecycle must remain intact.
+
+Before V2 recipe catalog publication, perform a line-by-line audit of every standard recipe and report compliant, corrected, freezer-kit-exempt, yield-evidence-missing and manual-review totals. Do not silently convert uncertain quantities.
+
+Full contract: `docs/architecture/V2-COOKBOOK-INGREDIENT-FIRST-NUTRITION-CALCULATOR.md`. Linear implementation issue: ALL-229.

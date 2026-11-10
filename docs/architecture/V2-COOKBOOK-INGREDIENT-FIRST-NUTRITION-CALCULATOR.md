@@ -154,3 +154,60 @@ Keep ingredient nutrient facts independent from recipe records. Recipe catalog r
 - Add a fail-safe test that opening/recalculating a recipe with all required local profiles makes zero HTTP/provider calls.
 
 Proposed schema ownership lives under the Cookbook domain in the V2 architecture matrix: `v2_ingredients`, `v2_ingredient_aliases`, `v2_ingredient_nutrition_profiles`, and source/review history. Final table and write-RPC shape is owned by ALL-222 before implementation.
+
+
+## Founder-approved recipe quantity and Meal Plan / Pantry / Shopping contract — 2026-11-10
+
+### Canonical recipe-card quantities
+
+All standard Cookbook recipes must express ingredient amounts in the **finished, cooked/prepared state required on the plate**. The ingredient quantity on the recipe card is the amount the meal needs to serve the recipe's stated portions, not the raw/as-purchased amount someone must buy.
+
+This applies to every standard recipe unless there is a deliberate product exception. **Freezer kits are excluded:** a freezer kit is a raw/dry assembly/prep workflow and keeps its own raw ingredient and freeze/defrost/cook lineage. Do not convert freezer-kit authored quantities into cooked serving targets.
+
+Examples:
+- Recipe requires 6 oz cooked chicken per serving → recipe card says 6 oz cooked chicken.
+- Recipe requires 4.5 oz cooked rice → recipe card says 4.5 oz cooked rice.
+- Recipe requires 5 oz cooked/drained beans → recipe card says 5 oz cooked/drained beans.
+- Raw purchase weights do not belong in a standard finished-recipe ingredient line merely because the ingredient is normally purchased raw.
+
+Every ingredient needs an explicit target preparation/weight state (cooked, cooked-and-drained, prepared, raw, dry, as-sold, etc.); no ambiguous state inference.
+
+### Meal Plan → Shopping conversion
+
+When a recipe is added to a meal plan:
+
+1. Scale its cooked/prepared ingredient target to the planned servings.
+2. Check usable Pantry inventory for an **exact identity + compatible preparation state + compatible unit/basis**. For a standard cooked recipe demand, prioritize cooked/prepared Pantry stock first. Reserved, expired or otherwise unusable stock is not available.
+3. Deduct available cooked/prepared Pantry stock from the cooked recipe demand. If it fully covers the requirement, add no purchase line for that ingredient.
+4. Convert only the remaining cooked/prepared target to the required raw/dry/as-purchased amount using exact reviewed Cooking Yield evidence keyed to the actual food/form/cut/method/doneness/lid/drained state. Do not use a generic yield factor or assume raw weight equals cooked weight.
+5. Deduct any compatible raw/dry Pantry stock from that converted purchase requirement as a second coverage step. Only the remaining shortage becomes a raw/as-purchased Shopping line. Keep raw and cooked Pantry identities/quantities separate; never merge them as interchangeable stock.
+6. Keep a trace of the original cooked requirement, cooked Pantry amount consumed, remaining cooked target, yield evidence/factor/range, converted raw requirement, raw Pantry amount consumed and final purchase shortage.
+7. If exact yield evidence is missing/ambiguous, surface a clear manual-review/unknown quantity. Do not create a misleading raw Shopping amount and do not call USDA just to calculate the known recipe's normal view.
+8. Aggregate compatible requirements across planned meals without double-counting the same Pantry stock or already-prepared meal coverage. Preserve recipe, date, serving and provenance links.
+9. Apply package rounding only after netting Pantry coverage, and retain both exact required amount and package purchase amount.
+
+This makes Pantry state material: **cooked stock is used as cooked stock before deriving raw purchases**. Example: a plan needs 24 oz cooked chicken. Pantry has 8 oz usable cooked chicken. The outstanding cooked target is 16 oz. If the exact reviewed yield is 0.75 cooked/raw, the raw requirement is 21.333 oz. Compatible raw Pantry inventory is deducted from that 21.333 oz; only the remaining shortage is added to Shopping. Do not calculate 32 oz raw first and then deduct 8 oz cooked as if the units/states were identical.
+
+### Recipe catalog audit and conversion
+
+Before V2 catalog publication, audit every standard recipe:
+- ingredient quantity expresses cooked/prepared edible target quantity;
+- preparation state and unit are explicit;
+- recipe servings and per-serving quantities reconcile;
+- raw/as-purchased values live only in reviewed yield/purchase metadata, not as the main standard recipe-card quantity;
+- all unsupported/compound/ambiguous ingredient quantities go to manual review;
+- freezer kits are explicitly tagged and excluded from this standard conversion rule.
+
+The audit must return counts for compliant, corrected, freezer-kit-exempt, yield-evidence-missing and manual-review recipes. Do not silently rewrite or publish recipes with uncertain conversions.
+
+### Non-negotiable acceptance journeys
+
+- Recipe card says 6 oz cooked chicken. A meal plan for 4 servings generates a 24 oz cooked target.
+- Pantry has 8 oz usable cooked chicken: the system consumes 8 oz cooked, calculates raw needs only for the remaining 16 oz cooked, deducts any compatible raw Pantry stock and adds only the final as-purchased shortage to Shopping.
+- Pantry has only raw chicken: the system converts the full cooked target to raw, then deducts raw stock.
+- Pantry has only cooked chicken: cooked stock satisfies target directly; no raw Shopping line appears for covered quantity.
+- Pantry has both raw and cooked chicken: use cooked stock against cooked target first, then raw stock against the converted remaining target; no cross-state double counting.
+- Pantry stock reserved, expired or otherwise unusable is not allocated.
+- Exact yield missing or wrong method/form/drained state: no inferred purchase amount; visible unresolved/manual-review demand.
+- Freezer kit retains its own raw/dry assembly and freeze/defrost/cook lifecycle and is not treated as a cooked recipe card.
+- Meal Plan/Shopping recalculation is deterministic and idempotent; retry cannot double-reserve stock or duplicate purchase requirements.

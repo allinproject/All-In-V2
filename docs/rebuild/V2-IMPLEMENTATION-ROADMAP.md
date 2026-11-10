@@ -219,3 +219,14 @@ The V2 Ingredient Database is a first-class reusable product system, not simply 
 - When an ingredient is missing, show a clear partial/manual-review state; never make recipe open depend on upstream APIs or invent nutrition.
 
 The architecture and implementation plan live in [V2 Cookbook ingredient-first calculator spec](../architecture/V2-COOKBOOK-INGREDIENT-FIRST-NUTRITION-CALCULATOR.md). Schema ownership and policy are established by ALL-222; ingredient DB/import implementation is tracked as ALL-228; calculator integration is ALL-225; provider discovery/refresh is ALL-226/ALL-227.
+
+
+## Founder-approved cooked-recipe quantity and Pantry-aware raw Shopping decision — 2026-11-10
+
+Standard Cookbook recipe-card ingredient quantities represent the finished cooked/prepared edible amount required by the meal. Raw/as-purchased amounts are derived only when a recipe is put into the Meal Plan. Freezer kits are the sole explicit exception: they remain raw/dry assembly workflows with their existing freeze/defrost/cook lifecycle.
+
+Meal Plan scales cooked ingredient demand for planned servings, consumes compatible usable cooked/prepared Pantry inventory first, converts only the remaining cooked target to raw/dry/as-purchased amount using exact reviewed Cooking Yield evidence, then deducts compatible raw/dry Pantry stock. Shopping receives only the final as-purchased shortage after these two state-specific coverage steps. Keep cooked and raw inventory separate; never deduct cooked ounces from a raw-ounce purchase requirement. No usable yield evidence means a clear manual-review demand, not a guessed purchase amount.
+
+Before V2 catalog publication every standard recipe needs an audit of cooked/prepared ingredient quantities, explicit unit/state, serving reconciliation, yield metadata and review state. Freezer kits are counted separately as exempt. Report compliant/corrected/freezer-kit-exempt/yield-missing/manual-review counts; do not auto-rewrite uncertain recipes.
+
+See the detailed contract in `docs/architecture/V2-COOKBOOK-INGREDIENT-FIRST-NUTRITION-CALCULATOR.md`. The V2 vertical slice is tracked as ALL-229.
