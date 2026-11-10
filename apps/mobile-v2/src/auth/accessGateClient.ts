@@ -99,6 +99,11 @@ export function v2SignupConsentScope(
   return JSON.stringify([email.trim().toLowerCase(), v2LegalReviewSetKey('signup', documents)]);
 }
 
+/** An idempotent signup acceptance retry belongs to the exact created user. */
+export function v2SignupAcceptanceRetryScope(consentScope: string, createdUserId: string): string {
+  return JSON.stringify([consentScope, createdUserId]);
+}
+
 /** Fail closed if signup's reviewed legal snapshot differs from what is published now. */
 export function assertV2SignupLegalSnapshotCurrent(
   reviewedDocuments: readonly V2LegalDocument[],
