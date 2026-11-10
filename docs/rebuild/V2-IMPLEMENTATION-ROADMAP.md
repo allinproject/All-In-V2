@@ -270,3 +270,21 @@ The V1 Library contains reviewed research/implementation handoffs:
 - Coach should retrieve the relevant complete history from canonical owner systems, not dump all data into every prompt. Include source, date, revision, confidence and known coverage gaps.
 - Unknown working weights, unavailable history, insufficient prediction data or unverified course details remain unknown. Coach must ask or present a bounded alternative, not invent.
 - A plan may look structurally valid but still be bad training. Acceptance therefore includes expert/human review of realistic scenarios, not only schema tests.
+
+
+## Coach training intelligence and evidence audit — 2026-11-10
+
+Founder direction: Coach must create coherent plans for runners who strength train, runners who also bike/lift, and athletes combining three or more sports. It must adapt day by day to athlete input without silently rewriting the accepted block. Coach must use canonical whole-athlete history, not just recent chat summaries.
+
+See [V2 Coach Training Intelligence and History](../architecture/V2-COACH-TRAINING-INTELLIGENCE-AND-HISTORY.md).
+
+V1 source audit:
+- Research: 17 reviewed Coach Evidence Registry domains plus dedicated concurrent/hybrid, training load/fatigue/adaptation and strength programming handoffs. Reviewed guidance is not proof of live plan-generator integration.
+- Multi-sport: V1 has cross-sport session/canonical activity and conflict/adaptation guards, sport-specific context and race-plan outlines. The recovered plan-builder handoff is a single-primary-modality skeleton, not a complete validated runner+bike+strength or triathlon synthesizer.
+- History: V1 Coach has task-gated canonical context readers and Progress/Strength/Race/Completed Activity summaries. That does not establish a complete longitudinal athlete-history retrieval contract with provenance and sport/time coverage.
+- Predictions: V1 has running snapshot persistence/readers for mile/5K/10K/half/marathon and a separate algorithm/test handoff. That handoff described the algorithm as outside the live app and said live wiring remained required. Do not claim the V1 prediction engine was fully wired; ultra predictions remain excluded.
+- Race/route: V1 has real periodized plan, race strategy/course-version and route-provider validation primitives. End-to-end physiological/operational coherence remains to be audited.
+
+V2 deterministic Training slice committed: `apps/mobile-v2/src/features/training/trainingPlanSynthesis.ts` + tests. It accepts Coach-proposed intents, preserves distinct sport demand, schedules across declared goals/sports, blocks restrictions/duplicates/unavailable fixed days, flags high-demand density and proposes review-only day adaptations. Source tests are committed but not yet executed. The slice does not yet prescribe session dose, connect Athlete History, write canonical plans, generate complete periodization or pass end-to-end scenarios.
+
+Linear: ALL-230 plan/restriction reliability; ALL-231 plan synthesis; ALL-232 athlete history; ALL-233 prediction; ALL-234 race/route coherence. ALL-232 supplies evidence to ALL-231/ALL-233/ALL-234. ALL-222 owns schema/security. ALL-217 owns Coach runtime port.
