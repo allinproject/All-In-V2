@@ -18,7 +18,8 @@ The source filenames and Supabase migration history use different timestamps. Th
 |---|---:|---|
 | `20261110000100_v2_auth_profile_legal_foundation.sql` | `20261110021548` | Auth bootstrap, Profile, Settings, Onboarding, Legal Documents/Acceptances, settings idempotency ledger, initial RLS/grants/RPCs. |
 | `20261110000200_v2_tighten_profile_privileges_and_legal_versions.sql` | `20261110022457` | Column-limited Profile updates, updated-at triggers, immutable published legal content and current-version acceptance checks. |
-| `20261110000300_v2_provider_cache_and_private_rls.sql` | `20261110032039` | RLS defense-in-depth on private operational ledger, server-only provider cache and service-role cache RPCs. |\n| `20261110000400_v2_onboarding_progress_writer.sql` | `20261110101200` | Private onboarding action ledger and authenticated owner-only step writer with complete/skip/reset, expected-version and idempotent retry semantics. |
+| `20261110000300_v2_provider_cache_and_private_rls.sql` | `20261110032039` | RLS defense-in-depth on private operational ledger, server-only provider cache and service-role cache RPCs. |
+| `20261110000400_v2_onboarding_progress_writer.sql` | `20261110101200` | Private onboarding action ledger and authenticated owner-only step writer with complete/skip/reset, expected-version and idempotent retry semantics. |
 
 No V1 migration or object is part of this schema.
 
@@ -30,7 +31,8 @@ erDiagram
   auth_users ||--|| v2_profile_settings : "bootstrap / cascade delete"
   auth_users ||--|| v2_onboarding_progress : "bootstrap / cascade delete"
   auth_users ||--o{ v2_legal_acceptances : "acceptance history / cascade delete"
-  auth_users ||--o{ private_profile_settings_actions : "idempotency / cascade delete"\n  auth_users ||--o{ private_onboarding_actions : "idempotency / cascade delete"
+  auth_users ||--o{ private_profile_settings_actions : "idempotency / cascade delete"
+  auth_users ||--o{ private_onboarding_actions : "idempotency / cascade delete"
 
   v2_profiles {
     uuid user_id PK,FK
@@ -82,7 +84,15 @@ erDiagram
     bigint result_version
     timestamptz created_at
   }
-  private_onboarding_actions {\n    uuid user_id PK,FK\n    text client_action_id PK\n    text step\n    text action\n    bigint result_version\n    timestamptz created_at\n  }\n  private_provider_cache {
+  private_onboarding_actions {
+    uuid user_id PK,FK
+    text client_action_id PK
+    text step
+    text action
+    bigint result_version
+    timestamptz created_at
+  }
+  private_provider_cache {
     text provider PK
     text cache_key PK
     jsonb payload
@@ -100,7 +110,7 @@ Notes:
 - `v2_legal_documents` has a composite primary key `(document_key, version)`. Legal acceptance stores exact version strings and checks them against the latest published versions in the canonical acceptance RPC; there are intentionally no direct FKs because each receipt requires three fixed document keys.
 - `v2_profile_settings_actions` has composite primary key `(user_id, client_action_id)`, ensuring one idempotency record per actor/action.
 - `v2_provider_cache` has composite primary key `(provider, cache_key)`; it is independent of user identity and stores only bounded provider response cache data.
-- All seven tables currently have zero rows. No legal documents are published and no legal acceptance records exist.
+- All eight tables currently have zero rows. No legal documents are published and no legal acceptance records exist.
 
 ## 3. Deployed table contract and security matrix
 
@@ -112,11 +122,12 @@ Notes:
 | `public.v2_legal_documents` | Legal operations; published product content | RLS enabled. SELECT only rows with `status='published'` and `effective_at <= now()`. | anon/authenticated SELECT only. No client writes. | Reviewed operator/migration publication workflow. Published content fields are immutable; insert a new version instead of editing published content. No documents are currently published. |
 | `public.v2_legal_acceptances` | Legal/account lifecycle; user-private immutable receipt | RLS enabled. SELECT own rows only. | Authenticated SELECT only. No direct INSERT/UPDATE/DELETE. | `v2_accept_legal_documents` checks age attestation, exact latest published versions and actor; per-user client action is unique and idempotent. |
 | `allin_private.v2_profile_settings_actions` | Profile settings infrastructure; private operational metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. Owner `postgres` retains migration/function-owner privileges. | Only reached from `v2_patch_profile_settings_section` SECURITY DEFINER path. Never add permissive policies to silence no-policy INFO. |
-| `allin_private.v2_onboarding_actions` | Onboarding infrastructure; private per-user idempotency metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only reached from `v2_set_onboarding_step` SECURITY DEFINER path.\n| `allin_private.v2_provider_cache` | Provider infrastructure; private operational cache | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only service-role-only `v2_provider_cache_get/put` SECURITY DEFINER RPCs. Not canonical ingredient/nutrition truth. |
+| `allin_private.v2_onboarding_actions` | Onboarding infrastructure; private per-user idempotency metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only reached from `v2_set_onboarding_step` SECURITY DEFINER path.
+| `allin_private.v2_provider_cache` | Provider infrastructure; private operational cache | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only service-role-only `v2_provider_cache_get/put` SECURITY DEFINER RPCs. Not canonical ingredient/nutrition truth. |
 
 ### Verified table constraints and indexes
 
-- All five public foundation tables and both private tables have RLS enabled.
+- All five public foundation tables and all three private tables have RLS enabled.
 - Profile, Settings and Onboarding each have one row per Auth user via a primary key on `user_id` and cascading FK to `auth.users(id)`.
 - Onboarding has a finite six-step allowlist (`focus`, `training_pattern`, `availability`, `coach`, `food_safety`, `proactivity`); completed and skipped arrays cannot overlap.
 - Settings requires a JSON object and positive version.
@@ -134,7 +145,8 @@ All listed functions are owned by `postgres` and have an empty function search p
 | `public.v2_handle_new_user()` | Yes | No anon/authenticated/service_role direct EXECUTE | Auth.users AFTER INSERT trigger creates Profile, Settings and Onboarding rows. Not a client API. |
 | `public.v2_my_profile_state()` | Yes | authenticated only | Requires `auth.uid()`; returns only the caller's Profile, Settings, Onboarding, current published legal documents and latest acceptance. |
 | `public.v2_patch_profile_settings_section(text,jsonb,bigint,text)` | Yes | authenticated only | Requires `auth.uid()`; per-user advisory transaction lock; allowlisted sections; nonempty JSON object; positive expected version; bounded action ID; exact retry returns original version; changed-payload action-ID reuse fails; stale version raises serialization conflict. |
-| `public.v2_set_onboarding_step(text,text,bigint,text)` | Yes | authenticated only | Requires `auth.uid()`; one allowlisted step per call; complete/skip/reset; advisory lock; expected-version guard; same-state no-op without version bump; exact retries return original version even after later changes; changed action-ID reuse fails.\n| `public.v2_accept_legal_documents(text,text,text,boolean,text)` | Yes | authenticated only | Requires `auth.uid()`; exact latest current published Terms/Privacy/Founder Beta Terms; age attestation; bounded per-user idempotency key; changed-payload reuse fails. |
+| `public.v2_set_onboarding_step(text,text,bigint,text)` | Yes | authenticated only | Requires `auth.uid()`; one allowlisted step per call; complete/skip/reset; advisory lock; expected-version guard; same-state no-op without version bump; exact retries return original version even after later changes; changed action-ID reuse fails.
+| `public.v2_accept_legal_documents(text,text,text,boolean,text)` | Yes | authenticated only | Requires `auth.uid()`; exact latest current published Terms/Privacy/Founder Beta Terms; age attestation; bounded per-user idempotency key; changed-payload reuse fails. |
 | `public.v2_provider_cache_get(text,text)` | Yes | service_role only | Explicitly checks `auth.role()='service_role'`; returns unexpired cache plus source/license/freshness metadata. |
 | `public.v2_provider_cache_put(text,text,jsonb,text,text,timestamptz,timestamptz)` | Yes | service_role only | Explicitly checks service role; provider allowlist, key, payload size/type and fetch/expiry bounds; upsert by provider/cache key. |
 | `public.v2_set_updated_at()` | No | No API EXECUTE | Trigger helper for Profile, Settings and Onboarding timestamps. |
@@ -155,7 +167,7 @@ Verified against the live project catalog on 2026-11-10:
 - `authenticated` can update `display_name` and `avatar_path`; cannot update `user_id`, `created_at` or `updated_at`. Whole-table UPDATE privilege is false.
 - Authenticated users cannot directly INSERT into Settings, Onboarding or Legal Acceptances. No anonymous direct reads exist for private user rows.
 - The public API functions with authenticated EXECUTE are the four per-user RPCs listed above. Provider cache RPCs are service_role-only. Trigger helpers have no API EXECUTE grant.
-- Supabase security advisor's two private-table `rls_enabled_no_policy` INFO notices are intentional. The authenticated per-user SECURITY DEFINER RPC warning is documented; each checks actor identity and scopes reads/writes to it. Do not grant authenticated direct private-schema access or add permissive policies to silence the advisor.
+- Supabase security advisor's three private-table `rls_enabled_no_policy` INFO notices are intentional. Its four authenticated SECURITY DEFINER RPC WARN notices are documented; each per-user RPC checks actor identity and scopes reads/writes to that identity. Do not grant authenticated direct private-schema access or add permissive policies to silence the advisor.
 - All eight tables have zero rows. The onboarding writer was replay-tested with two synthetic authenticated users; those users, their progress rows and action-ledger records were rolled back. This is a structural/security verification, not proof of real user signup, published legal-document acceptance or installed-client lifecycle.
 
 ## 6. Outstanding foundation decisions / explicit gaps
