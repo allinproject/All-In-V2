@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
-import { assertV2SessionOwner } from '../src/auth/accessGateClient';
+import { assertV2SessionOwner, v2LegalReviewKey } from '../src/auth/accessGateClient';
 import { supabase } from '../src/lib/supabase';
 import { colors, radius, spacing } from '../src/theme/tokens';
 
@@ -15,14 +15,15 @@ export default function LegalAcceptanceScreen() {
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const actionId = useRef<string | null>(null);
+  const pendingAcceptance = useRef<{ reviewSet: string; id: string } | null>(null);
 
   if (!loading && !user) return <Redirect href="/sign-in" />;
   if (gate.status === 'ready') return <Redirect href="/home" />;
   if (gate.status !== 'legal_required') return <Redirect href="/" />;
 
   const documents = gate.requiredLegalDocuments;
-  const allReviewed = documents.length === 3 && documents.every(doc => checked[doc.document_key]);
+  const reviewSet = JSON.stringify([user?.id ?? null, ...documents.map(v2LegalReviewKey)]);
+  const allReviewed = documents.length === 3 && documents.every(doc => checked[v2LegalReviewKey(doc)]);
   const canAccept = allReviewed && ageConfirmed && !submitting;
 
   async function acceptDocuments() {
@@ -32,8 +33,10 @@ export default function LegalAcceptanceScreen() {
     try {
       await assertV2SessionOwner(supabase, user.id);
       const versions = new Map(documents.map(doc => [doc.document_key, doc.version]));
-      const id = actionId.current ?? `accept-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-      actionId.current = id;
+      const id = pendingAcceptance.current?.reviewSet === reviewSet
+        ? pendingAcceptance.current.id
+        : `accept-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+      pendingAcceptance.current = { reviewSet, id };
       const { error } = await supabase.rpc('v2_accept_legal_documents', {
         p_expected_user_id: user.id,
         p_terms_version: versions.get('terms'),
@@ -44,6 +47,7 @@ export default function LegalAcceptanceScreen() {
       });
       if (error) throw error;
       await assertV2SessionOwner(supabase, user.id);
+      pendingAcceptance.current = null;
       gate.retry();
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : 'Legal acceptance could not be saved. Please retry.');
@@ -59,13 +63,13 @@ export default function LegalAcceptanceScreen() {
         <Text accessibilityRole="header" style={styles.title}>Review and accept</Text>
         <Text style={styles.body}>Your access is limited until you review the current published V2 legal documents and confirm your age.</Text>
         {documents.map(doc => (
-          <View key={doc.document_key} style={styles.document}>
+          <View key={v2LegalReviewKey(doc)} style={styles.document}>
             <Text style={styles.documentTitle}>{doc.title} · {doc.version}</Text>
             <ScrollView nestedScrollEnabled style={styles.documentBody}>
               <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
             </ScrollView>
-            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!checked[doc.document_key] }} onPress={() => setChecked(old => ({ ...old, [doc.document_key]: !old[doc.document_key] }))} style={styles.reviewRow}>
-              <Text style={styles.checkbox}>{checked[doc.document_key] ? '☑' : '☐'}</Text>
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!checked[v2LegalReviewKey(doc)] }} onPress={() => setChecked(old => ({ ...old, [v2LegalReviewKey(doc)]: !old[v2LegalReviewKey(doc)] }))} style={styles.reviewRow}>
+              <Text style={styles.checkbox}>{checked[v2LegalReviewKey(doc)] ? '☑' : '☐'}</Text>
               <Text style={styles.reviewText}>I have read and reviewed this document</Text>
             </Pressable>
           </View>
