@@ -11,6 +11,11 @@ export function authRouteState(input: {
   const userId = String(input.userId ?? '').trim();
   return userId ? { state: 'signed_in', userId } : { state: 'signed_out' };
 }
+/** Direct auth routes must wait for session restoration before creating another login. */
+export function canStartV2SignedOutAction(loading: boolean, ownerId: string | null): boolean {
+  return authRouteState({ loading, userId: ownerId }).state === 'signed_out';
+}
+
 /** A confirmation-resend offer belongs to the email that failed sign-in. */
 export function shouldOfferV2ConfirmationResend(
   pendingEmail: string | null,
