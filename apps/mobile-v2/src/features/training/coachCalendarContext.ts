@@ -1,5 +1,5 @@
 import { validAthleteLocalDate } from './manualActivityDraft.ts';
-import { weekDaysForDate } from './calendarDayView.ts';
+import { weekDaysForDate, monthCalendarWeeks, firstOfMonth } from './calendarDayView.ts';
 import { V2_ACTIVITY_SPORTS, type ActivitySport } from './activityEntryContract.ts';
 
 /** ALL-240/246 — read-only, owner-verified Train calendar context for Coach. */
@@ -27,6 +27,8 @@ export type CoachCalendarContextResult =
       scope: 'train_calendar_read_only';
       selectedDay: string;
       selectedWeek: readonly string[];
+      selectedMonth: string;
+      windowDays: readonly string[];
       view: 'week' | 'month';
       /** IDs only; Coach must query canonical owner before any proposal or apply. */
       sessions: readonly CoachCalendarSession[];
@@ -51,12 +53,19 @@ export function prepareCoachCalendarContext(input: CoachCalendarInput): CoachCal
   }
   const week = weekDaysForDate(input.selectedDay);
   if (week.length !== 7) return { kind: 'blocked', reason: 'invalid_day' };
-  const relevantSessions = input.sessions.filter(session => week.includes(session.athleteLocalDate));
+  const selectedMonth = firstOfMonth(input.selectedDay);
+  if (!selectedMonth) return { kind: 'blocked', reason: 'invalid_day' };
+  const windowDays = input.view === 'month'
+    ? monthCalendarWeeks(input.selectedDay).flat().filter(date => date.slice(0, 7) === selectedMonth.slice(0, 7))
+    : week;
+  const relevantSessions = input.sessions.filter(session => windowDays.includes(session.athleteLocalDate));
   return {
     kind: 'ready',
     scope: 'train_calendar_read_only',
     selectedDay: input.selectedDay,
     selectedWeek: week,
+    selectedMonth,
+    windowDays,
     view: input.view,
     sessions: relevantSessions,
     noAutomaticPlanWrite: true,
