@@ -69,8 +69,28 @@ try {
       compressed_bytes = $_.CompressedLength
     }
   })
-  if ($members.Count -eq 0) {
-    throw 'Archive has no members; cannot establish a valid USDA snapshot.'
+  if ($members.Count -eq 0 -or $members.Count -gt 2000) {
+    throw 'Archive member count is missing or excessive; cannot establish a valid USDA snapshot.'
+  }
+  $seenMembers = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+  $hasJson = $false
+  foreach ($member in $members) {
+    $name = [string]$member.name
+    $parts = $name.Split('/')
+    if ([string]::IsNullOrWhiteSpace($name) -or $name.StartsWith('/') -or
+        $name.StartsWith('\\') -or $name.Contains('\\') -or
+        $name -match '^[A-Za-z]:' -or
+        $name -match '[\\x00-\\x1F]' -or
+        $parts -contains '.' -or $parts -contains '..' -or
+        -not $seenMembers.Add($name)) {
+      throw "Unsafe or duplicate ZIP member metadata: $name"
+    }
+    if ($name.ToLowerInvariant().EndsWith('.json') -and $member.uncompressed_bytes -gt 0) {
+      $hasJson = $true
+    }
+  }
+  if (-not $hasJson) {
+    throw 'USDA source archive must include a nonempty JSON member.'
   }
 } finally {
   $zip.Dispose()
