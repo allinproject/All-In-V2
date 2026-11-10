@@ -83,6 +83,14 @@ export function v2LegalReviewSetKey(
   return JSON.stringify(documents.map(document => v2LegalReviewKey(ownerId, document)));
 }
 
+/** Prior to account creation, bind age confirmation and acceptance retries to the email and legal set. */
+export function v2SignupConsentScope(
+  email: string,
+  documents: readonly Pick<V2LegalDocument, 'document_key' | 'version' | 'content_sha256'>[],
+): string {
+  return JSON.stringify([email.trim().toLowerCase(), v2LegalReviewSetKey('signup', documents)]);
+}
+
 export function v2LegalAcceptanceMatches(
   acceptance: unknown,
   documents: V2LegalDocument[],
