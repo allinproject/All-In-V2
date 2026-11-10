@@ -14,7 +14,7 @@ const profile=():ExerciseScienceProfile=>({
   {muscleGroupId:'gluteals',role:'primary',sourceIds:['source-running']},
  ],
  jointDemands:[{jointId:'knee',action:'flexion and extension',plane:'sagittal',rangeOfMotion:'variable',relativeDemand:'moderate',sourceIds:['source-running']}],
- cautionFlags:[],coachingCues:{setup:['Hold close to chest.'],execution:['Brace and squat.'],commonErrors:['Allowing the weight to drift.']},
+ cautionFlags:[{flagId:'depth',description:'Use the range that matches the athlete-approved movement tolerance.',sourceIds:['source-running']}],coachingCues:{setup:['Hold close to chest.'],execution:['Brace and squat.'],commonErrors:['Allowing the weight to drift.']},
  progressionVariationIds:[],regressionVariationIds:['variation-box-squat'],alternativeVariationIds:[],
  sources:[{id:'source-running',title:'Running strength intervention review',url:'https://example.org/running',publishedYear:2024,sourceType:'systematic_review_or_meta_analysis',doi:null,pmid:'10000001'}],
  claims:[{id:'claim-running',claimType:'sport_transfer',statement:'High-load strength methods may improve measured running performance in the studied middle- and long-distance runner populations.',population:'Middle- and long-distance runners in the reviewed controlled studies.',targetSports:['running'],targetGoals:['sport_performance'],directness:'direct_sport_outcome',evidenceTier:'systematic_review_or_meta_analysis',confidence:'moderate',sourceIds:['source-running'],limitations:'This intervention-level result does not prove this exact variation is superior or guarantee an individual race outcome.'}],
@@ -45,6 +45,10 @@ test('returns a sourced movement explanation for a matched sport goal with the e
  assert.equal(result.evidence[0].claimId,'claim-running');
  assert.deepEqual(result.evidence[0].sourceIds,['source-running']);
  assert.deepEqual(result.sources.map((source)=>source.id),['source-running']);
+ assert.equal(result.cautionFlags[0].flagId,'depth');
+ assert.deepEqual(result.requiredEquipmentIds,['dumbbell']);
+ assert.deepEqual(result.regressionVariationIds,['variation-box-squat']);
+ assert.match(result.variationDescription,/Dumbbell held at chest/);
  assert.equal(result.noDoseOrPlanWrite,true);
 });
 
