@@ -1,0 +1,90 @@
+/**
+ * V2 Coach read-model contract for queryable athlete history.
+ * This module does not fetch or persist history; canonical owner readers do.
+ * Its purpose is to retain provenance, active constraints and coverage gaps
+ * when building a bounded Coach context.
+ */
+export type AthleteHistorySport='running'|'cycling'|'swimming'|'strength'|'hiking'|'rucking'|'rowing'|'elliptical'|'stair'|'yoga'|'mobility'|'other';
+export type AthleteHistorySource='canonical_training'|'device_import'|'manual_entry'|'race_result';
+export type AthleteHistoryCoverageStatus='complete'|'partial'|'none'|'unknown';
+export type AthleteHistoryEvent={
+ id:string;
+ kind:'completed_session'|'race_result'|'strength_session'|'plan_change'|'adaptation_outcome';
+ sport:AthleteHistorySport|null;
+ occurredAt:string;
+ recordedAt:string;
+ source:AthleteHistorySource;
+ sourceRef:string|null;
+ canonicalRef:string|null;
+ planId:string|null;
+ planRevision:number|null;
+ summary:string;
+ metrics:Record<string,number|string|boolean|null>;
+ confidence:'low'|'moderate'|'high';
+};
+export type AthleteHistoryCoverage={
+ sport:AthleteHistorySport;
+ fromDate:string;
+ throughDate:string;
+ status:AthleteHistoryCoverageStatus;
+ lastSyncAt:string|null;
+ missingIntervals:Array<{fromDate:string;throughDate:string;reason:string}>;
+};
+export type AthleteRestriction={
+ id:string;
+ category:'exercise'|'equipment'|'schedule'|'pain_or_return'|'preference';
+ subject:string;
+ status:'active'|'inactive';
+ source:'explicit_user'|'approved_plan'|'system_inferred';
+ updatedAt:string;
+ reason:string|null;
+};
+export type AthleteHistoryReadModel={
+ version:1;
+ generatedAt:string;
+ requested:{fromDate:string;throughDate:string;sports:AthleteHistorySport[]};
+ currentPlan:{id:string;revision:number;weekStart:string;status:'accepted'}|null;
+ restrictions:AthleteRestriction[];
+ coverage:AthleteHistoryCoverage[];
+ events:AthleteHistoryEvent[];
+ completeness:'complete_for_requested_scope'|'partial'|'unavailable';
+ warnings:string[];
+};
+const DATE=/^\d{4}-\d{2}-\d{2}$/;
+function validDate(value:string):boolean{return DATE.test(value)&&Number.isFinite(Date.parse(value+'T12:00:00Z'))}
+function timestamp(value:string):number{const n=Date.parse(value);return Number.isFinite(n)?n:0}
+function safeEvent(e:AthleteHistoryEvent):boolean{
+ return Boolean(e&&e.id&&e.summary&&validDate(e.occurredAt.slice(0,10))&&Number.isFinite(Date.parse(e.recordedAt))&&
+ ['canonical_training','device_import','manual_entry','race_result'].includes(e.source)&&
+ ['low','moderate','high'].includes(e.confidence)&&e.metrics&&typeof e.metrics==='object'&&!Array.isArray(e.metrics));
+}
+export function buildAthleteHistoryReadModel(input:{
+ generatedAt:string;fromDate:string;throughDate:string;sports:AthleteHistorySport[];
+ currentPlan:AthleteHistoryReadModel['currentPlan'];
+ restrictions:AthleteRestriction[];coverage:AthleteHistoryCoverage[];events:AthleteHistoryEvent[];
+ maxEvents?:number;
+}):AthleteHistoryReadModel{
+ if(!Number.isFinite(Date.parse(input.generatedAt))||!validDate(input.fromDate)||!validDate(input.throughDate)||input.fromDate>input.throughDate)throw new Error('Valid athlete-history scope and retrieval timestamp are required.');
+ const sports=[...new Set(input.sports)];
+ const coverage=input.coverage.filter(c=>sports.includes(c.sport)&&validDate(c.fromDate)&&validDate(c.throughDate)&&c.fromDate<=c.throughDate);
+ const requestedStart=Date.parse(input.fromDate+'T00:00:00Z'),requestedEnd=Date.parse(input.throughDate+'T23:59:59Z');
+ const coveredSports=new Set(coverage.filter(c=>c.status==='complete'&&Date.parse(c.fromDate+'T00:00:00Z')<=requestedStart&&Date.parse(c.throughDate+'T23:59:59Z')>=requestedEnd&&c.missingIntervals.length===0).map(c=>c.sport));
+ const relevantCoverage=coverage.filter(c=>sports.includes(c.sport));
+ const complete=sports.length>0&&sports.every(s=>coveredSports.has(s));
+ const anyCoverage=relevantCoverage.some(c=>c.status!=='none');
+ const warnings:string[]=[];
+ if(!complete)warnings.push('History is incomplete for at least one requested sport or date range. Do not treat missing records as zero activity.');
+ if(relevantCoverage.some(c=>c.status==='partial'||c.missingIntervals.length>0))warnings.push('One or more device/provider history intervals are missing.');
+ if(relevantCoverage.some(c=>c.status==='unknown'))warnings.push('History coverage is unknown for one or more sports.');
+ if(input.currentPlan&&(!Number.isInteger(input.currentPlan.revision)||input.currentPlan.revision<1))throw new Error('Current accepted Training plan revision is invalid.');
+ const restrictions=input.restrictions.filter(r=>r.status==='active'&&r.id&&r.subject&&r.updatedAt&&Number.isFinite(Date.parse(r.updatedAt))).sort((a,b)=>timestamp(b.updatedAt)-timestamp(a.updatedAt));
+ const events=input.events.filter(safeEvent).filter(e=>e.occurredAt.slice(0,10)>=input.fromDate&&e.occurredAt.slice(0,10)<=input.throughDate&&(!e.sport||sports.includes(e.sport)));
+ const max=Math.max(1,Math.min(100,Math.floor(input.maxEvents??50)));
+ events.sort((a,b)=>timestamp(b.occurredAt)-timestamp(a.occurredAt)||timestamp(b.recordedAt)-timestamp(a.recordedAt));
+ return{
+  version:1,generatedAt:input.generatedAt,requested:{fromDate:input.fromDate,throughDate:input.throughDate,sports},
+  currentPlan:input.currentPlan,restrictions,coverage:relevantCoverage,events:events.slice(0,max),
+  completeness:complete?'complete_for_requested_scope':anyCoverage?'partial':'unavailable',
+  warnings,
+ };
+}
