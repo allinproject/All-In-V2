@@ -80,6 +80,11 @@ export function createOnboardingSaveGuard() {
   };
 }
 
+/** Remount onboarding state when the account or authenticated session changes. */
+export function v2OnboardingScreenKey(ownerId: string | null, sessionGeneration: number): string {
+  return JSON.stringify([ownerId, sessionGeneration]);
+}
+
 export type OnboardingPreferenceWrite = {
   section: SettingsSection;
   patch: Json;
