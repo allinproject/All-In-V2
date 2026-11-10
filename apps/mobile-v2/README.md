@@ -53,6 +53,27 @@ They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/o
 
 The package lockfile, clean install, TypeScript/app test execution, Expo bundle and physical-device checks have not yet passed. Package scripts currently include `test:auth`, `test:calculator`, `test:training-logic` and `typecheck`. Do not claim build or device acceptance until the exact branch is installed and tested. Node >=22.13 is required by the package; use `npm ci` only after the canonical package lockfile is committed.
 
+## Reproducible V2 dependency checkpoint
+
+From a networked clone of **this repository** (Node 22.16 or later):
+
+```bash
+cd apps/mobile-v2
+npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+node ../../scripts/check-v2-dependency-manifest.mjs --require-lockfile
+npm ci --no-audit --no-fund
+npm run test:auth
+npm run test:calculator
+npm run test:training-logic
+npm run typecheck
+npx --no-install expo config --type public
+npx --no-install expo export --platform all --output-dir /tmp/allin365-v2-export
+```
+
+Review and commit `apps/mobile-v2/package-lock.json` only after a successful clean `npm ci` with no `--force` or `--legacy-peer-deps`. The lockfile must be generated for the **current** package manifest, not copied from an older failed workflow artifact. No production credentials are needed for this isolated source-validation sequence; Expo exports may require the deliberately nonfunctional environment placeholders used in `.github/workflows/v2-engineering.yml`. Do not use the placeholder credentials for live authentication testing.
+
+The cheap dependency-free smoke workflow checks React/React DOM manifest compatibility on relevant pushes. The full engineering workflow requires a committed matching lockfile and runs only at a non-draft PR review checkpoint. On the current branch, the full lockfile, npm install, TypeScript and Expo validation remain **unverified**. The full engineering job is a release gate, not a per-commit development loop.
+
 ## Security note
 
 Public API tables use least-privilege grants and owner RLS. The private tables `allin_private.v2_profile_settings_actions`, `allin_private.v2_onboarding_actions` and `allin_private.v2_provider_cache` have RLS enabled and no schema usage or direct table privileges granted to `anon` or `authenticated`. They intentionally have no direct API policies; only the narrowly scoped owning SECURITY DEFINER/service-role RPC paths access them. See Linear ALL-223 for applied migration, grant verification, and rolled-back idempotent-writer replay evidence. Supabase's remaining three no-policy INFO notices for these private tables are intentional; do not add permissive policies to silence them. Four authenticated per-user SECURITY DEFINER RPC advisor warnings are documented; these functions check `auth.uid()` and are required by the current client flow.
