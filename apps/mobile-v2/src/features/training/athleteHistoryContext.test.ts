@@ -67,6 +67,19 @@ test('future-recorded and impossible event chronology cannot become completed at
  assert.deepEqual(result.events.map(e=>e.id),['valid-delayed-import']);
 });
 
+test('sport-neutral metadata cannot masquerade as a completed sport-specific workout',()=>{
+ const base={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
+  sports:['running' as const],currentPlan:null,restrictions:[],coverage:[coverage('running')]};
+ const result=buildAthleteHistoryReadModel({...base,events:[
+  event({id:'unknown-workout',kind:'completed_session',sport:null}),
+  event({id:'unknown-race',kind:'race_result',sport:null}),
+  event({id:'unknown-lift',kind:'strength_session',sport:null}),
+  event({id:'neutral-plan-change',kind:'plan_change',sport:null}),
+  event({id:'known-run',kind:'completed_session',sport:'running'}),
+ ]});
+ assert.deepEqual(result.events.map(e=>e.id),['neutral-plan-change','known-run']);
+});
+
 test('unrecognized event types or sports cannot enter Coach as trusted activity',()=>{
  const base={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running' as const],currentPlan:null,restrictions:[],coverage:[coverage('running')]};
  const result=buildAthleteHistoryReadModel({...base,events:[
