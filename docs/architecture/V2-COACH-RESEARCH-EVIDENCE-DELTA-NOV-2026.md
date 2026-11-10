@@ -86,7 +86,7 @@
 
 ## Remaining research and validation debt — explicit
 
-This document covers seven evidence themes across several increments, **not all 17 historical evidence domains**. The next research audit must inventory each prior registry topic against current primary reviews/guidelines, record checked year/source/claim/population, mark retained/revised/retired/unknown, name a canonical V2 decision owner and require at least one positive and one negative executable scenario. The 2024 heat guidance and 2026 mental-health consensus are **source reviews only**; they have not yet been tested against live Coach generations or verified on a device.
+This document covers eight evidence themes across several increments, **not all 17 historical evidence domains**. The next research audit must inventory each prior registry topic against current primary reviews/guidelines, record checked year/source/claim/population, mark retained/revised/retired/unknown, name a canonical V2 decision owner and require at least one positive and one negative executable scenario. The 2024 heat guidance and 2026 mental-health consensus are **source reviews only**; they have not yet been tested against live Coach generations or verified on a device.
 
 
 ## Evidence 6 — acute/chronic workload and injury inference (2026 synthesis)
@@ -115,7 +115,7 @@ This document covers seven evidence themes across several increments, **not all 
 
 ## Research audit status update
 
-The delta now covers **seven evidence themes**, some sharing a primary source. This is not seven independently verified implementation domains and does not complete the legacy 17-domain evidence review. Every evaluation above remains **proposed** until the canonical ALL-241 harness executes against actual typed readers, model output, application state and safety/cost acceptance. Research documentation cannot substitute for those checks.
+The delta now covers **eight evidence themes**, some sharing a primary source. This is not seven independently verified implementation domains and does not complete the legacy 17-domain evidence review. Every evaluation above remains **proposed** until the canonical ALL-241 harness executes against actual typed readers, model output, application state and safety/cost acceptance. Research documentation cannot substitute for those checks.
 
 ## Executed V2 cross-domain fixture inventory — 2026-11-10
 
@@ -131,3 +131,20 @@ The repository now includes `apps/mobile-v2/src/features/training/coachCrossDoma
 **Execution:** Dependency-free hosted CI [run 42882590609](https://github.com/allinproject/All-In-V2/actions/runs/42882590609) passed at `c49775ef1b1ce63d075cae3c343ed5dd05ec5267`. This does not verify full TypeScript/Expo build under ALL-224.
 
 **Next evaluation layers for ALL-241:** establish canonical owner-specific read fixtures and account isolation, then run structured model output against the ten existing suite groups (memory, plans, race, nutrition, gear, recovery, notifications, actions, integrity, degradation). A passing deterministic guard is never sufficient to claim the Coach *model* selected the right context or recommendation. Keep executed source-contract results and model/integration outcomes as separate evidence columns in Linear; avoid inventing a second training/recovery/ingredient owner or duplicating the existing Coach evaluation source of truth.
+
+## Evidence 8 — walking, beginners and low-activity adults (2020–2026)
+
+- **Primary public-health guideline:** [WHO Guidelines on Physical Activity and Sedentary Behaviour](https://www.who.int/publications/i/item/9789240014886) (25 November 2020), with technical summary DOI [10.1136/bjsports-2020-102955](https://doi.org/10.1136/bjsports-2020-102955). All adult activity counts, including walking, transport and short bouts. Some activity is better than none; gradual increases in frequency, duration and intensity are recommended. The 150–300 minutes moderate aerobic/week plus strengthening guidance is a population-level longer-term reference, **not** a minimum to count a workout, a mandatory initial prescription, or an admission requirement for beginner users.
+- **Steps evidence:** Ding D et al., *Daily steps and health outcomes in adults: a systematic review and dose-response meta-analysis*, Lancet Public Health 10:e668–e681 (August 2025), DOI [10.1016/S2468-2667(25)00164-1](https://doi.org/10.1016/S2468-2667(25)00164-1), [PMID 40713949](https://pubmed.ncbi.nlm.nih.gov/40713949/). In observational cohorts, about 7,000 steps/day was associated with meaningful health benefits compared with 2,000, with non-linear relations for several outcomes. **Association is not an individual causal prediction, a hard threshold, or a universal step prescription.** Residual confounding, limited age strata, outcome heterogeneity and measurement differences matter.
+- **Fresh cardiovascular expert review:** *Exercise Prescriptions for Cardiovascular Health in Adults: 2026 ACC Scientific Statement*, JACC, DOI [10.1016/j.jacc.2026.09.008](https://doi.org/10.1016/j.jacc.2026.09.008). Supports a broad approach to aerobic activity, strengthening, balance/flexibility and reducing sedentary time, with intensity and progression tailored to capacity, symptoms, comorbidities and goals.
+- **Coach product decision:** Walking is a distinct canonical sport, eligible for start/manual capture and review-only treadmill-photo entry. Do not silently classify a treadmill as running. Coach should recognize beginners, short sessions and day-to-day functional activity as worthwhile, avoid shaming or rigid 10,000-step streak rules, and propose gradual *reviewable* progress based on reported tolerance, schedule, available history and goals. Unknown device coverage is not proof of zero steps. Pain, exertional symptoms, disability or medical limitation may require tailored caution and qualified assessment, not an unsourced automatic intensity increase.
+- **Existing executable partial coverage:** ALL-246 plus cross-domain athlete-history and Training fixtures now exercise the shared sport vocabulary and the walking/running separation. This verifies **representation**, not the model's novice coaching quality.
+- **Proposed ALL-239 / ALL-241 model scenarios:**
+  1. Previously inactive adult completing ten-minute walks three times weekly: Coach recognizes progress rather than declaring failure to meet 150 minutes or 10,000 steps.
+  2. Treadmill screen photo without explicit selected modality: retain walking/running choice and manual review before writing workout.
+  3. Walking-only goal: no automatic 5K running plan, running pace target or running-specific load assumed.
+  4. Sparse steps after a watch sync gap: don't infer inactivity; display unknown history coverage.
+  5. A walk/strength/rowing combination: preserve all supported modalities and consider a beginner's recovery, constraints and preferences without forcing a race goal.
+  6. User with concerning exercise symptoms or a medically restricted activity: no categorical clearance or mandatory progression.
+
+**Research scope:** This adds one *theme*, not an executed Coach model evaluation, a clinical algorithm or approval for automatic training writes. WHO population targets and the 2025 cohort correlations must not be used to diagnose fitness or assign precise individual risk.
