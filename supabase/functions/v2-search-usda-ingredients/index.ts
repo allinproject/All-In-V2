@@ -1,4 +1,5 @@
 import { normalizeFdcGenericFood } from '../_shared/fdc.ts';
+import { coalesceProviderRequest, getProviderCache, putProviderCache, providerCacheKey } from '../_shared/providerCache.ts';
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const HEADERS = {
@@ -37,11 +38,14 @@ async function fetchFdc(url: string, init?: RequestInit): Promise<Response> {
 }
 
 async function handleSearch(query: string, apiKey: string) {
+  const cacheKey = await providerCacheKey("usda_fdc_generic_search", query);
+  const cached = await getProviderCache("usda_fdc_generic_search", cacheKey);
+  if (cached) return response({ ...(cached.payload as Record<string, unknown>), cached: true });
   const url = new URL(FDC_BASE + "/foods/search");
   url.searchParams.set("api_key", apiKey);
   let upstream: Response;
   try {
-    upstream = await fetchFdc(url.toString(), {
+    upstream = await coalesceProviderRequest("fdc-search:" + cacheKey, () => fetchFdc(url.toString(), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -50,7 +54,7 @@ async function handleSearch(query: string, apiKey: string) {
         pageSize: 25,
         pageNumber: 1,
       }),
-    });
+    }));
   } catch {
     return response({ error: "usda_unavailable", retryable: true }, 503);
   }
@@ -60,7 +64,7 @@ async function handleSearch(query: string, apiKey: string) {
   if (!upstream.ok) {
     return response({ error: "usda_unavailable", retryable: upstream.status >= 500 }, upstream.status >= 500 ? 503 : 502);
   }
-  const payload = await upstream.json().catch(() => null);
+  const payload = await upstream.clone().json().catch(() => null);
   const foods = Array.isArray(payload?.foods) ? payload.foods : [];
   const retrievedAt = new Date().toISOString();
   const deduped = new Map<string, ReturnType<typeof normalizeFdcGenericFood>>();
@@ -68,7 +72,7 @@ async function handleSearch(query: string, apiKey: string) {
     const candidate = normalizeFdcGenericFood(food, retrievedAt);
     if (candidate && !deduped.has(candidate.source_id)) deduped.set(candidate.source_id, candidate);
   }
-  return response({
+  const result = {
     kind: "generic_ingredient_candidates",
     provider: "usda_fdc",
     query,
@@ -78,15 +82,23 @@ async function handleSearch(query: string, apiKey: string) {
     review_required: true,
     retrieved_at: retrievedAt,
     results: [...deduped.values()].filter(Boolean).slice(0, MAX_RESULTS),
-  });
+  };
+  await putProviderCache(
+    "usda_fdc_generic_search", cacheKey, result,
+    "usda_reference_unreviewed", "USDA FoodData Central / CC0 1.0", 6 * 60 * 60, retrievedAt
+  );
+  return response({ ...result, cached: false });
 }
 
 async function handleDetail(id: string, apiKey: string) {
+  const cacheKey = await providerCacheKey("usda_fdc_food_detail", id);
+  const cached = await getProviderCache("usda_fdc_food_detail", cacheKey);
+  if (cached) return response({ ...(cached.payload as Record<string, unknown>), cached: true });
   const url = new URL(FDC_BASE + "/food/" + encodeURIComponent(id));
   url.searchParams.set("api_key", apiKey);
   let upstream: Response;
   try {
-    upstream = await fetchFdc(url.toString());
+    upstream = await coalesceProviderRequest("fdc-detail:" + cacheKey, () => fetchFdc(url.toString()));
   } catch {
     return response({ error: "usda_unavailable", retryable: true }, 503);
   }
@@ -99,16 +111,21 @@ async function handleDetail(id: string, apiKey: string) {
   if (!upstream.ok) {
     return response({ error: "usda_unavailable", retryable: upstream.status >= 500 }, upstream.status >= 500 ? 503 : 502);
   }
-  const food = await upstream.json().catch(() => null);
+  const food = await upstream.clone().json().catch(() => null);
   const retrievedAt = new Date().toISOString();
   const candidate = normalizeFdcGenericFood(food, retrievedAt);
   if (!candidate) return response({ error: "fdc_food_not_usable_as_generic_ingredient" }, 422);
-  return response({
+  const result = {
     kind: "generic_ingredient_candidate",
     provider: "usda_fdc",
     review_required: true,
     result: candidate,
-  });
+  };
+  await putProviderCache(
+    "usda_fdc_food_detail", cacheKey, result,
+    "usda_reference_unreviewed", "USDA FoodData Central / CC0 1.0", 24 * 60 * 60, retrievedAt
+  );
+  return response({ ...result, cached: false });
 }
 
 Deno.serve(async (request: Request) => {
