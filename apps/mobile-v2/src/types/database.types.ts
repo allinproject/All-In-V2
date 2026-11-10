@@ -1,12 +1,3 @@
-/**
- * Generated from the live ALL IN 365 V2 Supabase public schema.
- * Project: xarhuczrtzuiljmtdaeu
- * Applied migrations through: 20261110105423 (v2_expected_owner_mutation_guards)
- * Generated: 2026-11-10
- *
- * Regenerate after approved V2 migrations. The allin_private schema is
- * intentionally excluded from public client types and is never client-accessible.
- */
 export type Json =
   | string
   | number
@@ -194,6 +185,10 @@ export type Database = {
       v2_provider_cache_get: {
         Args: { p_cache_key: string; p_provider: string }
         Returns: Json
+      }
+      v2_provider_cache_prune_expired: {
+        Args: { p_batch_size?: number }
+        Returns: number
       }
       v2_provider_cache_put: {
         Args: {
