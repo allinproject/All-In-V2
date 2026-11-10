@@ -21,6 +21,22 @@ export function scrubCrashEvent<T extends {
   delete event.message;
   for (const exception of event.exception?.values ?? []) {
     if (exception.value) exception.value = '[redacted]';
+    // Keep the actionable stack location, not local variables or source text
+    // that could contain athlete names, emails, food logs or auth tokens.
+    const stacktrace = (exception as typeof exception & {
+      stacktrace?: { frames?: Array<{
+        vars?: unknown;
+        context_line?: string;
+        pre_context?: string[];
+        post_context?: string[];
+      }> };
+    }).stacktrace;
+    for (const frame of stacktrace?.frames ?? []) {
+      delete frame.vars;
+      delete frame.context_line;
+      delete frame.pre_context;
+      delete frame.post_context;
+    }
   }
   return event;
 }
