@@ -11,7 +11,7 @@
 
 Build a cleaner V2 mobile application foundation beside the current Native application, then migrate capability-by-capability through proven vertical slices. Do not rewrite the current app in place, reset branches, discard staged/recovered work, or replace the backend as a first move.
 
-The V1 application remains the operational reference and fallback until V2 proves the relevant user journey against the same real account and canonical records. V2 must reuse existing identity, Coach conversation/history, recipes, and canonical domain writers. It must not create a second production database, second Coach memory/history system, parallel recipe catalog, or competing write paths.
+The V1 application and V1 Supabase project are read-only reference sources during the rebuild. V2 owns its new account system, database, Coach history, recipe catalog and canonical domain writers from the beginning. Port approved V1 product behavior and product-owned catalog assets selectively; do not build a customer migration or carry over the lone founder/test Coach thread by default.
 
 This is a foundation rebuild, not a change in the product promise. The approved product remains **ALL IN 365 — Live All In. Your whole fitness life in one place.** It serves beginners through endurance athletes and multisport users, strength athletes, cyclists, walkers, and people building healthier routines.
 
@@ -45,8 +45,8 @@ The exact route manifest at baseline is the `Native/src/app/` tree. V2 must buil
 ### Current technical system
 
 - **Mobile:** Expo / React Native / TypeScript, Expo Router. Existing package scripts include TypeScript, Native build/SDK, workout, recipe, auth, Coach, navigation, recovery, community, and domain-specific regression gates.
-- **Backend/data:** Supabase PostgreSQL, migrations, RLS, authenticated RPCs, private implementation functions and Edge Functions. The repository contains 958 migration files at the baseline tree; the live target ledger and applied state must be inspected independently for database work.
-- **Coach:** Existing live Coach service and persistent conversation behavior are product-critical. Repository source includes shared Coach context/proposal contracts and a staged Coach successor with focused tests. Staged code is not automatically the deployed endpoint. V2 must call the currently approved deployed endpoint through one adapter and preserve its auth, rate limits, safety, fallback, provider-hiding and canonical-action rules.
+- **Backend/data:** V1 has a large accumulated Supabase/PostgreSQL schema and migration history. V2 Supabase is intentionally empty and becomes the new canonical backend. Build a clean V2 schema, RLS, authenticated RPCs and Edge Functions from reviewed domain requirements; do not wholesale replay the V1 migration chain.
+- **Coach:** V1 behavior is the source for the V2 Coach port. At transfer inventory, V1 Supabase reports `allin-coach` ACTIVE v18 with JWT verification enabled and source SHA-256 `da56531e252d924a0915b1168f923f51985a004fd6d4c91bb1a8e341f90fefe3`. The staged V13 repository candidate is not the live v18 source. Port the exact v18 source plus required modules, adapt it to V2 schema/RPCs/secrets, and preserve its safety, provider, privacy, rate/cost and action contracts. V2 creates new Coach threads; no meaningful V1 Coach history is required.
 - **Canonical domain ownership:** Training, Food Log, recipe versions, Pantry, Shopping, Meal Prep, Community, Profile and Recovery already have domain-specific readers/writers and database guards. Reuse those owners; do not bypass them with direct table writes.
 - **Device/integrations:** Apple Watch, HealthKit, Bluetooth HR and FTMS equipment have source-level foundations with remaining physical/device acceptance. Garmin/Coros are post-beta integrations. Machine control remains disabled per command until physical evidence authorizes it.
 - **Tests:** Current Native verification is broad and includes focused mounted/client/source/database contracts. Treat a test as evidence only for its actual source SHA, environment and boundaries. Mocked client tests are not live account, installed device, provider, or database acceptance.
@@ -78,8 +78,8 @@ Do not assume that every current implementation is bad or that the database must
 
 ### Retain and reuse
 
-1. Supabase project, existing user identities and account/session model.
-2. Existing canonical records and data ownership: recipes, Coach threads/history, workouts, plans, Food Log, Pantry, Meal Prep, Shopping, Profile and Recovery.
+1. Proven V1 domain behavior and contracts as reference; V2 owns a fresh Supabase Auth project and new account/session model.
+2. Proven V1 domain models and data ownership rules for recipes, Coach, workouts, plans, Food Log, Pantry, Meal Prep, Shopping, Profile and Recovery; selectively seed only approved product-owned catalog/reference data.
 3. Proven authenticated RPCs, RLS policies, idempotency/version guards and private function boundaries.
 4. The live Coach service and its prompt/safety/runtime boundary until a separately validated backend migration is justified.
 5. Proven domain algorithms and contracts from the current app: recipe nutrition/yield, Training identity/recovery, canonical Food writers, privacy, and integrations.
@@ -175,10 +175,10 @@ Backend inventory at baseline includes the existing Supabase migrations and Edge
 
 ## 7. Migration boundaries and rollout
 
-1. **Parallel foundation:** create V2 app and the first module in a separate path. The existing app remains buildable and operational.
-2. **Read-only first:** connect auth/session, load the existing Coach thread and recipe details without writes.
-3. **One explicit mutation:** add one reviewed Coach recipe proposal and route its approved action to the existing canonical writer.
-4. **Acceptance before expansion:** prove same-account continuity, idempotent save, persistent history, restart recovery and account isolation.
+1. **Parallel foundation:** build V2 app, V2 Auth and V2 backend independently; V1 remains read-only reference.
+2. **Source transfer:** capture exact live Coach v18 and validated V1 domain contracts; seed only product-owned cookbook/reference data.
+3. **One explicit mutation:** add one reviewed Coach recipe proposal and route its approved action to the V2 canonical writer.
+4. **Acceptance before expansion:** prove fresh founder sign-up/session restore, Coach request safety, catalog correctness, idempotent save, persistent V2 history and account isolation.
 5. **Workspace-by-workspace migration:** move one feature journey at a time. Keep the old journey available until the V2 replacement passes its own contract and device acceptance.
 6. **No dual-write migration:** never write the same business event to both old and V2 stores. Both apps call the same canonical owner.
 7. **No data migration in the first slice:** preserve existing rows as-is; no backfill, destructive cleanup or migration replay.
@@ -186,7 +186,7 @@ Backend inventory at baseline includes the existing Supabase migrations and Edge
 
 ## 8. First vertical slice — prove V2 can work
 
-**Milestone:** an existing user signs in to V2, resumes the existing Coach conversation, asks for a recipe, receives a structured proposal, explicitly approves it, saves through the current canonical writer exactly once, and sees the saved recipe in durable history.
+**Milestone:** the founder creates a fresh V2 account, signs in, starts a new V2 Coach conversation using ported V1 Coach behavior, asks for a recipe, receives a structured proposal, explicitly approves it, saves through the V2 canonical writer exactly once, and sees the saved recipe in durable V2 history.
 
 ### Slice A — V2 boot and existing-user auth
 
@@ -199,9 +199,9 @@ Backend inventory at baseline includes the existing Supabase migrations and Edge
 
 ### Slice B — persistent Coach continuity
 
-- V2 loads the existing thread/history for the authenticated owner.
-- Sending a message uses the current approved Coach service endpoint through one adapter.
-- Existing thread identity is preserved across navigation, app restart and token refresh.
+- V2 starts a new persistent Coach thread for the authenticated owner.
+- Sending a message uses the ported V1 v18 Coach behavior through one V2 Edge Function adapter.
+- New thread identity is preserved across navigation, app restart and token refresh.
 - Thread-scoped settled facts remain separate from durable profile memory and canonical app records.
 
 **Pass evidence:** message appears once, is returned by canonical history read, and remains after process restart. Account change suppresses the prior owner's pending response.
@@ -243,9 +243,11 @@ Backend inventory at baseline includes the existing Supabase migrations and Edge
 
 ## 9. Build sequence after the blueprint
 
-1. Verify baseline dependencies, app tooling, current deployed Coach endpoint/version, and exact existing recipe proposal/save/history contracts.
-2. Create the isolated V2 Expo shell and typed auth/session adapter.
-3. Complete real existing-user sign-in/session restoration.
+1. Verify V2 Expo tooling and package compatibility; create the isolated V2 app shell.
+2. Design the V2 auth/profile/legal schema and signup gate.
+3. Port exact V1 Coach v18 behavior and its dependencies to the V2 backend.
+4. Import and validate product-owned Cookbook catalog/reference data.
+5. Complete fresh founder signup/session restoration.
 4. Add one persistent Coach thread adapter and conversation screen.
 5. Add typed recipe proposal/review/approval.
 6. Wire the existing exactly-once canonical writer and history reader.
@@ -258,7 +260,8 @@ Backend inventory at baseline includes the existing Supabase migrations and Edge
 - No edits to `main`; no merge, ready-for-review conversion or release flag change.
 - No PR #2 merge; PR #2 remains open/draft/unmerged.
 - No production migration, live-user fixture, provider change, Edge Function deployment, billing change or paid CI run as part of baseline creation.
-- No new user, recipe, Coach memory/history, workout, Food Log or Pantry data store.
+- No customer-base migration, V1 password credential import, V1 Coach-thread history import, or automatic founder personal workout/Food Log migration.
+- V2 creates new canonical account, Coach, recipe-user-version, workout, Food Log and Pantry records in the V2 backend.
 - No generic write API that bypasses domain ownership.
 - No indiscriminate rewrite of the 958-migration history.
 - No claimed device/provider acceptance from source tests.
@@ -267,9 +270,9 @@ Backend inventory at baseline includes the existing Supabase migrations and Edge
 ## 11. Baseline gaps to close before the first code slice
 
 - Refresh exact integration branch HEAD and exact file bytes immediately before creating V2 files; preserve concurrent commits.
-- Identify local/recovery archives by manifest and hashes, and compare them to current repository source before restoring anything. Archives are evidence/recovery inputs, not automatic authority.
-- Inventory actual deployed Coach function name/version and compare it with staged repository candidates.
-- Inspect existing Auth client/session restore code, Coach persistent conversation APIs, recipe proposal action contract, canonical save RPC and history reader together.
+- Inventory V1-to-V2 asset sources (live Coach v18, Cookbook product catalog, legal package, business/brand authority, website and Figma design files).
+- Capture the exact V1 Coach v18 deployed bundle and map its dependencies; do not use staged V13 as a substitute.
+- Inspect V1 catalog relationships and seed a reproducible product-owned data import; exclude founder-only records unless separately approved.
 - Identify the approved isolated authenticated integration-test environment. Do not create a paid Supabase branch or write production fixtures just to make tests convenient.
 - Record ownership and exact acceptance evidence in Linear before implementation; each new work item must be a small independently verifiable slice.
 
@@ -285,3 +288,14 @@ Backend inventory at baseline includes the existing Supabase migrations and Edge
 - **Important unresolved architecture decision:** the empty V2 Supabase project does not currently contain V1 users or canonical history. A V2 app pointed at it cannot transparently authenticate existing V1 users or read their current records. Do not configure production sign-in to V2 or claim account continuity until the founder approves the identity/data strategy. Options include keeping V1 Supabase as the production auth/data authority while V2 UI is built, or planning a separately validated user/data migration and cutover to V2. A split Auth/data setup is also possible but must be explicitly designed and tested.
 - The V2 Supabase project is isolated development infrastructure until that decision is resolved. Do not copy production rows, Auth users, secrets or migrations into it automatically.
 - The first scaffold was staged in V1's integration branch for continuity, then copied into this dedicated V2 repository. All further V2 source changes belong here.
+
+
+## Founder decision and V1 asset transfer — 2026-11-10
+
+V2 Supabase is the new canonical backend, not a staging mirror that must preserve a V1 customer base. The founder is the only V1 user. Create a fresh founder account in V2. V1 Supabase is retained as a read-only source for selected product assets and validated behavior.
+
+V1 database inventory at initial review: one profile; `allin_recipes` 1,019 rows; `allin_recipe_selectors` 1,293; selector options 5,876; ingredient profiles 408; recipe component mappings 2,855. V1 Coach has one owner and one thread with 16 message rows (8 user / 8 assistant); founder confirms no meaningful Coach conversation needs migration, so exclude that test thread. One training row and one food-entry row exist; do not import personal founder history by default.
+
+V1 live `allin-coach` is ACTIVE v18, `verify_jwt=true`, deployed bundle SHA-256 `da56531e252d924a0915b1168f923f51985a004fd6d4c91bb1a8e341f90fefe3`. The staged v13 repository code is not the deployed v18 source. Port exact v18 behavior and dependencies, adapting schema and RPC calls to V2 before deployment.
+
+Legal package is a working draft; do not treat it as final approval. V1-to-V2 transfer categories and acceptance checks live in [V1-to-V2 Asset Transfer Inventory](../migration/V1-TO-V2-ASSET-TRANSFER-INVENTORY.md). Website owner and canonical Figma file(s) remain to be identified. Do not assume Wix owns the website or guess Figma file IDs.
