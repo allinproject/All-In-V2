@@ -5,7 +5,7 @@ import {matchRaceCourseGpsPosition,type RaceCourseGpsMatchState} from './raceCou
 import type {RaceCourseEvidence} from './raceCourseEvidence.ts';
 
 const evidence=():Pick<RaceCourseEvidence,'raceId'|'courseVersion'|'routeFile'>=>({
- raceId:'race-2027',courseVersion:'official-final-v2',
+ raceId:'race-2027',routeId:'route-2027',courseVersion:'official-final-v2',
  routeFile:{kind:'gpx',fileRef:'private-upload-ref',source:'organizer_gpx'},
 });
 const gpx=(points:Array<[number,number,number]>)=>`<gpx><trk><trkseg>${points.map(([lat,lon,ele])=>`<trkpt lat="${lat}" lon="${lon}"><ele>${ele}</ele></trkpt>`).join('')}</trkseg></trk></gpx>`;
@@ -76,4 +76,14 @@ test('course version change requires a fresh match sequence',()=>{
  const result=matchRaceCourseGpsPosition(newCourse,fix({capturedAtMs:101000}),first.state);
  assert.equal(result.status,'reset_required');
  if(result.status==='reset_required')assert.equal(result.state,null);
+});
+
+test('course geometry without canonical route identity cannot become trusted GPS progress',()=>{
+ const geometry=course([[44.95,-93.1,250],[44.951,-93.1,260]]);
+ const noRouteId=geometry.status==='ready'||geometry.status==='partial'
+  ? {...geometry,routeId:null}
+  : geometry;
+ const result=matchRaceCourseGpsPosition(noRouteId,fix());
+ assert.equal(result.status,'untrusted');
+ if(result.status==='untrusted')assert.match(result.reason,/route identity/);
 });
