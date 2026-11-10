@@ -111,3 +111,46 @@ This is a proposed V2 design, not yet a deployed schema. Final table/RPC shapes 
 - OFF unknown barcode, invalid GTIN, duplicate/conflicting records, partial panel, per-100mL and stale/cache/rate-limit tests.
 - USDA generic data and OFF branded data cannot be confused or auto-promoted without identity review.
 - Estimate-only recipe nutrition can never satisfy validated Food Log/Prepared Meal persistence requirements.
+
+
+## Founder-approved V2 ingredient database decision — 2026-11-10
+
+The V2 ingredient database is a first-class canonical product data system, not merely a provider cache. A user opening or recalculating a recipe must not call USDA or Open Food Facts. The calculator reads already-reviewed ingredient nutrition profiles from V2's local database and performs deterministic arithmetic on-device or in the V2 application layer using those profiles. Recipe open, re-open, serving changes and quantity edits must not trigger upstream API calls when the required reviewed profiles are present.
+
+### Ingredient database owns reusable food facts
+
+The V2 ingredient database should include:
+- Stable V2 ingredient identity independent from a provider's ID.
+- Canonical display name, food group/category, normalized preparation state and user-facing aliases.
+- Search normalization and exact/unique alias resolution; ambiguous matches never auto-select.
+- Nutrient profile with a declared basis (per 100 g, per 100 mL, per exact item/each or another explicitly supported basis), units and null for any unknown nutrient.
+- Measurement conversions only when food-specific or unit-specific evidence is recorded; no universal one-piece weight or unverified liquid density.
+- Source identity and provenance: provider/source ID, USDA data type (Foundation, SR Legacy, Branded) or OFF product ID/GTIN, source licence/attribution, fetched date, source revision when available.
+- Preparation-state identity (raw, cooked, dry, drained, as-sold, prepared and other explicit states) so profiles cannot be silently interchanged.
+- Review lifecycle: candidate, needs_review, reviewed, calculation_ready, retired/superseded. A raw external search result is never calculation-ready.
+- Duplicate/alias merge history and deterministic V2 ID mapping.
+- Optional reference micronutrients; absence remains null and must never be filled with zero.
+
+Keep ingredient nutrient facts independent from recipe records. Recipe catalog rows store ingredient identity, amount, unit, preparation state, method, instructions, servings/yield and provenance; they do not store recipe-level macro/nutrition totals. The calculator derives batch/per-serving/per-weight output from the current recipe state and reviewed profiles.
+
+### Import and provider strategy
+
+1. Bootstrap common generic ingredient profiles using USDA FoodData Central downloadable bulk datasets and/or bounded initial API imports. Use Foundation Foods as primary generic analytical reference; use SR Legacy when needed. Preserve data type and source identity.
+2. Normalize, deduplicate and stage records as candidates. Do not automatically promote all USDA records to reviewed profiles; food identity, data type, basis, nutrient coverage and preparation state must meet review rules.
+3. Add existing Cookbook ingredient/alias mappings and exact existing profiles to V2 through a deterministic reviewed mapping; do not copy old recipe macro snapshots.
+4. Use USDA API for genuinely missing food searches and controlled source refreshes—not on every recipe open.
+5. Use Open Food Facts for packaged/branded products and GTIN/barcode identification. Preserve source-quality warning and ODbL/DbCL attribution. Branded product data must not be substituted for a generic ingredient without an explicit product/ingredient identity decision.
+6. Cache external candidates and public provider data separately from reviewed V2 ingredient profiles. A provider cache hit is not equivalent to a reviewed ingredient record.
+7. Recipe browsing/calculation works offline/provider-outage-safe once required reviewed ingredient profiles are present. Missing/unreviewed profiles yield a clear incomplete/manual-review result, never a live provider dependency or invented nutrient.
+
+### Upstream quota protection
+
+- No provider request on recipe open, recipe reopen, serving adjustment, ingredient-quantity edit or ordinary local recalculation.
+- External ingredient search happens only when a requested food cannot be resolved from the local ingredient DB and the user explicitly enters an ingredient-search/add flow.
+- Source refresh runs as queued/batched maintenance, with a global V2 budget well below upstream limits, deduplication and backoff.
+- Monitor USDA `X-RateLimit-Limit` and `X-RateLimit-Remaining`; stop/defer refreshes before exhaustion and back off on 429.
+- Open Food Facts exact-product and text-search budgets are separate. Search is explicit-submit only; never on each keystroke.
+- Keep the USDA secret and provider access exclusively server-side.
+- Add a fail-safe test that opening/recalculating a recipe with all required local profiles makes zero HTTP/provider calls.
+
+Proposed schema ownership lives under the Cookbook domain in the V2 architecture matrix: `v2_ingredients`, `v2_ingredient_aliases`, `v2_ingredient_nutrition_profiles`, and source/review history. Final table and write-RPC shape is owned by ALL-222 before implementation.

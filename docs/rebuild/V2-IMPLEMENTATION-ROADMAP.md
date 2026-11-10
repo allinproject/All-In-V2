@@ -203,3 +203,19 @@ The latest V1 app's ingredient-first nutrition calculator is the V2 authority. D
 V1's currently deployed `search-food-products` Edge Function is ACTIVE v7/JWT-protected (SHA-256 `6ffc6825214f20bb484078b47c35b79f43f6fcfce5447c9f7473ac1fc6267346`) and includes USDA generic FDC search plus Open Food Facts/Search-a-licious branded text discovery. V1 `lookup-food-barcode` uses an exact GTIN path with USDA Branded first and Open Food Facts product v3 fallback. Port these as V2-owned functions; do not call V1 endpoints at runtime or copy V1 secrets.
 
 Detailed design and official provider requirements: [V2 Cookbook Ingredient-first Nutrition Calculator](../architecture/V2-COOKBOOK-INGREDIENT-FIRST-NUTRITION-CALCULATOR.md). Work is tracked by ALL-225 (calculator/yield), ALL-226 (USDA/OFF providers), then ALL-218 (catalog seed without recipe macro fields).
+
+
+## Founder-approved ingredient database rule — 2026-11-10
+
+The V2 Ingredient Database is a first-class reusable product system, not simply the provider cache. It is the calculator's normal source of nutrition truth. Recipe opens, reopens, serving-count changes, quantity edits and ordinary recipe recalculations must perform **zero USDA/Open Food Facts HTTP calls** when ingredient profiles are already available locally.
+
+- Bootstrap common generic ingredient profiles from reviewed USDA FoodData Central bulk datasets and/or controlled batch imports; preserve FDC ID, data type, nutrient basis, source/licence and retrieval provenance.
+- Keep stable V2 ingredient identities and aliases separate from provider IDs. Exact unique aliases resolve locally; ambiguity goes to review rather than guesswork.
+- Store nutrients per explicitly declared basis (100 g, 100 mL, exact each/item etc.); unknown nutrient values remain null. No universal piece weights, density or cooking conversion assumptions.
+- Store preparation state and review/readiness lifecycle. Search candidates are not calculator-ready until identity/state/source/basis/coverage review passes.
+- Keep provider response cache separate from durable reviewed ingredient profiles.
+- Use USDA only for true local-catalog gaps and controlled batch refresh. Open Food Facts is for branded/packaged products and GTIN identity; its quality and licence metadata remain visible.
+- Source refresh is globally budgeted, queued and backed off based on USDA rate headers/429 and separate OFF limits. No search-as-you-type.
+- When an ingredient is missing, show a clear partial/manual-review state; never make recipe open depend on upstream APIs or invent nutrition.
+
+The architecture and implementation plan live in [V2 Cookbook ingredient-first calculator spec](../architecture/V2-COOKBOOK-INGREDIENT-FIRST-NUTRITION-CALCULATOR.md). Schema ownership and policy are established by ALL-222; ingredient DB/import implementation is tracked as ALL-228; calculator integration is ALL-225; provider discovery/refresh is ALL-226/ALL-227.
