@@ -6,12 +6,14 @@ import { combineCalendarReads, type PlannedCalendarItem, type CompletedCalendarI
 const request = {
   expectedOwnerId: 'athlete-a',
   authenticatedOwnerId: 'athlete-a',
+  activeSessionGeneration: 7,
   accessGateReady: true,
   requestedFromDate: '2026-10-26',
   requestedThroughDate: '2026-12-06',
 };
 const snapshot = {
   ownerId: 'athlete-a',
+  authSessionGeneration: 7,
   fromDate: '2026-10-26',
   throughDate: '2026-12-06',
   snapshotVersion: 'accepted-plan-revision-2',
@@ -39,6 +41,8 @@ test('incomplete or paginated fetch cannot claim an empty month', () => {
     {...snapshot, fromDate: '2026-11-01'},
     {...snapshot, throughDate: '2026-11-30'},
     {...snapshot, ownerId: 'athlete-b'},
+    {...snapshot, authSessionGeneration: 6},
+    {...snapshot, authSessionGeneration: 8},
     {...snapshot, records: null as never},
     {...snapshot, fromDate: 'invalid'},
   ]) {
@@ -52,6 +56,8 @@ test('session switch, signed out, access gate, and invalid requested range fail 
     {authenticatedOwnerId: null},
     {accessGateReady: false},
     {expectedOwnerId: ''},
+    {activeSessionGeneration: 8},
+    {activeSessionGeneration: -1},
     {requestedFromDate: '2026-12-10'},
     {requestedThroughDate: '2026-11-01'},
     {requestedFromDate: '2026-02-30'},
@@ -77,8 +83,15 @@ test('calendar stays unknown if one independent canonical source is not certifie
 test('certification does not silently trust an unverified source during account switch', () => {
   const result = certifyCalendarOwnerRead({
     ...request, authenticatedOwnerId: 'athlete-b', snapshot: {...snapshot, records: [
-      {id:'workout-a',ownerId:'athlete-a',athleteLocalDate:'2026-11-10'},
+      {id:'workout-a',ownerId:'athlete-a',athleteLocalDate:'2026-11-10',sport:'running' as const,state:'planned' as const,planRevisionId:'rev-1'},
     ]},
   });
   assert.deepEqual(result, {status:'unavailable'});
+});
+
+
+test('same athlete reauth invalidates an older completed calendar read', () => {
+  assert.equal(certifyCalendarOwnerRead({...request, activeSessionGeneration: 8, snapshot}).status, 'unavailable');
+  assert.equal(certifyCalendarOwnerRead({...request, activeSessionGeneration: 8,
+    snapshot: {...snapshot, authSessionGeneration: 8}}).status, 'ready');
 });
