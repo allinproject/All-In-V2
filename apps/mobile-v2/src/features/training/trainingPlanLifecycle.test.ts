@@ -30,3 +30,10 @@ test('race plan acceptance rejects missing, duplicated and swapped days inside t
  wrongRaceFlag.days[2].isRaceDay=true;
  assert.throws(()=>assertRacePlanCalendarAssigned(wrongRaceFlag),/contiguous/);
 });
+
+test('malformed maxWeeks cannot disable race planning horizon limits',()=>{
+ assert.throws(()=>buildRacePlanCalendar({startDate:'2026-11-09',raceDate:'2036-11-09',maxWeeks:Number.NaN}),/planning limit/);
+ assert.throws(()=>buildRacePlanCalendar({startDate:'2026-11-09',raceDate:'2027-11-09',maxWeeks:0}),/planning limit/);
+ assert.throws(()=>buildRacePlanCalendar({startDate:'2026-11-09',raceDate:'2027-11-09',maxWeeks:2.5}),/planning limit/);
+ assert.throws(()=>buildRacePlanCalendar({startDate:'2026-11-09',raceDate:'2036-11-09',maxWeeks:9999}),/planning window/);
+});
