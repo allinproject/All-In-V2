@@ -68,6 +68,7 @@ export type ExerciseSuitabilityResult =
       muscleRoles: ExerciseScienceProfile['muscleGroups'];
       jointDemands: ExerciseScienceProfile['jointDemands'];
       coachingCues: ExerciseScienceProfile['coachingCues'];
+      sources: ExerciseScienceProfile['sources'];
       evidence: readonly {
         claimId: string;
         directness: string;
@@ -395,6 +396,11 @@ export function evaluateExerciseSuitability(
   const selected = evidenceMatches;
   const limitations = [...new Set(selected.map((match) => match.claim.limitations))];
   const whyThisFits = selected.map((match) => match.claim.statement);
+  const sourceIds = new Set([
+    ...selected.flatMap((match) => match.claim.sourceIds),
+    ...profile.muscleGroups.flatMap((muscle) => muscle.sourceIds),
+    ...profile.jointDemands.flatMap((demand) => demand.sourceIds),
+  ]);
 
   return {
     status: 'recommended',
@@ -408,6 +414,7 @@ export function evaluateExerciseSuitability(
     muscleRoles: profile.muscleGroups,
     jointDemands: profile.jointDemands,
     coachingCues: profile.coachingCues,
+    sources: profile.sources.filter((source) => sourceIds.has(source.id)),
     evidence: selected.map((match) => ({
       claimId: match.claim.id,
       directness: match.claim.directness,
