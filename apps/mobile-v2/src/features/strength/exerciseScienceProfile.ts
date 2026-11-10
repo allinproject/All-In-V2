@@ -215,8 +215,9 @@ export function validateExerciseScienceProfile(
   if (!stringList(profile?.equipmentRequiredIds) || !unique(profile.equipmentRequiredIds || [])) errors.push('Required equipment IDs must be unique non-empty canonical IDs.');
   if (!stringList(profile?.equipmentOptionalIds) || !unique(profile.equipmentOptionalIds || [])) errors.push('Optional equipment IDs must be unique non-empty canonical IDs.');
   if (!Array.isArray(profile?.sources)) errors.push('Source registry must be a list.');
+  const sourceRecords = Array.isArray(profile?.sources) ? profile.sources : [];
   const sourceIds = new Set<string>();
-  for (const source of profile?.sources || []) {
+  for (const source of sourceRecords) {
     if (!source || !nonEmpty(source.id) || sourceIds.has(source.id)) {
       errors.push('Source IDs must be present and unique.');
       continue;
