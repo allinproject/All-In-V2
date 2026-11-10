@@ -58,6 +58,7 @@ erDiagram
     integer revision_number
     text status
     text priority_role
+    integer priority_order "nullable; ties permitted; no unique-primary constraint"
     date start_date "nullable"
     date target_date "nullable"
     date check_in_date "nullable"
@@ -153,7 +154,7 @@ Proposed columns:
 - revision_number INTEGER not null; status TEXT not null: candidate, accepted, superseded, rejected, archived.
 - source_kind TEXT not null: athlete_authored, coach_proposal, import_review, controlled_system.
 - source_ref TEXT null for the exact proposal/import reference; it is provenance, not a permission grant.
-- priority_role TEXT not null: primary, secondary, maintenance, optional. The role is time-scoped to this revision, not an immutable personality trait.
+- priority_role TEXT not null: primary, secondary, maintenance, optional. The role is time-scoped to this revision, not an immutable personality trait. Multiple current goals may be `primary`; no unique-primary-per-user constraint is allowed. Optional priority_order INTEGER records the athlete's preferred emphasis when helpful; ties are valid and the athlete may leave it unset.
 - start_date DATE null; target_date DATE null; optional check_in_date DATE null; timezone TEXT null only if there is no date/time interpretation requiring one. Missing dates remain null; the system may use created_at for display context but must not represent it as an athlete-selected start date.
 - goal_schema_version TEXT not null; created_at, reviewed_at, accepted_at.
 - bounded change/rationale summary.
