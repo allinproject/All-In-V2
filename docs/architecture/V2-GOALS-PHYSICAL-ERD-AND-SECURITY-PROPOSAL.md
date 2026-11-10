@@ -296,6 +296,7 @@ Goals and goal evidence are user-private by default.
 | public.v2_goals | Enabled; owner SELECT | SELECT own goals only | Goal create/archive/complete RPCs |
 | public.v2_goal_revisions | Enabled; owner SELECT | SELECT own revisions only | Versioned propose/accept/reject RPCs |
 | public.v2_goal_revision_measures | Enabled; owner SELECT | SELECT own measures only | Revision writer validates referenced metric definitions/units |
+| public.v2_goal_revision_behavior_targets | Enabled; owner SELECT | SELECT own behavior targets only | Goal revision writer validates athlete approval, optional cadence and existing evidence owner references |
 | public.v2_goal_relationships | Enabled; owner SELECT | SELECT own relationships only | Relationship writer validates both goal owners and active scope |
 | public.v2_goal_measure_evidence | Enabled; owner SELECT | SELECT own evidence only | Typed evidence intake/review RPCs |
 | Typed activity/race/manual evidence links | Enabled; owner SELECT | SELECT own linked evidence only | Source-domain/goal owner writer with exact cross-owner FK checks |
