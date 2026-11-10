@@ -514,10 +514,10 @@ Validation:
 - Migration 007 live metadata/security assertion passed: active schedule, postgres owner, exact hourly command, Cron schema usage only for postgres, private helper inaccessible to API roles, public wrapper executable only by service_role.
 - Direct service-role wrapper smoke test passed; service_role cannot call the private helper or read/delete the private cache table directly.
 - A direct postgres-owner invocation of the private helper returned 0; the cache currently has no rows.
-- The Cron job's first scheduled execution is pending; no successful `cron.job_run_details` entry is claimed yet.
+- First scheduled execution succeeded at `2026-11-10 13:17:00.143 UTC` (7:17 AM Central); `cron.job_run_details.status=succeeded`, job returned one SQL result row, and the provider cache remains empty (zero rows), so there were no expired entries to delete.
 - The live advisor remains at three intentional private-table INFO notices and four existing authenticated per-user SECURITY DEFINER WARN notices.
 
-ALL-227 remains In Progress for the first scheduled-run observation, upstream quota telemetry/cross-isolate throttling, Search-a-Licious quota/terms, Deno/provider integration tests, secret and OFF User-Agent/licence readiness, and safe Edge Function deployment. Scheduling is now configured; provider endpoints remain source-only and cache use is not yet live.
+ALL-227 remains In Progress for upstream quota telemetry/cross-isolate throttling, Search-a-Licious quota/terms, Deno/provider integration tests, secret and OFF User-Agent/licence readiness, and safe Edge Function deployment. The first scheduled cleanup run is verified. Scheduling is now configured; provider endpoints remain source-only and cache use is not yet live.
 
 
 ## 29. Training Workspace physical ERD and security proposal — 2026-11-10
