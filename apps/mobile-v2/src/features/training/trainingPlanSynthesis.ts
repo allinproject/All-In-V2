@@ -7,9 +7,12 @@ export type TrainingSport='running'|'cycling'|'swimming'|'strength'|'hiking'|'ru
 export type TrainingPriority='competition'|'key'|'supporting'|'optional';
 export type TrainingIntensity='easy'|'moderate'|'hard'|'unknown';
 export type TrainingDay='monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday';
+export type StrengthExerciseRole='major'|'abdominal'|'accessory';
+export type StrengthWorkoutStructure={format:'supersets'|'straight_sets';blocks:Array<{id:string;rounds:number;movements:Array<{exerciseId:string;role:StrengthExerciseRole;sets:number;reps:string}>}>};
+export type StrengthStructureRule={id:string;day?:TrainingDay;format:'supersets'|'straight_sets';blockCount:number;roundsPerBlock:number;requiredRoles?:StrengthExerciseRole[];movementsPerBlock?:number};
 export type TrainingSessionIntent={
  id:string;sport:TrainingSport;label:string;purpose:string;priority:TrainingPriority;intensity:TrainingIntensity;
- durationMinutes:number|null;preferredDays?:TrainingDay[];fixedDay?:TrainingDay;
+ durationMinutes:number|null;preferredDays?:TrainingDay[];fixedDay?:TrainingDay;strengthWorkout?:StrengthWorkoutStructure;
  demand:{aerobic:'low'|'moderate'|'high'|'unknown';mechanicalImpact:'low'|'moderate'|'high'|'not_applicable'|'unknown';localMuscular:'low'|'moderate'|'high'|'unknown';technicalSkill:'low'|'moderate'|'high'|'not_applicable'|'unknown'};
  stressTags:string[];evidenceRefs:string[];
 };
@@ -17,10 +20,10 @@ export type TrainingAthletePlanContext={
  primaryGoal:{id:string;label:string;sports:TrainingSport[]};
  secondaryGoals:Array<{id:string;label:string;sports:TrainingSport[]}>;
  availableDays:TrainingDay[];unavailableDays?:TrainingDay[];activeRestrictions:string[];requiredSports:TrainingSport[];
- maxSessionsPerDay?:number;existingAcceptedSessionIds?:string[];
+ maxSessionsPerDay?:number;existingAcceptedSessionIds?:string[];strengthStructureRules?:StrengthStructureRule[];
 };
 export type TrainingPlanIssue={
- code:'DUPLICATE_SESSION_ID'|'SPORT_NOT_IN_GOALS'|'SPORT_RESTRICTION'|'FIXED_DAY_UNAVAILABLE'|'UNSCHEDULED_KEY_SESSION'|'REQUIRED_SPORT_MISSING'|'MULTIPLE_HARD_SESSIONS_SAME_DAY'|'ADJACENT_HIGH_DEMAND_DAYS'|'UNSUPPORTED_PRESCRIPTION'|'MISSING_EVIDENCE';
+ code:'DUPLICATE_SESSION_ID'|'SPORT_NOT_IN_GOALS'|'SPORT_RESTRICTION'|'FIXED_DAY_UNAVAILABLE'|'UNSCHEDULED_KEY_SESSION'|'REQUIRED_SPORT_MISSING'|'MULTIPLE_HARD_SESSIONS_SAME_DAY'|'ADJACENT_HIGH_DEMAND_DAYS'|'UNSUPPORTED_PRESCRIPTION'|'STRENGTH_STRUCTURE_INVALID'|'EXERCISE_RESTRICTED'|'MISSING_EVIDENCE';
  severity:'blocking'|'review';sessionIds:string[];days:TrainingDay[];message:string;
 };
 export type TrainingPlanDraft={
@@ -36,6 +39,30 @@ function validSession(s:TrainingSessionIntent):boolean{
  ['running','cycling','swimming','strength','hiking','rucking','rowing','elliptical','stair','yoga','mobility','other'].includes(s.sport)&&
  ['competition','key','supporting','optional'].includes(s.priority)&&['easy','moderate','hard','unknown'].includes(s.intensity)&&
  (s.durationMinutes===null||(Number.isFinite(s.durationMinutes)&&s.durationMinutes>0&&s.durationMinutes<=900))&&s.demand&&Array.isArray(s.stressTags)&&Array.isArray(s.evidenceRefs));
+}
+function strengthStructureIssue(s:TrainingSessionIntent,context:TrainingAthletePlanContext):string|null{
+ const rules=(context.strengthStructureRules??[]).filter(rule=>s.sport==='strength'&&(!rule.day||rule.day===s.fixedDay||(s.preferredDays??[]).includes(rule.day)));
+ if(s.sport!=='strength')return s.strengthWorkout?'Strength prescription attached to a non-strength session.':null;
+ if(s.strengthWorkout){
+  if(!['supersets','straight_sets'].includes(s.strengthWorkout.format)||!Array.isArray(s.strengthWorkout.blocks)||s.strengthWorkout.blocks.length===0)return 'Strength workout structure is invalid.';
+  for(const block of s.strengthWorkout.blocks){
+   if(!block.id||!Number.isInteger(block.rounds)||block.rounds<1||block.rounds>10||!Array.isArray(block.movements)||block.movements.length===0)return 'Strength block identity, rounds or movement list is invalid.';
+   for(const movement of block.movements)if(!movement.exerciseId||!['major','abdominal','accessory'].includes(movement.role)||!Number.isInteger(movement.sets)||movement.sets<1||movement.sets>20||typeof movement.reps!=='string'||!movement.reps.trim())return 'Strength movement prescription is invalid.';
+  }
+ }
+ for(const rule of rules){
+  const structure=s.strengthWorkout;
+  if(!structure||structure.format!==rule.format||structure.blocks.length!==rule.blockCount||
+     structure.blocks.some(block=>block.rounds!==rule.roundsPerBlock))return 'The proposed strength structure conflicts with an active athlete-approved structure rule.';
+  for(const block of structure.blocks){
+   if(rule.movementsPerBlock!==undefined&&block.movements.length!==rule.movementsPerBlock)return 'A strength block has the wrong number of paired movements.';
+   if(rule.requiredRoles?.length){
+    const actual=block.movements.map(m=>m.role).sort().join('|');
+    if(actual!==[...rule.requiredRoles].sort().join('|'))return 'A strength pairing does not match the required movement roles.';
+   }
+  }
+ }
+ return null;
 }
 function hardDemand(s:TrainingSessionIntent):boolean{return s.intensity==='hard'||s.demand.aerobic==='high'||s.demand.localMuscular==='high'||s.demand.mechanicalImpact==='high'}
 function overlap(a:TrainingSessionIntent,b:TrainingSessionIntent):boolean{const tags=new Set(a.stressTags.map(x=>x.trim().toLowerCase()).filter(Boolean));return b.stressTags.some(x=>tags.has(x.trim().toLowerCase()))}
@@ -58,8 +85,12 @@ export function synthesizeTrainingWeek(context:TrainingAthletePlanContext,propos
   if(ids.has(s.id)||accepted.has(s.id)){issues.push(makeIssue('DUPLICATE_SESSION_ID','blocking','A session identity is duplicated or already accepted.',[s.id]));continue}
   ids.add(s.id);
   if(!allowedSport(s.sport,context)){issues.push(makeIssue('SPORT_NOT_IN_GOALS','review','This modality is not linked to a goal or declared required sport.',[s.id]));unscheduled.push({session:s,reason:'Sport-goal relationship needs athlete review.'});continue}
-  const restriction=context.activeRestrictions.find(r=>r.trim()&&s.stressTags.some(t=>t.toLowerCase()===r.trim().toLowerCase()));
-  if(restriction){issues.push(makeIssue('SPORT_RESTRICTION','blocking','The proposed session conflicts with an active athlete restriction.',[s.id]));unscheduled.push({session:s,reason:'Active athlete restriction.'});continue}
+  const structureError=strengthStructureIssue(s,context);
+  if(structureError){issues.push(makeIssue('STRENGTH_STRUCTURE_INVALID','blocking',structureError,[s.id]));unscheduled.push({session:s,reason:'Strength structure conflicts with the approved workout format.'});continue}
+  const restrictionKeys=new Set(context.activeRestrictions.map(r=>r.trim().toLowerCase().replace(/\\s+/g,'_')));
+  const proposedKeys=[...s.stressTags,...(s.strengthWorkout?.blocks.flatMap(b=>b.movements.map(m=>m.exerciseId))??[])].map(v=>v.trim().toLowerCase().replace(/\\s+/g,'_'));
+  const restriction=proposedKeys.find(key=>restrictionKeys.has(key));
+  if(restriction){issues.push(makeIssue('EXERCISE_RESTRICTED','blocking','The proposed session includes an exercise or stressor covered by an active athlete restriction.',[s.id]));unscheduled.push({session:s,reason:'Active athlete restriction.'});continue}
   if(s.evidenceRefs.length===0&&(s.priority==='competition'||s.priority==='key'||hardDemand(s)))issues.push(makeIssue('MISSING_EVIDENCE','review','A key or high-demand session lacks traceable evidence.',[s.id]));
   const candidates=s.fixedDay?[s.fixedDay]:(s.preferredDays?.length?s.preferredDays:available);
   const validDays=candidates.filter(day=>available.includes(day));
