@@ -67,8 +67,8 @@ function haversineMeters(aLat: number, aLon: number, bLat: number, bLon: number)
 }
 
 function quotedAttribute(attributes: string, name: string): number | null {
-  const doubleQuoted = attributes.match(new RegExp("\\\\b" + name + "\\\\s*=\\\\s*\\\"(" + NUMBER + ")\\\"", 'i'));
-  const singleQuoted = attributes.match(new RegExp("\\\\b" + name + "\\\\s*=\\\\s*'(" + NUMBER + ")'", 'i'));
+  const doubleQuoted = attributes.match(new RegExp("\\b" + name + "\\s*=\\s*\"(" + NUMBER + ")\"", 'i'));
+  const singleQuoted = attributes.match(new RegExp("\\b" + name + "\\s*=\\s*'(" + NUMBER + ")'", 'i'));
   const raw = doubleQuoted?.[1] ?? singleQuoted?.[1];
   if (raw === undefined) return null;
   const value = Number(raw);
