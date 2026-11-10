@@ -283,3 +283,28 @@ No migration should create Completed Activity tables, provider raw telemetry tab
 12. Whether multi-sport leg/transition identity belongs in versioned session intent or a dedicated normalized child table in the first slice.
 
 Until the owners resolve these points, do not create Training DDL or claim Training Workspace persistence is implemented.
+
+
+## 10. Calendar read-boundary acceptance proposal — 2026-11-10
+
+**Status: proposal for ALL-222/246 and ALL-243 owner decision; no DDL, RPC, grant, or deployment is authorized by this section.**
+
+Live inspection of the canonical V2 project \`xarhuczrtzuiljmtdaeu\` on 2026-11-10 found only V2 Profile, Profile Settings, Onboarding, Legal and private provider-cache/action tables. **No V2 Training or Completed Activity tables are deployed**. Applied migrations end at \`20261110124420_v2_provider_cache_cron_schedule\`. Do not wire a fake \`v2_training_*\` SQL read or treat zero returned records from a nonexistent source as a verified empty plan.
+
+### One owner-scoped calendar window, two authoritative reads
+
+For an authenticated athlete and an explicit athlete-local date window \`[fromDate, throughDate]\`:
+
+1. **Training owner (ALL-246)** returns only the latest accepted revision's effective planned-session slots/day states that apply within the requested date window, with immutable \`plannedSessionId\`, \`athleteLocalDate\`, \`sport\`, exact \`state\` (\`planned\`/\`missed\`/\`rest\`/\`recovery\`/\`cancelled\`), \`acceptedPlanRevisionId\`, and source/version/freshness. \`cancelled\` is preserved as source evidence but excluded from visible scheduled-workout cards. Multiple plans must not create ambiguous active authority; owner must define plan selection/precedence before certification.
+2. **Completed Activity owner (ALL-243)** returns one canonical activity per finished workout in the same window, with \`completedActivityId\`, \`athleteLocalDate\`, \`sport\`, \`sourceKind\`, nullable confirmed \`plannedSessionId\`, source identity and freshness/coverage. Duplicate device/provider reports reconcile to one activity *before* being considered ready; unresolved duplicates or source conflicts are **not** a verified complete read.
+3. **Both reads independently attest** the authenticated owner, requested date boundaries, snapshot revision/time, completeness of their own scope and no unresolved pagination. The client may display one source while the other is unavailable, but **month markers requiring a combined planned/completed view remain unavailable** until both are complete and mutually consistent. Zero records is only a known-empty result after full read certification; absent records, timeout, stale account, rejected pagination, or unsupported owner scope are *unknown*, not rest or missed days.
+4. Both owners must agree on **athlete-local timezone/date rules** rather than deriving date from UTC midnight. The Week request covers Monday–Sunday, and Month covers all visible 5/6 calendar-grid weeks including spillover dates. Both are derived by the existing \`visibleCalendarReadRange\` helper. Requests outside the attested window must never display verified emptiness.
+5. The read models and Coach stay **read-only**. A matching same-day Completed Activity can suppress the corresponding *planned* card in the display only; this never revises the Training plan. A different-sport link, duplicate linked activity, link to missed/rest/recovery/cancelled, or cross-day completion does **not** silently convert the accepted schedule. Source owner reconciliation must resolve conflicts before any merged ready-state claim.
+6. **Security:** all source objects must be owner-isolated with RLS/least-privilege SELECT, no anon access and no cross-owner inference; no client service-role key. A client \`ownerId\` is context, not proof of authorization. Reauthentication/account-switch invalidates outstanding window reads and cached UI state. Exact screen navigations must carry source IDs and date; item actions validate current owner/version server-side.
+
+### Required implementation/verification gate
+
+* First resolve Sections 9 owner decisions for stable planned-session IDs, accepted-revision precedence, day statuses, timezone behavior and Completed Activity handoff/linking; adopt the minimal first-slice schema only through reviewed versioned migrations and two-account RLS checks.
+* Add a single Training-owner read adapter and a single Completed Activity-owner read adapter, each returning a verified complete-scope result compatible with existing \`OwnerCalendarRead\` and \`combineCalendarReads\`; avoid another calendar table or client-side inferred source.
+* Verify empty week, two scheduled sessions, multi-sport day, unrelated manually logged activity, same-day linked completion, moved/cross-day completion, duplicate/mismatched links, missed/rest/recovery/cancelled, stale revision, partial pagination, month-grid spillover, DST/timezone, cross-owner visibility and mid-fetch sign-out.
+* Only then connect live readers to \`apps/mobile-v2/app/train.tsx\`, remove the current explicit unavailable adapters, and run automated, database/RLS, Expo and device acceptance with ALL-224/254. **No implementation completion claim until those checks actually pass.**
