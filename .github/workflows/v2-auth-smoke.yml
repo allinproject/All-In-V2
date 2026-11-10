@@ -33,6 +33,7 @@ on:
       - 'scripts/check-v2-dependency-manifest.test.mjs'
       - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
+      - 'supabase/functions/_shared/**'
       - 'apps/mobile-v2/.env.example'
   workflow_dispatch:
 
@@ -45,7 +46,7 @@ concurrency:
 
 jobs:
   auth-smoke:
-    name: Node-only Auth, Cookbook and Training tests
+    name: Node-only Auth, Cookbook, Training and provider-cache tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     defaults:
