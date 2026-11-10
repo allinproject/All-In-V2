@@ -54,7 +54,7 @@ test('variation-specific written cues are required even when demonstration media
  const profile=valid();profile.coachingCues.execution=[];
  const result=validateExerciseScienceProfile(profile);
  assert.equal(result.valid,false);
- if(!result.valid)assert.ok(result.errors.some((error)=>error.includes('written cues')));
+ if(!result.valid)assert.ok(result.errors.some((error)=>error.includes('execution cues')));
 });
 
 test('source URLs must be secure and claim limitations cannot be omitted',()=>{
