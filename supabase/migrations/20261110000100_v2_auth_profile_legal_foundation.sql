@@ -3,6 +3,15 @@
 -- No V1 user or personal data is imported by this migration.
 
 create schema if not exists allin_private;
+
+-- Fail closed for future objects created by the postgres migration role.
+-- Each later migration must grant only the privileges its own API surface needs.
+alter default privileges for role postgres in schema public
+  revoke all on tables from public, anon, authenticated, service_role;
+alter default privileges for role postgres in schema public
+  revoke execute on functions from public, anon, authenticated, service_role;
+alter default privileges for role postgres in schema public
+  revoke usage, select on sequences from public, anon, authenticated, service_role;
 revoke all on schema allin_private from public, anon, authenticated;
 grant usage on schema allin_private to postgres, service_role;
 
@@ -218,8 +227,14 @@ begin
   if p_section is null or not (p_section = any(v_allowed_sections)) then
     raise exception 'Unsupported profile settings section' using errcode = '22023';
   end if;
-  if p_patch is null or jsonb_typeof(p_patch) <> 'object' or jsonb_object_length(p_patch) = 0 then
-    raise exception 'Profile settings patch must be a non-empty JSON object' using errcode = '22023';
+  if p_patch is null then
+    raise exception 'Profile settings patch is required' using errcode = '22023';
+  end if;
+  if jsonb_typeof(p_patch) <> 'object' then
+    raise exception 'Profile settings patch must be a JSON object' using errcode = '22023';
+  end if;
+  if not exists (select 1 from jsonb_each(p_patch)) then
+    raise exception 'Profile settings patch must not be empty' using errcode = '22023';
   end if;
   if p_expected_version is null or p_expected_version <= 0 then
     raise exception 'Expected profile version is required' using errcode = '22023';
