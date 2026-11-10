@@ -361,9 +361,9 @@ From the V2 repository root on Windows, the intended manual invocation is:
 
 After the Windows acquisition helper creates a ZIP and manifest, independently verify the **actual downloaded bytes** using Node 22+ from the V2 repository root:
 
-\`\`\`powershell
+```powershell
 node .\scripts\verify-v2-usda-foundation-manifest.mjs "$env:USERPROFILE\Downloads\ALL-IN-365-USDA\foundation-2026-10-29-manifest.json" "$env:USERPROFILE\Downloads\ALL-IN-365-USDA\FoodData_Central_foundation_food_json_2026-10-29.zip"
-\`\`\`
+```
 
 The verifier is read-only. It checks pinned USDA Foundation 2026-10-29 source identity and candidate-only status, manifest SHA-256/byte length, actual archive SHA-256 and length, member metadata safety, duplicate member names, and existence of a nonempty JSON member. The acquisition script separately opens the ZIP. This verifier does **not** decompress or inspect food JSON and is **not** proof of published or reviewed nutrition. Both acquisition and verification must succeed before recording source bytes as verified; real ZIP acquisition remains outstanding.
 
