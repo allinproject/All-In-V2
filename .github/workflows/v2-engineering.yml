@@ -8,6 +8,7 @@ on:
       - 'supabase/config.toml'
       - 'scripts/check-v2-supabase-target.mjs'
       - 'scripts/check-v2-supabase-target.test.mjs'
+      - 'scripts/check-v2-dependency-manifest.mjs'
       - '.github/workflows/v2-engineering.yml'
   workflow_dispatch:
 
@@ -39,16 +40,8 @@ jobs:
           node-version: '22.16.0'
       - name: Verify V2 target isolation
         run: node ../../scripts/check-v2-supabase-target.mjs
-      - name: Generate real npm lockfile for review
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Preserve generated npm lockfile (not committed)
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: v2-package-lock-${{ github.run_id }}
-          path: apps/mobile-v2/package-lock.json
-          if-no-files-found: warn
-          retention-days: 7
+      - name: Verify committed dependency lockfile contract
+        run: node ../../scripts/check-v2-dependency-manifest.mjs --require-lockfile
       - name: Clean dependency install
         run: npm ci --no-audit --no-fund
       - name: Test Auth, Legal and Onboarding
