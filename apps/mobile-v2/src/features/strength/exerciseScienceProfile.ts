@@ -282,7 +282,7 @@ export function validateExerciseScienceProfile(
 
   const cues = profile?.coachingCues;
   if (!cues || !stringList(cues.setup, 1) || !stringList(cues.execution, 1) ||
-    !stringList(cues.commonErrors)) errors.push('Variation-specific setup and execution cues are required.');
+    !stringList(cues.commonErrors)) errors.push('Variation-specific written setup and execution cues are required.');
 
   for (const [label, ids] of [
     ['progression',profile?.progressionVariationIds],
