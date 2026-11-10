@@ -159,13 +159,21 @@ function readAnswersFromSettings(value: unknown): OnboardingAnswers {
     availableDays: asStringArray(training.available_days),
     coachGuidance: asString(coach.guidance_style),
     foodSafety: asString(safety.selection),
-    foodSafetyNotes: asString(safety.notes),
+    foodSafetyNotes: asString(safety.selection) === 'none' ? '' : asString(safety.notes),
     proactivity: asString(notifications.proactivity_level),
   };
 }
 
 function makeActionId(ownerId: string, step: OnboardingStep, kind: string): string {
   return ['onboarding', kind, ownerId, step, Date.now().toString(36), Math.random().toString(36).slice(2, 12)].join(':');
+}
+
+async function assertCurrentOwner(expectedOwnerId: string): Promise<void> {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (data.session?.user.id !== expectedOwnerId) {
+    throw new Error('The signed-in account changed. Your onboarding progress was not advanced.');
+  }
 }
 
 function toggleValue(current: string[], value: string, exclusiveValue?: string): string[] {
@@ -319,6 +327,7 @@ export default function OnboardingRequiredScreen() {
     setActionError(null);
 
     try {
+      await assertCurrentOwner(ownerId);
       if (action === 'complete') {
         const write = onboardingPreferenceWrite(activeStep, answers);
         const { data: savedSettingsVersion, error: settingsError } = await supabase.rpc(
@@ -339,9 +348,7 @@ export default function OnboardingRequiredScreen() {
         }
       }
 
-      if (user?.id !== ownerId) {
-        throw new Error('The signed-in account changed. Your onboarding progress was not advanced.');
-      }
+      await assertCurrentOwner(ownerId);
 
       const { error: progressError } = await supabase.rpc('v2_set_onboarding_step', {
         p_step: activeStep,
@@ -450,7 +457,11 @@ export default function OnboardingRequiredScreen() {
                 option={option}
                 selected={answers.foodSafety === option.value}
                 disabled={saving}
-                onPress={() => updateAnswers(current => ({ ...current, foodSafety: option.value }))}
+                onPress={() => updateAnswers(current => ({
+                  ...current,
+                  foodSafety: option.value,
+                  foodSafetyNotes: option.value === 'none' ? '' : current.foodSafetyNotes,
+                }))}
               />
             ))}
             {answers.foodSafety && answers.foodSafety !== 'none' ? (
