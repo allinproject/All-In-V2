@@ -110,3 +110,17 @@ test('triathlon proposal preserves swim, bike and run as distinct training expos
  assert.equal(result.invariants.sportsKeptSeparate,true);
  assert.equal(result.invariants.noAutomaticPlanWrite,true);
 });
+
+test('triathlon missing swim exposure is blocked rather than accepted as a complete week',()=>{
+ const c=context(['swimming','cycling','running']);
+ c.primaryGoal={id:'triathlon-primary',label:'Triathlon',sports:['swimming','cycling','running']};
+ c.secondaryGoals=[];
+ c.activeRestrictions=[];
+ const result=synthesizeTrainingWeek(c,[
+  {...session('bike','cycling','key','moderate','bike_aerobic'),fixedDay:'wednesday' as const},
+  {...session('run','running','key','moderate','run_impact'),fixedDay:'friday' as const},
+ ]);
+ assert.equal(result.status,'blocked');
+ assert.ok(result.issues.some(issue=>issue.code==='REQUIRED_SPORT_MISSING' && issue.message.includes('swimming')));
+ assert.equal(result.invariants.noAutomaticPlanWrite,true);
+});
