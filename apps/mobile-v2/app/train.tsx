@@ -3,6 +3,7 @@ import { Link, Redirect, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
+import { v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import {
@@ -34,6 +35,11 @@ const markerSymbols: Record<CalendarWorkoutMarker['kind'], string> = {
  * unavailable evidence is never represented as empty workouts.
  */
 export default function TrainingCalendarScreen() {
+  const { user, sessionGeneration } = useAuth();
+  return <TrainingCalendarOwnerScreen key={v2AuthenticatedScreenKey(user?.id ?? null, sessionGeneration)} />;
+}
+
+function TrainingCalendarOwnerScreen() {
   const { user, loading } = useAuth();
   const params = useLocalSearchParams<{ date?: string }>();
   const gate = useAccessGate();
