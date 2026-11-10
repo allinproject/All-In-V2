@@ -213,3 +213,42 @@ test('onboarding profile read only returns a matching owner snapshot while sessi
   } as unknown as Parameters<typeof readV2OwnedProfileState>[0];
   assert.deepEqual(await readV2OwnedProfileState(client, 'user-a'), state);
 });
+
+test('canceled onboarding profile reads discard delayed RPC results without consulting the session', async () => {
+  let resolveRpc: ((value: { data: unknown; error: null }) => void) | undefined;
+  let sessionChecks = 0;
+  let active = true;
+  const client = {
+    rpc: () => new Promise(resolve => { resolveRpc = resolve; }),
+    auth: {
+      getSession: async () => {
+        sessionChecks += 1;
+        return { data: { session: { user: { id: 'user-a' } } }, error: null };
+      },
+    },
+  } as unknown as Parameters<typeof readV2OwnedProfileState>[0];
+
+  const pending = readV2OwnedProfileState(client, 'user-a', () => active);
+  active = false;
+  resolveRpc?.({ data: { profile: { user_id: 'user-a' } }, error: null });
+  await assert.rejects(pending, /no longer active/i);
+  assert.equal(sessionChecks, 0);
+});
+
+test('canceled onboarding profile reads discard delayed session-check results', async () => {
+  let releaseSession: ((value: { data: unknown; error: null }) => void) | undefined;
+  let active = true;
+  const client = {
+    rpc: async () => ({ data: { profile: { user_id: 'user-a' } }, error: null }),
+    auth: {
+      getSession: () => new Promise(resolve => { releaseSession = resolve; }),
+    },
+  } as unknown as Parameters<typeof readV2OwnedProfileState>[0];
+
+  const pending = readV2OwnedProfileState(client, 'user-a', () => active);
+  await Promise.resolve();
+  await Promise.resolve();
+  active = false;
+  releaseSession?.({ data: { session: { user: { id: 'user-a' } } }, error: null });
+  await assert.rejects(pending, /no longer active/i);
+});
