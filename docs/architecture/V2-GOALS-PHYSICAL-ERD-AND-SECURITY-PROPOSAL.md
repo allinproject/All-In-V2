@@ -31,7 +31,8 @@ The proposal separates stable goal identity, immutable goal revisions, typed mea
 erDiagram
   auth_users ||--o{ v2_goals : owns
   v2_goals ||--o{ v2_goal_revisions : versions
-  v2_goal_revisions ||--o{ v2_goal_revision_measures : optionally_defines\n  v2_goal_revisions ||--o{ v2_goal_revision_behavior_targets : optionally_defines
+  v2_goal_revisions ||--o{ v2_goal_revision_measures : optionally_defines
+  v2_goal_revisions ||--o{ v2_goal_revision_behavior_targets : optionally_defines
   v2_goals ||--o{ v2_goal_relationships : relates
   v2_goal_revisions ||--o{ v2_goal_measure_evidence : supports
   v2_goal_revision_measures ||--o{ v2_goal_measure_evidence : evidence_for
@@ -57,12 +58,23 @@ erDiagram
     integer revision_number
     text status
     text priority_role
-    date start_date
-    date target_date
+    date start_date "nullable"
+    date target_date "nullable"
+    date check_in_date "nullable"
     text goal_schema_version
     timestamptz accepted_at
   }
-  v2_goal_revision_behavior_targets {\n    uuid id PK\n    uuid goal_revision_id FK\n    text behavior_code\n    text behavior_description\n    text cadence_kind\n    numeric target_frequency\n    text frequency_period\n    boolean user_confirmed\n  }\n  v2_goal_revision_measures {
+  v2_goal_revision_behavior_targets {
+    uuid id PK
+    uuid goal_revision_id FK
+    text behavior_code
+    text behavior_description
+    text cadence_kind
+    numeric target_frequency
+    text frequency_period
+    boolean user_confirmed
+  }
+ v2_goal_revision_measures {
     uuid id PK
     uuid goal_revision_id FK
     text metric_code
@@ -123,7 +135,7 @@ The evidence child tables are a proposed typed relationship pattern. Their final
 
 Proposed columns:
 - id UUID primary key; user_id UUID not null references auth.users(id) on delete cascade.
-- goal_kind TEXT not null: race_event, strength_performance, endurance_distance, endurance_time, sport_benchmark, machine_capacity, consistency, skill or another approved kind.
+- goal_kind TEXT not null: race_event, strength_performance, endurance_distance, endurance_time, sport_benchmark, machine_capacity, nutrition_habit, activity_habit, body_composition, general_wellbeing, exploratory_intention or another approved kind. Keep the vocabulary extensible without making each user phrase a new schema type.
 - title TEXT not null; description TEXT null; status TEXT not null: draft, active, paused, completed, abandoned, archived.
 - active_revision_id UUID null; version BIGINT not null; created_at/updated_at.
 - Optional sport_family only when a single primary sport is intrinsic to the goal. Multi-sport goals use typed revision measures and explicit goal relationships rather than one misleading sport label.
