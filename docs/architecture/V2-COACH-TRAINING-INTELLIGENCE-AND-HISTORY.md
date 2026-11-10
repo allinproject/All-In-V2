@@ -327,3 +327,20 @@ Coach should say when data is unavailable, never invent completeness, and never 
 
 ### Additional V2 scope
 Tracked under ALL-239 (non-race goals), ALL-240 (action capability), ALL-241 (end-to-end Coach evaluation).
+
+
+## 16. Coach behavior for athletes without race or performance goals
+
+Coach must be useful when the athlete's starting point is a plain-language intention such as “I want to eat better,” “I want to get in shape,” “I want to lose some weight,” “I want to build muscle,” “I want to work toward a six-pack,” “I want to be more active,” or “I want to feel healthier.” These are valid goals under ALL-239, not unsupported race-plan requests.
+
+- Coach asks what the user means and what fits their life, only as needed; it does not force a long onboarding questionnaire.
+- Start with one or two practical, low-friction actions selected with the athlete. Examples: a short walking routine, a manageable beginner strength schedule, a few home-cooked meals, more consistent meal timing or adding produce to meals.
+- Do not assume exercise history, gym/equipment access, budget, cooking ability, food preferences or available time. Read relevant profile/context and ask one useful next question when essential.
+- A broad intention can remain qualitative. Coach does not invent a numeric baseline, deadline, daily calorie target, target weight or macro budget.
+- “Eat better” does not automatically mean weight loss or calorie tracking. Discover the user's definition and offer behavior-first support.
+- Weight-loss/physique goals coordinate nutrition, strength/activity and recovery sustainably. Weight measurements, photos, calories and macros are optional. Never promise a six-pack, claim spot reduction, automatically tighten calorie goals or add training volume when progress slows.
+- Behavior and measurable refinements are proposals to the existing ALL-239 Goal owner. Accepted physical plans remain Training-owned; consumed intake remains Fuel-owned; Progress reads the same goal revision and real evidence.
+- Missed or unlogged habits are not evidence of failure. No punitive streaks, guilt, forced reminders or rewards for restriction/overtraining.
+- Coach distinguishes canonical logged evidence from user self-report and unavailable data; it does not claim progress it cannot observe.
+
+This is not a new Coach mode, habit engine or lifestyle-specific goal database. It is the normal persistent Coach adapting its response and next action to the athlete's stated goal.
