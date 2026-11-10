@@ -38,6 +38,27 @@ export type OnboardingAnswers = {
   proactivity: string;
 };
 
+export type OnboardingActionScope = {
+  ownerId: string;
+  step: OnboardingStep;
+  action: 'complete' | 'skip';
+  settingsVersion: number;
+  progressVersion: number;
+};
+
+/** An idempotent retry must use precisely the same operation parameters. */
+export function matchesOnboardingRetryScope(
+  pending: OnboardingActionScope | null,
+  current: OnboardingActionScope,
+): boolean {
+  return pending !== null
+    && pending.ownerId === current.ownerId
+    && pending.step === current.step
+    && pending.action === current.action
+    && pending.settingsVersion === current.settingsVersion
+    && pending.progressVersion === current.progressVersion;
+}
+
 export type OnboardingPreferenceWrite = {
   section: SettingsSection;
   patch: Json;
