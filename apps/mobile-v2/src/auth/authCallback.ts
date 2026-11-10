@@ -30,7 +30,7 @@ export function resolveAuthCallback(params: AuthCallbackParams): AuthCallbackRes
   if (first(params.error) || first(params.error_description)) {
     return {
       kind: 'error',
-      message: 'The email link could not be verified. Request a new link and try again.',
+      message: 'The sign-in link could not be verified. Try again from the sign-in screen.',
     };
   }
 
@@ -38,7 +38,7 @@ export function resolveAuthCallback(params: AuthCallbackParams): AuthCallbackRes
   if (!code) {
     return {
       kind: 'error',
-      message: 'This email link is missing its verification code. Request a new link and open it on this device.',
+      message: 'This sign-in link is missing its verification code. Start sign-in again on this device.',
     };
   }
 
