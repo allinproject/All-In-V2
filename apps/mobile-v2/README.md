@@ -22,6 +22,7 @@ Current source foundation:
 - Sign-up reads the exact published V2 legal documents. It remains disabled until Terms, Privacy and Founder Beta Terms are all published.
 - V2 legal acceptance is persisted through `v2_accept_legal_documents` with exact current versions, age attestation and idempotent action ID.
 - Access gate reads `v2_my_profile_state`, compares current legal versions and requires all six onboarding steps before opening private routes.
+- Progressive onboarding UI resumes from the first unfinished step, saves explicit answers through existing versioned Settings/onboarding RPCs, and leaves skipped optional fields unknown.
 - Shared visual tokens follow the approved App Art Handoff v2.
 - `src/types/database.types.ts` is generated from the live V2 public schema; `src/lib/supabase.ts` uses `createClient<Database>`. Private schema types are intentionally not exported to the client.
 
@@ -34,7 +35,7 @@ Four migrations have been applied to the dedicated V2 project:
 3. `20261110000300_v2_provider_cache_and_private_rls.sql` — private provider cache and defense-in-depth RLS on private operational tables.
 4. `20261110000400_v2_onboarding_progress_writer.sql` — private onboarding idempotency ledger and authenticated versioned complete/skip/reset writer.
 
-They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/onboarding, versioned legal document store, immutable acceptance receipts, private Settings/Onboarding action ledgers, RLS and guarded versioned/idempotent RPCs. Onboarding writes use `v2_set_onboarding_step`; the actual six-step UI is not yet built.
+They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/onboarding, versioned legal document store, immutable acceptance receipts, private Settings/Onboarding action ledgers, RLS and guarded versioned/idempotent RPCs. The six-step onboarding UI uses `v2_set_onboarding_step` for progress and the existing Profile Settings writer for selected answers.
 
 **Current legal status:** no legal documents have been published. Public signup and private app access must remain closed until the working V1 legal draft is reviewed/finalized and the three exact V2 versions are deliberately published. Do not seed or publish draft legal text automatically.
 
@@ -55,3 +56,8 @@ Public API tables use least-privilege grants and owner RLS. The private tables `
 
 
 The access-gate profile-state reader is typed with the generated `Database` contract as well. Compiler validation remains pending the reproducible npm install/typecheck gate.
+
+
+## Onboarding
+
+The short six-step flow covers focus, current training pattern, availability, Coach guidance, food safety and proactivity. Every step can be skipped; skipped values remain unknown. Answers are saved to the existing Training, Coach, Nutrition and Notification Settings sections. The flow does not request blanket OS permissions; Health, notifications, camera and location permissions remain contextual. Full app typecheck, signed-in installed-device behavior and accessibility acceptance are still pending.
