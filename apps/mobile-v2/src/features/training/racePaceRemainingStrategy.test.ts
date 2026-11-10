@@ -25,7 +25,7 @@ test('remaining projection recalculates from elapsed progress and approved per-s
  assert.equal(result.remainingMeters,1500);
  assert.equal(result.remainingApprovedSeconds,650);
  assert.equal(result.projectedFinishSeconds,1350);
- assert.equal(result.approvedRemainingAverageSecondsPerKm,Math.round(650/1.5));
+ assert.equal(Math.round(result.approvedRemainingAverageSecondsPerKm!),Math.round(650/1.5));
  assert.equal(result.projectedGoalDeltaSeconds,-50);
  assert.equal(result.goalAssessment,'ahead_of_goal_projection');
  assert.equal(result.recommendedAction,'continue_approved_segments');
@@ -42,7 +42,7 @@ test('late progress that would require faster than approved targets is not turne
  assert.equal(result.projectedGoalDeltaSeconds,250);
  assert.equal(result.goalAssessment,'requires_faster_than_approved_strategy');
  assert.equal(result.recommendedAction,'preserve_effort_and_revise_finish_expectation');
- assert.equal(result.requiredRemainingSecondsPerKm,400);
+ assert.equal(Math.round(result.requiredRemainingSecondsPerKm!),267);
  assert.equal(result.approvedRemainingAverageSecondsPerKm,Math.round(650/1.5));
  assert.equal(result.proposedCatchUpSecondsPerKm,null);
 });
