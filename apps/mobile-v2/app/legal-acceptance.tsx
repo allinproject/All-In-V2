@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
-import { assertV2SessionOwner, v2LegalReviewKey } from '../src/auth/accessGateClient';
+import { assertV2SessionOwner, v2LegalReviewKey, v2LegalReviewSetKey } from '../src/auth/accessGateClient';
 import { supabase } from '../src/lib/supabase';
 import { colors, radius, spacing } from '../src/theme/tokens';
 
@@ -12,7 +12,7 @@ export default function LegalAcceptanceScreen() {
   const { user, loading } = useAuth();
   const gate = useAccessGate();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [ageConfirmedReviewSet, setAgeConfirmedReviewSet] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const pendingAcceptance = useRef<{ reviewSet: string; id: string } | null>(null);
@@ -23,7 +23,8 @@ export default function LegalAcceptanceScreen() {
 
   const documents = gate.requiredLegalDocuments;
   const reviewKey = (doc: typeof documents[number]) => v2LegalReviewKey(user?.id ?? '', doc);
-  const reviewSet = JSON.stringify(documents.map(reviewKey));
+  const reviewSet = v2LegalReviewSetKey(user?.id ?? '', documents);
+  const ageConfirmed = ageConfirmedReviewSet === reviewSet;
   const allReviewed = documents.length === 3 && documents.every(doc => checked[reviewKey(doc)]);
   const canAccept = allReviewed && ageConfirmed && !submitting;
 
@@ -75,7 +76,7 @@ export default function LegalAcceptanceScreen() {
             </Pressable>
           </View>
         ))}
-        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed }} onPress={() => setAgeConfirmed(value => !value)} style={styles.reviewRow}>
+        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed }} onPress={() => setAgeConfirmedReviewSet(current => current === reviewSet ? null : reviewSet)} style={styles.reviewRow}>
           <Text style={styles.checkbox}>{ageConfirmed ? '☑' : '☐'}</Text>
           <Text style={styles.reviewText}>I confirm that I am at least 18 years old.</Text>
         </Pressable>
