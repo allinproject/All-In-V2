@@ -102,3 +102,20 @@ test('missing digest or description is conflict, not approved nutrition', () => 
     snapshot_id: '', importer_version: 'one', candidates: [], existing: [],
   }), /versioned ingredient source snapshot/);
 });
+
+test('unexpected provider JSON types produce review conflicts rather than crashing a seed preview', () => {
+  const malformed = [
+    fdc({ description: 42 as any }),
+    fdc({ payload_sha256: { sha: shaA } as any }),
+    fdc({ external_record_id: 12345 as any }),
+    fdc({ mapped_ingredient_id: 99 as any }),
+  ];
+  for (const row of malformed) {
+    const result = preview([row]);
+    assert.equal(result.counts.conflict, 1);
+    assert.equal(result.actions[0].calculation_ready, false);
+  }
+  assert.throws(() => previewIngredientSeed({
+    snapshot_id: 42 as any, importer_version: 'v2', candidates: [], existing: [],
+  }), /versioned ingredient source snapshot/);
+});
