@@ -282,3 +282,43 @@ A shortened/extra/free workout is still a real completed activity when validated
 - **Watch battery/offline:** prefer platform workout-session primitives, avoid unnecessary polling/network/UI churn, do not run GPS for indoor sessions, and use haptics only for actionable events. Required workout steps/zones/route/checkpoint data are cached before start where supported. Any long-session battery-saver mode must disclose reduced sampling and weakened metrics/alerts rather than silently changing their reliability. Battery comparisons and ultra-duration claims require duration-matched physical-device evidence.
 
 These distinctions are owned by ALL-246 (authored plans/session lifecycle), ALL-240 (approved safe action/apply), ALL-245 (device/session execution), ALL-243 (completed metrics/provenance), ALL-232 (history/retrieval), ALL-258 (exercise/set structure), and ALL-231 (Coach planning/adaptation). No new workout/session history store is permitted.
+
+
+## 14. Recovery, nutrition and source-coverage trust
+
+### Recovery snapshots and adaptation
+
+- Morning Recovery is a bounded timestamped snapshot of available overnight/recent evidence. A later live-day condition is a separate snapshot with its own effective time/source/version. Never rewrite morning's original state so it appears the athlete had that value all day.
+- A compact interpretation and today's recommendation come first; supporting HRV trend, resting HR, sleep quantity/quality/debt, recent completed load and optional subjective context remain one layer deeper. Missing, contradictory or stale signals reduce confidence or produce unavailable/unknown; they do not become a precise-looking default score.
+- When a planned session exists, Recovery answers whether today's demand still fits. If it does, preserve the plan. If evidence supports a change, propose intensity/duration reduction, same-purpose substitution, move/reschedule or rest through the reviewed Training writer. Readiness informs the accepted plan; it is not a second training plan or automatic readiness gate.
+- Optional user journal context (travel, illness, stress, late meal, caffeine/alcohol timing, soreness and other chosen inputs) may be analyzed only with adequate sample count and data quality. Use associative wording unless causality is actually established. One-off correlations are not user traits.
+- New users, new devices, sparse data and long sync gaps have a baseline-establishing/low-confidence state. Glanceable widgets/Watch cards consume the same canonical Recovery snapshot/version, not a second engine.
+- Subjective athlete check-in is evidence alongside wearable/model output. It neither blindly overrides nor is ignored by the model. Illness/pain/safety policies remain authoritative.
+
+### Nutrition accuracy vs completeness
+
+- Exact package/brand identity and label review are separate from nutrient completeness. A "label reviewed" status means visible package-label values were checked; it does not imply a complete micronutrient profile.
+- Preserve coverage/completeness and source class for exact branded package, generic composition data, community/unverified product, custom/user-entered food, estimated recipe component and canonical PreparedBatch snapshots. Missing micronutrients remain unknown, never zero.
+- Exact branded/package entries take precedence for their label-listed data when logging that package. A generic composition record may be preferable for a whole/common food when deeper micronutrient composition is needed; do not silently replace a logged branded item with a generic equivalent.
+- Custom foods remain private user-authored truth with exact source/correction lineage. Coach micronutrient patterns require sufficient entry/day coverage; partial label coverage cannot support confident deficiency/excess claims.
+- The ordinary Food Log remains low-friction; source/coverage explanation belongs in Nutrition Details or a trust affordance. This is a quality/coverage contract on the existing Ingredient/Food owners, not another nutrition DB.
+
+## 15. Availability, cross-training and weather adaptation
+
+- Current sustainable weekly volume and recent long-session history are distinct from desired future weekly/long-session targets. Volume trajectory preference and quality-session difficulty preference are independently user-controllable, bounded by evidence/safety.
+- Actual trustworthy completion, including free/shortened/extra sessions, feeds completed history. Planned/forecast work remains separate. Repeated divergence can prompt review; a one-off miss is not lost fitness and never triggers make-up stacking.
+- Temporary travel/vacation/reduced availability, B-race/tune-up and feeling unwell are bounded plan/context inputs. Preserve the primary event hierarchy and prior plan history. A replacement plan must transition from the athlete's current confirmed state, not restart from week one.
+- Cross-training is suggestion-first and selected only when it solves a meaningful constraint. Explain intended stimulus, what changes and sport-specificity lost; offer use/keep/ask. No one-for-one time/distance/mileage conversion. A completed alternative contributes to whole-athlete load under its own sport identity but cannot become a primary-sport PR/mileage.
+- Weather changes the environment before it changes workout purpose: keep a safe planned session, adapt effort/route/gear, optionally move time, use confirmed same-sport indoor equipment, then consider purposeful cross-training or reschedule. Ordinary comfort preference is sport-specific and explicit preferences outrank inferred preferences; safety-critical official conditions override comfort preference. Weather data must be tied to the workout time/coarse approved area and freshness. Provider failure means weather unavailable, not safe.
+- Weather suggestions never silently mutate the calendar. Repeated forecast changes must be debounced, and a missed weather session is not automatically made up later.
+
+## 16. Watch interaction and media-control boundary
+
+- Watch is an execution companion that removes phone friction during movement, not a compressed phone dashboard. The current action/metric, next step and critical status dominate. Phone owns deep analysis, complex plan/course authoring and Community composition.
+- Watch media integration uses platform-supported playback controls/deep links and the user's existing streaming app/session. ALL IN does not create a music catalog or duplicate streaming account service. Media controls remain optional and must not block workouts.
+- Optional audio Coach cues may be useful later, but the complete workout flow must remain readable and operable without audio. Cues must be short, contextual and must not obscure live metrics or interrupt critical execution.
+- Battery release gates and offline execution requirements in Section 13 apply to every supported sport; simulated device fixtures cannot count as physical acceptance.
+
+## 17. Product-scope evidence guardrail
+
+The V1 backlog contains many competitive research/design handoffs that explicitly disclaim live implementation, physical-device validation or release readiness. V2 transfer must preserve those scope labels: a requirement or research finding is not evidence that a feature was shipped or validated. Each issue/report must distinguish source-presence, deterministic/unit tests, authenticated integration, live provider, and physical-device acceptance.
