@@ -9,6 +9,7 @@ on:
       - 'apps/mobile-v2/src/auth/**'
       - 'apps/mobile-v2/src/features/cookbook/**'
       - 'apps/mobile-v2/src/features/training/**'
+      - 'apps/mobile-v2/src/features/strength/**'
       - 'apps/mobile-v2/package.json'
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
@@ -32,6 +33,7 @@ on:
       - 'apps/mobile-v2/src/auth/**'
       - 'apps/mobile-v2/src/features/cookbook/**'
       - 'apps/mobile-v2/src/features/training/**'
+      - 'apps/mobile-v2/src/features/strength/**'
       - 'apps/mobile-v2/package.json'
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
@@ -93,5 +95,7 @@ jobs:
         run: npm run test:calculator
       - name: Run Training logic tests
         run: npm run test:training-logic
+      - name: Run Strength exercise-science contract tests
+        run: npm run test:strength
       - name: Run provider cache helper tests
         run: npm run test:provider-cache
