@@ -117,6 +117,8 @@ V1 contains real building blocks:
 
 These are integrity primitives, not proof that generated strategies/routes are coherent. V2 acceptance must test plans/strategies against athlete history, all sports, race/course demands, effort uncertainty, fueling tolerance, aid facts/cutoffs, weather assumptions, route access/closure/continuity/elevation, plan intent and course-version changes. Cover marathon, trail ultra (strategy allowed; ultra prediction remains excluded), cycling, triathlon/duathlon and unknown course. Unverified facts remain unknown. Route preview cannot mutate a plan; save/attach requires explicit approval and exact plan revision.
 
+A concrete V1 scope limitation: the current `raceStrategyFlow.isScheduledGoalRace` recognizes only a canonical scheduled `outdoor_run` on the goal race date. Route generation has run and cycling candidate tests, but that does not establish a complete cycling or triathlon race-execution strategy. V2 must define sport-specific execution contracts (run, bike, swim, triathlon/duathlon transitions where supported) rather than labeling a run-only race package as universal.
+
 ## 8. V2 first deterministic Training slice
 
 Committed: `apps/mobile-v2/src/features/training/trainingPlanSynthesis.ts` with focused tests. This shared schedule/constraint layer:
