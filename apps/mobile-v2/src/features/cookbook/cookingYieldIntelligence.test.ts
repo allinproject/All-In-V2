@@ -20,3 +20,9 @@ test('yield quantity conversions reject overflow and non-finite uncertainty boun
  const nominal={...tiny,yieldRatio:.75,lowerYieldRatio:.72,upperYieldRatio:.78};
  assert.equal(rawNeededForCookedTarget(75,nominal).grams,100);
 });
+
+test('yield evidence requires its selected ratio to stay within any supplied bounds',()=>{
+ assert.throws(()=>chooseCookingYieldEvidence(chicken,[{...ref,yieldRatio:.70,lowerYieldRatio:.72,upperYieldRatio:.78}]),/outside its evidence bounds/);
+ assert.throws(()=>chooseCookingYieldEvidence(chicken,[{...ref,yieldRatio:.80,lowerYieldRatio:.72,upperYieldRatio:.78}]),/outside its evidence bounds/);
+ assert.equal(chooseCookingYieldEvidence(chicken,[{...ref,yieldRatio:.75,lowerYieldRatio:.72,upperYieldRatio:.78}])?.yieldRatio,.75);
+});
