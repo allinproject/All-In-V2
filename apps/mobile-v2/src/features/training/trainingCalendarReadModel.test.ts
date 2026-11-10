@@ -48,6 +48,15 @@ test('cancelled or recovery planned events cannot be completed by a linked worko
  assert.equal(x.status,'partial');
  assert.equal(x.markers.status,'unavailable');
 });
+test('an explicitly missed plan cannot be silently converted to completed by an inconsistent link',()=>{
+ const actual={...completed,id:'completed-run',sport:'running' as const,plannedSessionId:'run-1'};
+ const x=combineCalendarReads({...input,planned:{...input.planned,records:[{...planned,state:'missed' as const}]},
+   completed:{...input.completed,records:[actual]}});
+ assert.equal(x.status,'partial');
+ assert.equal(x.planned.status,'ready');
+ assert.equal(x.completed.status,'unavailable');
+ assert.equal(x.markers.status,'unavailable');
+});
 test('partial reads cannot claim complete markers or interpret silence as rest',()=>{
  const x=combineCalendarReads({...input,completed:{status:'unavailable' as const}});
  assert.equal(x.status,'partial');
