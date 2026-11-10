@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveAuthCallback } from './authCallback.ts';
+import { authCallbackRequestKey, resolveAuthCallback } from './authCallback.ts';
 
 test('email confirmation callback exchanges the first code and returns to the access gate', () => {
   assert.deepEqual(resolveAuthCallback({ code: 'code-123', type: 'signup' }), {
@@ -22,4 +22,23 @@ test('missing code and provider errors fail closed', () => {
   assert.equal(resolveAuthCallback({}).kind, 'error');
   assert.equal(resolveAuthCallback({ error: 'access_denied', code: 'code-123' }).kind, 'error');
   assert.equal(resolveAuthCallback({ error_description: 'expired' }).kind, 'error');
+});
+
+test('callback request identity deduplicates rerenders but accepts a fresh email link', () => {
+  const expired = { code: 'expired', type: 'recovery' };
+  const fresh = { code: 'fresh', type: 'recovery' };
+  assert.equal(authCallbackRequestKey(expired), authCallbackRequestKey({ ...expired }));
+  assert.notEqual(authCallbackRequestKey(expired), authCallbackRequestKey(fresh));
+  assert.notEqual(authCallbackRequestKey({ code: 'same', type: 'signup' }), authCallbackRequestKey({ code: 'same', type: 'recovery' }));
+});
+
+test('callback request identity distinguishes provider errors and subsequent valid links', () => {
+  assert.notEqual(
+    authCallbackRequestKey({ error: 'access_denied', error_description: 'expired' }),
+    authCallbackRequestKey({ code: 'new-code', type: 'signup' }),
+  );
+  assert.notEqual(
+    authCallbackRequestKey({ error: 'access_denied', error_description: 'expired' }),
+    authCallbackRequestKey({ error: 'access_denied', error_description: 'different' }),
+  );
 });
