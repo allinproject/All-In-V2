@@ -10,6 +10,7 @@ import {
   v2LegalAcceptanceMatches,
   v2LegalReviewKey,
   v2LegalReviewSetKey,
+  v2SignupAcceptanceRetryScope,
   v2SignupConsentScope,
 } from './accessGateClient.ts';
 
@@ -104,6 +105,14 @@ test('signup consent scope requires the same email and published legal revisions
     { ...docs[0], content_markdown: 'Revised without hash' },
     ...docs.slice(1),
   ]));
+});
+
+test('signup legal receipt retries cannot reuse an action ID for another created account', () => {
+  const reviewed = v2SignupConsentScope('athlete@example.com', docs);
+  const a = v2SignupAcceptanceRetryScope(reviewed, 'user-a');
+  assert.equal(a, v2SignupAcceptanceRetryScope(reviewed, 'user-a'));
+  assert.notEqual(a, v2SignupAcceptanceRetryScope(reviewed, 'user-b'));
+  assert.notEqual(a, v2SignupAcceptanceRetryScope(v2SignupConsentScope('other@example.com', docs), 'user-a'));
 });
 
 test('signup legal parsing rejects incomplete published documents and duplicates', () => {
