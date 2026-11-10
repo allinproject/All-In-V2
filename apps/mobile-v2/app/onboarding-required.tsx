@@ -225,10 +225,10 @@ export default function OnboardingRequiredScreen() {
   const [answers, setAnswers] = useState<OnboardingAnswers>({ ...EMPTY_ONBOARDING_ANSWERS });
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
-  const readSnapshot = useCallback(async (preserveDraft: boolean): Promise<OnboardingStep | null> => {
+  const readSnapshot = useCallback(async (preserveDraft: boolean, isCurrent: () => boolean = () => true): Promise<OnboardingStep | null> => {
     if (!ownerId) throw new Error('Your V2 account could not be verified. Please sign in again.');
 
-    const state = await readV2OwnedProfileState(supabase, ownerId) as ProfileStatePayload;
+    const state = await readV2OwnedProfileState(supabase, ownerId, isCurrent) as ProfileStatePayload;
 
     const onboarding = asRecord(state.onboarding);
     const settings = asRecord(state.settings);
@@ -259,7 +259,7 @@ export default function OnboardingRequiredScreen() {
     if (authLoading || !ownerId || gate.status !== 'onboarding_required') return;
     let active = true;
     setLoadingState(true);
-    void readSnapshot(false).then(nextStep => {
+    void readSnapshot(false, () => active).then(nextStep => {
       if (!active) return;
       if (!nextStep) {
         setFinishing(true);
