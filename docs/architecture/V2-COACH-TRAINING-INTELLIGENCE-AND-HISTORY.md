@@ -213,3 +213,28 @@ Race fueling uses canonical event/course/aid station information. Never invent s
 Existing V1 inventory: reviewed Sport Nutrition, Competition Nutrition, Supplements and hydration/GI research; 17-domain Evidence Registry; staged v13 sportNutritionContext builder and numerous sport-specific/context/safety tests; versioned Endurance Fueling evidence planner with preferences, plans, feedback and prompt decision persistence. These are significant assets, but research/design/staged code do not prove production workflow integration.
 
 See Linear ALL-235 for acceptance.
+
+## Founder request — review of Coach nutrition and prior coaching — 2026-11-09
+
+### V1 strengths verified from available source/research
+- Broad, reviewed sport-nutrition evidence exists across daily Sport Nutrition, Competition Nutrition, Supplements, Cross-Training, Recovery and the 17-domain Evidence Registry.
+- Existing sport nutrition context builder covers running, trail/ultra, cycling, swimming, strength, multisport/brick, hike/ruck, elliptical/stairs and yoga/mobility.
+- Tests cover key sport contexts, two-a-days, hot/humid conditions, explicit unknown sweat/sodium, GI tolerance, restrictions/allergies and energy-availability safeguards.
+- The Endurance Fueling Brain has a versioned reviewed evidence planner, athlete preferences, plans, prompt decisions and post-session feedback. Its numeric targets remain the canonical authority.
+- Recipe Coach can analyze a specific recipe against current goals/training/recovery, and the Food Log / Cookbook / Pantry / Shopping infrastructure provides practical execution surfaces.
+- Research safeguards: no RED-S diagnosis, no universal hydration/sodium, no inferred sweat rate, no default extreme carb target, no calorie/macro arithmetic duplicated by independent sport modules.
+
+### Specific V1 gaps/risks
+- `sportNutritionContext.ts` uses `explicitSport(message)` with ordered keyword matches and returns one sport. It only resolves `multisport` for explicit triathlon/multisport/brick language. A natural question mentioning running + strength may resolve as only one sport, depending on keyword order. This is insufficient for whole-day multi-sport nutrition.
+- `SportNutritionContext` is a session-level DTO with one sport and one attached planned-workout context. It does not itself represent the complete primary/secondary sport hierarchy and total daily/weekly workload.
+- The module deliberately marks pre-session timing, post-session intake, fuel access and hydration/GI inputs as pass-through only; it explicitly forbids this context builder from generating meal recommendations or numeric targets. That is a safe boundary but it means a separate integrated meal recommendation/daily nutrition capability must exist and be wired.
+- V1 research/UI handoffs explicitly say they do not prove live integration. Sport-specific context and many tests do not prove a coherent production workflow from athlete history/calendar → daily meal suggestions → Cookbook/Ingredient DB calculation → Pantry/Shopping → feedback learning.
+- Recipe Coach analysis is an existing focused recipe-review workflow, not proof that Coach can propose a complete day's meals or periodize nutrition against a multi-sport plan.
+- Food Log records actual intake; absent/incomplete logging must not be treated as no intake or evidence of under-fueling. Keep estimate/provenance/incomplete states visible.
+- The current UI handoff explicitly rejects adding another top-level nutrition tab and retains five Fuel actions. Keep those navigation decisions.
+
+### V2 design response
+Use three coordinated owners: Daily Sport Nutrition Intelligence; existing Endurance Fueling Brain for exact prolonged-session numeric fueling; Cookbook/Ingredient Database + deterministic Nutrition Calculator for actual meal composition. Coach selects/explains meals and uses Pantry/Shopping, but never invents recipe nutrition or logs consumption before confirmation. See ALL-235 for complete inputs, sport scenarios, UI and safety acceptance.
+
+### Review scope honesty
+This audit covers the current conversation/project context, indexed project/library research handoffs and inspected V1 source/tests. It does not claim review of every archived ChatGPT chat in the user's account; archived chats not exposed/indexed in this project are not independently accessible to this session. The user can supply/export those records for a true conversation-by-conversation review.
