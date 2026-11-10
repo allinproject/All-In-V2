@@ -32,7 +32,7 @@ export function racePaceObservationFromGpsMatch(
     return unavailable('Canonical race identity is unavailable');
   if(!match||match.status!=='trusted')
     return unavailable(match&&'reason'in match?match.reason:'Trusted GPS course match unavailable');
-  if(match.raceId!==expectedRaceId||match.courseVersion!==plan.courseVersion)
+  if(match.raceId!==expectedRaceId||match.routeId!==plan.routeId||match.courseVersion!==plan.courseVersion)
     return unavailable('Race/course identity does not match the approved workout');
   if(typeof plan.routeId!=='string'||!plan.routeId.trim()||
     typeof plan.workoutId!=='string'||!plan.workoutId.trim())
