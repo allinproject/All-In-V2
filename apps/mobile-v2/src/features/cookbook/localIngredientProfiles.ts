@@ -61,7 +61,8 @@ export type LocalIngredientResolution = {
   line?: RecipeIngredientNutritionLine;
 };
 
-const normalizeLabel = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+const normalizeLabel = (value: unknown) =>
+  typeof value === 'string' ? value.trim().toLowerCase().replace(/\s+/g, ' ') : '';
 const good = (value: number) => Number.isFinite(value) && value >= 0;
 const positive = (value: number) => Number.isFinite(value) && value > 0;
 
@@ -70,12 +71,17 @@ export function resolveLocalIngredient(
   catalog: LocalIngredientCatalog,
   request: IngredientRequest,
 ): LocalIngredientResolution {
-  const state = request?.preparation_state?.trim();
-  if (!request?.line_id?.trim() || !state) return { status: 'missing' };
+  const state = typeof request?.preparation_state === 'string' ? request.preparation_state.trim() : '';
+  if (typeof request?.line_id !== 'string' || !request.line_id.trim() || !state) {
+    return { status: 'missing' };
+  }
+  if (request.ingredient_id != null && typeof request.ingredient_id !== 'string') {
+    return { status: 'missing' };
+  }
   let identityId = request.ingredient_id?.trim();
   if (!identityId) {
     const label = normalizeLabel(request.label ?? '');
-    const locale = request.locale ?? 'en';
+    const locale = typeof request.locale === 'string' ? request.locale : 'en';
     if (!label) return { status: 'missing' };
     const matching = new Set(catalog.aliases.filter(alias =>
       alias.status === 'active' && alias.locale === locale &&
