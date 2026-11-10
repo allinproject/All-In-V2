@@ -6,6 +6,7 @@ const fixture=():WatchSessionAttachmentInput=>({
  expectedOwnerId:'athlete-A',authenticatedOwnerId:'athlete-A',accessGateReady:true,
  watchOwnerId:'athlete-A',watchInstanceId:'session-1',watchKnownSessionVersion:4,
  permission:'granted',connectedToCanonicalWriter:true,
+ activeSessionGeneration:7,sessionReadGeneration:7,watchAuthorizationGeneration:7,
  session:{instanceId:'session-1',ownerId:'athlete-A',revisionSessionId:'planned-1',status:'active',version:5},
 });
 
@@ -73,4 +74,23 @@ test('unplanned session and older Watch snapshot retain same canonical identity'
  const result=resolveWatchSessionAttachment(input);
  assert.equal(result.kind,'attach');
  if(result.kind==='attach')assert.equal(result.revisionSessionId,null);
+});
+
+test('same-user reauthentication invalidates old canonical reads and Watch authorization',()=>{
+ const oldRead=fixture();oldRead.activeSessionGeneration=8;
+ assert.deepEqual(resolveWatchSessionAttachment(oldRead),{kind:'reconcile',reason:'auth_generation_changed_refresh_watch_and_session',noNewWorkout:true,noCanonicalWrite:true});
+ const oldWatch=fixture();oldWatch.watchAuthorizationGeneration=6;
+ assert.equal(resolveWatchSessionAttachment(oldWatch).kind,'reconcile');
+ const newReadOldWatch=fixture();newReadOldWatch.activeSessionGeneration=8;newReadOldWatch.sessionReadGeneration=8;
+ assert.equal(resolveWatchSessionAttachment(newReadOldWatch).kind,'reconcile');
+ newReadOldWatch.watchAuthorizationGeneration=8;
+ assert.equal(resolveWatchSessionAttachment(newReadOldWatch).kind,'attach');
+});
+test('invalid and future auth generations cannot authorize the Watch',()=>{
+ for(const value of [-1,1.5,Number.NaN,Infinity]){
+  assert.equal(resolveWatchSessionAttachment({...fixture(),activeSessionGeneration:value}).kind,'reconcile');
+ }
+ for(const field of ['sessionReadGeneration','watchAuthorizationGeneration'] as const){
+  assert.equal(resolveWatchSessionAttachment({...fixture(),[field]:8}).kind,'reconcile');
+ }
 });
