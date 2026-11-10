@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { colors } from '../src/theme/tokens';
@@ -21,6 +22,9 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [confirmationPending, setConfirmationPending] = useState(false);
+  const [resending, setResending] = useState(false);
 
   if (!loading && user) return <Redirect href="/home" />;
 
@@ -34,16 +38,62 @@ export default function SignInScreen() {
 
     setSubmitting(true);
     setError(null);
+    setNotice(null);
+    setConfirmationPending(false);
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
       });
-      if (signInError) setError(messageFor(signInError));
+      if (signInError) {
+        const errorCode = (signInError as { code?: string }).code;
+        if (errorCode === 'email_not_confirmed') {
+          setConfirmationPending(true);
+          setError('Your email has not been confirmed. You can request a new secure confirmation link.');
+        } else {
+          setConfirmationPending(false);
+          setError(messageFor(signInError));
+        }
+      }
     } catch (caught) {
       setError(messageFor(caught));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function resendConfirmation() {
+    if (resending) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError('Enter the email address for your V2 account.');
+      return;
+    }
+
+    setResending(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const { data: currentSession, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (currentSession.session) {
+        throw new Error('A V2 account is already signed in. Sign out before resending a confirmation link.');
+      }
+
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: normalizedEmail,
+        options: {
+          emailRedirectTo: Linking.createURL('/auth/callback'),
+        },
+      });
+      if (resendError) throw resendError;
+      setNotice('If this V2 account is awaiting email confirmation, a new link has been sent. Open it on this device.');
+      setConfirmationPending(false);
+    } catch (caught) {
+      setError(messageFor(caught));
+    } finally {
+      setResending(false);
     }
   }
 
@@ -59,9 +109,15 @@ export default function SignInScreen() {
             <TextInput accessibilityLabel="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor="#929292" style={styles.input} value={email} onChangeText={setEmail} />
             <TextInput accessibilityLabel="Password" autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder="Password" placeholderTextColor="#929292" style={styles.input} value={password} onChangeText={setPassword} onSubmitEditing={() => void signIn()} />
             {visibleError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{visibleError}</Text> : null}
+            {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting, busy: submitting }} disabled={submitting} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, submitting && styles.disabled]}>
               {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Sign in</Text>}
             </Pressable>
+            {confirmationPending ? (
+              <Pressable accessibilityRole="button" disabled={resending} onPress={() => void resendConfirmation()} style={styles.resendButton}>
+                {resending ? <ActivityIndicator color={colors.gold} /> : <Text style={styles.link}>Resend confirmation email</Text>}
+              </Pressable>
+            ) : null}
             <Text style={styles.note}><Link href="/forgot-password" style={styles.link}>Forgot password?</Link></Text>
             <Text style={styles.note}>New to ALL IN 365 V2? <Link href="/sign-up" style={styles.link}>Create your V2 account</Link></Text>
           </View>
@@ -82,6 +138,8 @@ const styles = StyleSheet.create({
   body: { color: colors.mutedText, fontSize: 15, lineHeight: 21 },
   input: { backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: 14, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 15, paddingVertical: 14 },
   error: { color: colors.danger, fontSize: 14, lineHeight: 19 },
+  notice: { color: colors.goldSoft, fontSize: 14, lineHeight: 19 },
+  resendButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
   button: { minHeight: 52, borderRadius: 14, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.9 },
   disabled: { opacity: 0.65 },
