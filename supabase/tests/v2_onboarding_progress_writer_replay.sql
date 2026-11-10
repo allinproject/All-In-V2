@@ -23,37 +23,44 @@ declare
   v_skipped text[];
   v_completed_at timestamptz;
 begin
-  v_first := public.v2_set_onboarding_step('focus','complete',1,'onboarding-action-1');
+  begin
+    perform public.v2_set_onboarding_step('6f256254-0a6c-47e8-8da9-7aefc15c44c1','availability','complete',1,'wrong-owner-action');
+    raise exception 'expected-owner mismatch unexpectedly succeeded';
+  exception when sqlstate '42501' then
+    null;
+  end;
+
+  v_first := public.v2_set_onboarding_step('5f256254-0a6c-47e8-8da9-7aefc15c44c1','focus','complete',1,'onboarding-action-1');
   if v_first <> 2 then raise exception 'first update should return version 2, got %',v_first; end if;
 
-  v_retry := public.v2_set_onboarding_step('focus','complete',1,'onboarding-action-1');
+  v_retry := public.v2_set_onboarding_step('5f256254-0a6c-47e8-8da9-7aefc15c44c1','focus','complete',1,'onboarding-action-1');
   if v_retry <> 2 then raise exception 'exact retry should return original version 2, got %',v_retry; end if;
 
-  v_noop := public.v2_set_onboarding_step('focus','complete',2,'onboarding-action-noop');
+  v_noop := public.v2_set_onboarding_step('5f256254-0a6c-47e8-8da9-7aefc15c44c1','focus','complete',2,'onboarding-action-noop');
   if v_noop <> 2 then raise exception 'same-state action should remain version 2, got %',v_noop; end if;
 
   begin
-    perform public.v2_set_onboarding_step('training_pattern','skip',2,'onboarding-action-1');
+    perform public.v2_set_onboarding_step('5f256254-0a6c-47e8-8da9-7aefc15c44c1','training_pattern','skip',2,'onboarding-action-1');
     raise exception 'changed-payload action-ID reuse unexpectedly succeeded';
   exception when sqlstate '22000' then
     null;
   end;
 
   begin
-    perform public.v2_set_onboarding_step('availability','complete',1,'onboarding-stale-action');
+    perform public.v2_set_onboarding_step('5f256254-0a6c-47e8-8da9-7aefc15c44c1','availability','complete',1,'onboarding-stale-action');
     raise exception 'stale expected version unexpectedly succeeded';
   exception when sqlstate '40001' then
     null;
   end;
 
-  v_next := public.v2_set_onboarding_step('training_pattern','skip',2,'onboarding-action-2');
+  v_next := public.v2_set_onboarding_step('5f256254-0a6c-47e8-8da9-7aefc15c44c1','training_pattern','skip',2,'onboarding-action-2');
   if v_next <> 3 then raise exception 'skip should advance version to 3, got %',v_next; end if;
 
-  v_next := public.v2_set_onboarding_step('focus','reset',3,'onboarding-action-3');
+  v_next := public.v2_set_onboarding_step('5f256254-0a6c-47e8-8da9-7aefc15c44c1','focus','reset',3,'onboarding-action-3');
   if v_next <> 4 then raise exception 'reset should advance version to 4, got %',v_next; end if;
 
   -- A retry from version 2 must still return its original result after version 4 exists.
-  v_retry := public.v2_set_onboarding_step('focus','complete',1,'onboarding-action-1');
+  v_retry := public.v2_set_onboarding_step('5f256254-0a6c-47e8-8da9-7aefc15c44c1','focus','complete',1,'onboarding-action-1');
   if v_retry <> 2 then raise exception 'late exact retry did not return original version 2, got %',v_retry; end if;
 
   select version,completed_steps,skipped_steps,completed_at
@@ -94,7 +101,7 @@ begin
   ) then
     raise exception 'second authenticated user can read first user onboarding row';
   end if;
-  if public.v2_set_onboarding_step('focus','skip',1,'user-b-onboarding-action') <> 2 then
+  if public.v2_set_onboarding_step('6f256254-0a6c-47e8-8da9-7aefc15c44c1','focus','skip',1,'user-b-onboarding-action') <> 2 then
     raise exception 'second user onboarding writer failed';
   end if;
 end;
