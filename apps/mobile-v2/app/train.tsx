@@ -7,7 +7,8 @@ import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import {
   formatCalendarDay, formatCalendarMonth, firstOfMonth, monthCalendarWeeks,
-  shiftCalendarDate, shiftCalendarMonth, weekDaysForDate,
+  shiftCalendarDate, shiftCalendarMonth, weekDaysForDate, workoutMarkersForDay,
+  type CalendarEvidence, type CalendarWorkoutMarker,
 } from '../src/features/training/calendarDayView';
 import { validAthleteLocalDate } from '../src/features/training/manualActivityDraft';
 
@@ -17,9 +18,16 @@ function todayOnDevice(): string {
 }
 const weekdayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 type CalendarLevel = 'month' | 'week';
+// Canonical training/activity reads are not connected. Never invent daily markers.
+const workoutEvidence: CalendarEvidence<CalendarWorkoutMarker> = { status: 'unavailable' };
+const markerSymbols: Record<CalendarWorkoutMarker['kind'], string> = {
+  running: 'Run', walking: 'Walk', cycling: 'Bike', swimming: 'Swim',
+  strength: 'Lift', hiking: 'Hike', rucking: 'Ruck', rowing: 'Row',
+  elliptical: 'Ellip', stair: 'Stair', yoga: 'Yoga', mobility: 'Move', other: 'Other',
+};
 
 /**
- * ALL-246 mounted month -> week -> selected day.
+ * ALL-246 opens current Week + today, switches to Month overview and back by day selection.
  * The Training and Completed Activity readers are NOT connected yet:
  * unavailable evidence is never represented as empty workouts.
  */
@@ -31,7 +39,7 @@ export default function TrainingCalendarScreen() {
     ? params.date : todayOnDevice();
   const [day, setDay] = useState(initialDay);
   const [month, setMonth] = useState(firstOfMonth(initialDay) ?? initialDay);
-  const [level, setLevel] = useState<CalendarLevel>(typeof params.date === 'string' && validAthleteLocalDate(params.date) ? 'week' : 'month');
+  const [level, setLevel] = useState<CalendarLevel>('week');
   const week = weekDaysForDate(day);
   const monthWeeks = monthCalendarWeeks(month);
 
@@ -85,13 +93,18 @@ export default function TrainingCalendarScreen() {
                   <Pressable key={date} accessibilityRole="button"
                     accessibilityLabel={`Open week of ${formatCalendarDay(days[0])}, select ${formatCalendarDay(date)}`}
                     onPress={() => selectDate(date)}
-                    style={[styles.monthDay, date.slice(0,7) !== month.slice(0,7) && styles.outsideMonth, date === day && styles.selected]}>
+                    style={[styles.monthDay, date.slice(0,7) !== month.slice(0,7) && styles.outsideMonth]}>
                     <Text style={date.slice(0,7) === month.slice(0,7) ? styles.white : styles.muted}>{Number(date.slice(-2))}</Text>
+                    {workoutMarkersForDay(workoutEvidence, date)?.slice(0, 2).map((item, index) => (
+                      <Text key={index} style={styles.marker} accessibilityLabel={`${markerSymbols[item.kind]} ${item.status}`}>
+                        {markerSymbols[item.kind]} {item.status === 'completed' ? '✓' : '•'}
+                      </Text>
+                    ))}
                   </Pressable>
                 ))}
               </View>
             ))}
-            <Text style={styles.note}>Tap a day to open its week and see the day's workouts.</Text>
+            <Text style={styles.note}>Tap a day to open its week and show that day's workouts. Sport/status markers will appear when verified scheduled and completed workout data is connected; the current calendar cannot load those records yet.</Text>
           </>
         ) : (
           <>
@@ -156,7 +169,8 @@ const styles = StyleSheet.create({
   week:{flexDirection:'row',gap:4,justifyContent:'space-between'},
   weekdayLabel:{textAlign:'center',color:colors.mutedText,fontWeight:'700'},
   weekCell:{flex:1},
-  monthDay:{flex:1,minHeight:48,alignItems:'center',justifyContent:'center',borderColor:colors.border,borderWidth:1,borderRadius:10,backgroundColor:colors.surface},
+  monthDay:{flex:1,minHeight:56,alignItems:'center',justifyContent:'center',borderColor:colors.border,borderWidth:1,borderRadius:10,backgroundColor:colors.surface,gap:3},
+  marker:{fontSize:9,color:colors.goldSoft,textAlign:'center'},
   outsideMonth:{backgroundColor:colors.background},
   weekDay:{flex:1,minHeight:62,alignItems:'center',justifyContent:'center',backgroundColor:colors.surface,borderColor:colors.border,borderWidth:1,borderRadius:10,gap:4},
   selected:{borderColor:colors.gold,borderWidth:2,backgroundColor:colors.surfaceRaised},
