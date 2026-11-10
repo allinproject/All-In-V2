@@ -367,3 +367,12 @@ The authenticated SQL replay passed against two temporary Auth users:
 Live privilege/catalog verification confirms the new private ledger has RLS enabled, no policies, no schema/table access for anon/authenticated/service_role, and is reached only by the authenticated SECURITY DEFINER writer. The function is postgres-owned, uses an empty search path and checks auth identity. The security advisor now reports three intentional private-table no-policy INFO notices and four authenticated per-user SECURITY DEFINER WARN notices.
 
 **Remaining UI work:** `apps/mobile-v2/app/onboarding-required.tsx` is still a holding screen. Build the actual six-step flow, call this RPC with a fresh action ID and latest version per step action, refresh `v2_my_profile_state` after success, and keep access fail-closed on timeout/conflict/session change. No onboarding UI or installed-device acceptance is claimed from this database work.
+
+
+## 20. Generated public database types wired into the V2 client — 2026-11-10
+
+Supabase TypeScript types were generated from the live V2 project after migration `20261110101200` and committed to `apps/mobile-v2/src/types/database.types.ts`. The generated contract contains five public tables and six public RPCs, including `v2_set_onboarding_step`. The private `allin_private` schema is intentionally excluded from mobile client types because it is not API-exposed and has no direct client grants.
+
+The existing `src/lib/supabase.ts` client now uses `createClient<Database>` with the generated type. Auth persistence, native storage, auto-refresh and environment variables were otherwise left unchanged.
+
+This is generated schema alignment, not a typecheck/build result. ALL-224 still requires a network-enabled clean checkout, canonical npm lockfile, install, unit test suites, TypeScript check, Expo bundle and CI.
