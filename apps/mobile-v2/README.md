@@ -23,6 +23,7 @@ Current source foundation:
 - V2 legal acceptance is persisted through `v2_accept_legal_documents` with exact current versions, age attestation and idempotent action ID.
 - Access gate reads `v2_my_profile_state`, compares current legal versions and requires all six onboarding steps before opening private routes.
 - Shared visual tokens follow the approved App Art Handoff v2.
+- `src/types/database.types.ts` is generated from the live V2 public schema; `src/lib/supabase.ts` uses `createClient<Database>`. Private schema types are intentionally not exported to the client.
 
 ## Supabase foundation
 
@@ -30,7 +31,8 @@ Four migrations have been applied to the dedicated V2 project:
 
 1. `20261110000100_v2_auth_profile_legal_foundation.sql` — Auth-linked Profile, Settings, Onboarding and Legal foundation.
 2. `20261110000200_v2_tighten_profile_privileges_and_legal_versions.sql` — narrowed Profile privileges and immutable published legal versions.
-3. `20261110000300_v2_provider_cache_and_private_rls.sql` — private provider cache and defense-in-depth RLS on private operational tables.\n4. `20261110000400_v2_onboarding_progress_writer.sql` — private onboarding idempotency ledger and authenticated versioned complete/skip/reset writer.
+3. `20261110000300_v2_provider_cache_and_private_rls.sql` — private provider cache and defense-in-depth RLS on private operational tables.
+4. `20261110000400_v2_onboarding_progress_writer.sql` — private onboarding idempotency ledger and authenticated versioned complete/skip/reset writer.
 
 They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/onboarding, versioned legal document store, immutable acceptance receipts, private Settings/Onboarding action ledgers, RLS and guarded versioned/idempotent RPCs. Onboarding writes use `v2_set_onboarding_step`; the actual six-step UI is not yet built.
 
