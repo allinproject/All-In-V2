@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {shiftCalendarDate,weekDaysForDate,formatCalendarDay,calendarRecordsForDay,firstOfMonth,shiftCalendarMonth,monthCalendarWeeks,formatCalendarMonth,workoutMarkersForDay} from './calendarDayView.ts';
+import {shiftCalendarDate,weekDaysForDate,formatCalendarDay,calendarRecordsForDay,firstOfMonth,shiftCalendarMonth,monthCalendarWeeks,formatCalendarMonth,workoutMarkersForDay,monthDayMarkerSummary} from './calendarDayView.ts';
 
 test('week begins Monday and crosses month/year boundaries without UTC date drift',()=>{
  assert.deepEqual(weekDaysForDate('2027-01-01'),['2026-12-28','2026-12-29','2026-12-30','2026-12-31','2027-01-01','2027-01-02','2027-01-03']);
@@ -62,4 +62,27 @@ test('month markers distinguish planned vs completed sport evidence without fabr
  assert.equal(workoutMarkersForDay({status:'unavailable'},'2026-11-10'),null);
  assert.deepEqual(workoutMarkersForDay({status:'ready',records:data},'2026-11-10'),data.slice(0,2));
  assert.deepEqual(workoutMarkersForDay({status:'ready',records:data},'2026-11-12'),[]);
+});
+
+test('month markers show exact missed/rest/recovery evidence and overflow without hidden activity claims',()=>{
+  const records=[
+    {athleteLocalDate:'2026-11-10',kind:'running' as const,status:'planned' as const},
+    {athleteLocalDate:'2026-11-10',kind:'stair' as const,status:'completed' as const},
+    {athleteLocalDate:'2026-11-10',kind:'strength' as const,status:'missed' as const},
+    {athleteLocalDate:'2026-11-11',kind:'rest' as const,status:'rest' as const},
+    {athleteLocalDate:'2026-11-12',kind:'recovery' as const,status:'recovery' as const},
+  ];
+  const evidence={status:'ready' as const,records};
+  assert.deepEqual(monthDayMarkerSummary(evidence,'2026-11-10'),{kind:'known',visible:records.slice(0,2),additionalCount:1});
+  assert.deepEqual(monthDayMarkerSummary(evidence,'2026-11-11').visible,records.slice(3,4));
+  assert.deepEqual(monthDayMarkerSummary(evidence,'2026-11-12').visible,records.slice(4));
+  assert.deepEqual(monthDayMarkerSummary({status:'unavailable'},'2026-11-10'),{kind:'unavailable',visible:[],additionalCount:0});
+  assert.deepEqual(monthDayMarkerSummary({status:'ready',records:[]},'2026-11-10'),{kind:'known',visible:[],additionalCount:0});
+});
+test('malformed rest source combinations do not generate misleading month markers',()=>{
+ const records=[
+   {athleteLocalDate:'2026-11-10',kind:'running' as const,status:'rest' as const},
+   {athleteLocalDate:'2026-11-10',kind:'rest' as const,status:'completed' as const},
+ ];
+ assert.deepEqual(monthDayMarkerSummary({status:'ready',records},'2026-11-10').visible,[]);
 });
