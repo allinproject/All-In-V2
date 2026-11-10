@@ -44,6 +44,10 @@ test('parses an exact source-tagged barcode candidate without promoting review',
   assert.equal(parseBrandedFoodNutritionCandidate(product({ barcode: '036000291453' }), barcode), null);
   assert.equal(parseBrandedFoodNutritionCandidate(product({ review_required: false }), barcode), null);
   assert.equal(parseBrandedFoodNutritionCandidate(product({ source_license: 'unknown' }), barcode), null);
+  assert.equal(parseBrandedFoodNutritionCandidate(product({ source: 'usda_fdc', source_license: 'USDA FoodData Central / CC0 1.0', source_quality: 'community_unverified' }), barcode), null);
+  assert.equal(parseBrandedFoodNutritionCandidate(product({ source: 'open_food_facts', source_quality: 'reference_unverified' }), barcode), null);
+  assert.equal(parseBrandedFoodNutritionCandidate(product({ source: 'usda_fdc', source_license: 'USDA FoodData Central / CC0 1.0', source_quality: 'reference_unverified' }), barcode)?.source_quality, 'reference_unverified');
+  assert.equal(parseBrandedFoodNutritionCandidate(product(), '036000291453'), null);
 });
 
 test('preserves 100ml and unknown bases without treating them as grams', () => {
