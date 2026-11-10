@@ -62,6 +62,7 @@ export default function SignInScreen() {
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting, busy: submitting }} disabled={submitting} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, submitting && styles.disabled]}>
               {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Sign in</Text>}
             </Pressable>
+            <Text style={styles.note}><Link href="/forgot-password" style={styles.link}>Forgot password?</Link></Text>
             <Text style={styles.note}>New to ALL IN 365 V2? <Link href="/sign-up" style={styles.link}>Create your V2 account</Link></Text>
           </View>
         </ScrollView>
