@@ -366,7 +366,9 @@ The authenticated SQL replay passed against two temporary Auth users:
 
 Live privilege/catalog verification confirms the new private ledger has RLS enabled, no policies, no schema/table access for anon/authenticated/service_role, and is reached only by the authenticated SECURITY DEFINER writer. The function is postgres-owned, uses an empty search path and checks auth identity. The security advisor now reports three intentional private-table no-policy INFO notices and four authenticated per-user SECURITY DEFINER WARN notices.
 
-**Remaining UI work:** `apps/mobile-v2/app/onboarding-required.tsx` is still a holding screen. Build the actual six-step flow, call this RPC with a fresh action ID and latest version per step action, refresh `v2_my_profile_state` after success, and keep access fail-closed on timeout/conflict/session change. No onboarding UI or installed-device acceptance is claimed from this database work.
+**Onboarding UI implementation added:** `apps/mobile-v2/app/onboarding-required.tsx` now implements a short, resumable six-step wizard (focus, current training pattern, availability, Coach guidance, food safety and proactivity). Explicit answers are stored in the owning existing Settings sections using `v2_patch_profile_settings_section`; progress uses `v2_set_onboarding_step`. Every step may be skipped without writing placeholder values; Back edits a prior answer; current Auth session is verified before each write; state is re-read after successful progress. No blanket OS permission prompt is shown. Pure helper tests cover resume, unknown/skipped values and answer-to-settings ownership.
+
+**Remaining acceptance:** the full auth/onboarding test suite, TypeScript compiler, installed iPhone/session/account-switch flow and visual/accessibility acceptance have not run yet. Do not call the UI validated until those checks pass.
 
 
 ## 20. Generated public database types wired into the V2 client — 2026-11-10
@@ -383,3 +385,18 @@ This is generated schema alignment, not a typecheck/build result. ALL-224 still 
 The access-gate data reader now accepts `SupabaseClient<Database>` from the generated public schema type (`apps/mobile-v2/src/auth/accessGateClient.ts`, commit `5c9cf7c666218c1710408c992492f23cd41d1b11`). This ensures `v2_my_profile_state` is resolved through the generated RPC contract. The shared client, sign-up/legal public-table reads and legal-acceptance RPC calls all use the same typed Supabase client. AuthProvider retains its existing Auth-only usage.
 
 This is static source alignment, not a successful TypeScript compiler run; ALL-224 still owns the reproducible typecheck gate.
+
+
+## 22. Progressive six-step onboarding UI implementation — 2026-11-10
+
+The placeholder route was replaced with a short resumable flow using the locked design direction (do not front-load settings; skipped optional fields stay unknown; no permission prompts on first launch; return existing users to Today once access gates pass).
+
+Implementation:
+- `app/onboarding-required.tsx`: six-step wizard, prefill from existing Profile Settings, Back, Skip, Continue, retryable failures, session-owner verification before both writes, refresh from `v2_my_profile_state` after each progress mutation.
+- `src/auth/onboardingFlow.ts`: canonical first-incomplete selection, required-answer validation and typed answer-to-settings mapping.
+- `src/auth/onboardingFlow.test.ts`: four focused tests for resume order, blank/unknown answers, ownership mapping and optional food-safety notes.
+- `package.json`: added the onboarding flow tests to `test:auth`.
+
+Explicit answer destinations use the existing Settings owner: Training focus/current sports/availability → `training_preferences`; Coach style → `coach_preferences`; food-safety selection/details → `nutrition_preferences`; reminder preference → `notification_preferences`. Progress remains in `v2_onboarding_progress`. No new schema or preference store was added. Device permissions remain contextual and are not requested by this wizard.
+
+The four pure onboarding helper tests passed in an isolated Node 22.16 type-stripping harness. This is not yet the full repository `npm run test:auth`, TypeScript typecheck, Expo build, live signed-in UI journey or physical-device acceptance; those remain ALL-224/ALL-209 acceptance.
