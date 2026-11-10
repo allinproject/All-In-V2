@@ -88,3 +88,13 @@ export function workoutMarkersForDay(
 ): CalendarWorkoutMarker[] | null {
   return calendarRecordsForDay(evidence, day);
 }
+
+/** Accessible month-cell description includes ALL verified activities, not only visible hints. */
+export function monthDayAccessibilityLabel(evidence: CalendarEvidence<CalendarWorkoutMarker>, day: string): string {
+  const date = formatCalendarDay(day);
+  const records = workoutMarkersForDay(evidence, day);
+  if (records === null) return `${date}. Workout details unavailable. Tap to open week.`;
+  if (!records.length) return `${date}. No scheduled or completed activities in the verified calendar. Tap to open week.`;
+  const described = records.map(item => `${item.kind === 'stair' ? 'stair climber' : item.kind}, ${item.status}`);
+  return `${date}. ${described.join('; ')}. Tap to open week.`;
+}
