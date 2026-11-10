@@ -73,6 +73,7 @@ export function rawNeededForCookedTarget(targetCookedGrams:number,selection:Cook
   const grams=targetCookedGrams/selection.yieldRatio;
   const lo=selection.lowerYieldRatio,hi=selection.upperYieldRatio;
   const range=lo!=null&&hi!=null?{min:targetCookedGrams/hi,max:targetCookedGrams/lo}:null;
+  validateConvertedWeight(grams,range);
   return {grams,range};
 }
 
@@ -82,6 +83,7 @@ export function expectedCookedFromRaw(rawGrams:number,selection:CookingYieldSele
   const grams=rawGrams*selection.yieldRatio;
   const lo=selection.lowerYieldRatio,hi=selection.upperYieldRatio;
   const range=lo!=null&&hi!=null?{min:rawGrams*lo,max:rawGrams*hi}:null;
+  validateConvertedWeight(grams,range);
   return {grams,range};
 }
 
@@ -136,6 +138,10 @@ export function sameCookingYieldKey(a:CookingYieldKey,b:CookingYieldKey){return 
 
 function validateEvidence(row:CookingYieldEvidence):CookingYieldEvidence{req(row.id,'Evidence ID');validateRatio(row.yieldRatio,'Yield ratio');if(row.lowerYieldRatio!=null)validateRatio(row.lowerYieldRatio,'Lower yield ratio');if(row.upperYieldRatio!=null)validateRatio(row.upperYieldRatio,'Upper yield ratio');if(row.lowerYieldRatio!=null&&row.upperYieldRatio!=null&&row.lowerYieldRatio>row.upperYieldRatio)throw new Error('Yield confidence range is invalid.');if(row.observationCount!=null&&(!Number.isInteger(row.observationCount)||row.observationCount<1))throw new Error('Observation count is invalid.');return row}
 function confidence(row:CookingYieldEvidence):CookingYieldConfidence{if(row.source==='personal_measured')return (row.observationCount??0)>=5?'high':'medium';if(row.source==='usda_exact')return 'high';if(row.source==='reviewed_reference'||row.source==='usda_category')return 'medium';if(row.source==='estimate')return 'low';return'unknown'}
+function validateConvertedWeight(grams:number,range:{min:number;max:number}|null){
+  if(!Number.isFinite(grams)||grams<=0||(range&&(!Number.isFinite(range.min)||!Number.isFinite(range.max)||range.min<=0||range.max<=0)))
+   throw new Error('Converted cooking yield quantity must be finite and positive.');
+}
 function validateRatio(v:number,label:string){if(!Number.isFinite(v)||v<=0||v>10)throw new Error(`${label} is invalid.`)}
 function positive(v:number,label:string){if(!Number.isFinite(v)||v<=0)throw new Error(`${label} must be positive.`)}
 function nonnegative(v:number,label:string){if(!Number.isFinite(v)||v<0)throw new Error(`${label} must be zero or greater.`)}
