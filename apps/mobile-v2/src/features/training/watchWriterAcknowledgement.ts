@@ -15,6 +15,8 @@ export type TrainingWriterAcknowledgement={
 };
 export type WatchAcknowledgementInput={
  authenticatedOwnerId:string|null;expectedOwnerId:string;
+ activeSessionGeneration:number;
+ submittedAuthSessionGeneration:number;
  submitted:WatchExecutionCommandDecision;
  receipt:TrainingWriterAcknowledgement|null|undefined;
 };
@@ -34,6 +36,10 @@ const id=(x:unknown)=>typeof x==='string'&&x.trim().length>0&&x.length<=128;
 export function resolveWatchWriterAcknowledgement(input:WatchAcknowledgementInput):WatchAcknowledgementDecision {
  if(!input||!id(input.expectedOwnerId)||input.authenticatedOwnerId!==input.expectedOwnerId)
   return fail('blocked','signed_out_or_account_changed');
+ if(!Number.isSafeInteger(input.activeSessionGeneration)||input.activeSessionGeneration<0||
+    !Number.isSafeInteger(input.submittedAuthSessionGeneration)||
+    input.submittedAuthSessionGeneration!==input.activeSessionGeneration)
+  return fail('reconcile','auth_generation_changed_before_writer_ack');
  const cmd=input.submitted;
  if(!cmd||cmd.kind!=='submit_to_training_writer')return fail('blocked','no_submitted_training_command');
  if(input.receipt===undefined||input.receipt===null)
