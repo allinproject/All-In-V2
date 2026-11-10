@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {shiftCalendarDate,weekDaysForDate,formatCalendarDay,calendarRecordsForDay,firstOfMonth,shiftCalendarMonth,monthCalendarWeeks,formatCalendarMonth,workoutMarkersForDay,monthDayMarkerSummary,monthDayAccessibilityLabel} from './calendarDayView.ts';
+import {shiftCalendarDate,weekDaysForDate,formatCalendarDay,calendarRecordsForDay,firstOfMonth,shiftCalendarMonth,monthCalendarWeeks,visibleCalendarReadRange,formatCalendarMonth,workoutMarkersForDay,monthDayMarkerSummary,monthDayAccessibilityLabel} from './calendarDayView.ts';
 
 test('week begins Monday and crosses month/year boundaries without UTC date drift',()=>{
  assert.deepEqual(weekDaysForDate('2027-01-01'),['2026-12-28','2026-12-29','2026-12-30','2026-12-31','2027-01-01','2027-01-02','2027-01-03']);
@@ -99,4 +99,12 @@ test('screen readers hear all monthly activity hints, including hidden overflow 
  assert.match(label,/strength, missed/);
  assert.match(monthDayAccessibilityLabel({status:'unavailable'},'2026-11-10'),/unavailable/);
  assert.match(monthDayAccessibilityLabel({status:'ready',records:[]},'2026-11-10'),/No scheduled or completed/);
+});
+
+test('visible calendar read window covers adjacent-month cells and complete Monday-first week',()=>{
+ assert.deepEqual(visibleCalendarReadRange('month','2026-11-10'),{fromDate:'2026-10-26',throughDate:'2026-12-06'});
+ assert.deepEqual(visibleCalendarReadRange('week','2027-01-01'),{fromDate:'2026-12-28',throughDate:'2027-01-03'});
+ assert.deepEqual(visibleCalendarReadRange('month','2028-02-29'),{fromDate:'2028-01-31',throughDate:'2028-03-05'});
+ assert.equal(visibleCalendarReadRange('month','2026-02-30'),null);
+ assert.equal(visibleCalendarReadRange('week','invalid'),null);
 });
