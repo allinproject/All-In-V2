@@ -97,5 +97,7 @@ jobs:
         run: npm run test:training-logic
       - name: Run Strength exercise-science contract tests
         run: npm run test:strength
+      - name: Run Strength exercise suitability tests
+        run: node --experimental-strip-types --test src/features/strength/exerciseSuitability.test.ts
       - name: Run provider cache helper tests
         run: npm run test:provider-cache
