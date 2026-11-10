@@ -33,3 +33,12 @@ test('aid stations need nonempty IDs and explicit confirmation flag',()=>{
  const noConfirmation=sample();(noConfirmation.aidStations[0] as any).confirmedByUser=undefined;
  assert.throws(()=>validateRaceCourseEvidence(noConfirmation),/Aid station identity/);
 });
+
+test('canonical route identity is retained when present and malformed IDs are rejected',()=>{
+ const linked=sample();linked.routeId='route-1';
+ assert.equal(validateRaceCourseEvidence(linked).routeId,'route-1');
+ const missing=sample();delete missing.routeId;
+ assert.equal(validateRaceCourseEvidence(missing).routeId,undefined);
+ const malformed=sample();malformed.routeId=' ';
+ assert.throws(()=>validateRaceCourseEvidence(malformed),/route identity/);
+});
