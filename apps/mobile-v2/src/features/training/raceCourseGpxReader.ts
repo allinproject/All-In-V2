@@ -26,6 +26,7 @@ export type RaceGpxReadResult =
   | {
       status: 'ready' | 'partial';
       raceId: string;
+      routeId: string | null;
       courseVersion: string;
       geometryKind: 'track' | 'route';
       points: readonly RaceGpxPoint[];
@@ -119,7 +120,7 @@ function parsePoints(
  */
 export function readRaceGpx(
   xml: string,
-  evidence: Pick<RaceCourseEvidence, 'raceId' | 'courseVersion' | 'routeFile'>,
+  evidence: Pick<RaceCourseEvidence, 'raceId' | 'courseVersion' | 'routeFile'> & Partial<Pick<RaceCourseEvidence,'routeId'>>,
 ): RaceGpxReadResult {
   if (
     !evidence || typeof evidence.raceId !== 'string' || !evidence.raceId.trim() ||
@@ -127,6 +128,7 @@ export function readRaceGpx(
     evidence.routeFile?.kind !== 'gpx' || typeof evidence.routeFile.fileRef !== 'string' ||
     !evidence.routeFile.fileRef.trim()
   ) return unavailable(evidence, 'A versioned GPX course artifact is required');
+  if (evidence.routeId !== undefined && evidence.routeId !== null && (typeof evidence.routeId !== 'string' || !evidence.routeId.trim())) return unavailable(evidence, 'Canonical route identity is invalid');
 
   if (typeof xml !== 'string' || xml.length === 0 || xml.length > MAX_XML_CHARACTERS) {
     return unavailable(evidence, 'GPX file is empty or exceeds the supported size');
@@ -211,6 +213,7 @@ export function readRaceGpx(
   return {
     status: allElevationPresent ? 'ready' : 'partial',
     raceId: evidence.raceId,
+    routeId: evidence.routeId ?? null,
     courseVersion: evidence.courseVersion,
     geometryKind,
     points,
