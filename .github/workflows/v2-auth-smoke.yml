@@ -1,0 +1,39 @@
+name: V2 Auth smoke (dependency-free)
+
+on:
+  push:
+    branches:
+      - integration/v2-foundation
+    paths:
+      - 'apps/mobile-v2/src/auth/**'
+      - 'apps/mobile-v2/src/types/database.types.ts'
+      - '.github/workflows/v2-auth-smoke.yml'
+  pull_request:
+    paths:
+      - 'apps/mobile-v2/src/auth/**'
+      - 'apps/mobile-v2/src/types/database.types.ts'
+      - '.github/workflows/v2-auth-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-auth-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auth-smoke:
+    name: Node-only Auth route, legal and onboarding tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: apps/mobile-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Run dependency-free Auth tests
+        run: npm run test:auth
