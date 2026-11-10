@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 import {
   ActivityIndicator,
@@ -91,6 +91,8 @@ const TRAINING_OPTIONS: Choice[] = [
   { value: 'strength', label: 'Strength' },
   { value: 'cycling', label: 'Ride' },
   { value: 'swimming', label: 'Swim' },
+  { value: 'elliptical', label: 'Elliptical' },
+  { value: 'stair_stepper', label: 'Stair-stepper' },
   { value: 'walking', label: 'Walk' },
   { value: 'hiking_rucking', label: 'Hike / Ruck' },
   { value: 'mobility_yoga', label: 'Mobility / Yoga' },
@@ -225,7 +227,6 @@ export default function OnboardingRequiredScreen() {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [skippedSteps, setSkippedSteps] = useState<string[]>([]);
-  const [settingsRoot, setSettingsRoot] = useState<Record<string, unknown>>({});
   const [settingsVersion, setSettingsVersion] = useState<number | null>(null);
   const [progressVersion, setProgressVersion] = useState<number | null>(null);
   const [answers, setAnswers] = useState<OnboardingAnswers>({ ...EMPTY_ONBOARDING_ANSWERS });
@@ -257,7 +258,6 @@ export default function OnboardingRequiredScreen() {
     const nextSkipped = asStringArray(onboarding.skipped_steps);
     const nextStep = firstIncompleteOnboardingStep(nextCompleted, nextSkipped);
 
-    setSettingsRoot(rootSettings);
     setSettingsVersion(nextSettingsVersion);
     setProgressVersion(nextProgressVersion);
     setCompletedSteps(nextCompleted);
