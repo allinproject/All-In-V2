@@ -119,6 +119,23 @@ test('signup preflight fails closed if legal documents become incomplete or unav
   assert.throws(() => assertV2SignupLegalSnapshotCurrent(original, null), /not available/i);
 });
 
+test('existing-account legal acceptance preflight rejects changed published text before receipt', () => {
+  const reviewed = parsePublishedV2LegalDocuments(docs);
+  const changed = [
+    docs[0],
+    { ...docs[1], content_markdown: 'Revised privacy text without a new digest' },
+    docs[2],
+  ];
+  assert.throws(
+    () => assertV2SignupLegalSnapshotCurrent(reviewed, changed),
+    /legal documents changed/i,
+  );
+  assert.deepEqual(
+    assertV2SignupLegalSnapshotCurrent(reviewed, docs.map(item => ({ ...item }))),
+    reviewed,
+  );
+});
+
 test('all six canonical onboarding steps are required', () => {
   assert.equal(shouldEnterV2Onboarding(null, { completedSteps: [], skippedSteps: [] }), true);
   assert.equal(shouldEnterV2Onboarding(null, { completedSteps: ['focus', 'training_pattern'], skippedSteps: [] }), true);
