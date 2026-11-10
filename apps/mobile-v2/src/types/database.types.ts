@@ -190,10 +190,6 @@ export type Database = {
         Args: { p_batch_size?: number }
         Returns: number
       }
-      v2_provider_cache_prune_expired: {
-        Args: { p_batch_size?: number }
-        Returns: number
-      }
       v2_provider_cache_put: {
         Args: {
           p_cache_key: string
