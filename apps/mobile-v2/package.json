@@ -12,7 +12,8 @@
     "test:calculator": "node --experimental-strip-types --test src/features/cookbook/recipeNutritionCalculator.test.ts src/features/cookbook/cookingYieldIntelligence.test.ts src/features/cookbook/cookingYieldReferenceCatalog.test.ts src/features/cookbook/foodDataCentral.test.ts src/features/cookbook/foodProductLookup.test.ts src/features/cookbook/localIngredientProfiles.test.ts src/features/cookbook/ingredientSeedPreview.test.ts",
     "test:training-logic": "node --experimental-strip-types --test src/features/training/trainingPlanSynthesis.test.ts src/features/training/athleteHistoryContext.test.ts src/features/training/runningPerformancePrediction.test.ts src/features/training/trainingPlanLifecycle.test.ts src/features/training/raceCourseEvidence.test.ts",
     "test:provider-cache": "node --experimental-strip-types --test ../../supabase/functions/_shared/providerCache.node.test.mjs",
-    "test:monitoring": "node --experimental-strip-types --test src/monitoring/sentryPrivacy.test.ts"
+    "test:monitoring": "node --experimental-strip-types --test src/monitoring/sentryPrivacy.test.ts",
+    "test:notifications": "node --experimental-strip-types --test src/features/notifications/notificationPolicy.test.ts src/features/notifications/pushReceiptPolicy.test.ts src/features/notifications/deviceRegistrationPolicy.test.ts src/features/notifications/deliveryLifecycle.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
