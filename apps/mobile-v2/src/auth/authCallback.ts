@@ -13,6 +13,19 @@ function first(value: string | string[] | undefined): string {
   return (Array.isArray(value) ? value[0] : value ?? '').trim();
 }
 
+/**
+ * Stable identity of a received deep link. The callback screen uses this to
+ * consume each link once while still accepting a newer link on the same route.
+ */
+export function authCallbackRequestKey(params: AuthCallbackParams): string {
+  return JSON.stringify([
+    first(params.code),
+    first(params.type),
+    first(params.error),
+    first(params.error_description),
+  ]);
+}
+
 export function resolveAuthCallback(params: AuthCallbackParams): AuthCallbackResolution {
   if (first(params.error) || first(params.error_description)) {
     return {
