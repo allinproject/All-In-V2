@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { assertV2SessionOwner } from '../src/auth/accessGateClient';
-import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
+import { v2PasswordResetValidationError } from '../src/auth/passwordPolicy';
 import { colors } from '../src/theme/tokens';
 
 export default function ResetPasswordScreen() {
@@ -20,12 +20,9 @@ export default function ResetPasswordScreen() {
 
   async function updatePassword() {
     if (submitting) return;
-    if (!meetsV2PasswordMinimum(password)) {
-      setError('Use a password with at least 12 characters.');
-      return;
-    }
-    if (password !== confirmation) {
-      setError('The passwords do not match.');
+    const validationError = v2PasswordResetValidationError(password, confirmation);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     if (!user) return;
