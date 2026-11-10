@@ -12,6 +12,7 @@ on:
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
       - 'scripts/check-v2-supabase-target.mjs'
+      - 'scripts/check-v2-supabase-target.test.mjs'
       - 'supabase/config.toml'
       - 'apps/mobile-v2/.env.example'
   pull_request:
@@ -23,6 +24,7 @@ on:
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
       - 'scripts/check-v2-supabase-target.mjs'
+      - 'scripts/check-v2-supabase-target.test.mjs'
       - 'supabase/config.toml'
       - 'apps/mobile-v2/.env.example'
   workflow_dispatch:
@@ -49,6 +51,8 @@ jobs:
           node-version: '22.16.0'
       - name: Verify V2 Supabase target isolation
         run: node ../../scripts/check-v2-supabase-target.mjs
+      - name: Test V2 Supabase guard rejection cases
+        run: node --test ../../scripts/check-v2-supabase-target.test.mjs
       - name: Run Auth tests
         run: npm run test:auth
       - name: Run Cookbook calculator tests
