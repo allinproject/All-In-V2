@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {shiftCalendarDate,weekDaysForDate,formatCalendarDay,calendarRecordsForDay,firstOfMonth,shiftCalendarMonth,monthCalendarWeeks,formatCalendarMonth} from './calendarDayView.ts';
+import {shiftCalendarDate,weekDaysForDate,formatCalendarDay,calendarRecordsForDay,firstOfMonth,shiftCalendarMonth,monthCalendarWeeks,formatCalendarMonth,workoutMarkersForDay} from './calendarDayView.ts';
 
 test('week begins Monday and crosses month/year boundaries without UTC date drift',()=>{
  assert.deepEqual(weekDaysForDate('2027-01-01'),['2026-12-28','2026-12-29','2026-12-30','2026-12-31','2027-01-01','2027-01-02','2027-01-03']);
@@ -51,4 +51,15 @@ test('week arrows shift exactly seven days and retain selected weekday',()=>{
  assert.equal(next,'2026-11-17');
  assert.deepEqual(weekDaysForDate(next!),['2026-11-16','2026-11-17','2026-11-18','2026-11-19','2026-11-20','2026-11-21','2026-11-22']);
  assert.equal(shiftCalendarDate(next!,-7),selected);
+});
+
+test('month markers distinguish planned vs completed sport evidence without fabricating unknown days',()=>{
+ const data=[
+  {athleteLocalDate:'2026-11-10',kind:'running' as const,status:'planned' as const},
+  {athleteLocalDate:'2026-11-10',kind:'stair' as const,status:'completed' as const},
+  {athleteLocalDate:'2026-11-11',kind:'walking' as const,status:'completed' as const},
+ ];
+ assert.equal(workoutMarkersForDay({status:'unavailable'},'2026-11-10'),null);
+ assert.deepEqual(workoutMarkersForDay({status:'ready',records:data},'2026-11-10'),data.slice(0,2));
+ assert.deepEqual(workoutMarkersForDay({status:'ready',records:data},'2026-11-12'),[]);
 });
