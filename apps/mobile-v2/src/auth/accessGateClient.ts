@@ -98,7 +98,11 @@ export function assertV2SignupLegalSnapshotCurrent(
 ): V2LegalDocument[] {
   const current = parsePublishedV2LegalDocuments(currentPublishedDocuments);
   const reviewed = parsePublishedV2LegalDocuments(reviewedDocuments);
-  if (v2LegalReviewSetKey('signup', reviewed) !== v2LegalReviewSetKey('signup', current)) {
+  // Compare actual displayed text too: a missing content hash must not hide a text edit.
+  const snapshot = (items: readonly V2LegalDocument[]) => JSON.stringify(items.map(doc => [
+    doc.document_key, doc.version, doc.title, doc.content_markdown, doc.content_sha256, doc.effective_at,
+  ]));
+  if (snapshot(reviewed) !== snapshot(current)) {
     throw new Error('The V2 legal documents changed. Review the current versions before creating an account.');
   }
   return current;
