@@ -3,7 +3,7 @@
  * Coach proposes evidence-backed session intents; this module schedules and
  * audits them. It does not invent paces, watts, distances, loads or dose.
  */
-export type TrainingSport='running'|'cycling'|'swimming'|'strength'|'hiking'|'rucking'|'rowing'|'elliptical'|'stair'|'yoga'|'mobility'|'other';
+export type TrainingSport='running'|'walking'|'cycling'|'swimming'|'strength'|'hiking'|'rucking'|'rowing'|'elliptical'|'stair'|'yoga'|'mobility'|'other';
 export type TrainingPriority='competition'|'key'|'supporting'|'optional';
 export type TrainingIntensity='easy'|'moderate'|'hard'|'unknown';
 export type TrainingDay='monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday';
@@ -38,7 +38,7 @@ function validSession(s:TrainingSessionIntent):boolean{
  const demand=s?.demand;
  const validLevels=['low','moderate','high','unknown'];
  return Boolean(s&&typeof s.id==='string'&&s.id.trim()&&typeof s.label==='string'&&s.label.trim()&&typeof s.purpose==='string'&&s.purpose.trim()&&
- ['running','cycling','swimming','strength','hiking','rucking','rowing','elliptical','stair','yoga','mobility','other'].includes(s.sport)&&
+ ['running','walking','cycling','swimming','strength','hiking','rucking','rowing','elliptical','stair','yoga','mobility','other'].includes(s.sport)&&
  ['competition','key','supporting','optional'].includes(s.priority)&&['easy','moderate','hard','unknown'].includes(s.intensity)&&
  (s.durationMinutes===null||(Number.isFinite(s.durationMinutes)&&s.durationMinutes>0&&s.durationMinutes<=900))&&
  demand&&validLevels.includes(demand.aerobic)&&validLevels.includes(demand.localMuscular)&&
