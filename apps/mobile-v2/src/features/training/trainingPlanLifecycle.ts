@@ -81,7 +81,13 @@ export function adaptRemainingPlanAfterMiss(input:{
 }):RemainingPlanProposal{
  if(!validDate(input.today)||!validDate(input.raceDate)||input.raceDate<input.today)throw new Error('Valid athlete-local today and race dates are required.');
  if(!Array.isArray(input.sessions)||!Array.isArray(input.newlyUnavailableDates??[]))throw new Error('Current plan sessions and availability are required.');
+ if(input.sessions.some(s=>!s||typeof s.id!=='string'||!s.id.trim()||!validDate(s.date)||!s.intent))throw new Error('Every plan session must have a valid identity, local date and training intent.');
+ if((input.newlyUnavailableDates??[]).some(d=>!validDate(d)))throw new Error('Newly unavailable dates must be valid athlete-local dates.');
  const issues:RemainingPlanProposal['issues']=[];
+ if(!input.sessions.some(s=>s.date===input.raceDate&&s.intent.priority==='competition')){
+  issues.push({code:'RACE_DATE_PROTECTED',severity:'blocking',sessionIds:[],message:'The current plan does not contain its competition event on the canonical race date.'});
+  return{version:1,missedSessionId:input.missedSessionId,missedSessionDate:'',reason:input.reason,sessions:input.sessions,recommendations:['Refresh the canonical race and plan identity before adapting the remaining schedule.'],issues,status:'blocked',invariants:{missedWorkNotAutomaticallyRescheduled:true,completedHistoryPreserved:true,raceDayPreserved:true,requiresAthleteApproval:true}};
+ }
  const index=input.sessions.findIndex(s=>s.id===input.missedSessionId);
  if(index<0){
   issues.push({code:'MISSED_SESSION_NOT_FOUND',severity:'blocking',sessionIds:[input.missedSessionId],message:'The reported missed session is not in the current plan revision.'});
