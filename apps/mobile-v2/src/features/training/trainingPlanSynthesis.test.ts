@@ -74,3 +74,39 @@ test('missing evidence remains visibly review-required rather than fabricated',(
  assert.equal(result.status,'review_required');
  assert.ok(result.issues.some(issue=>issue.code==='MISSING_EVIDENCE'));
 });
+
+test('strength-primary plus cycling-secondary keeps goal priority and never applies a plan',()=>{
+ const c=context(['strength','cycling']);
+ c.primaryGoal={id:'strength-primary',label:'Build strength',sports:['strength']};
+ c.secondaryGoals=[{id:'bike-support',label:'Aerobic fitness',sports:['cycling']}];
+ c.activeRestrictions=[];
+ const proposed=[
+  {...session('main-lift','strength','key','hard','lower_body'),fixedDay:'monday' as const},
+  {...session('support-bike','cycling','supporting','easy','bike_aerobic'),fixedDay:'wednesday' as const},
+ ];
+ const result=synthesizeTrainingWeek(c,proposed);
+ assert.equal(result.goalId,'strength-primary');
+ assert.equal(result.primaryGoal,'Build strength');
+ assert.equal(result.status,'review_required');
+ assert.equal(result.days.find(d=>d.day==='monday')?.sessions[0].sport,'strength');
+ assert.equal(result.days.find(d=>d.day==='wednesday')?.sessions[0].sport,'cycling');
+ assert.equal(result.invariants.noAutomaticPlanWrite,true);
+ assert.equal(result.invariants.noInventedPrescription,true);
+});
+
+test('triathlon proposal preserves swim, bike and run as distinct training exposures',()=>{
+ const c=context(['swimming','cycling','running']);
+ c.primaryGoal={id:'triathlon-primary',label:'Triathlon completion',sports:['swimming','cycling','running']};
+ c.secondaryGoals=[];
+ c.activeRestrictions=[];
+ const result=synthesizeTrainingWeek(c,[
+  {...session('swim-technique','swimming','key','moderate','swim_skill'),fixedDay:'monday' as const},
+  {...session('bike-endurance','cycling','key','moderate','bike_aerobic'),fixedDay:'wednesday' as const},
+  {...session('run-easy','running','key','easy','run_impact'),fixedDay:'friday' as const},
+ ]);
+ assert.equal(result.status,'review_required');
+ assert.deepEqual(new Set(result.days.flatMap(d=>d.sessions.map(s=>s.sport))),
+   new Set(['swimming','cycling','running']));
+ assert.equal(result.invariants.sportsKeptSeparate,true);
+ assert.equal(result.invariants.noAutomaticPlanWrite,true);
+});
