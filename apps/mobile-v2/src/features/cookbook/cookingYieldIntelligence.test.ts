@@ -9,3 +9,14 @@ test('personal yield needs three exact observations before outranking reviewed d
 test('batch mass balance and allocation use measured finished mass',()=>{const r=calculateBatchYield({startingFoodGrams:500,addedLiquidGrams:100,addedOtherGrams:20,discardedOrDrainedGrams:30,finalCookedGrams:450});assert.equal(r.startingTotalGrams,620);assert.equal(r.retainedGrams,480);assert.equal(r.finalToStartingRatio,450/620);assert.doesNotThrow(()=>reconcilePreparedIngredientAllocation({finishedCookedGrams:500,allocatedToMealsGrams:300,savedAsIngredientGrams:150,discardedGrams:50}));assert.throws(()=>reconcilePreparedIngredientAllocation({finishedCookedGrams:500,allocatedToMealsGrams:300,savedAsIngredientGrams:150,discardedGrams:20}))});
 test('nutrition basis and measured state must agree',()=>{assert.doesNotThrow(()=>assertNutritionWeightState({nutritionState:'cooked',measuredState:'cooked'}));assert.throws(()=>assertNutritionWeightState({nutritionState:'raw',measuredState:'cooked'}))});
 test('reviewed USDA yield catalog does not infer unsupported potato preparations',()=>{assert.ok(reviewedCookingYieldReferences.length>=4);const baked=chooseCookingYieldEvidence({food:'Potato',form:'White or Russet whole with skin',method:'baked',lid:'uncovered',drained:false},reviewedCookingYieldReferences);assert.equal(baked?.yieldRatio,.82);assert.equal(chooseCookingYieldEvidence({food:'Potato',form:'peeled mashed',method:'boiled and mashed',drained:true},reviewedCookingYieldReferences),null)});
+
+test('yield quantity conversions reject overflow and non-finite uncertainty bounds',()=>{
+ const tiny={yieldRatio:Number.MIN_VALUE,lowerYieldRatio:null,upperYieldRatio:null,source:'reviewed_reference' as const,confidence:'medium' as const,evidenceId:'tiny',observationCount:null};
+ assert.throws(()=>rawNeededForCookedTarget(100,tiny),/finite and positive/);
+ const high={...tiny,yieldRatio:10};
+ assert.throws(()=>expectedCookedFromRaw(1e308,high),/finite and positive/);
+ const overflowRange={...tiny,yieldRatio:1,lowerYieldRatio:Number.MIN_VALUE,upperYieldRatio:1};
+ assert.throws(()=>rawNeededForCookedTarget(100,overflowRange),/finite and positive/);
+ const nominal={...tiny,yieldRatio:.75,lowerYieldRatio:.72,upperYieldRatio:.78};
+ assert.equal(rawNeededForCookedTarget(75,nominal).grams,100);
+});
