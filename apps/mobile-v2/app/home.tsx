@@ -1,19 +1,26 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
+import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 
 export default function HomeScreen() {
+  const { user, sessionGeneration } = useAuth();
+  return <HomeOwnerScreen key={v2AuthenticatedScreenKey(user?.id ?? null, sessionGeneration)} />;
+}
+
+function HomeOwnerScreen() {
   const { user, loading, signOut } = useAuth();
   const gate = useAccessGate();
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const signOutGuard = useRef(createV2AuthActionGuard());
 
   async function handleSignOut() {
-    if (signingOut) return;
+    if (!signOutGuard.current.tryEnter()) return;
     setSigningOut(true);
     setSignOutError(null);
     try {
@@ -21,6 +28,7 @@ export default function HomeScreen() {
     } catch (error) {
       setSignOutError(error instanceof Error ? error.message : 'Could not sign out. Please retry.');
     } finally {
+      signOutGuard.current.leave();
       setSigningOut(false);
     }
   }
