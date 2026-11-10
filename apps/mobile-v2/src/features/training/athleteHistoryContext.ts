@@ -80,8 +80,15 @@ export function buildAthleteHistoryReadModel(input:{
  const coverage=input.coverage.filter(c=>Boolean(c&&sports.includes(c.sport)&&validDate(c.fromDate)&&validDate(c.throughDate)&&c.fromDate<=c.throughDate&&
    ['complete','partial','none','unknown'].includes(c.status)&&Array.isArray(c.missingIntervals)));
  const requestedStart=Date.parse(input.fromDate+'T00:00:00Z'),requestedEnd=Date.parse(input.throughDate+'T23:59:59Z');
- const coveredSports=new Set(coverage.filter(c=>c.status==='complete'&&Date.parse(c.fromDate+'T00:00:00Z')<=requestedStart&&Date.parse(c.throughDate+'T23:59:59Z')>=requestedEnd&&c.missingIntervals.length===0).map(c=>c.sport));
  const relevantCoverage=coverage.filter(c=>sports.includes(c.sport));
+ // Conflicting source intervals cannot be merged into a fabricated 'complete'
+ // history. A complete report for a sport must span the requested window AND
+ // have no competing partial, unknown or missing-interval coverage record.
+ const coveredSports=new Set(sports.filter(sport=>{
+   const reports=relevantCoverage.filter(c=>c.sport===sport);
+   return reports.some(c=>c.status==='complete'&&Date.parse(c.fromDate+'T00:00:00Z')<=requestedStart&&Date.parse(c.throughDate+'T23:59:59Z')>=requestedEnd&&c.missingIntervals.length===0)&&
+     reports.every(c=>c.status==='complete'&&c.missingIntervals.length===0);
+ }));
  const complete=sports.length>0&&sports.every(s=>coveredSports.has(s));
  const anyCoverage=relevantCoverage.some(c=>c.status!=='none');
  const warnings:string[]=[];
