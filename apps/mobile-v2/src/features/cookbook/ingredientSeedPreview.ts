@@ -3,6 +3,8 @@
  * This previews SOURCE CANDIDATES only. It never publishes nutrition, assigns
  * canonical IDs, mutates records, downloads data, or bypasses reviewer approval.
  */
+import { validateGtin } from './foodProductLookup.ts';
+
 export type IngredientSeedSource = 'usda_fdc' | 'open_food_facts';
 export type IngredientSeedCandidate = {
   provider: IngredientSeedSource;
@@ -46,7 +48,7 @@ function validCandidate(row: IngredientSeedCandidate): boolean {
   // OFF candidates must be reviewed separately by exact GTIN reader; never
   // treat a generic FDC ID or an unvalidated barcode as an ingredient ID.
   return row.provider === 'open_food_facts' && row.source_data_type === 'OFF product' &&
-    /^[0-9]{8,14}$/.test(row.external_record_id);
+    validateGtin(row.external_record_id) !== null;
 }
 /**
  * Stable sorted preview. Conflicting duplicate source keys are held for review.
