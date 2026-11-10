@@ -58,6 +58,7 @@ test('GPS teleports and out-of-order samples do not update state or fake pacing'
   {elapsedSeconds:301,distanceOnCourseMeters:1300},
   {elapsedSeconds:299,distanceOnCourseMeters:900},
   {elapsedSeconds:360,distanceOnCourseMeters:700},
+  {elapsedSeconds:360,distanceOnCourseMeters:799.5},
  ]){
   const r=updateRacePaceLive(packageData(),sample(update),a);
   assert.equal(r.acceptance,'held');
