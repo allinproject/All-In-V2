@@ -59,6 +59,24 @@ export function matchesOnboardingRetryScope(
     && pending.progressVersion === current.progressVersion;
 }
 
+/**
+ * Claim a save synchronously, before React can render its busy/disabled state.
+ * Prevents near-simultaneous Complete and Skip presses from racing two writes.
+ */
+export function createOnboardingSaveGuard() {
+  let inFlight = false;
+  return {
+    tryEnter(): boolean {
+      if (inFlight) return false;
+      inFlight = true;
+      return true;
+    },
+    leave(): void {
+      inFlight = false;
+    },
+  };
+}
+
 export type OnboardingPreferenceWrite = {
   section: SettingsSection;
   patch: Json;
