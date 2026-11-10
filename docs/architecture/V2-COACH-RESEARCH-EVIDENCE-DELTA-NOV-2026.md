@@ -116,3 +116,18 @@ This document covers seven evidence themes across several increments, **not all 
 ## Research audit status update
 
 The delta now covers **seven evidence themes**, some sharing a primary source. This is not seven independently verified implementation domains and does not complete the legacy 17-domain evidence review. Every evaluation above remains **proposed** until the canonical ALL-241 harness executes against actual typed readers, model output, application state and safety/cost acceptance. Research documentation cannot substitute for those checks.
+
+## Executed V2 cross-domain fixture inventory — 2026-11-10
+
+The repository now includes `apps/mobile-v2/src/features/training/coachCrossDomainContracts.test.ts`, registered in the **existing** `test:training-logic` script. These are executable V2 **pure-module acceptance fixtures** and are *not* the full Coach model evaluation harness.
+
+| Scenario | Actual V2 modules exercised together | Tested assertion | What remains unverified |
+|---|---|---|---|
+| Restriction from athlete history blocks trail plan | `athleteHistoryContext` + `trainingPlanSynthesis` | Active user restriction blocks proposed session; partial coverage stays partial; no automatic plan writer | Canonical owner RLS/read, persisted active restriction, live generated proposal, user approval and device |
+| Unverified aid stations never become race facts | `raceCourseEvidence` + `trainingPlanSynthesis` | Unknown aid status remains partial/no fabricated stops even when a week is reviewable | Actual organizer website/GPX retrieval, course versioning, Coach response/citation use |
+| Missing cooked ingredient prevents fully validated meal | `localIngredientProfiles` + `recipeNutritionCalculator` | Source-backed rice is calculable offline; unreviewed sauce blocks complete recipe macros | Approved SQL catalog and reviewer, real USDA seed, meal recommendation model, Food Log writes |
+| Recovery unknown versus athlete-reported pain | `athleteHistoryContext` + `adaptTrainingDay` | Missing wearable data does not rewrite session; severe pain invokes review with approval requirement | Actual Recovery read and wearable sync, qualified safety triage, model behavior, UI approval flow |
+
+**Execution:** Dependency-free hosted CI [run 42882590609](https://github.com/allinproject/All-In-V2/actions/runs/42882590609) passed at `c49775ef1b1ce63d075cae3c343ed5dd05ec5267`. This does not verify full TypeScript/Expo build under ALL-224.
+
+**Next evaluation layers for ALL-241:** establish canonical owner-specific read fixtures and account isolation, then run structured model output against the ten existing suite groups (memory, plans, race, nutrition, gear, recovery, notifications, actions, integrity, degradation). A passing deterministic guard is never sufficient to claim the Coach *model* selected the right context or recommendation. Keep executed source-contract results and model/integration outcomes as separate evidence columns in Linear; avoid inventing a second training/recovery/ingredient owner or duplicating the existing Coach evaluation source of truth.
