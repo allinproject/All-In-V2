@@ -26,3 +26,11 @@ test('invalid context event limits must fail closed rather than silently suppres
  assert.throws(()=>buildAthleteHistoryReadModel({...valid,maxEvents:0}),/Valid athlete-history scope/);
  assert.equal(buildAthleteHistoryReadModel({...valid,maxEvents:1}).events.length,1);
 });
+
+test('malformed active athlete restrictions fail closed rather than disappearing from Coach context',()=>{
+ const base={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running' as const],currentPlan:null,coverage:[coverage('running')],events:[]};
+ const restriction={id:'no-curl',category:'exercise' as const,subject:'lying_leg_curl',status:'active' as const,source:'explicit_user' as const,updatedAt:'2026-11-01T12:00:00Z',reason:'Do not use'};
+ assert.throws(()=>buildAthleteHistoryReadModel({...base,restrictions:[{...restriction,subject:' '}]}),/active athlete restriction is incomplete/);
+ assert.throws(()=>buildAthleteHistoryReadModel({...base,restrictions:[{...restriction,updatedAt:'invalid'}]}),/active athlete restriction is incomplete/);
+ assert.equal(buildAthleteHistoryReadModel({...base,restrictions:[restriction]}).restrictions[0].subject,'lying_leg_curl');
+});
