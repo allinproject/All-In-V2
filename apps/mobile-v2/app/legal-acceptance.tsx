@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
-import { assertV2SessionOwner, v2LegalReviewKey, v2LegalReviewSetKey } from '../src/auth/accessGateClient';
+import { assertV2SessionOwner, assertV2SignupLegalSnapshotCurrent, v2LegalReviewKey, v2LegalReviewSetKey } from '../src/auth/accessGateClient';
 import { supabase } from '../src/lib/supabase';
 import { colors, radius, spacing } from '../src/theme/tokens';
 
@@ -33,6 +33,22 @@ export default function LegalAcceptanceScreen() {
     setSubmitting(true);
     setMessage(null);
     try {
+      await assertV2SessionOwner(supabase, user.id);
+      // The user must consent to the exact text still published at submission time.
+      const { data: publishedLegal, error: legalError } = await supabase.from('v2_legal_documents')
+        .select('document_key,version,title,content_markdown,content_sha256,effective_at')
+        .eq('status', 'published')
+        .lte('effective_at', new Date().toISOString());
+      if (legalError) throw new Error('The current V2 legal documents could not be verified. Please retry.');
+      try {
+        assertV2SignupLegalSnapshotCurrent(documents, publishedLegal);
+      } catch (changed) {
+        setChecked({});
+        setAgeConfirmedReviewSet(null);
+        pendingAcceptance.current = null;
+        gate.retry();
+        throw changed;
+      }
       await assertV2SessionOwner(supabase, user.id);
       const versions = new Map(documents.map(doc => [doc.document_key, doc.version]));
       const id = pendingAcceptance.current?.reviewSet === reviewSet
@@ -70,13 +86,13 @@ export default function LegalAcceptanceScreen() {
             <ScrollView nestedScrollEnabled style={styles.documentBody}>
               <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
             </ScrollView>
-            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!checked[reviewKey(doc)] }} onPress={() => setChecked(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] }))} style={styles.reviewRow}>
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!checked[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => setChecked(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] }))} style={styles.reviewRow}>
               <Text style={styles.checkbox}>{checked[reviewKey(doc)] ? '☑' : '☐'}</Text>
               <Text style={styles.reviewText}>I have read and reviewed this document</Text>
             </Pressable>
           </View>
         ))}
-        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed }} onPress={() => setAgeConfirmedReviewSet(current => current === reviewSet ? null : reviewSet)} style={styles.reviewRow}>
+        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed, disabled: submitting }} disabled={submitting} onPress={() => setAgeConfirmedReviewSet(current => current === reviewSet ? null : reviewSet)} style={styles.reviewRow}>
           <Text style={styles.checkbox}>{ageConfirmed ? '☑' : '☐'}</Text>
           <Text style={styles.reviewText}>I confirm that I am at least 18 years old.</Text>
         </Pressable>
