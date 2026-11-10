@@ -239,7 +239,7 @@ export function validateExerciseScienceProfile(
   const muscleGroupIds = new Set<string>();
   let hasPrimaryMuscle = false;
   for (const muscle of muscleGroups) {
-    if (!nonEmpty(muscle.muscleGroupId) || muscleGroupIds.has(muscle.muscleGroupId) ||
+    if (!muscle || !nonEmpty(muscle.muscleGroupId) || muscleGroupIds.has(muscle.muscleGroupId) ||
       !oneOf(muscle.role,['primary','secondary','stabilizer'] as const)) {
       errors.push('Muscle group identities and roles must be valid and unique.');
       continue;
@@ -256,7 +256,8 @@ export function validateExerciseScienceProfile(
 
   if (!Array.isArray(profile?.jointDemands)) errors.push('Joint demands must be a list.');
   for (const demand of jointDemands) {
-    if (!demand || !nonEmpty(demand.jointId) || !nonEmpty(demand.action) ||
+    if (!demand) { errors.push('Joint demand entry is invalid.'); continue; }
+    if (!nonEmpty(demand.jointId) || !nonEmpty(demand.action) ||
       !oneOf(demand.plane,PLANES) || !oneOf(demand.rangeOfMotion,ROM_RANGES) || !oneOf(demand.relativeDemand,RELATIVE_DEMANDS)) {
       errors.push('Each joint demand needs a joint, action, plane and demand level.');
     }
