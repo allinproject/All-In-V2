@@ -19,6 +19,7 @@ export type RaceCourseEvidence={
  elevationLoss:RaceCourseField<number>;
  surface:RaceCourseField<'road'|'trail'|'mixed'|'track'|'open_water'|'other'>;
  technicality:RaceCourseField<'low'|'moderate'|'high'|'unknown'>;
+ aidStationStatus:RaceCourseField<'available'|'none'|'unknown'>;
  aidStations:RaceAidStation[];
  courseVersion:string;
  completeness:'verified'|'partial'|'unverified';
