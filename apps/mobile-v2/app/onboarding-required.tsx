@@ -22,7 +22,9 @@ import {
   V2_ONBOARDING_FOCUS_OPTIONS,
   firstIncompleteOnboardingStep,
   isOnboardingAnswerComplete,
+  matchesOnboardingRetryScope,
   onboardingPreferenceWrite,
+  type OnboardingActionScope,
   type OnboardingAnswers,
   type OnboardingStep,
 } from '../src/auth/onboardingFlow';
@@ -32,9 +34,7 @@ import type { Json } from '../src/types/database.types';
 
 type Choice = { value: string; label: string; description?: string };
 
-type PendingAction = {
-  step: OnboardingStep;
-  action: 'complete' | 'skip';
+type PendingAction = OnboardingActionScope & {
   settingsActionId: string;
   progressActionId: string;
 };
@@ -292,11 +292,17 @@ export default function OnboardingRequiredScreen() {
       return;
     }
 
-    const ids = pendingAction?.step === activeStep && pendingAction.action === action
-      ? pendingAction
+    const scope: OnboardingActionScope = {
+      ownerId,
+      step: activeStep,
+      action,
+      settingsVersion,
+      progressVersion,
+    };
+    const ids: PendingAction = matchesOnboardingRetryScope(pendingAction, scope)
+      ? pendingAction!
       : {
-          step: activeStep,
-          action,
+          ...scope,
           settingsActionId: makeActionId(ownerId, activeStep, 'settings'),
           progressActionId: makeActionId(ownerId, activeStep, action),
         };
@@ -319,7 +325,10 @@ export default function OnboardingRequiredScreen() {
           },
         );
         if (settingsError) {
-          if (settingsError.code === '40001') await readSnapshot(true);
+          if (settingsError.code === '40001') {
+            setPendingAction(null);
+            await readSnapshot(true);
+          }
           throw settingsError;
         }
         if (!Number.isSafeInteger(Number(savedSettingsVersion)) || Number(savedSettingsVersion) < 1) {
@@ -337,7 +346,10 @@ export default function OnboardingRequiredScreen() {
         p_client_action_id: ids.progressActionId,
       });
       if (progressError) {
-        if (progressError.code === '40001') await readSnapshot(true);
+        if (progressError.code === '40001') {
+          setPendingAction(null);
+          await readSnapshot(true);
+        }
         throw progressError;
       }
 
