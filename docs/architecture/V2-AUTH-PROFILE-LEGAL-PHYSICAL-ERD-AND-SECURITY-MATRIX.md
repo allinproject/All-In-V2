@@ -226,4 +226,4 @@ Both fixtures executed against V2 without SQL errors. The synthetic accounts, pr
 - Command: `select allin_private.v2_provider_cache_prune_expired(5000);`.
 - Cron schema USAGE is true for postgres only; anon, authenticated and service_role are false.
 - The private SECURITY INVOKER helper has no EXECUTE for anon/authenticated/service_role. The owner-run job can execute it. The public wrapper remains callable only by service_role.
-- Metadata and grant assertion passed; postgres direct helper smoke test returned 0. No successful scheduled `cron.job_run_details` row has yet been observed; first hourly run is pending.
+- Metadata and grant assertion passed; postgres direct helper smoke test returned 0. First scheduled `cron.job_run_details` row succeeded at `2026-11-10 13:17:00.143 UTC` (7:17 AM Central); one result row returned and the cache remained at zero rows, so no expired entries were present to delete.
