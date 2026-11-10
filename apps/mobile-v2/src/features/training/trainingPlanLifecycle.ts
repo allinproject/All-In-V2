@@ -131,8 +131,15 @@ export function adaptRemainingPlanAfterMiss(input:{
 
 /** Accepted race calendars cannot contain unclassified gaps. */
 export function assertRacePlanCalendarAssigned(calendar:RacePlanCalendar):void{
- if(!calendar.days.length||calendar.days[0].date!==calendar.startDate||calendar.days[calendar.days.length-1].date!==calendar.raceDate)
+ if(!calendar||!Array.isArray(calendar.days)||!validDate(calendar.startDate)||!validDate(calendar.raceDate)||
+    !calendar.days.length||calendar.days[0].date!==calendar.startDate||calendar.days[calendar.days.length-1].date!==calendar.raceDate)
   throw new Error('The complete selected-start-to-race calendar is required.');
+ const expectedDays=dateDiff(calendar.startDate,calendar.raceDate)+1;
+ if(expectedDays<1||calendar.days.length!==expectedDays||calendar.totalDays!==expectedDays||
+    calendar.days.some((day,index)=>!day||day.date!==shiftDate(calendar.startDate,index)||
+      !['planned','rest','recovery','unavailable','race','review_required'].includes(day.state)||
+      day.isRaceDay!==(day.date===calendar.raceDate)))
+  throw new Error('Race calendar dates must be contiguous, unique, valid and accurately mark the race day.');
  if(calendar.days.some(day=>day.state==='review_required'))throw new Error('Every date must be assigned a workout, rest, recovery, unavailable or race state before plan acceptance.');
  if(calendar.days.filter(day=>day.state==='race').length!==1||!calendar.days[calendar.days.length-1].isRaceDay)
   throw new Error('The goal race must be the final and only race-state date.');
