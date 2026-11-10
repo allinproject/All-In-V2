@@ -1,9 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildAthleteHistoryReadModel,type AthleteHistoryEvent,type AthleteHistoryCoverage} from './athleteHistoryContext.ts';
+import { V2_ACTIVITY_SPORTS } from './activityEntryContract.ts';
 const event=(patch:Partial<AthleteHistoryEvent>={}):AthleteHistoryEvent=>({id:'run-1',kind:'completed_session',sport:'running',occurredAt:'2026-11-01T07:00:00Z',recordedAt:'2026-11-01T08:00:00Z',source:'canonical_training',sourceRef:'source-1',canonicalRef:'workout-1',planId:'plan-1',planRevision:3,summary:'Long run',metrics:{distanceMiles:18,durationMinutes:210},confidence:'high',...patch});
 const coverage=(sport:'running'|'cycling',status:AthleteHistoryCoverage['status']='complete'):AthleteHistoryCoverage=>({sport,fromDate:'2026-10-01',throughDate:'2026-11-09',status,lastSyncAt:'2026-11-09T12:00:00Z',missingIntervals:[]});
 test('complete coverage requires every requested sport and full date scope',()=>{const r=buildAthleteHistoryReadModel({generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running','cycling'],currentPlan:{id:'p',revision:3,weekStart:'2026-11-09',status:'accepted'},restrictions:[],coverage:[coverage('running'),coverage('cycling')],events:[event()]});assert.equal(r.completeness,'complete_for_requested_scope')});
+test('Coach history reads use exactly the shared activity sport vocabulary',()=>{
+ for(const sport of V2_ACTIVITY_SPORTS){
+  const result=buildAthleteHistoryReadModel({
+   generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
+   sports:[sport],currentPlan:null,restrictions:[],
+   coverage:[{sport,fromDate:'2026-10-01',throughDate:'2026-11-09',status:'complete',
+    lastSyncAt:'2026-11-09T12:00:00Z',missingIntervals:[]}],
+   events:[event({id:'activity-'+sport,sport})],
+  });
+  assert.equal(result.completeness,'complete_for_requested_scope');
+  assert.equal(result.events.length,1);
+  assert.equal(result.events[0].sport,sport);
+ }
+});
+
 test('walking history stays a distinct sport, never silently becomes running',()=>{
  const base={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
   currentPlan:null,restrictions:[],coverage:[
