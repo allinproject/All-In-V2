@@ -133,3 +133,17 @@ export async function resolveV2Access(
     requiredLegalDocuments,
   };
 }
+
+/** Fail closed when an auth-sensitive write is about to run under a different V2 account. */
+export async function assertV2SessionOwner(
+  client: SupabaseClient<Database>,
+  expectedUserId: string,
+): Promise<void> {
+  const ownerId = expectedUserId.trim();
+  if (!ownerId) throw new Error('A V2 account identity is required.');
+  const { data, error } = await client.auth.getSession();
+  if (error) throw error;
+  if (data.session?.user.id !== ownerId) {
+    throw new Error('The signed-in account changed. Sign in again before continuing.');
+  }
+}
