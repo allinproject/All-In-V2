@@ -36,9 +36,17 @@ test('stale/ambiguous session identities and invalid day cannot enter Coach cont
  assert.deepEqual(prepareCoachCalendarContext({...base,sessions:[session,session]}),{kind:'blocked',reason:'invalid_session'});
  assert.deepEqual(prepareCoachCalendarContext({...base,sessions:[{...session,planRevisionId:''}]}),{kind:'blocked',reason:'invalid_session'});
 });
-test('calendar context only includes chosen week, even when month view has wider history',()=>{
+test('month view uses the whole selected month; week view remains a week only',()=>{
  const older={...session,id:'old-run',athleteLocalDate:'2026-11-02'};
- const result=prepareCoachCalendarContext({...base,view:'month',sessions:[session,older]});
- assert.equal(result.kind,'ready');
- if(result.kind==='ready')assert.deepEqual(result.sessions,[session]);
+ const previousMonth={...session,id:'oct-run',athleteLocalDate:'2026-10-30'};
+ const month=prepareCoachCalendarContext({...base,view:'month',sessions:[session,older,previousMonth]});
+ assert.equal(month.kind,'ready');
+ if(month.kind==='ready'){
+  assert.deepEqual(month.sessions,[session,older]);
+  assert.equal(month.windowDays.length,30);
+  assert.equal(month.selectedMonth,'2026-11-01');
+ }
+ const week=prepareCoachCalendarContext({...base,view:'week',sessions:[session,older,previousMonth]});
+ assert.equal(week.kind,'ready');
+ if(week.kind==='ready')assert.deepEqual(week.sessions,[session]);
 });
