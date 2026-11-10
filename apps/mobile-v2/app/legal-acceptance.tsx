@@ -3,12 +3,18 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../src/auth/AuthProvider';
+import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { assertV2SessionOwner, assertV2SignupLegalSnapshotCurrent, v2LegalReviewKey, v2LegalReviewSetKey } from '../src/auth/accessGateClient';
 import { supabase } from '../src/lib/supabase';
 import { colors, radius, spacing } from '../src/theme/tokens';
 
 export default function LegalAcceptanceScreen() {
+  const { user, sessionGeneration } = useAuth();
+  return <LegalAcceptanceOwnerScreen key={v2AuthenticatedScreenKey(user?.id ?? null, sessionGeneration)} />;
+}
+
+function LegalAcceptanceOwnerScreen() {
   const { user, loading } = useAuth();
   const gate = useAccessGate();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
@@ -16,6 +22,7 @@ export default function LegalAcceptanceScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const pendingAcceptance = useRef<{ reviewSet: string; id: string } | null>(null);
+  const acceptGuard = useRef(createV2AuthActionGuard());
 
   if (!loading && !user) return <Redirect href="/sign-in" />;
   if (gate.status === 'ready') return <Redirect href="/home" />;
@@ -29,7 +36,7 @@ export default function LegalAcceptanceScreen() {
   const canAccept = allReviewed && ageConfirmed && !submitting;
 
   async function acceptDocuments() {
-    if (!user || !canAccept) return;
+    if (!user || !canAccept || !acceptGuard.current.tryEnter()) return;
     setSubmitting(true);
     setMessage(null);
     try {
@@ -70,6 +77,7 @@ export default function LegalAcceptanceScreen() {
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : 'Legal acceptance could not be saved. Please retry.');
     } finally {
+      acceptGuard.current.leave();
       setSubmitting(false);
     }
   }
@@ -86,13 +94,13 @@ export default function LegalAcceptanceScreen() {
             <ScrollView nestedScrollEnabled style={styles.documentBody}>
               <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
             </ScrollView>
-            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!checked[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => setChecked(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] }))} style={styles.reviewRow}>
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!checked[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => { if (acceptGuard.current.isBusy()) return; setChecked(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] })); }} style={styles.reviewRow}>
               <Text style={styles.checkbox}>{checked[reviewKey(doc)] ? '☑' : '☐'}</Text>
               <Text style={styles.reviewText}>I have read and reviewed this document</Text>
             </Pressable>
           </View>
         ))}
-        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed, disabled: submitting }} disabled={submitting} onPress={() => setAgeConfirmedReviewSet(current => current === reviewSet ? null : reviewSet)} style={styles.reviewRow}>
+        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed, disabled: submitting }} disabled={submitting} onPress={() => { if (acceptGuard.current.isBusy()) return; setAgeConfirmedReviewSet(current => current === reviewSet ? null : reviewSet); }} style={styles.reviewRow}>
           <Text style={styles.checkbox}>{ageConfirmed ? '☑' : '☐'}</Text>
           <Text style={styles.reviewText}>I confirm that I am at least 18 years old.</Text>
         </Pressable>
