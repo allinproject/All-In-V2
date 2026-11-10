@@ -43,7 +43,7 @@ test('late progress that would require faster than approved targets is not turne
  assert.equal(result.goalAssessment,'requires_faster_than_approved_strategy');
  assert.equal(result.recommendedAction,'preserve_effort_and_revise_finish_expectation');
  assert.equal(Math.round(result.requiredRemainingSecondsPerKm!),267);
- assert.equal(result.approvedRemainingAverageSecondsPerKm,Math.round(650/1.5));
+ assert.equal(Math.round(result.approvedRemainingAverageSecondsPerKm!),Math.round(650/1.5));
  assert.equal(result.proposedCatchUpSecondsPerKm,null);
 });
 
