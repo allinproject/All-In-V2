@@ -56,8 +56,8 @@ function strengthStructureIssue(s:TrainingSessionIntent,context:TrainingAthleteP
  if(s.strengthWorkout){
   if(!['supersets','straight_sets'].includes(s.strengthWorkout.format)||!Array.isArray(s.strengthWorkout.blocks)||s.strengthWorkout.blocks.length===0)return 'Strength workout structure is invalid.';
   for(const block of s.strengthWorkout.blocks){
-   if(!block.id||!Number.isInteger(block.rounds)||block.rounds<1||block.rounds>10||!Array.isArray(block.movements)||block.movements.length===0)return 'Strength block identity, rounds or movement list is invalid.';
-   for(const movement of block.movements)if(!movement.exerciseId||!['major','abdominal','accessory'].includes(movement.role)||!Number.isInteger(movement.sets)||movement.sets<1||movement.sets>20||typeof movement.reps!=='string'||!movement.reps.trim())return 'Strength movement prescription is invalid.';
+   if(typeof block.id!=='string'||!block.id.trim()||!Number.isInteger(block.rounds)||block.rounds<1||block.rounds>10||!Array.isArray(block.movements)||block.movements.length===0)return 'Strength block identity, rounds or movement list is invalid.';
+   for(const movement of block.movements)if(typeof movement.exerciseId!=='string'||!movement.exerciseId.trim()||!['major','abdominal','accessory'].includes(movement.role)||!Number.isInteger(movement.sets)||movement.sets<1||movement.sets>20||typeof movement.reps!=='string'||!movement.reps.trim())return 'Strength movement prescription is invalid.';
   }
  }
  for(const rule of rules){
