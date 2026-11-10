@@ -32,12 +32,12 @@ export function buildRacePlanCalendar(input:{
  const {startDate,raceDate}=input;
  if(!validDate(startDate)||!validDate(raceDate)||raceDate<startDate)throw new Error('Choose a valid training start date on or before race day.');
  const totalDays=dateDiff(startDate,raceDate)+1;
- const totalWeeks=Math.ceil(totalDays/7);
+ const elapsedWeeks=Math.ceil(dateDiff(startDate,raceDate)/7);\n const totalWeeks=Math.max(1,elapsedWeeks);
  const max=Math.max(1,Math.min(260,Math.floor(input.maxWeeks??260)));
  if(totalWeeks<2)throw new Error('A race plan needs at least two calendar weeks; review the race date or use a short-horizon plan.');
  if(totalWeeks>max)throw new Error('The selected race horizon exceeds the supported planning window.');
  const days:RacePlanCalendarDay[]=Array.from({length:totalDays},(_,offset)=>{
-  const date=shiftDate(startDate,offset),weekStart=mondayOf(date),weekNumber=Math.floor(offset/7)+1;
+  const date=shiftDate(startDate,offset),weekStart=mondayOf(date),weekNumber=Math.min(totalWeeks,Math.floor(offset/7)+1);
   return{date,day:dayNames[(new Date(date+'T12:00:00Z').getUTCDay()+6)%7],weekStart,weekNumber,phase:input.phaseByWeekStart?.[weekStart]??'review_required',isRaceDay:date===raceDate};
  });
  if(days[days.length-1]?.date!==raceDate||days.filter(d=>d.isRaceDay).length!==1)throw new Error('Calendar must include the race date exactly once as its final day.');
@@ -102,8 +102,10 @@ export function adaptRemainingPlanAfterMiss(input:{
  const future=sessions.filter(s=>s.date>input.today&&s.status==='planned');
  for(const s of future){
   if(!validDate(s.date)){issues.push({code:'DATE_INVALID',severity:'blocking',sessionIds:[s.id],message:'A future session has an invalid date.'});continue;}
-  if(unavailable.has(s.date))issues.push({code:'KEY_SESSION_CONFLICT',severity:s.intent.priority==='competition'||s.intent.priority==='key'?'blocking':'review',sessionIds:[s.id],message:'A planned session conflicts with newly reported unavailability; review the remaining plan.'});
-  if(s.intent.priority==='competition'&&s.date===input.raceDate&&s.status!=='planned')issues.push({code:'RACE_DATE_PROTECTED',severity:'blocking',sessionIds:[s.id],message:'The race-day event identity must remain protected.'});
+  if(unavailable.has(s.date)){
+   if(s.date===input.raceDate||s.intent.priority==='competition')issues.push({code:'RACE_DATE_PROTECTED',severity:'blocking',sessionIds:[s.id],message:'The race-day or competition commitment conflicts with reported unavailability; require explicit event/plan review.'});
+   else issues.push({code:'KEY_SESSION_CONFLICT',severity:s.intent.priority==='key'?'blocking':'review',sessionIds:[s.id],message:'A planned session conflicts with newly reported unavailability; review the remaining plan.'});
+  }
  }
  const recommendations:string[]=[
   'Record the missed session as skipped; do not move the same workout to tomorrow or stack it onto another hard day.',
