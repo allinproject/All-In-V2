@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { certifyCalendarOwnerRead } from './calendarOwnerReadCertification.ts';
-import { combineCalendarReads } from './trainingCalendarReadModel.ts';
+import { combineCalendarReads, type PlannedCalendarItem, type CompletedCalendarItem } from './trainingCalendarReadModel.ts';
 
 const request = {
   expectedOwnerId: 'athlete-a',
@@ -17,7 +17,7 @@ const snapshot = {
   snapshotVersion: 'accepted-plan-revision-2',
   complete: true,
   nextCursor: null,
-  records: [] as readonly { id: string; ownerId: string; athleteLocalDate: string }[],
+  records: [] as readonly PlannedCalendarItem[],
 };
 
 test('complete, owner-verified snapshot certifies a truly empty visible month', () => {
@@ -62,7 +62,7 @@ test('session switch, signed out, access gate, and invalid requested range fail 
 
 test('calendar stays unknown if one independent canonical source is not certified', () => {
   const planned = certifyCalendarOwnerRead({...request, snapshot});
-  const completed = certifyCalendarOwnerRead({...request, snapshot: {...snapshot, complete: false}});
+  const completed = certifyCalendarOwnerRead({...request, snapshot: {...snapshot, records: [] as readonly CompletedCalendarItem[], complete: false}});
   const combined = combineCalendarReads({
     ownerId: 'athlete-a',
     fromDate: request.requestedFromDate,
