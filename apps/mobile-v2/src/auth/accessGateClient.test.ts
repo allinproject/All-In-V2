@@ -100,9 +100,19 @@ const completeAccessState = {
   },
 };
 
-function mockAccessClient(data: unknown, error: Error | null = null): Parameters<typeof resolveV2Access>[0] {
+function mockAccessClient(
+  data: unknown,
+  error: Error | null = null,
+  sessionUserId: string | null = 'user-a',
+): Parameters<typeof resolveV2Access>[0] {
   return {
     rpc: async () => ({ data, error }),
+    auth: {
+      getSession: async () => ({
+        data: { session: sessionUserId ? { user: { id: sessionUserId } } : null },
+        error: null,
+      }),
+    },
   } as unknown as Parameters<typeof resolveV2Access>[0];
 }
 
@@ -132,5 +142,19 @@ test('access resolver propagates backend failures rather than treating them as a
   await assert.rejects(
     resolveV2Access(mockAccessClient(null, new Error('backend unavailable')), { id: 'user-a' }),
     /backend unavailable/i,
+  );
+});
+
+test('access resolver refuses an account switched during RPC despite matching returned profile', async () => {
+  await assert.rejects(
+    resolveV2Access(mockAccessClient(completeAccessState, null, 'user-b'), { id: 'user-a' }),
+    /account changed/i,
+  );
+});
+
+test('access resolver refuses a signed-out session despite matching returned profile', async () => {
+  await assert.rejects(
+    resolveV2Access(mockAccessClient(completeAccessState, null, null), { id: 'user-a' }),
+    /account changed/i,
   );
 });
