@@ -99,8 +99,8 @@ export function synthesizeTrainingWeek(context:TrainingAthletePlanContext,propos
   if(!allowedSport(s.sport,context)){issues.push(makeIssue('SPORT_NOT_IN_GOALS','review','This modality is not linked to a goal or declared required sport.',[s.id]));unscheduled.push({session:s,reason:'Sport-goal relationship needs athlete review.'});continue}
   const structureError=strengthStructureIssue(s,context);
   if(structureError){issues.push(makeIssue('STRENGTH_STRUCTURE_INVALID','blocking',structureError,[s.id]));unscheduled.push({session:s,reason:'Strength structure conflicts with the approved workout format.'});continue}
-  const restrictionKeys=new Set(context.activeRestrictions.map(r=>r.trim().toLowerCase().replace(/\\s+/g,'_')));
-  const proposedKeys=[...s.stressTags,...(s.strengthWorkout?.blocks.flatMap(b=>b.movements.map(m=>m.exerciseId))??[])].map(v=>v.trim().toLowerCase().replace(/\\s+/g,'_'));
+  const restrictionKeys=new Set(context.activeRestrictions.map(r=>r.trim().toLowerCase().replace(/\s+/g,'_')));
+  const proposedKeys=[...s.stressTags,...(s.strengthWorkout?.blocks.flatMap(b=>b.movements.map(m=>m.exerciseId))??[])].map(v=>v.trim().toLowerCase().replace(/\s+/g,'_'));
   const restriction=proposedKeys.find(key=>restrictionKeys.has(key));
   if(restriction){issues.push(makeIssue('EXERCISE_RESTRICTED','blocking','The proposed session includes an exercise or stressor covered by an active athlete restriction.',[s.id]));unscheduled.push({session:s,reason:'Active athlete restriction.'});continue}
   if(s.evidenceRefs.length===0&&(s.priority==='competition'||s.priority==='key'||hardDemand(s)))issues.push(makeIssue('MISSING_EVIDENCE','review','A key or high-demand session lacks traceable evidence.',[s.id]));
