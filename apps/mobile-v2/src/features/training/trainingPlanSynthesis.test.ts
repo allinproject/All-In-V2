@@ -17,3 +17,21 @@ test('rejects the outdated generic strength format when it violates the saved st
 test('hard exercise restrictions are checked against structured movement IDs',()=>{const c=context(['running','strength']);const s={...session('leg-day','strength','key','moderate','lower_body'),strengthWorkout:{format:'straight_sets' as const,blocks:[{id:'1',rounds:3,movements:[{exerciseId:'lying_leg_curl',role:'accessory' as const,sets:3,reps:'10-15'}]}]}};const p=synthesizeTrainingWeek(c,[s]);assert.equal(p.status,'blocked');assert.ok(p.issues.some(i=>i.code==='EXERCISE_RESTRICTED'))});
 
 test('malformed Coach session intents are rejected instead of crashing the scheduler',()=>{const p=synthesizeTrainingWeek(context(['running']),[null as any,{id:'bad',priority:'key'} as any]);assert.equal(p.status,'blocked');assert.ok(p.issues.some(i=>i.code==='UNSUPPORTED_PRESCRIPTION'))});
+
+test('Coach rejects disallowed exercise when restriction uses human-readable spaces',()=>{
+ const c=context(['running','strength']);
+ c.activeRestrictions=['Lying Leg Curl'];
+ const s={...session('leg-day','strength','key','moderate','lower_body'),strengthWorkout:{format:'straight_sets' as const,blocks:[{id:'1',rounds:3,movements:[{exerciseId:'lying_leg_curl',role:'accessory' as const,sets:3,reps:'10'}]}]}};
+ const p=synthesizeTrainingWeek(c,[s]);
+ assert.equal(p.status,'blocked');
+ assert.ok(p.issues.some(i=>i.code==='EXERCISE_RESTRICTED'));
+ assert.equal(p.days.flatMap(d=>d.sessions).length,0);
+});
+test('Coach also matches spaced stress tags against underscored restrictions',()=>{
+ const c=context(['running']);
+ const p=synthesizeTrainingWeek(c,[session('restricted-run','running','key','hard','low back impact')]);
+ c.activeRestrictions=['low_back_impact'];
+ const blocked=synthesizeTrainingWeek(c,[session('restricted-run','running','key','hard','low back impact')]);
+ assert.equal(p.issues.some(i=>i.code==='EXERCISE_RESTRICTED'),false);
+ assert.ok(blocked.issues.some(i=>i.code==='EXERCISE_RESTRICTED'));
+});
