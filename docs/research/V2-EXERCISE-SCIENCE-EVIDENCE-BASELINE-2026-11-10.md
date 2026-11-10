@@ -95,6 +95,39 @@ Source: [PubMed 42828469](https://pubmed.ncbi.nlm.nih.gov/42828469/) · [Full te
 - Network meta-analysis rankings and narrative-review programming suggestions are not substitutes for direct exercise-variation evidence. Coach should describe the relevant training method and uncertainty, not infer a winning lift.
 - No source reviewed here supports automatic injury-prevention promises, spot-reduction claims, or a guaranteed personal performance gain.
 
+
+
+### Exact variation comparison — standing versus seated calf raise
+
+**Kinoshita et al., 2023, within-subject controlled intervention.** Fourteen healthy, untrained adults completed a 12-week unilateral machine calf-raise program, twice weekly, with one leg trained in a standing/knee-extended position and the other in a seated/knee-flexed position. MRI measured muscle volume. Standing training produced larger medial and lateral gastrocnemius volume increases and larger whole triceps-surae gain; soleus growth was similar between conditions. The study used a small cohort and a supervised machine protocol.
+
+**Allowed use:** a narrow exact-variation hypertrophy comparison for the studied untrained-adult population. It supports keeping standing and seated calf-raise as distinct movement variations and not describing seated raises as a proven soleus-isolation exercise.
+
+**Not allowed:** claiming a running-economy, race-performance, tendon-stiffness, injury-prevention or fall-prevention benefit from this study; claiming that standing calf raise is best for every athlete; extrapolating the result directly to trained endurance athletes or other machines/protocols.
+
+Source: [Frontiers full text](https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2023.1272106/full) · [PubMed 38156065](https://pubmed.ncbi.nlm.nih.gov/38156065/) · DOI: 10.3389/fphys.2023.1272106
+
+### Exact variation comparison — Romanian, step-Romanian and stiff-leg deadlift
+
+**Coratella et al., 2022, acute electromyographic comparison.** Ten experienced competitive bodybuilders performed Romanian, step-Romanian and stiff-leg deadlift variations at 80% 1RM. EMG measured selected posterior-chain muscles. During the ascending phase, the step-Romanian variation showed greater excitation in gluteus maximus, semitendinosus and longissimus than the other tested variations; the Romanian deadlift showed greater semitendinosus excitation than the stiff-leg variation; the stiff-leg variation showed greater gluteus-maximus excitation than the Romanian deadlift. The study reported fewer differences during the descending phase.
+
+**Allowed use:** low-confidence mechanistic/exercise-emphasis context for distinguishing the exact variations and documenting which muscles were measured in this small, experienced-bodybuilder sample.
+
+**Not allowed:** treating acute EMG as proof of superior hypertrophy, maximal strength, rehabilitation, running/cycling performance or injury prevention; assuming the same relative muscle response for beginners, other load/tempo/range protocols or every athlete; turning these results into an automatic recommendation.
+
+Source: [PubMed 35162922](https://pubmed.ncbi.nlm.nih.gov/35162922/) · [Full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC8835508/) · DOI: 10.3390/ijerph19031903
+
+## Staged variation-profile status
+
+V2 now stages five exact source-linked variations in `apps/mobile-v2/src/features/strength/exerciseProfileDrafts.ts`:
+- machine standing calf raise;
+- machine seated calf raise;
+- barbell Romanian deadlift;
+- barbell step-Romanian deadlift;
+- barbell stiff-leg deadlift.
+
+The calf-raise profiles use the explicit evidence tier `within_subject_controlled_intervention`; the deadlift profiles use `biomechanical_study` with mechanistic-only claims. All five records remain `publicationState: 'draft'`; they are source/structure research records only and are deliberately **not Coach-eligible**. They are not yet canonical database rows, and their cues/equipment/anatomy still need library-owner review. The evidence-tier vocabulary was expanded so a within-subject controlled intervention is not mislabeled as a randomized controlled trial or a biomechanical study.
+
 ## Sport and athlete gaps still requiring research
 
 The sources above do **not** establish exercise-to-performance mappings for every population ALL IN serves. Dedicated reviews and evidence grading are still needed for trail/ultra running, hiking, rucking, triathlon/multisport scheduling, rowing, beginners and older athletes with varied capability, strength/power sports, and athlete-specific restrictions. Do not fill those gaps with plausible-sounding muscle-transfer assumptions.
