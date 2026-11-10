@@ -344,3 +344,17 @@ Coach must be useful when the athlete's starting point is a plain-language inten
 - Coach distinguishes canonical logged evidence from user self-report and unavailable data; it does not claim progress it cannot observe.
 
 This is not a new Coach mode, habit engine or lifestyle-specific goal database. It is the normal persistent Coach adapting its response and next action to the athlete's stated goal.
+
+
+## 17. Coach coordinates multiple active primary goals without forcing a single winner
+
+An athlete may have a race goal and a physique goal at the same time, and may mark both primary. Multiple active primary goals are valid; Coach must not require one global winner or silently demote one to secondary.
+
+Coach should:
+- Read the complete current goal set and each goal's own revision, priority, optional date, measures/behaviors and evidence.
+- Build one coherent plan across the set: one Training calendar, one coordinated Nutrition approach and one Recovery context, not separate conflicting plans per goal.
+- Evaluate actual compatibility. For example, high-volume race preparation and aggressive body-composition change may compete; explain why and offer choices such as maintaining weight during peak training, pursuing slower body-composition change, or changing the user-selected timing/emphasis.
+- Preserve both goals as primary when that is what the athlete chose. Optional priority ordering can guide tradeoffs; ties are allowed. No hidden ranking algorithm changes goal status.
+- Never assume a physique goal requires an aggressive calorie deficit, mandatory weigh-ins, photos, calorie tracking, or extra training. Never promise visible abs or spot reduction.
+- Show the implications before proposing a change to timing, target, priority or an accepted Training plan. Apply only through the exact canonical owner after explicit approval.
+- Keep outcome/progress evidence distinct per goal. A combined summary may describe how the plan supports the goal set, but must not invent a blended completion percentage or universal score.
