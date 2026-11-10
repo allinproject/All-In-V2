@@ -30,6 +30,21 @@ test('duplicate or incomplete legal document records fail closed', () => {
   assert.throws(() => parsePublishedV2LegalDocuments([{ ...docs[0], content_markdown: '' }, ...docs.slice(1)]), /incomplete/i);
 });
 
+test('published legal documents fail closed when content would otherwise be truncated', () => {
+  assert.throws(
+    () => parsePublishedV2LegalDocuments([{ ...docs[0], content_markdown: 'a'.repeat(50001) }, ...docs.slice(1)]),
+    /incomplete/i,
+  );
+  assert.equal(
+    parsePublishedV2LegalDocuments([{ ...docs[0], content_markdown: 'a'.repeat(50000) }, ...docs.slice(1)])[0].content_markdown.length,
+    50000,
+  );
+  assert.throws(
+    () => parsePublishedV2LegalDocuments([{ ...docs[0], version: 'v'.repeat(121) }, ...docs.slice(1)]),
+    /incomplete/i,
+  );
+});
+
 test('legal acceptance must match the currently published exact versions and age confirmation', () => {
   const required = parsePublishedV2LegalDocuments(docs);
   const accepted = { terms_version: 'terms-v2', privacy_version: 'privacy-v2', founder_beta_terms_version: 'founder-v2', age_18_confirmed: true };
