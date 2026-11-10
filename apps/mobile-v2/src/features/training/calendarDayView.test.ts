@@ -31,7 +31,8 @@ test('scheduled run and independent manual stair completion remain separate',()=
 
 test('month overview includes complete Monday-first weeks and adjacent-month context',()=>{
  const weeks=monthCalendarWeeks('2026-11-10');
- assert.equal(weeks.length,5);
+ // Nov 1, 2026 is Sunday and Nov 30 is Monday: Monday-first grid needs six rows.
+ assert.equal(weeks.length,6);
  assert.equal(weeks[0][0],'2026-10-26');
  assert.equal(weeks.at(-1)?.at(-1),'2026-12-06');
  assert.equal(weeks.flat().filter(d=>d.startsWith('2026-11-')).length,30);
