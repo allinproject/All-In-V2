@@ -16,6 +16,12 @@ export type WatchSessionAttachmentInput = {
   expectedOwnerId: string;
   authenticatedOwnerId: string | null;
   accessGateReady: boolean;
+  /** Active AuthProvider generation; increments on reauthentication/sign-out. */
+  activeSessionGeneration: number;
+  /** Generation that initiated the verified canonical Training read. */
+  sessionReadGeneration: number;
+  /** Generation for which the Watch ownership/permission handshake was established. */
+  watchAuthorizationGeneration: number;
   /** Verified server read, not a local cache. Undefined means no verified read. */
   session: WatchSessionSnapshot | null | undefined;
   watchOwnerId: string | null;
@@ -42,6 +48,10 @@ export function resolveWatchSessionAttachment(input: WatchSessionAttachmentInput
       !validId(input.watchOwnerId) || input.watchOwnerId !== input.expectedOwnerId)
     return blocked('blocked', 'account_or_device_owner_changed');
   if (!input.accessGateReady) return blocked('blocked', 'access_gate_required');
+  if (!Number.isSafeInteger(input.activeSessionGeneration) || input.activeSessionGeneration < 0 ||
+      !Number.isSafeInteger(input.sessionReadGeneration) || input.sessionReadGeneration !== input.activeSessionGeneration ||
+      !Number.isSafeInteger(input.watchAuthorizationGeneration) || input.watchAuthorizationGeneration !== input.activeSessionGeneration)
+    return blocked('reconcile', 'auth_generation_changed_refresh_watch_and_session');
   if (input.permission !== 'granted') return blocked('blocked', 'watch_permission_not_granted');
   if (!input.connectedToCanonicalWriter || input.session === undefined)
     return blocked('reconcile', 'fresh_canonical_session_read_required');
