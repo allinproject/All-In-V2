@@ -79,7 +79,7 @@ export default function TrainingCalendarScreen() {
             <View style={styles.week}>
               {weekdayLabels.map((label, i) => <Text key={i} style={[styles.weekdayLabel, styles.weekCell]}>{label}</Text>)}
             </View>
-            {monthWeeks.map((days, weekIndex) => (
+            {monthWeeks.map(days => (
               <View key={days[0]} style={styles.week}>
                 {days.map(date => (
                   <Pressable key={date} accessibilityRole="button"
