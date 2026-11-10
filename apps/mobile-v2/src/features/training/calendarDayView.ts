@@ -60,3 +60,16 @@ export function formatCalendarMonth(day: string): string {
   const first = firstOfMonth(day);
   return first ? new Intl.DateTimeFormat('en-US', {month: 'long', year: 'numeric', timeZone: 'UTC'}).format(new Date(first + 'T12:00:00Z')) : 'Invalid month';
 }
+
+/** Month markers reflect verified source facts only, never inferred from dates. */
+export type CalendarWorkoutMarker = {
+  athleteLocalDate: string;
+  kind: 'running' | 'walking' | 'cycling' | 'swimming' | 'strength' | 'hiking' | 'rucking' | 'rowing' | 'elliptical' | 'stair' | 'yoga' | 'mobility' | 'other';
+  status: 'planned' | 'completed';
+};
+export function workoutMarkersForDay(
+  evidence: CalendarEvidence<CalendarWorkoutMarker>,
+  day: string,
+): CalendarWorkoutMarker[] | null {
+  return calendarRecordsForDay(evidence, day);
+}
