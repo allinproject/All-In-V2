@@ -139,6 +139,14 @@ Any derived state shown in more than one surface (for example Recovery/load inte
 - Provider cache is server-side operational data. Only the service-role cache RPC may access it; the mobile client never receives provider secrets or direct cache-table access.
 - Use explicit grants, revoke default PUBLIC execution where appropriate and review function ownership/role at every schema slice.
 
+### Expected actor identity on every user-scoped mutation
+
+For every client-originated mutation of user-owned data, the typed RPC must receive the screen/request's captured expected owner UUID (for example `p_expected_user_id`) and compare it to `auth.uid()` inside the database before any lookup, idempotency replay, lock or mutation. Reject NULL/mismatched identities (SQLSTATE `42501`). A client-side `getSession()` check is useful UX protection but is not the authorization boundary because the session may change between the check and the request reaching PostgREST.
+
+Do not leave an older unbound RPC overload executable alongside the guarded signature. Drop/replace it, revoke PUBLIC/anon/service_role execution explicitly, and grant only the intended authenticated role. A server-to-server/service-role writer uses a distinct explicit actor/capability contract; it must not inherit a client user-writer bypass. Include an Account A JWT + Account B expected-owner negative test for every owner-scoped mutation and test a correct-owner call still succeeds.
+
+The currently deployed Auth/Profile/Legal/Onboarding mutation RPCs implement this rule in migration `20261110000500_v2_expected_owner_mutation_guards.sql`. Every future Coach, Training, Food, Recovery, Community, Progress, Gear, Billing and account lifecycle writer inherits this requirement.
+
 ### SECURITY DEFINER boundary
 
 A SECURITY DEFINER function in an exposed schema is an API endpoint, not a private helper. It must:
