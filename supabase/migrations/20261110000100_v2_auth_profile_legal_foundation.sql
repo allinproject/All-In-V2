@@ -62,10 +62,9 @@ create table if not exists public.v2_legal_acceptances (
   age_18_confirmed boolean not null check (age_18_confirmed),
   accepted_at timestamptz not null default now(),
   client_action_id text not null check (length(btrim(client_action_id)) between 1 and 160),
-  unique (user_id, client_action_id),
-  foreign key ('terms', terms_version) references public.v2_legal_documents(document_key, version),
-  foreign key ('privacy', privacy_version) references public.v2_legal_documents(document_key, version),
-  foreign key ('founder_beta_terms', founder_beta_terms_version) references public.v2_legal_documents(document_key, version)
+  unique (user_id, client_action_id)
+  -- Exact document_key/version publication checks are enforced by
+  -- v2_accept_legal_documents because each FK has a fixed document_key.
 );
 
 create index if not exists v2_legal_acceptances_user_accepted_idx
