@@ -62,7 +62,9 @@ function safeEvent(e:AthleteHistoryEvent):boolean{
  typeof e.occurredAt==='string'&&Number.isFinite(Date.parse(e.occurredAt))&&validDate(e.occurredAt.slice(0,10))&&
  typeof e.recordedAt==='string'&&Number.isFinite(Date.parse(e.recordedAt))&&
  ['canonical_training','device_import','manual_entry','race_result'].includes(e.source)&&
- ['low','moderate','high'].includes(e.confidence)&&e.metrics&&typeof e.metrics==='object'&&!Array.isArray(e.metrics));
+ ['low','moderate','high'].includes(e.confidence)&&e.metrics&&typeof e.metrics==='object'&&!Array.isArray(e.metrics)&&
+ Object.values(e.metrics).every(value=>value===null||typeof value==='string'||typeof value==='boolean'||
+  (typeof value==='number'&&Number.isFinite(value))));
 }
 export function buildAthleteHistoryReadModel(input:{
  generatedAt:string;fromDate:string;throughDate:string;sports:AthleteHistorySport[];
