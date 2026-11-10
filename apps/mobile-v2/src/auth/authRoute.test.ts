@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { authRouteState } from './authRoute.ts';
+import { authRouteState, shouldOfferV2ConfirmationResend } from './authRoute.ts';
 
 test('auth routing remains loading until session restoration settles', () => {
   assert.deepEqual(authRouteState({ loading: true, userId: null }), { state: 'loading' });
@@ -16,4 +16,11 @@ test('existing authenticated identity routes to signed-in app', () => {
     state: 'signed_in',
     userId: 'user-123',
   });
+});
+test('confirmation resend remains available only for the email rejected as unconfirmed', () => {
+  assert.equal(shouldOfferV2ConfirmationResend(null, 'athlete@example.com'), false);
+  assert.equal(shouldOfferV2ConfirmationResend('athlete@example.com', 'athlete@example.com'), true);
+  assert.equal(shouldOfferV2ConfirmationResend('athlete@example.com', ' Athlete@Example.COM '), true);
+  assert.equal(shouldOfferV2ConfirmationResend('athlete@example.com', 'other@example.com'), false);
+  assert.equal(shouldOfferV2ConfirmationResend('athlete@example.com', ''), false);
 });
