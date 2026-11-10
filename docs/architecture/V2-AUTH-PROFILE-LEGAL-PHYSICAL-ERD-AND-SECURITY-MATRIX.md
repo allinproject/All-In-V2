@@ -3,7 +3,7 @@
 **Status:** Live-verified foundation slice; not the physical schema for future Training/Coach/Nutrition domains  
 **Repository:** `allinproject/All-In-V2`  
 **Branch:** `integration/v2-foundation`  
-**Branch head at initial physical audit:** `cf6b241db39af5400ce1854d14185a520d4aa997`
+**Branch head at initial physical audit:** `cf6b241db39af5400ce1854d14185a520d4aa997`  \n**Refreshed against branch head:** `07b7903520ffe1c2a987ec4117dfcba2b77ab922` (2026-11-10; includes subsequent migrations 004/005 and Auth UI changes).
 **Generated public database types:** `apps/mobile-v2/src/types/database.types.ts` (generated from live schema on 2026-11-10; includes five public tables and six public RPCs; private schema intentionally excluded).  
 **Supabase project:** `xarhuczrtzuiljmtdaeu` (All-In-V2)  
 **Verification date:** 2026-11-10  
@@ -112,7 +112,6 @@ Notes:
 - `v2_legal_documents` has a composite primary key `(document_key, version)`. Legal acceptance stores exact version strings and checks them against the latest published versions in the canonical acceptance RPC; there are intentionally no direct FKs because each receipt requires three fixed document keys.
 - `v2_profile_settings_actions` has composite primary key `(user_id, client_action_id)`, ensuring one idempotency record per actor/action.
 - `v2_onboarding_actions` has composite primary key `(user_id, client_action_id)` and foreign key to `auth.users`; each record stores allowlisted step/action and resulting onboarding version for exact retry replay.
-- `v2_onboarding_actions` has composite primary key `(user_id, client_action_id)` and foreign key to `auth.users`; each record stores allowlisted step/action and resulting onboarding version for exact retry replay.
 - `v2_provider_cache` has composite primary key `(provider, cache_key)`; it is independent of user identity and stores only bounded provider response cache data.
 - All eight tables currently have zero rows. No legal documents are published and no legal acceptance records exist.
 
@@ -126,7 +125,7 @@ Notes:
 | `public.v2_legal_documents` | Legal operations; published product content | RLS enabled. SELECT only rows with `status='published'` and `effective_at <= now()`. | anon/authenticated SELECT only. No client writes. | Reviewed operator/migration publication workflow. Published content fields are immutable; insert a new version instead of editing published content. No documents are currently published. |
 | `public.v2_legal_acceptances` | Legal/account lifecycle; user-private immutable receipt | RLS enabled. SELECT own rows only. | Authenticated SELECT only. No direct INSERT/UPDATE/DELETE. | `v2_accept_legal_documents(expected_user_id, terms, privacy, founder_terms, age_confirmed, action_id)` checks expected owner equals `auth.uid()`, age attestation, exact latest published versions and actor; per-user client action is unique and idempotent. |
 | `allin_private.v2_profile_settings_actions` | Profile settings infrastructure; private operational metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. Owner `postgres` retains migration/function-owner privileges. | Only reached from `v2_patch_profile_settings_section` SECURITY DEFINER path. Never add permissive policies to silence no-policy INFO. |
-| `allin_private.v2_onboarding_actions` | Onboarding infrastructure; private per-user idempotency metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only reached from `v2_set_onboarding_step` SECURITY DEFINER path.
+| `allin_private.v2_onboarding_actions` | Onboarding infrastructure; private per-user idempotency metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only reached from `v2_set_onboarding_step` SECURITY DEFINER path. |
 | `allin_private.v2_provider_cache` | Provider infrastructure; private operational cache | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only service-role-only `v2_provider_cache_get/put` SECURITY DEFINER RPCs. Not canonical ingredient/nutrition truth. |
 
 ### Verified table constraints and indexes
