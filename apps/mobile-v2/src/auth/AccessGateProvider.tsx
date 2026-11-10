@@ -8,6 +8,7 @@ export type V2AccessStatus = 'loading' | 'ready' | 'legal_required' | 'onboardin
 type OwnedStatus = {
   ownerId: string | null;
   attempt: number;
+  sessionGeneration: number;
   status: V2AccessStatus;
   message: string | null;
   requiredLegalDocuments: V2LegalDocument[];
@@ -22,12 +23,13 @@ type V2AccessContextValue = {
 const AccessGateContext = createContext<V2AccessContextValue | null>(null);
 
 export function AccessGateProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, sessionGeneration } = useAuth();
   const ownerId = user?.id ?? null;
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<OwnedStatus>({
     ownerId: null,
     attempt: 0,
+    sessionGeneration: 0,
     status: 'loading',
     message: null,
     requiredLegalDocuments: [],
@@ -36,12 +38,12 @@ export function AccessGateProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      setResult({ ownerId: null, attempt, status: 'loading', message: null, requiredLegalDocuments: [] });
+      setResult({ ownerId: null, attempt, sessionGeneration, status: 'loading', message: null, requiredLegalDocuments: [] });
       return;
     }
 
     let current = true;
-    setResult({ ownerId: user.id, attempt, status: 'loading', message: null, requiredLegalDocuments: [] });
+    setResult({ ownerId: user.id, attempt, sessionGeneration, status: 'loading', message: null, requiredLegalDocuments: [] });
     void resolveV2Access(supabase, user).then(access => {
       if (!current) return;
       const status: V2AccessStatus = access.needsLegalAcceptance
@@ -52,6 +54,7 @@ export function AccessGateProvider({ children }: { children: React.ReactNode }) 
       setResult({
         ownerId: user.id,
         attempt,
+        sessionGeneration,
         status,
         message: null,
         requiredLegalDocuments: access.requiredLegalDocuments,
@@ -64,6 +67,7 @@ export function AccessGateProvider({ children }: { children: React.ReactNode }) 
       setResult({
         ownerId: user.id,
         attempt,
+        sessionGeneration,
         status: 'error',
         message,
         requiredLegalDocuments: [],
@@ -71,10 +75,10 @@ export function AccessGateProvider({ children }: { children: React.ReactNode }) 
     });
 
     return () => { current = false; };
-  }, [authLoading, user?.id, attempt]);
+  }, [authLoading, user?.id, attempt, sessionGeneration]);
 
   const retry = useCallback(() => setAttempt(value => value + 1), []);
-  const status = isV2AccessAttemptCurrent(result.ownerId, result.attempt, ownerId, attempt, authLoading)
+  const status = isV2AccessAttemptCurrent(result.ownerId, result.attempt, ownerId, attempt, authLoading, result.sessionGeneration, sessionGeneration)
     ? result.status
     : 'loading';
   const value = useMemo(() => ({
