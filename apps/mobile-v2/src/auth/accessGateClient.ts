@@ -67,6 +67,13 @@ export function parsePublishedV2LegalDocuments(value: unknown): V2LegalDocument[
   return parsed.sort((a, b) => REQUIRED_V2_LEGAL_KEYS.indexOf(a.document_key) - REQUIRED_V2_LEGAL_KEYS.indexOf(b.document_key));
 }
 
+/** A review check applies only to the exact published legal document revision. */
+export function v2LegalReviewKey(
+  document: Pick<V2LegalDocument, 'document_key' | 'version' | 'content_sha256'>,
+): string {
+  return JSON.stringify([document.document_key, document.version, document.content_sha256]);
+}
+
 export function v2LegalAcceptanceMatches(
   acceptance: unknown,
   documents: V2LegalDocument[],
