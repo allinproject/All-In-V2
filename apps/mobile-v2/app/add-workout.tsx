@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link, Redirect } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, Redirect, useLocalSearchParams } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
+import { prepareManualActivity, validAthleteLocalDate } from '../src/features/training/manualActivityDraft';
 import {
   V2_ACTIVITY_SPORTS,
   type ActivityEntryMode,
@@ -23,11 +24,26 @@ const labels: Record<ActivitySport, string> = {
  * a completed workout. Once canonical owners are live, BOTH choices delegate
  * to Training's start writer or Activity's manual completion writer.
  */
+function deviceLocalDate(): string {
+  const date = new Date();
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+}
+
 export default function AddWorkoutScreen() {
   const { user, loading } = useAuth();
+  const params = useLocalSearchParams<{ date?: string }>();
+  const calendarDay = typeof params.date === 'string' && validAthleteLocalDate(params.date) ? params.date : null;
   const gate = useAccessGate();
   const [mode, setMode] = useState<ActivityEntryMode | null>(null);
   const [sport, setSport] = useState<ActivitySport>('walking');
+  const [manualDate, setManualDate] = useState<string | null>(null);
+  const [minutes, setMinutes] = useState('');
+  const [floors, setFloors] = useState('');
+  const selectedDate = manualDate ?? calendarDay ?? deviceLocalDate();
+  const manualDraft = mode === 'manual_entry' ? prepareManualActivity({
+    sport, athleteLocalDate: selectedDate, athleteLocalToday: deviceLocalDate(),
+    durationMinutes: minutes, machineFloors: sport === 'stair' ? floors : '',
+  }) : null;
 
   if (!loading && !user) return <Redirect href="/sign-in" />;
   if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
@@ -73,14 +89,41 @@ export default function AddWorkoutScreen() {
                 </Pressable>
               ))}
             </View>
+            {mode === 'manual_entry' && (
+              <View style={styles.manualFields}>
+                <Text style={styles.sectionTitle}>Completed activity details</Text>
+                <Text style={styles.muted}>Activity date (YYYY-MM-DD)</Text>
+                <TextInput accessibilityLabel="Activity date" value={selectedDate}
+                  onChangeText={setManualDate} autoCapitalize="none" keyboardType="numbers-and-punctuation"
+                  maxLength={10} style={styles.input} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedText} />
+                <Text style={styles.muted}>Duration (minutes)</Text>
+                <TextInput accessibilityLabel="Duration in minutes" value={minutes} onChangeText={setMinutes}
+                  keyboardType="decimal-pad" maxLength={8} style={styles.input}
+                  placeholder="e.g. 30" placeholderTextColor={colors.mutedText} />
+                {sport === 'stair' && (
+                  <>
+                    <Text style={styles.muted}>Machine-reported floors (optional)</Text>
+                    <TextInput accessibilityLabel="Machine-reported floors" value={floors}
+                      onChangeText={setFloors} keyboardType="number-pad" maxLength={8}
+                      style={styles.input} placeholder="Leave blank if unknown" placeholderTextColor={colors.mutedText} />
+                  </>
+                )}
+                <Text style={styles.muted}>Machine photo scanning is not connected yet. You can prepare a manual draft without it.</Text>
+                <Text accessibilityRole="text" style={styles.info}>
+                  {manualDraft?.valid
+                    ? `Draft only: ${labels[manualDraft.sport]} · ${manualDraft.durationSeconds / 60} min · ${manualDraft.athleteLocalDate}${manualDraft.machineFloors !== null ? ` · ${manualDraft.machineFloors} machine-reported floors` : ''}. Not saved.`
+                    : `Complete the date and duration to prepare a draft (${manualDraft?.reason ?? 'missing_details'}).`}
+                </Text>
+              </View>
+            )}
             <Text style={styles.info}>
               {mode === 'start_activity'
                 ? `Start ${labels[sport]} will use the one canonical Training session across phone and Watch. The recording service is not connected yet.`
-                : `Log a completed ${labels[sport]} activity here. Optional machine-console photo capture and verified manual saving will be available after the Completed Activity writer is connected.`}
+                : `This manual entry stays separate from any scheduled workout on ${selectedDate}. Saving will be enabled once the canonical Completed Activity writer is connected.`}
             </Text>
             <View style={styles.disabledAction} accessibilityState={{ disabled: true }}>
               <Text style={styles.disabledActionText}>
-                {mode === 'start_activity' ? 'Start Activity — not yet available' : 'Continue to details — not yet available'}
+                {mode === 'start_activity' ? 'Start Activity — not yet available' : 'Save Activity — not yet available'}
               </Text>
             </View>
           </View>
@@ -103,6 +146,8 @@ const styles = StyleSheet.create({
   selected: { borderColor: colors.gold, borderWidth: 2 },
   modeTitle: { fontSize: 17, fontWeight: '700', color: colors.warmWhite },
   section: { gap: 16, marginTop: 8 },
+  manualFields: { gap: 9, backgroundColor: colors.surface, borderRadius: 16, padding: 16 },
+  input: { minHeight: 48, color: colors.warmWhite, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.warmWhite },
   sportGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   sport: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.surface, paddingVertical: 11, paddingHorizontal: 14 },
