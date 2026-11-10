@@ -518,3 +518,18 @@ Validation:
 - The live advisor remains at three intentional private-table INFO notices and four existing authenticated per-user SECURITY DEFINER WARN notices.
 
 ALL-227 remains In Progress for the first scheduled-run observation, upstream quota telemetry/cross-isolate throttling, Search-a-Licious quota/terms, Deno/provider integration tests, secret and OFF User-Agent/licence readiness, and safe Edge Function deployment. Scheduling is now configured; provider endpoints remain source-only and cache use is not yet live.
+
+
+## 29. Training Workspace physical ERD and security proposal — 2026-11-10
+
+A first physical ERD/security proposal for ALL-246 is committed for owner review:
+
+[ V2 Training Workspace — Physical ERD & Security Proposal ](https://github.com/allinproject/All-In-V2/blob/integration/v2-foundation/docs/architecture/V2-TRAINING-WORKSPACE-PHYSICAL-ERD-AND-SECURITY-PROPOSAL.md)
+
+The proposed aggregates separate canonical plans, immutable accepted revisions, stable planned-session slots, athlete-local revision-day/session prescriptions, the single active execution envelope, append-only execution events and private idempotency/completion-outbox operations.
+
+The security matrix makes all athlete Training facts owner-readable and RPC-written only; plan/session mutations use expected-user, expected-version and exact-action retry guards. The session-start uniqueness constraint is the cross-phone/Watch/equipment backstop. The model does not create a second Completed Activity, device-observation, Exercise Library, availability, goal/race or Athlete History store.
+
+The most consequential open contract is completion: Training commits its terminal session/event plus an outbox handoff; ALL-243 must create the one canonical Completed Activity idempotently. ALL-245 must approve source-event identity, offline replay and device binding. ALL-251 must approve timezone/availability/location and deletion semantics. ALL-232 remains a read-only history consumer; ALL-231/ALL-240 remain proposal/authorization consumers.
+
+**Not approved / not deployed:** no Training migration, table, RPC or RLS policy was created. ALL-246 remains blocked by ALL-222. The owner must resolve stable slot/revision semantics, versioned session-intent validation, athlete-local timezone rules, active-session/repeat cardinality, multisport-leg normalization, offline/abandoned session recovery and synchronous-vs-outbox completion before DDL.
