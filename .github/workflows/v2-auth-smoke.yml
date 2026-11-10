@@ -5,6 +5,7 @@ on:
     branches:
       - integration/v2-foundation
     paths:
+      - 'apps/mobile-v2/app/**'
       - 'apps/mobile-v2/src/auth/**'
       - 'apps/mobile-v2/src/features/cookbook/**'
       - 'apps/mobile-v2/src/features/training/**'
