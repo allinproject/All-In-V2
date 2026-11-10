@@ -55,6 +55,14 @@ The package lockfile, clean install, TypeScript/app test execution, Expo bundle 
 
 ## Reproducible V2 dependency checkpoint
 
+For a network-connected **Windows PowerShell** checkout on `integration/v2-foundation`, use the guarded local helper from the repository root:
+
+```powershell
+.\scripts\prepare-v2-lockfile.ps1
+```
+
+This helper checks the branch and existing package changes, generates and validates the lockfile, runs clean `npm ci`, all three Node test suites and TypeScript, and **never commits, pushes, deploys or triggers paid CI**. It intentionally stops on the first failure. Inspect `apps/mobile-v2/package-lock.json` before committing it. Use the following manual commands on other platforms or to run additional Expo exports.
+
 From a networked clone of **this repository** (Node 22.16 or later):
 
 ```bash
