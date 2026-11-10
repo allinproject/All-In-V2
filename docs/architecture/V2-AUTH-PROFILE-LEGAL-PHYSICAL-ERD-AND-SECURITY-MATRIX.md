@@ -3,7 +3,7 @@
 **Status:** Live-verified foundation slice; not the physical schema for future Training/Coach/Nutrition domains  
 **Repository:** `allinproject/All-In-V2`  
 **Branch:** `integration/v2-foundation`  
-**Branch head verified:** `cf6b241db39af5400ce1854d14185a520d4aa997`  
+**Branch head at initial physical audit:** `cf6b241db39af5400ce1854d14185a520d4aa997`  
 **Supabase project:** `xarhuczrtzuiljmtdaeu` (All-In-V2)  
 **Verification date:** 2026-11-10  
 **Linear owner:** ALL-222; security evidence ALL-223
@@ -108,7 +108,7 @@ erDiagram
 Notes:
 - `auth.users` is Supabase Auth's identity table and is not a V2-owned table.
 - `v2_legal_documents` has a composite primary key `(document_key, version)`. Legal acceptance stores exact version strings and checks them against the latest published versions in the canonical acceptance RPC; there are intentionally no direct FKs because each receipt requires three fixed document keys.
-- `v2_profile_settings_actions` has composite primary key `(user_id, client_action_id)`, ensuring one idempotency record per actor/action.
+- `v2_profile_settings_actions` has composite primary key `(user_id, client_action_id)`, ensuring one idempotency record per actor/action.\n- `v2_onboarding_actions` has composite primary key `(user_id, client_action_id)` and foreign key to `auth.users`; each record stores allowlisted step/action and resulting onboarding version for exact retry replay.
 - `v2_provider_cache` has composite primary key `(provider, cache_key)`; it is independent of user identity and stores only bounded provider response cache data.
 - All eight tables currently have zero rows. No legal documents are published and no legal acceptance records exist.
 
@@ -133,8 +133,8 @@ Notes:
 - Settings requires a JSON object and positive version.
 - Published Legal Documents require an effective timestamp; document key is restricted to Terms, Privacy and Founder Beta Terms.
 - Legal Acceptances require `age_18_confirmed=true`, nonempty bounded action ID and unique `(user_id, client_action_id)`.
-- Provider cache restricts provider namespace, cache key, JSON object/array payload, payload to 512 KiB, expiry after fetch, fetch time no more than one day in the future and TTL no longer than 30 days.
-- Indexes: published legal lookup by `(document_key, effective_at DESC)` partial on published; legal acceptance history by `(user_id, accepted_at DESC)`; provider-cache expiry by `expires_at`.
+- Onboarding action ledger restricts step to the canonical six-step allowlist, action to `complete`/`skip`/`reset`, and result version to a positive value.\n- Provider cache restricts provider namespace, cache key, JSON object/array payload, payload to 512 KiB, expiry after fetch, fetch time no more than one day in the future and TTL no longer than 30 days.
+- Indexes: published legal lookup by `(document_key, effective_at DESC)` partial on published; legal acceptance history by `(user_id, accepted_at DESC)`; composite primary-key indexes for settings/onboarding idempotency ledgers; provider-cache expiry by `expires_at`.
 
 ## 4. Deployed function and trigger matrix
 
