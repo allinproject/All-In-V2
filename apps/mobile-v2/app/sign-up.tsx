@@ -5,7 +5,7 @@ import { Redirect, Link } from 'expo-router';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { colors, radius, spacing } from '../src/theme/tokens';
-import type { V2LegalDocument } from '../src/auth/accessGateClient';
+import { assertV2SessionOwner, type V2LegalDocument } from '../src/auth/accessGateClient';
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -83,6 +83,7 @@ export default function SignUpScreen() {
       if (signUpError) throw signUpError;
 
       if (data.session) {
+        await assertV2SessionOwner(supabase, data.session.user.id);
         const action = actionId.current ?? `signup-legal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
         actionId.current = action;
         const byKey = new Map(documents.map(doc => [doc.document_key, doc.version]));
