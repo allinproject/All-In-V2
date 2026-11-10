@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Redirect, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import {
   formatCalendarDay, formatCalendarMonth, firstOfMonth, monthCalendarWeeks,
-  shiftCalendarDate, shiftCalendarMonth, weekDaysForDate, monthDayMarkerSummary,
+  shiftCalendarDate, shiftCalendarMonth, weekDaysForDate, monthDayMarkerSummary, monthDayAccessibilityLabel,
   type CalendarEvidence, type CalendarWorkoutMarker,
 } from '../src/features/training/calendarDayView';
 import { validAthleteLocalDate } from '../src/features/training/manualActivityDraft';
@@ -41,6 +41,14 @@ export default function TrainingCalendarScreen() {
   const [day, setDay] = useState(initialDay);
   const [month, setMonth] = useState(firstOfMonth(initialDay) ?? initialDay);
   const [level, setLevel] = useState<CalendarLevel>('week');
+  // A mounted Train route can receive a new date after Add Workout returns.
+  // Only a valid explicit route-date change should select a different day.
+  useEffect(() => {
+    if (typeof params.date !== 'string' || !validAthleteLocalDate(params.date)) return;
+    setDay(params.date);
+    setMonth(firstOfMonth(params.date) ?? params.date);
+    setLevel('week');
+  }, [params.date]);
   const week = weekDaysForDate(day);
   const monthWeeks = monthCalendarWeeks(month);
 
@@ -92,7 +100,7 @@ export default function TrainingCalendarScreen() {
               <View key={days[0]} style={styles.week}>
                 {days.map(date => (
                   <Pressable key={date} accessibilityRole="button"
-                    accessibilityLabel={`Open week of ${formatCalendarDay(days[0])}, select ${formatCalendarDay(date)}`}
+                    accessibilityLabel={monthDayAccessibilityLabel(workoutEvidence, date)}
                     onPress={() => selectDate(date)}
                     style={[styles.monthDay, date.slice(0,7) !== month.slice(0,7) && styles.outsideMonth]}>
                     <Text style={date.slice(0,7) === month.slice(0,7) ? styles.white : styles.muted}>{Number(date.slice(-2))}</Text>
