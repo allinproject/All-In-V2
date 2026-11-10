@@ -100,6 +100,13 @@ export function resolveLocalIngredient(
   if (ready.length !== 1) return { status: 'profile_conflict', ingredient_id: identityId };
 
   const profile = ready[0];
+  // Reject corrupt catalog snapshots where two records reuse one profile ID:
+  // nutrient rows are joined by profile ID, so the wrong food could inherit
+  // another ingredient's nutrition even if both state/default flags look valid.
+  if (!profile.id?.trim() ||
+      catalog.profiles.filter(row => row.id === profile.id).length !== 1) {
+    return { status: 'profile_conflict', ingredient_id: identityId };
+  }
   if (profile.basis_unit === 'ml') return { status: 'conversion_required', ingredient_id: identityId };
   const mass = profile.basis_unit === 'g' &&
     positive(profile.basis_quantity) && positive(request.quantity_g!) &&
