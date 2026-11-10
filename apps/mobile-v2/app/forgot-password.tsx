@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { colors } from '../src/theme/tokens';
+import { createV2AuthActionGuard } from '../src/auth/authRoute';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const requestGuard = useRef(createV2AuthActionGuard());
 
   async function sendResetLink() {
     if (submitting) return;
@@ -20,6 +22,7 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
+    if (!requestGuard.current.tryEnter()) return;
     setSubmitting(true);
     setError(null);
     setNotice(null);
@@ -36,6 +39,7 @@ export default function ForgotPasswordScreen() {
       const message = caught instanceof Error ? caught.message : '';
       setError(message || 'The reset link could not be sent. Check your connection and try again.');
     } finally {
+      requestGuard.current.leave();
       setSubmitting(false);
     }
   }
@@ -58,7 +62,7 @@ export default function ForgotPasswordScreen() {
               placeholderTextColor={colors.mutedText}
               style={styles.input}
               value={email}
-              onChangeText={value => { setEmail(value); setError(null); setNotice(null); }}
+              onChangeText={value => { if (requestGuard.current.isBusy()) return; setEmail(value); setError(null); setNotice(null); }}
             />
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
             {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
