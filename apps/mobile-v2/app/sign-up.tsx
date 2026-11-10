@@ -7,7 +7,7 @@ import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { canStartV2SignedOutAction, createV2AuthActionGuard } from '../src/auth/authRoute';
 import { colors, radius, spacing } from '../src/theme/tokens';
-import { assertV2SessionOwner, assertV2SignupLegalSnapshotCurrent, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2SignupConsentScope, type V2LegalDocument } from '../src/auth/accessGateClient';
+import { assertV2SessionOwner, assertV2SignupLegalSnapshotCurrent, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2SignupAcceptanceRetryScope, v2SignupConsentScope, type V2LegalDocument } from '../src/auth/accessGateClient';
 import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
 
 function errorMessage(error: unknown) {
@@ -32,6 +32,7 @@ export default function SignUpScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [submittedRegistrationScope, setSubmittedRegistrationScope] = useState<string | null>(null);
   const pendingAcceptance = useRef<{ scope: string; id: string } | null>(null);
   const requestGuard = useRef(createV2AuthActionGuard());
 
@@ -70,7 +71,8 @@ export default function SignUpScreen() {
   const reviewScope = v2SignupConsentScope(email, documents);
   const ageConfirmed = ageConfirmedScope === reviewScope;
   const allReviewed = documents.length === 3 && documents.every(doc => reviewed[reviewKey(doc)]);
-  const ready = canStartV2SignedOutAction(loading, user?.id ?? null) && !loadingDocuments && !submitting && documents.length === 3
+  const ready = canStartV2SignedOutAction(loading, user?.id ?? null) && !loadingDocuments && !submitting
+    && submittedRegistrationScope !== reviewScope && documents.length === 3
     && allReviewed && ageConfirmed && email.trim().length > 0 && meetsV2PasswordMinimum(password);
 
   async function createAccount() {
@@ -121,10 +123,11 @@ export default function SignUpScreen() {
 
       if (data.session) {
         await assertV2SessionOwner(supabase, data.session.user.id);
-        const action = pendingAcceptance.current?.scope === submittedScope
+        const acceptanceScope = v2SignupAcceptanceRetryScope(submittedScope, data.session.user.id);
+        const action = pendingAcceptance.current?.scope === acceptanceScope
           ? pendingAcceptance.current.id
           : `signup-legal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-        pendingAcceptance.current = { scope: submittedScope, id: action };
+        pendingAcceptance.current = { scope: acceptanceScope, id: action };
         const byKey = new Map(reviewedDocuments.map(doc => [doc.document_key, doc.version]));
         const { error: acceptanceError } = await supabase.rpc('v2_accept_legal_documents', {
           p_expected_user_id: data.session.user.id,
@@ -139,6 +142,7 @@ export default function SignUpScreen() {
         pendingAcceptance.current = null;
         setNotice('Your V2 account was created and the reviewed legal versions were recorded. Opening ALL IN 365…');
       } else {
+        setSubmittedRegistrationScope(submittedScope);
         setNotice('Your V2 account request was accepted. Check your email to confirm the address, then sign in to finish the legal acceptance receipt before entering the app.');
       }
     } catch (caught) {
