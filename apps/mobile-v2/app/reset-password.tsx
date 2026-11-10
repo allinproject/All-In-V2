@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { assertV2SessionOwner } from '../src/auth/accessGateClient';
+import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
 import { colors } from '../src/theme/tokens';
 
 export default function ResetPasswordScreen() {
@@ -19,8 +20,8 @@ export default function ResetPasswordScreen() {
 
   async function updatePassword() {
     if (submitting) return;
-    if (password.length < 8) {
-      setError('Use a password with at least 8 characters.');
+    if (!meetsV2PasswordMinimum(password)) {
+      setError('Use a password with at least 12 characters.');
       return;
     }
     if (password !== confirmation) {
@@ -60,7 +61,7 @@ export default function ResetPasswordScreen() {
           <View style={styles.card}>
             <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
             <Text accessibilityRole="header" style={styles.title}>Choose a new password</Text>
-            <Text style={styles.body}>Use at least 8 characters. Your V2 account and training history stay the same.</Text>
+            <Text style={styles.body}>Use at least 12 characters. Your V2 account and training history stay the same.</Text>
             <TextInput accessibilityLabel="New password" autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="New password" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={setPassword} />
             <TextInput accessibilityLabel="Confirm new password" autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Confirm new password" placeholderTextColor={colors.mutedText} style={styles.input} value={confirmation} onChangeText={setConfirmation} onSubmitEditing={() => void updatePassword()} />
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
