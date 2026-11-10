@@ -111,6 +111,7 @@ test('parses the V2 Edge Function candidate without upgrading its review state',
   assert.equal(parseFdcGenericIngredientCandidate(normalizedCandidate({ data_type: 'Branded' })), null);
   assert.equal(parseFdcGenericIngredientCandidate(normalizedCandidate({ source_license: 'other' })), null);
   assert.equal(parseFdcGenericIngredientCandidate(normalizedCandidate({ source_id: 'not-an-id' })), null);
+  assert.equal(parseFdcGenericIngredientCandidate(normalizedCandidate({ source_id: '000000' })), null);
 });
 
 test('searches through the authenticated V2 Edge Function and rejects malformed envelopes', async () => {
