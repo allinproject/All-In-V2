@@ -10,3 +10,26 @@ test('rejects unsafe source URL and invalid date',()=>{const c=sample();c.source
 
 test('distinguishes confirmed no aid stations from missing aid station information',()=>{const c=sample();c.aidStationStatus=field('none');c.aidStations=[];const v=validateRaceCourseEvidence(c);assert.equal(v.completeness,'verified');assert.ok(!v.missingFields.includes('aid_stations'))});
 test('rejects an aid station list when official course status says none',()=>{const c=sample();c.aidStationStatus=field('none');assert.throws(()=>validateRaceCourseEvidence(c))});
+
+test('race evidence rejects malformed lists and route-file metadata before use',()=>{
+ const badWarnings=sample();(badWarnings as any).warnings=null;
+ assert.throws(()=>validateRaceCourseEvidence(badWarnings),/warnings and missing fields/);
+ const badRoute=sample();(badRoute.routeFile as any).kind='unknown';
+ assert.throws(()=>validateRaceCourseEvidence(badRoute),/route file metadata/);
+ const missingFile=sample();(missingFile.routeFile as any).fileRef=' ';
+ assert.throws(()=>validateRaceCourseEvidence(missingFile),/route file metadata/);
+});
+
+test('Coach rejects aid stations when availability is unknown or has no evidence',()=>{
+ const unknown=sample();unknown.aidStationStatus=field('unknown');
+ assert.throws(()=>validateRaceCourseEvidence(unknown),/sourced available status/);
+ const missing=sample();missing.aidStationStatus={value:null,source:null,sourceUrl:null,retrievedAt:null,confirmedByUser:false};
+ assert.throws(()=>validateRaceCourseEvidence(missing),/sourced available status/);
+});
+
+test('aid stations need nonempty IDs and explicit confirmation flag',()=>{
+ const emptyId=sample();emptyId.aidStations[0].id=' ';
+ assert.throws(()=>validateRaceCourseEvidence(emptyId),/Aid station identity/);
+ const noConfirmation=sample();(noConfirmation.aidStations[0] as any).confirmedByUser=undefined;
+ assert.throws(()=>validateRaceCourseEvidence(noConfirmation),/Aid station identity/);
+});
