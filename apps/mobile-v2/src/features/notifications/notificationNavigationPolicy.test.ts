@@ -3,31 +3,34 @@ import test from 'node:test';
 import { resolveNotificationOpen, type NotificationOpenIntent } from './notificationNavigationPolicy.ts';
 
 const intent: NotificationOpenIntent = {
-  ownerId: 'owner-a', decisionKey: 'decision', target: 'train', sourceId: 'workout-1',
+  ownerId: 'owner-a', decisionKey: 'decision', target: 'today', sourceId: 'workout-1',
 };
 
-test('authorized current owner may navigate only after server-verified access', () => {
-  assert.deepEqual(resolveNotificationOpen(intent, 'owner-a', true), {
-    allowed: true, route: '/train', sourceId: 'workout-1',
+test('only mounted home is navigable after current-owner and legal/onboarding verification', () => {
+  assert.deepEqual(resolveNotificationOpen(intent, 'owner-a', true, true), {
+    allowed: true, route: '/home', sourceId: 'workout-1',
   });
-  assert.equal(resolveNotificationOpen(intent, 'owner-a', false).allowed, false);
+  assert.deepEqual(resolveNotificationOpen(intent, 'owner-a', true, false), {
+    allowed: false, reason: 'access_not_verified',
+  });
+  assert.equal(resolveNotificationOpen(intent, 'owner-a', false, true).allowed, false);
 });
 
-test('signed out and changed account cannot open prior athlete notification', () => {
-  assert.deepEqual(resolveNotificationOpen(intent, null, true), { allowed: false, reason: 'signed_out' });
-  assert.deepEqual(resolveNotificationOpen(intent, 'owner-b', true), { allowed: false, reason: 'wrong_owner' });
+test('signed out and changed accounts cannot open prior athlete notification', () => {
+  assert.deepEqual(resolveNotificationOpen(intent, null, true, true), { allowed: false, reason: 'signed_out' });
+  assert.deepEqual(resolveNotificationOpen(intent, 'owner-b', true, true), { allowed: false, reason: 'wrong_owner' });
 });
 
-test('arbitrary URLs, missing source IDs and unfamiliar routes fail closed', () => {
-  assert.equal(resolveNotificationOpen({ ...intent, target: 'https://evil.example' as never }, 'owner-a', true).allowed, false);
-  assert.equal(resolveNotificationOpen({ ...intent, target: '__proto__' as never }, 'owner-a', true).allowed, false);
-  assert.equal(resolveNotificationOpen({ ...intent, sourceId: '' }, 'owner-a', true).allowed, false);
+test('arbitrary URLs, prototype keys and missing identity fail closed', () => {
+  assert.equal(resolveNotificationOpen({ ...intent, target: 'https://evil.example' as never }, 'owner-a', true, true).allowed, false);
+  assert.equal(resolveNotificationOpen({ ...intent, target: '__proto__' as never }, 'owner-a', true, true).allowed, false);
+  assert.equal(resolveNotificationOpen({ ...intent, sourceId: '' }, 'owner-a', true, true).allowed, false);
 });
 
-test('all approved destinations are fixed app-internal routes', () => {
-  for (const target of ['today', 'train', 'coach', 'fuel', 'community'] as const) {
-    const result = resolveNotificationOpen({ ...intent, target }, 'owner-a', true);
-    assert.equal(result.allowed, true);
-    if (result.allowed) assert.ok(result.route.startsWith('/'));
+test('future five-tab destinations fail closed until their real screens are mounted', () => {
+  for (const target of ['train', 'coach', 'fuel', 'community'] as const) {
+    assert.deepEqual(resolveNotificationOpen({ ...intent, target }, 'owner-a', true, true), {
+      allowed: false, reason: 'destination_unavailable',
+    });
   }
 });
