@@ -294,3 +294,32 @@ Until these decisions are approved, do not create an ingredient migration, publi
 The shared cache used by the proposed source-record layer is already a separate deployed infrastructure object. Migration 003 created the private cache/RPCs; migration 006 added `v2_provider_cache_prune_expired(integer)`, applied as database version `20261110122952`. The purge is service_role-only, bounded to 1–5,000 expired rows per call, and uses `FOR UPDATE SKIP LOCKED`. Live rollback-only verification passed and confirmed fresh rows survive; direct private table access remains denied to service_role.
 
 Migration 007 has now installed pg_cron 1.6.4 and scheduled the private purge helper hourly as postgres (`allin-v2-provider-cache-expired-purge`, minute 17 UTC, 5,000-row bound). Metadata and grant checks passed; the first scheduled run succeeded at 7:17 AM Central on 2026-11-10. The cache was empty, so no expired rows required deletion. ALL-227 still owns quota telemetry, cross-isolate throttling and provider deployment gates. This does not change the ingredient-domain proposal: cache rows remain source responses/candidates only, never canonical reviewed food profiles.
+
+## 11. Beta decision recommendations and release gates — 2026-11-10
+
+**Proposal only.** These are review recommendations for ALL-222/ALL-228, NOT founder/owner approval, executed schema, grant policy, or a direction to create a migration. They deliberately preserve the established canonical ownership model.
+
+| Open owner decision | Recommended narrow beta default | Approval/evidence required before DDL |
+|---|---|---|
+| Preparation and locale | Use explicit `raw`, `cooked`, `cooked_drained`, `dry`, `as_sold`, `prepared` values; region and language are alias/source attributes, not silent preparation conversions | Ingredient owner approves states, exceptional country/product identity rules and state transitions |
+| Launch nutrient minimum | Version a core required set: energy kcal, protein g, carbohydrate g and total fat g. Preserve optional nutrients as explicit values or absent/unknown; avoid false zero micronutrients | Nutrition owner approves exact energy/carb naming, units, conversion source and completeness version; label-only branded records need an explicit coverage status |
+| Brand identity | Separate `branded_product` from `generic_food`, preserve exact GTIN including leading zeros; source identity uniqueness by provider + type + external ID | Ingredient/provider owner approves source type policy and no silent merges |
+| Default profile | For a specific ingredient, preparation state and basis family, publish exactly one approved default. If multiple incompatible defaults exist, fail closed instead of picking first or latest | Owner approves priority/version rules, transitions and conflict resolution, including mass vs volume vs exact item |
+| Review/publication | Keep candidate/needs_review segregated. For beta, allow a controlled seed/release operator workflow **only**, with no authenticated-athlete publication endpoint | ALL-222 approves designated operator identity, key custody, authorization, audit record and rollback procedure before any writer |
+| Candidate staging | First reuse existing private provider-cache payloads for bounded discovery; no duplicate raw source store. Durable pending queue only after a concrete review workflow demonstrates the need | Provider/catalog owners approve queue necessity, TTL, PII minimization and operator visibility |
+| Measurement units | Begin with g, ml and exact each-item basis; allow household conversions only with reviewed ingredient-and-state-specific mass/density/item evidence | Nutrition/cooking owners approve unit codes, evidence validity and conversion precedence |
+| Review/seed retention | Preserve only minimal immutable source mapping, review actor/action time, reason, digest and seed-run counts; no provider API secrets or full duplicate payload archive | Privacy/security owner approves exact retention and deletion windows, lawful need and operator visibility |
+| Merge and source withdrawal | Keep canonical identity stable. New source digest creates review-required revision; existing validated nutrition remains auditable. A merge retains redirect/history; retired sources cannot silently poison already logged records | Owner defines controlled transition/rollback, historical calculator snapshot support and source-license obligations |
+
+### Pre-DDL acceptance slices already testable
+
+- **Read adapter**: `apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts` resolves exact unique aliases and reviewed state/basis-specific profiles. Candidate, ambiguity, missing nutrient, competing defaults and unsupported conversion fail closed. It does not fetch from Supabase or providers.
+- **Seed reconciliation**: `apps/mobile-v2/src/features/cookbook/ingredientSeedPreview.ts` yields deterministic candidate-only insert/unchanged/conflict/review-changed-source actions. It checks existing mapping integrity and rejects a changed source digest combined with a different approved V2 mapping.
+- Both are **pure in-memory fixture contracts**, not proof of SQL/RLS. Once owner approvals exist, first deploy a minimal canonical **read** schema with explicit denial of direct athlete writes and verify anon/two-user RLS. Only then add a controlled seed publication path, bulk snapshot reconciliation and local recipe-open integration with zero upstream calls.
+
+### Required external dependencies at the gate
+
+1. **Owner decision:** Explicitly approve/adjust the above nine choices in ALL-222 and ALL-228; do not treat these recommendations as consent.
+2. **Data source evidence:** Pin licensed USDA bulk snapshot/version/hash, selected V1 ingredient references and provider license/attribution before bulk import; record unmapped and rejected source rows.
+3. **Build gate:** ALL-224 real Windows lockfile, clean install, TypeScript/Expo and live integration tests.
+4. **Acceptance:** No athlete can publish shared ingredient facts; candidate data is never calculation-ready; exact identity/state/units are enforced; local recipe read and recalculation remain available without provider HTTP requests.
