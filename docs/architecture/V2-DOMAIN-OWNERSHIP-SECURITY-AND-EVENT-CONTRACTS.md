@@ -34,7 +34,7 @@
 | `20261110032039` | `20261110000300_v2_provider_cache_and_private_rls.sql` | RLS on the private settings ledger and provider cache; service-role-only cache RPCs. |
 | `20261110101200` | `20261110000400_v2_onboarding_progress_writer.sql` | Private onboarding idempotency ledger and authenticated complete/skip/reset writer with expected-version and exact-retry behavior. |
 | `20261110105423` | `20261110000500_v2_expected_owner_mutation_guards.sql` | Replaces Settings, Legal Acceptance and Onboarding mutation RPC signatures with database-enforced expected-owner checks against `auth.uid()`; drops unbound overloads. |
-| `20261110122952` | `20261110000600_v2_provider_cache_expired_cleanup.sql` | Adds a bounded, service-role-only expired provider-cache purge RPC. Scheduling remains a separate operations decision. |
+| `20261110122952` | `20261110000600_v2_provider_cache_expired_cleanup.sql` | Adds a bounded provider-cache purge API plus a private owner-only helper for scheduled cleanup. |\n| `20261110124420` | `20261110000700_v2_provider_cache_cron_schedule.sql` | Installs pg_cron 1.6.4 and schedules hourly expired-cache pruning as postgres; public API wrapper stays service_role-only. |
 
 ### Current tables
 
@@ -46,7 +46,7 @@
 | `public.v2_legal_documents` | Legal/Product operations | Product-published content | SELECT published/effective versions to anon/authenticated | Reviewed operator/server publication process; published content is immutable. |
 | `public.v2_legal_acceptances` | Legal/Account lifecycle | User-private, immutable receipt | Authenticated owner SELECT only | `v2_accept_legal_documents` validates exact current published versions and owner. |
 | `allin_private.v2_profile_settings_actions` | Auth/Profile settings idempotency | Private operational metadata | No anon/authenticated schema usage or table grants; RLS enabled; no policies by design | Only the owning settings RPC accesses it. |
-| `allin_private.v2_provider_cache` | Provider infrastructure | Private cached external reference responses | No anon/authenticated/service-role table grants; RLS enabled; no policies by design | Service-role-only `v2_provider_cache_get/put/prune_expired` RPCs. Cache is not canonical reviewed ingredient truth. |
+| `allin_private.v2_provider_cache` | Provider infrastructure | Private cached external reference responses | No anon/authenticated/service-role table grants; RLS enabled; no policies by design | Service-role-only `v2_provider_cache_get/put/prune_expired` RPCs plus a private owner-only purge helper invoked by pg_cron as postgres. Cache is not canonical reviewed ingredient truth. |
 
 The V2 project currently has zero rows in the verified eight-table foundation schema (five public and three private). No legal documents are published, so real signup remains intentionally gated.
 
@@ -484,10 +484,24 @@ It proposes stable V2 food identities, exact aliases, preparation/basis-specific
 Key unresolved approval: ALL-251 must define the authorized reviewer/operator identity and publication workflow. Until then, canonical profile writes must remain controlled release/seed operations; authenticated athletes are read-only consumers and cannot publish nutrition facts. ALL-228 remains blocked by this architecture/security decision, and ALL-225/ALL-226/ALL-218 remain downstream.
 
 
-## 19. Provider-cache expiry maintenance — 2026-11-10
+## 19. Provider-cache expiry maintenance — migrations 006 and 007 — 2026-11-10
 
-Migration `20261110000600_v2_provider_cache_expired_cleanup.sql` is applied as database version `20261110122952`. It adds `public.v2_provider_cache_prune_expired(integer)`, a postgres-owned SECURITY DEFINER RPC with an empty search_path, explicit `auth.role()='service_role'` enforcement, an inclusive 1–5,000 row batch bound, ordered expired-row selection and `FOR UPDATE SKIP LOCKED`. EXECUTE is granted only to service_role; the service role still has no direct private-table grants.
+Migration `20261110000600_v2_provider_cache_expired_cleanup.sql` is applied as database version `20261110122952`. It adds the service-role-only API wrapper `public.v2_provider_cache_prune_expired(integer)` and bounded private helper `allin_private.v2_provider_cache_prune_expired(integer)`. Both enforce a 1–5,000 row bound; cleanup selects only expired rows in expiry order and uses `FOR UPDATE SKIP LOCKED`.
 
-The rollback-only live test verified authenticated invocation fails with SQLSTATE 42501, invalid batch size fails with 22023, one expired row is deleted, a fresh row remains, and probe rows are rolled back. The live advisor remains at three intentional private-table INFO notices and four existing per-user authenticated SECURITY DEFINER WARN notices; the purge function introduces no new authenticated warning.
+Migration `20261110000700_v2_provider_cache_cron_schedule.sql` is applied as database version `20261110124420`. It installs pg_cron 1.6.4, grants Cron schema/table management only to `postgres`, and schedules job `allin-v2-provider-cache-expired-purge` at minute 17 of every hour (UTC). Live job metadata confirms:
+- active = true
+- username/job owner = `postgres`
+- database = `postgres`
+- command = `select allin_private.v2_provider_cache_prune_expired(5000);`
 
-**Not yet scheduled:** this V2 database has no pg_cron/pg_net/pgmq extension and no cron job catalog. The new RPC is a safe bounded maintenance primitive, not a recurring job. Choose an approved scheduler/maintenance invocation before cache volume grows; do not describe the cache as automatically pruned yet. ALL-227 remains In Progress until scheduling, provider quota controls, cross-isolate miss behavior, tests and deployment gates are complete.
+The public API wrapper remains SECURITY DEFINER, empty search_path, explicit `auth.role()='service_role'` enforcement and EXECUTE only for service_role. The private helper is SECURITY INVOKER, empty search_path and has no EXECUTE grant for anon/authenticated/service_role; the Cron command runs under the owner role that created the job. No client role has Cron schema USAGE. No direct provider-cache table grants were added.
+
+Validation:
+- Migration 006 rollback-only fixture passed: authenticated API call denied (42501), invalid batch rejected (22023), exactly one expired row removed, fresh row retained, and all probe data rolled back.
+- Migration 007 live metadata/security assertion passed: active schedule, postgres owner, exact hourly command, Cron schema usage only for postgres, private helper inaccessible to API roles, public wrapper executable only by service_role.
+- Direct service-role wrapper smoke test passed; service_role cannot call the private helper or read/delete the private cache table directly.
+- A direct postgres-owner invocation of the private helper returned 0; the cache currently has no rows.
+- The Cron job's first scheduled execution is pending; no successful `cron.job_run_details` entry is claimed yet.
+- The live advisor remains at three intentional private-table INFO notices and four existing authenticated per-user SECURITY DEFINER WARN notices.
+
+ALL-227 remains In Progress for the first scheduled-run observation, upstream quota telemetry/cross-isolate throttling, Search-a-Licious quota/terms, Deno/provider integration tests, secret and OFF User-Agent/licence readiness, and safe Edge Function deployment. Scheduling is now configured; provider endpoints remain source-only and cache use is not yet live.
