@@ -135,7 +135,7 @@ export function parseFdcGenericIngredientCandidate(raw: unknown): FdcGenericIngr
   const retrievedAt = typeof item.retrieved_at === 'string' ? item.retrieved_at : '';
   if (
     item.source !== 'usda_fdc' ||
-    !/^\\d{1,12}$/.test(sourceId) ||
+    !/^\d{1,12}$/.test(sourceId) ||
     !description ||
     (dataType !== 'Foundation' && dataType !== 'SR Legacy') ||
     item.nutrition_basis !== '100g' ||
@@ -190,7 +190,7 @@ export async function searchV2FdcGenericIngredients(
   client: SupabaseClient,
   rawQuery: string,
 ): Promise<FdcGenericIngredientSearch> {
-  const query = String(rawQuery ?? '').replace(/\\s+/g, ' ').trim();
+  const query = String(rawQuery ?? '').replace(/\s+/g, ' ').trim();
   if (query.length < 2 || query.length > 80) {
     throw new Error('Enter a 2–80 character ingredient name.');
   }
@@ -238,7 +238,7 @@ export async function fetchV2FdcGenericIngredientDetail(
   sourceId: string,
 ): Promise<FdcGenericIngredientCandidate> {
   const id = String(sourceId ?? '').trim();
-  if (!/^\\d{1,12}$/.test(id) || Number(id) <= 0) throw new Error('A valid USDA FDC source ID is required.');
+  if (!/^\d{1,12}$/.test(id) || Number(id) <= 0) throw new Error('A valid USDA FDC source ID is required.');
   const { data, error } = await client.functions.invoke('v2-search-usda-ingredients', {
     body: { action: 'detail', fdc_id: id },
   });
