@@ -1,10 +1,11 @@
 import { Stack } from 'expo-router';
+import { Sentry } from '../src/monitoring/sentry';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../src/auth/AuthProvider';
 import { AccessGateProvider } from '../src/auth/AccessGateProvider';
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
@@ -16,3 +17,4 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+export default Sentry.wrap(RootLayout);
