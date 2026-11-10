@@ -8,7 +8,7 @@
  */
 import {createHash} from 'node:crypto';
 import {createReadStream} from 'node:fs';
-import {readFile,stat} from 'node:fs/promises';
+import {open,readFile,stat} from 'node:fs/promises';
 import {basename} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -68,6 +68,16 @@ export async function verifyFoundationArchive(manifestPath,archivePath){
   const details=await stat(archivePath);
   if(!details.isFile()||details.size!==expected.archiveBytes)
     throw new Error('Archive length differs from recorded source manifest');
+  // The source manifest alone cannot establish that the bytes are even a ZIP.
+  // Require a local-file ZIP header; structural member validation is separately
+  // performed by the PowerShell acquisition helper.
+  const file=await open(archivePath,'r');
+  try{
+    const header=Buffer.alloc(4);
+    const {bytesRead}=await file.read(header,0,4,0);
+    if(bytesRead!==4||!header.equals(Buffer.from([0x50,0x4b,0x03,0x04])))
+      throw new Error('USDA source bytes do not start with a ZIP local-file header');
+  }finally{await file.close();}
   const hash=createHash('sha256');
   for await(const chunk of createReadStream(archivePath))hash.update(chunk);
   if(hash.digest('hex')!==expected.archiveSha256)
