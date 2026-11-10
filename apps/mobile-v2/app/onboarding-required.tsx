@@ -326,6 +326,7 @@ export default function OnboardingRequiredScreen() {
         const { data: savedSettingsVersion, error: settingsError } = await supabase.rpc(
           'v2_patch_profile_settings_section',
           {
+            p_expected_user_id: ownerId,
             p_section: write.section,
             p_patch: write.patch,
             p_expected_version: settingsVersion,
@@ -344,6 +345,7 @@ export default function OnboardingRequiredScreen() {
       await assertV2SessionOwner(supabase, ownerId);
 
       const { error: progressError } = await supabase.rpc('v2_set_onboarding_step', {
+        p_expected_user_id: ownerId,
         p_step: activeStep,
         p_action: action,
         p_expected_version: progressVersion,
