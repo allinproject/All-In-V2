@@ -42,9 +42,9 @@ test('out-of-range, cross-owner, malformed, and duplicate reads refuse certifica
 });
 test('only explicit missed, rest, and recovery records produce those labels',()=>{
  const x=combineCalendarReads({...input,planned:{...input.planned,records:[
-  {...planned,state:'missed',athleteLocalDate:'2026-11-04'},
-  {...planned,id:'rest',sport:'rest',state:'rest',athleteLocalDate:'2026-11-05'},
-  {...planned,id:'recovery',sport:'recovery',state:'recovery',athleteLocalDate:'2026-11-06'},
+  {...planned,state:'missed' as const,athleteLocalDate:'2026-11-04'},
+  {...planned,id:'rest',sport:'rest' as const,state:'rest' as const,athleteLocalDate:'2026-11-05'},
+  {...planned,id:'recovery',sport:'recovery' as const,state:'recovery' as const,athleteLocalDate:'2026-11-06'},
  ]}});
  assert.equal(x.status,'ready');
  assert.deepEqual(['2026-11-04','2026-11-05','2026-11-06'].map(day=>indicatorsForCalendarDay(x,day).visible[0]?.status),
