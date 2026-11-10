@@ -115,9 +115,9 @@ function projectToSegment(
     EARTH_METERS_PER_DEGREE_LAT * Math.max(0.01, Math.cos(meanLatitudeRadians));
 
   // Coordinates are relative to the GPS fix, keeping the projection numerically stable.
-  const ax = (a.longitude - sample.longitude) * (Math.PI / 180) * metersPerDegreeLongitude;
+  const ax = (a.longitude - sample.longitude) * metersPerDegreeLongitude;
   const ay = (a.latitude - sample.latitude) * (Math.PI / 180) * EARTH_METERS_PER_DEGREE_LAT;
-  const bx = (b.longitude - sample.longitude) * (Math.PI / 180) * metersPerDegreeLongitude;
+  const bx = (b.longitude - sample.longitude) * metersPerDegreeLongitude;
   const by = (b.latitude - sample.latitude) * (Math.PI / 180) * EARTH_METERS_PER_DEGREE_LAT;
   const dx = bx - ax;
   const dy = by - ay;
