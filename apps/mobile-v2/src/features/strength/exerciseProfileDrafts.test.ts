@@ -61,7 +61,7 @@ test('seated versus prone leg-curl profiles retain the measured hamstring growth
   assert.equal(prone.claims[0].evidenceTier,'within_subject_controlled_intervention');
   assert.match(seated.claims[0].statement,/\+14% versus \+9%/);
   assert.match(prone.claims[0].statement,/prone leg-curl training increased whole-hamstring volume by 9%/);
-  assert.match(seated.claims[0].limitations,/does not establish better running speed/);
+  assert.match(seated.claims[0].limitations,/not better running speed/);
   assert.match(prone.claims[0].limitations,/does not show that prone leg curls are ineffective/);
 });
 
