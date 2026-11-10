@@ -17,6 +17,7 @@ export type RaceCourseGpsSample = {
 
 export type RaceCourseGpsMatchState = {
   raceId: string;
+  routeId: string;
   courseVersion: string;
   segmentIndex: number;
   capturedAtMs: number;
@@ -29,6 +30,7 @@ export type RaceCourseGpsMatch =
       reason: string;
       confidence: 'untrusted';
       raceId: string;
+      routeId: string | null;
       courseVersion: string;
       distanceOnCourseMeters: null;
       crossTrackDistanceMeters: number | null;
@@ -39,6 +41,7 @@ export type RaceCourseGpsMatch =
       reason: null;
       confidence: 'high' | 'moderate';
       raceId: string;
+      routeId: string;
       courseVersion: string;
       distanceOnCourseMeters: number;
       crossTrackDistanceMeters: number;
@@ -50,6 +53,7 @@ export type RaceCourseGpsMatch =
       reason: 'race_or_course_version_changed';
       confidence: 'untrusted';
       raceId: string;
+      routeId: string;
       courseVersion: string;
       distanceOnCourseMeters: null;
       crossTrackDistanceMeters: null;
@@ -82,6 +86,7 @@ function untrusted(
     reason,
     confidence: 'untrusted',
     raceId: course.raceId,
+    routeId: course.routeId,
     courseVersion: course.courseVersion,
     distanceOnCourseMeters: null,
     crossTrackDistanceMeters,
@@ -150,12 +155,15 @@ export function matchRaceCourseGpsPosition(
       reason: 'Verified course geometry unavailable',
       confidence: 'untrusted',
       raceId: course?.raceId ?? '',
+      routeId: course && 'routeId' in course ? course.routeId : null,
       courseVersion: course?.courseVersion ?? '',
       distanceOnCourseMeters: null,
       crossTrackDistanceMeters: null,
       state: previous,
     };
   }
+
+  if (!course.routeId || !course.routeId.trim()) return untrusted(course, 'Canonical route identity is unavailable', previous);
 
   if (
     !sample ||
@@ -169,13 +177,14 @@ export function matchRaceCourseGpsPosition(
 
   if (
     previous &&
-    (previous.raceId !== course.raceId || previous.courseVersion !== course.courseVersion)
+    (previous.raceId !== course.raceId || previous.routeId !== course.routeId || previous.courseVersion !== course.courseVersion)
   ) {
     return {
       status: 'reset_required',
       reason: 'race_or_course_version_changed',
       confidence: 'untrusted',
       raceId: course.raceId,
+      routeId: course.routeId,
       courseVersion: course.courseVersion,
       distanceOnCourseMeters: null,
       crossTrackDistanceMeters: null,
@@ -261,6 +270,7 @@ export function matchRaceCourseGpsPosition(
     best.crossTrackDistanceMeters <= highConfidenceDistance ? 'high' : 'moderate';
   const state: RaceCourseGpsMatchState = {
     raceId: course.raceId,
+    routeId: course.routeId,
     courseVersion: course.courseVersion,
     segmentIndex: best.index,
     capturedAtMs: sample.capturedAtMs,
@@ -272,6 +282,7 @@ export function matchRaceCourseGpsPosition(
     reason: null,
     confidence,
     raceId: course.raceId,
+    routeId: course.routeId,
     courseVersion: course.courseVersion,
     distanceOnCourseMeters: state.distanceOnCourseMeters,
     crossTrackDistanceMeters: best.crossTrackDistanceMeters,
