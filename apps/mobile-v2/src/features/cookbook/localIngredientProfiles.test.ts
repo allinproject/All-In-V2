@@ -120,6 +120,24 @@ test('competing ready defaults fail closed until the catalog owner chooses one',
   assert.equal(resolveLocalIngredient(rows, request()).status, 'profile_conflict');
 });
 
+test('duplicate profile IDs anywhere in catalog cannot share another food nutrition', () => {
+  const rows = catalog();
+  rows.profiles = [
+    ...rows.profiles,
+    { ...rows.profiles[0], ingredient_id: 'egg-v2', preparation_state: 'raw',
+      is_default: false },
+  ];
+  assert.equal(resolveLocalIngredient(rows, request()).status, 'profile_conflict');
+  const calculated = calculateRecipeFromLocalCatalog({
+    catalog: rows, recipe_id: 'recipe-with-bad-profile', recipe_state_version: '1',
+    servings: 2, ingredients: [request()],
+  });
+  assert.equal(calculated.status, 'insufficient_evidence');
+  if (calculated.status === 'insufficient_evidence') {
+    assert.ok(calculated.reasons.includes('local_ingredient_profile_conflict:chicken-line'));
+  }
+});
+
 test('reviewed status alone does not publish calculation-ready facts', () => {
   const rows = catalog();
   rows.profiles = rows.profiles.map(p => p.id === 'chicken-cooked-v1'
