@@ -356,3 +356,15 @@ From the V2 repository root on Windows, the intended manual invocation is:
 **No automatic invocation** as part of npm install, CI, or the app. The helper intentionally refuses to overwrite a previously created manifest or to use an in-repository destination; if an archive or manifest exists, preserve it and inspect before any retry. Do not run this until the Windows PC source-acquisition checkpoint is available. A separate low-cost static safety test is registered in the existing dependency-free smoke workflow; [run 42886098954](https://github.com/allinproject/All-In-V2/actions/runs/42886098954) passed. This checks source guardrails, **not** PowerShell execution or archive bytes.
 
 **Still required:** Execute on Windows with network access, confirm manifest SHA-256 and archive member names/lengths, inspect official JSON structure and count source food IDs/nutrients, approve source snapshot and canonical catalog schema/review roles, then implement the controlled canonical importer and two-user/RLS acceptance. Source archive status remains **not acquired** in this conversation.
+
+## 14. Independent local archive-manifest verification — source-only checkpoint
+
+After the Windows acquisition helper creates a ZIP and manifest, independently verify the **actual downloaded bytes** using Node 22+ from the V2 repository root:
+
+\`\`\`powershell
+node .\scripts\verify-v2-usda-foundation-manifest.mjs "$env:USERPROFILE\Downloads\ALL-IN-365-USDA\foundation-2026-10-29-manifest.json" "$env:USERPROFILE\Downloads\ALL-IN-365-USDA\FoodData_Central_foundation_food_json_2026-10-29.zip"
+\`\`\`
+
+The verifier is read-only. It checks pinned USDA Foundation 2026-10-29 source identity and candidate-only status, manifest SHA-256/byte length, actual archive SHA-256 and length, member metadata safety, duplicate member names, and existence of a nonempty JSON member. The acquisition script separately opens the ZIP. This verifier does **not** decompress or inspect food JSON and is **not** proof of published or reviewed nutrition. Both acquisition and verification must succeed before recording source bytes as verified; real ZIP acquisition remains outstanding.
+
+Synthetic tampering/manifest tests are included in existing dependency-free smoke CI, not a full Windows/PowerShell execution or ingredient import.
