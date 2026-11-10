@@ -45,6 +45,13 @@ begin
     raise exception 'expected one expired row deleted, got %', v_deleted;
   end if;
 
+end;
+$;
+reset role;
+
+-- Verify table state as the migration owner; service_role intentionally has no direct table grants.
+do $
+begin
   if exists (
     select 1 from allin_private.v2_provider_cache
     where provider = 'usda_fdc_generic_search'
@@ -62,6 +69,5 @@ begin
     raise exception 'fresh provider cache probe row was incorrectly removed';
   end if;
 end;
-$$;
-reset role;
+$;
 rollback;
