@@ -77,3 +77,33 @@ The seed/import must preserve these lifecycle and verification fields. The V2 UI
 ## Security reference finding
 
 V1 Supabase table inspection surfaced a critical advisory: `allin_private.race_verifier_state` has RLS disabled. This is a V1 issue to review separately. V2 must never reproduce that security posture; all V2 private tables require RLS and tested grants/policies before use. No V1 policy was changed during this inspection.
+
+
+## Newly located authoritative Library assets — 2026-11-10
+
+### App Art / visual design — v2 is the authority
+
+The V1 Library contains `ALL-IN-App-Art-Design-Handoff-v2.md` (dated 2026-10-26; visual review complete) and `ALL-IN-App-Art-CURRENT.md` (dated 2026-10-28). Their contents are transferred verbatim into:
+- `docs/product/ALL-IN-365-APP-ART-DESIGN-HANDOFF-v2.md`
+- `docs/product/ALL-IN-365-APP-ART-CURRENT-AUTHORITY.md`
+
+Handoff v2 explicitly states that approved screens are closed: do not repeatedly regenerate/review/reopen unless the founder requests a change or implementation encounters a real conflict. It locks bottom navigation Today / Fuel / Train / Community / Coach; Profile from the top-right avatar; black/charcoal/warm-white/muted-gold palette; no green or rainbow sport colors; persistent Coach pattern; Coach creates/adjusts plans while Train displays/executes; Recipes, Cook Now/Meal Prep, Pantry/Shopping, Strength, Completed Activity, Profile, Community and import flows. The full 30 KB handoff is preserved as the design reference; do not replace it with a summary or screenshots.
+
+Figma file IDs still have not been identified. The design handoff is the canonical approved design/interaction specification now available to implementation; the underlying editable Figma file/library remains a separate discovery item, not a blocker to applying the approved spec.
+
+### Business / financial source
+
+The V1 Library contains `Durben_Ventures_First_Year_Revenue_Projection.docx`, prepared 2026-11-03 for a D-U-N-S business information request. It is transferred as `docs/business/FIRST-YEAR-REVENUE-PROJECTION-2026-11-03.md`.
+
+It forecasts $8,991 first-year gross subscription sales from 900 paid subscriber-months at $9.99/month after a seven-day trial, assuming the first two months have no paid subscribers and month 12 reaches 200 paid subscriber equivalents. It excludes expenses, taxes, payment fees, refunds, marketing, merchandise and annual plans. This is a historical unvalidated planning estimate, not actual revenue, net income, a guarantee or a comprehensive business plan.
+
+### Older referral / subscription source
+
+The October 22, 2026 Library handoff is preserved as `docs/business/REFERRAL-SUBSCRIPTION-HANDOFF-2026-10-22-HISTORICAL.md`. It records a historical $5/month price and $50/year option. The $5 monthly price is superseded by the later $9.99/month founder decision; do not carry the old price into V2. Referral safety principles and milestones are retained for reconciliation with the latest product decisions.
+
+A V2-owned brand/product operating authority was created at `docs/product/ALL-IN-365-BRAND-AND-PRODUCT-OPERATING-AUTHORITY.md`. It is a working consolidation, not a substitute for issue-level requirements or final legal/business approval.
+
+### Website status
+
+The legal draft and D&B submission identify `https://allin365.app` as the company-supplied website. The current website's actual source/editor/hosting and asset library have not yet been located. Connected Wix returned no sites, so do not assume Wix is its owner and do not change DNS or deploy a replacement.
+
