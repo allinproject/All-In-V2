@@ -75,6 +75,14 @@ export function v2LegalReviewKey(
   return JSON.stringify([ownerId, document.document_key, document.version, document.content_sha256]);
 }
 
+/** Account- and revision-specific consent scope for all legal review controls. */
+export function v2LegalReviewSetKey(
+  ownerId: string,
+  documents: readonly Pick<V2LegalDocument, 'document_key' | 'version' | 'content_sha256'>[],
+): string {
+  return JSON.stringify(documents.map(document => v2LegalReviewKey(ownerId, document)));
+}
+
 export function v2LegalAcceptanceMatches(
   acceptance: unknown,
   documents: V2LegalDocument[],
