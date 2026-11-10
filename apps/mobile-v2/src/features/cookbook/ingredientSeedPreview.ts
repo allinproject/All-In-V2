@@ -66,6 +66,11 @@ export function previewIngredientSeed(input: {
   }
   const existing = new Map<string, ExistingIngredientSource>();
   for (const row of input.existing) {
+    // A corrupt baseline must not be trusted as proof that an import is unchanged.
+    if (!validCandidate({ ...row, description: 'existing reviewed source' }) ||
+        (row.ingredient_id !== null && (typeof row.ingredient_id !== 'string' || !row.ingredient_id.trim()))) {
+      throw new Error('Existing ingredient source identity or digest is invalid.');
+    }
     const key = keyOf(row);
     if (existing.has(key)) throw new Error('Existing ingredient source identity has duplicate mappings.');
     existing.set(key, row);
@@ -94,12 +99,12 @@ export function previewIngredientSeed(input: {
         // Even an input hint to an existing ID cannot publish a source mapping.
         action = 'candidate_insert';
         reason = 'New provider record must be reviewed before ingredient mapping or profile publication.';
-      } else if (saved.payload_sha256.toLowerCase() !== candidate.payload_sha256.toLowerCase()) {
-        action = 'review_changed_source';
-        reason = 'Source payload changed: retain previous source and reviewed profile until explicit reconciliation.';
       } else if (candidate.mapped_ingredient_id && candidate.mapped_ingredient_id !== saved.ingredient_id) {
         action = 'conflict';
         reason = 'Provider record disagrees with an approved stable ingredient mapping.';
+      } else if (saved.payload_sha256.toLowerCase() !== candidate.payload_sha256.toLowerCase()) {
+        action = 'review_changed_source';
+        reason = 'Source payload changed: retain previous source and reviewed profile until explicit reconciliation.';
       } else {
         action = 'unchanged';
         reason = 'Exact provider identity and source snapshot digest already exist.';
