@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:auth": "node --experimental-strip-types --test src/auth/authRoute.test.ts src/auth/accessGateClient.test.ts src/auth/onboardingFlow.test.ts src/auth/authCallback.test.ts",
     "test:calculator": "node --experimental-strip-types --test src/features/cookbook/recipeNutritionCalculator.test.ts src/features/cookbook/cookingYieldIntelligence.test.ts src/features/cookbook/cookingYieldReferenceCatalog.test.ts src/features/cookbook/foodDataCentral.test.ts src/features/cookbook/foodProductLookup.test.ts",
-    "test:training-logic": "node --experimental-strip-types --test src/features/training/trainingPlanSynthesis.test.ts src/features/training/athleteHistoryContext.test.ts src/features/training/runningPerformancePrediction.test.ts src/features/training/trainingPlanLifecycle.test.ts src/features/training/raceCourseEvidence.test.ts"
+    "test:training-logic": "node --experimental-strip-types --test src/features/training/trainingPlanSynthesis.test.ts src/features/training/athleteHistoryContext.test.ts src/features/training/runningPerformancePrediction.test.ts src/features/training/trainingPlanLifecycle.test.ts src/features/training/raceCourseEvidence.test.ts",
+    "test:provider-cache": "node --experimental-strip-types --test ../../supabase/functions/_shared/providerCache.node.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
