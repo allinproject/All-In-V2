@@ -14,6 +14,7 @@ import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import {
   assertV2SessionOwner,
+  readV2OwnedProfileState,
   REQUIRED_V2_ONBOARDING_STEPS,
 } from '../src/auth/accessGateClient';
 import {
@@ -227,14 +228,7 @@ export default function OnboardingRequiredScreen() {
   const readSnapshot = useCallback(async (preserveDraft: boolean): Promise<OnboardingStep | null> => {
     if (!ownerId) throw new Error('Your V2 account could not be verified. Please sign in again.');
 
-    const { data, error } = await supabase.rpc('v2_my_profile_state');
-    if (error) throw error;
-
-    const state = asRecord(data) as ProfileStatePayload;
-    const profile = asRecord(state.profile);
-    if (profile.user_id !== ownerId) {
-      throw new Error('The account changed while onboarding was open. Private access remains closed.');
-    }
+    const state = await readV2OwnedProfileState(supabase, ownerId) as ProfileStatePayload;
 
     const onboarding = asRecord(state.onboarding);
     const settings = asRecord(state.settings);
