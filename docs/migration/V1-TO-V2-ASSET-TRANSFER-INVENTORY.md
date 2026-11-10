@@ -126,3 +126,20 @@ Editable Figma file key(s) remain undiscovered. The design transfer is neverthel
 ## Business plan completeness
 
 V2 has transferred the approved brand/product operating summary and the dated first-year revenue estimate, plus the historical referral pricing handoff with a clear supersession note. This is **not** yet a complete business plan. The existing source set does not yet include a complete current operating model covering market/competition, acquisition, budget, operating costs, runway, unit economics, support/operations, and sensitivity scenarios. Build that plan from verified founder-approved inputs; do not infer missing costs or forecasts from the $8,991 gross sales estimate.
+
+
+## Founder Cookbook correction — ingredient-first nutrition — 2026-11-10
+
+The latest V1 app is the intended Cookbook UX/behavior baseline. V2 cookbook recipe records do not need their own calorie, protein, carbohydrate or fat totals. **Do not migrate the V1 recipe nutrition JSON, old macro-delta selector fields or recipe-level macro snapshots into V2.** Store recipe ingredients, measured amounts/units, preparation state, instructions, servings/yield, structured ingredient/selector choices and source provenance. The V2 nutrition calculator derives per-serving/batch/portion output from the current ingredient state; changing ingredients, quantities, servings or selectors triggers a fresh calculation.
+
+Port the latest V1 calculator source, not the legacy recipe macro-delta SQL path:
+- `Native/src/lib/recipeAdaptationNutritionEvidence.ts` — pure validated ingredient arithmetic, batch/per-serving/per-100g/weighed portion calculations and provenance.
+- `Native/src/data/recipeNutritionOnOpen.ts` — on-open calculation, exact profile/alias resolution, quantity/state parsing, partial/missing disclosure and bounded USDA estimates.
+- `Native/src/data/cookbookIngredientUsdaCoverage.ts` — exact USDA source proof and profile readiness.
+- `Native/src/data/cookbookCookingYieldAdmission.ts`, `Native/src/data/cookingYieldIntelligence.ts`, and associated tests — exact cooking-yield evidence and fail-closed unresolved state.
+
+V1 currently has an ACTIVE v7 JWT-protected `search-food-products` function (deployed SHA-256 `6ffc6825214f20bb484078b47c35b79f43f6fcfce5447c9f7473ac1fc6267346`) that searches USDA FoodData Central generic food candidates and Open Food Facts/Search-a-licious branded products. Its barcode lookup path separately checks exact USDA Branded GTIN matches and then Open Food Facts product API v3. V2 must own new server-side adapters and V2 cache/schema; no runtime dependence on V1 or copied secret.
+
+Provider choices: USDA FDC is the primary generic ingredient reference; Open Food Facts is the packaged/branded product and barcode source, retaining community-unverified quality and ODbL obligations. Do not add paid Edamam initially: the deterministic calculator plus USDA/OFF matches the reviewed V1 design. Reconsider only after a measured source-coverage gap.
+
+See [V2 Cookbook Ingredient-first Nutrition Calculator](../architecture/V2-COOKBOOK-INGREDIENT-FIRST-NUTRITION-CALCULATOR.md). Implementation order: ALL-225 calculator/yield port, ALL-226 provider adapters, then ALL-218 recipe catalog seed without macro fields.

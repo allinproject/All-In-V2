@@ -127,15 +127,17 @@ Deliver:
 
 **Gate:** authenticated Coach request on V2 creates one message and durable thread history; restart restores it; owner isolation and limits pass; provider failure is safe; no V1 runtime RPC/table/secret dependency remains.
 
-### Phase 3 — Cookbook and recipe foundation
+### Phase 3 — Cookbook and ingredient-first nutrition foundation
 
-**Goal:** Move product-owned catalog and deterministic recipe behavior.
+**Goal:** Move product-owned recipe content and the latest V1 ingredient-first calculator, not stored recipe macro totals.
 
 Deliver:
-- V2 recipe/catalog schema, ingredient source model, units, yield/nutrition provenance, selectors and component mappings.
-- Reproducible versioned catalog seed; stable IDs/source mapping; deterministic re-runs without duplication.
+- V2 recipe catalog stores ingredients, quantities/units, instructions, serving/yield, selectors and source provenance — no recipe-level calorie/macro fields or nutrition JSON.
+- Port V1's current deterministic ingredient-first nutrition calculator and Cooking Yield evidence engine. Calculate derived per-serving output from current ingredient profiles and actual recipe state.
+- Port USDA FoodData Central generic ingredient search/details and Open Food Facts exact branded/barcode discovery through V2 server-side adapters; keep API keys server-side and provider provenance explicit.
+- Reproducible versioned catalog seed; stable IDs/source mapping; deterministic re-runs without duplication. Exclude legacy recipe macro JSON and selector macro deltas.
 - Separate cookbook-readiness/publication status from mere import/published flags.
-- Recipe card/detail, search/filter, version history and user-owned My Versions.
+- Recipe card/detail, search/filter, version history and user-owned My Versions. Nutrition shown on a recipe is calculated output, never imported recipe macro data.
 - Coach recipe proposal review: Use once / Save My Version / Cancel.
 - V2 canonical save RPC with exact owner/action/payload/base-revision binding, idempotency and stale-write refusal.
 
@@ -192,3 +194,12 @@ Implement each workspace as a vertical slice with route inventory, canonical dom
 - No repeated approval of already-approved designs.
 - No website DNS change/public deployment until current owner/source is identified and separately approved.
 - No claim of build/test/device/provider acceptance without recorded evidence.
+
+
+## Cookbook / nutrition architecture decision — 2026-11-10
+
+The latest V1 app's ingredient-first nutrition calculator is the V2 authority. Do not bring across old recipe-level nutrition blobs or selector macro deltas. Port the pure arithmetic kernel in `Native/src/lib/recipeAdaptationNutritionEvidence.ts`, recipe-open calculation/estimate pipeline in `Native/src/data/recipeNutritionOnOpen.ts`, source coverage checks, and Cooking Yield admission/intelligence modules. Keep food identity lookup, source review, quantity conversion and arithmetic as separate steps.
+
+V1's currently deployed `search-food-products` Edge Function is ACTIVE v7/JWT-protected (SHA-256 `6ffc6825214f20bb484078b47c35b79f43f6fcfce5447c9f7473ac1fc6267346`) and includes USDA generic FDC search plus Open Food Facts/Search-a-licious branded text discovery. V1 `lookup-food-barcode` uses an exact GTIN path with USDA Branded first and Open Food Facts product v3 fallback. Port these as V2-owned functions; do not call V1 endpoints at runtime or copy V1 secrets.
+
+Detailed design and official provider requirements: [V2 Cookbook Ingredient-first Nutrition Calculator](../architecture/V2-COOKBOOK-INGREDIENT-FIRST-NUTRITION-CALCULATOR.md). Work is tracked by ALL-225 (calculator/yield), ALL-226 (USDA/OFF providers), then ALL-218 (catalog seed without recipe macro fields).
