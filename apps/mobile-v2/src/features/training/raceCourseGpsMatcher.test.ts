@@ -17,7 +17,7 @@ const fix=(patch:Partial<{latitude:number;longitude:number;horizontalAccuracyMet
 test('projects a close accurate GPS fix onto a versioned route segment',()=>{
  const route=course([[44.95,-93.1,250],[44.951,-93.1,260],[44.952,-93.1,270]]);
  const result=matchRaceCourseGpsPosition(route,fix(),null);
- assert.equal(result.status,'trusted');
+ assert.equal(result.status,'trusted',result.status==='untrusted'?result.reason+'; cross='+result.crossTrackDistanceMeters:'');
  if(result.status!=='trusted')return;
  assert.equal(result.raceId,'race-2027');
  assert.equal(result.courseVersion,'official-final-v2');
@@ -54,7 +54,7 @@ test('parallel switchback sections without continuity evidence are ambiguous',()
 test('prior match bounds the next search and rejects time reversal, backward progress and teleports',()=>{
  const route=course([[44.95,-93.1,250],[44.951,-93.1,260],[44.952,-93.1,270],[44.953,-93.1,280]]);
  const start=matchRaceCourseGpsPosition(route,fix({latitude:44.9503}),null);
- assert.equal(start.status,'trusted');
+ assert.equal(start.status,'trusted',start.status==='untrusted'?start.reason+'; cross='+start.crossTrackDistanceMeters:'');
  if(start.status!=='trusted')return;
  const previous:RaceCourseGpsMatchState=start.state;
  const backwards=matchRaceCourseGpsPosition(route,fix({latitude:44.9501,capturedAtMs:101000}),previous);
