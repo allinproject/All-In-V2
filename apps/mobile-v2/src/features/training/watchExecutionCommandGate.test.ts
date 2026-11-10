@@ -5,6 +5,7 @@ const input=():WatchExecutionCommandInput=>({
  attachment:{expectedOwnerId:'owner-a',authenticatedOwnerId:'owner-a',accessGateReady:true,
   watchOwnerId:'owner-a',watchInstanceId:'one-session',watchKnownSessionVersion:7,
   permission:'granted',connectedToCanonicalWriter:true,
+  activeSessionGeneration:7,sessionReadGeneration:7,watchAuthorizationGeneration:7,
   session:{instanceId:'one-session',ownerId:'owner-a',revisionSessionId:'workout-revision',status:'active',version:7}},
  action:'pause',clientActionId:'pause-action-1',expectedSessionVersion:7,intendedSessionId:'one-session',
 });
@@ -61,4 +62,13 @@ test('invalid action IDs and malformed version prevent untraceable commands',()=
 test('terminal session cannot accept duplicate completion command',()=>{
  const x=input();x.action='request_finish';x.attachment.session={...x.attachment.session!,status:'completed'};
  assert.equal(resolveWatchExecutionCommand(x).kind,'blocked');
+});
+
+test('same-account reauthentication blocks previously prepared Watch commands',()=>{
+ const old=input();old.attachment.activeSessionGeneration=8;
+ assert.equal(resolveWatchExecutionCommand(old).kind,'reconcile');
+ const renewed=input();renewed.attachment.activeSessionGeneration=8;renewed.attachment.sessionReadGeneration=8;
+ assert.equal(resolveWatchExecutionCommand(renewed).kind,'reconcile');
+ renewed.attachment.watchAuthorizationGeneration=8;
+ assert.equal(resolveWatchExecutionCommand(renewed).kind,'submit_to_training_writer');
 });
