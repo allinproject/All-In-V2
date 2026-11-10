@@ -135,7 +135,7 @@ export function parseFdcGenericIngredientCandidate(raw: unknown): FdcGenericIngr
   const retrievedAt = typeof item.retrieved_at === 'string' ? item.retrieved_at : '';
   if (
     item.source !== 'usda_fdc' ||
-    !/^\d{1,12}$/.test(sourceId) ||
+    !/^\d{1,12}$/.test(sourceId) || Number(sourceId) <= 0 ||
     !description ||
     (dataType !== 'Foundation' && dataType !== 'SR Legacy') ||
     item.nutrition_basis !== '100g' ||
