@@ -16,7 +16,7 @@ V1 is a read-only reference for approved product behavior and selected assets. T
 The Expo Router app is under `apps/mobile-v2/`.
 
 Current source foundation:
-- V2 Supabase client with persistent native session storage.
+- V2 Supabase client with persistent native session storage and explicit PKCE auth flow for email-confirmation/password-recovery deep links.
 - AuthProvider for session restoration, token refresh lifecycle, sign-out and identity changes.
 - V2-native sign-in and sign-up screens.
 - Sign-up reads the exact published V2 legal documents. It remains disabled until Terms, Privacy and Founder Beta Terms are all published.
@@ -82,4 +82,4 @@ V2 now sends signup confirmation and password-reset emails back through the Expo
 
 **Required external Supabase Auth configuration:** add `allin365v2://**` to the V2 project's Auth Redirect URLs / Additional Redirect URLs allowlist before sending test confirmation or recovery emails. The Supabase project-details API available in this environment does not expose that Auth URL configuration, so its current allowlist has not been verified or changed. Test callbacks in a native development build/installed app, not Expo Go, because Expo Go uses a transient development URL rather than the stable app scheme.
 
-The callback exchanges the one-time PKCE code using `exchangeCodeForSession`. Malformed/expired links fail closed. Password change is guarded by the captured authenticated owner and returns to the normal V2 access gate. The local pure callback resolver tests pass; email delivery, allowlist, and installed-device callback acceptance remain pending.
+The Supabase client explicitly uses `flowType: 'pkce'`; the code verifier is persisted through the existing Expo SQLite-backed localStorage install. The callback exchanges the one-time PKCE code using `exchangeCodeForSession`. Malformed/expired links fail closed. Password change is guarded by the captured authenticated owner and returns to the normal V2 access gate. The local pure callback resolver tests pass; email delivery, allowlist, and installed-device callback acceptance remain pending.
