@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { buildAthleteHistoryReadModel, type AthleteRestriction } from './athleteHistoryContext.ts';
 import { synthesizeTrainingWeek, adaptTrainingDay, type TrainingSessionIntent } from './trainingPlanSynthesis.ts';
 import { validateRaceCourseEvidence, type RaceCourseEvidence } from './raceCourseEvidence.ts';
+import { V2_ACTIVITY_SPORTS, activityEntryOptions } from './activityEntryContract.ts';
 import { calculateRecipeFromLocalCatalog, type LocalIngredientCatalog } from '../cookbook/localIngredientProfiles.ts';
 
 const keyRun = ():TrainingSessionIntent=>({
@@ -119,6 +120,24 @@ test('walking entries stay walking when Coach constructs a multisport training p
  assert.equal(draft.status,'review_required');
  assert.deepEqual(draft.days.flatMap(d=>d.sessions.map(x=>x.sport)),['walking']);
  assert.equal(draft.invariants.noAutomaticPlanWrite,true);
+});
+
+test('each supported activity sport is accepted by both entry options and Coach planner',()=>{
+ for(const sport of V2_ACTIVITY_SPORTS){
+  assert.deepEqual(activityEntryOptions(sport),['start_activity','manual_entry']);
+  const intent:TrainingSessionIntent={
+   id:'session-'+sport,sport,label:'Supported '+sport+' session',purpose:'Activity consistency',
+   priority:'supporting',intensity:'easy',durationMinutes:30,stressTags:[sport],evidenceRefs:[],
+   demand:{aerobic:'low',mechanicalImpact:'low',localMuscular:'low',technicalSkill:'not_applicable'},
+  };
+  const draft=synthesizeTrainingWeek({
+   primaryGoal:{id:'goal-'+sport,label:'Activity',sports:[sport]},
+   secondaryGoals:[],availableDays:['monday'],activeRestrictions:[],requiredSports:[sport],
+  },[intent]);
+  assert.equal(draft.status,'review_required',sport);
+  assert.deepEqual(draft.days.flatMap(day=>day.sessions.map(session=>session.sport)),[sport]);
+  assert.equal(draft.invariants.noAutomaticPlanWrite,true);
+ }
 });
 
 test('incomplete wearable recovery does not rewrite a key session, but pain prompts review',()=>{
