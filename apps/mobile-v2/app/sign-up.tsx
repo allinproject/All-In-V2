@@ -7,6 +7,7 @@ import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { colors, radius, spacing } from '../src/theme/tokens';
 import { assertV2SessionOwner, type V2LegalDocument } from '../src/auth/accessGateClient';
+import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -68,7 +69,7 @@ export default function SignUpScreen() {
 
   const allReviewed = documents.length === 3 && documents.every(doc => reviewed[doc.document_key]);
   const ready = !loadingDocuments && !submitting && documents.length === 3
-    && allReviewed && ageConfirmed && email.trim().length > 0 && password.length >= 8;
+    && allReviewed && ageConfirmed && email.trim().length > 0 && meetsV2PasswordMinimum(password);
 
   async function createAccount() {
     if (!ready || submitting || !documents.length) return;
@@ -146,7 +147,7 @@ export default function SignUpScreen() {
                   <Text style={styles.reviewText}>I confirm that I am at least 18 years old.</Text>
                 </Pressable>
                 <TextInput accessibilityLabel="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.mutedText} style={styles.input} value={email} onChangeText={setEmail} />
-                <TextInput accessibilityLabel="Password (at least 8 characters)" autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Password (at least 8 characters)" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={setPassword} />
+                <TextInput accessibilityLabel="Password (at least 12 characters)" autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Password (at least 12 characters)" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={setPassword} />
                 <Pressable accessibilityRole="button" accessibilityState={{ disabled: !ready, busy: submitting }} disabled={!ready} onPress={() => void createAccount()} style={[styles.button, !ready && styles.disabled]}>
                   {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Create V2 account</Text>}
                 </Pressable>
