@@ -31,11 +31,12 @@ export default function ResetPasswordScreen() {
     if (!user) return;
 
     const ownerId = user.id;
+    const submittedPassword = password;
     setSubmitting(true);
     setError(null);
     try {
       await assertV2SessionOwner(supabase, ownerId);
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      const { error: updateError } = await supabase.auth.updateUser({ password: submittedPassword });
       if (updateError) throw updateError;
       await assertV2SessionOwner(supabase, ownerId);
       router.replace('/');
@@ -62,8 +63,8 @@ export default function ResetPasswordScreen() {
             <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
             <Text accessibilityRole="header" style={styles.title}>Choose a new password</Text>
             <Text style={styles.body}>Use at least 12 characters. Your V2 account and training history stay the same.</Text>
-            <TextInput accessibilityLabel="New password" autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="New password" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={setPassword} />
-            <TextInput accessibilityLabel="Confirm new password" autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Confirm new password" placeholderTextColor={colors.mutedText} style={styles.input} value={confirmation} onChangeText={setConfirmation} onSubmitEditing={() => void updatePassword()} />
+            <TextInput accessibilityLabel="New password" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="New password" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={value => { setPassword(value); setError(null); }} />
+            <TextInput accessibilityLabel="Confirm new password" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Confirm new password" placeholderTextColor={colors.mutedText} style={styles.input} value={confirmation} onChangeText={value => { setConfirmation(value); setError(null); }} onSubmitEditing={() => void updatePassword()} />
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting, busy: submitting }} disabled={submitting} onPress={() => void updatePassword()} style={[styles.button, submitting && styles.disabled]}>
               {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Save new password</Text>}
