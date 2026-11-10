@@ -41,6 +41,8 @@ export function validateRaceCourseEvidence(raw:RaceCourseEvidence):RaceCourseEvi
  if(!validField(raw.elevationLoss,(n)=>Number.isFinite(n)&&n>=0&&n<=100000))throw new Error('Elevation loss needs a valid sourced value or explicit unknown.');
  if(!validField(raw.surface,(v)=>['road','trail','mixed','track','open_water','other'].includes(v)))throw new Error('Surface value or provenance is invalid.');
  if(!validField(raw.technicality,(v)=>['low','moderate','high','unknown'].includes(v)))throw new Error('Technicality value or provenance is invalid.');
+ if(!validField(raw.aidStationStatus,(v)=>['available','none','unknown'].includes(v)))throw new Error('Aid-station availability needs sourced or confirmed status.');
+ if(raw.aidStationStatus.value==='none'&&raw.aidStations.length>0)throw new Error('A course confirmed to have no aid stations cannot contain aid station entries.');
  const distance=raw.distance.value;
  const ids=new Set<string>();
  const stations=raw.aidStations.map(s=>{
@@ -56,7 +58,7 @@ export function validateRaceCourseEvidence(raw:RaceCourseEvidence):RaceCourseEvi
  if(raw.elevationGain.value===null)missing.push('elevation_gain');
  if(raw.surface.value===null)missing.push('surface');
  if(raw.technicality.value===null)missing.push('technicality');
- if(raw.aidStations.length===0)missing.push('aid_stations');
+ if(raw.aidStationStatus.value===null||raw.aidStationStatus.value==='unknown'||(raw.aidStationStatus.value==='available'&&raw.aidStations.length===0))missing.push('aid_stations');
  const warnings=[...raw.warnings];
  if(stations.some(s=>!s.confirmedByUser&&s.source!=='official_race_website'&&s.source!=='organizer_gpx'&&s.source!=='verified_routing_provider'))warnings.push('One or more aid stations are user-provided but not user-confirmed.');
  if(stations.some(s=>!s.sourceUrl&&s.source!=='user_confirmed_manual'&&s.source!=='user_uploaded_gpx'))warnings.push('One or more course/aid facts do not have a retrievable source URL; retain provenance and review.');
