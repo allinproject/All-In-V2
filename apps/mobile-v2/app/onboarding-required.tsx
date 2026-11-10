@@ -18,6 +18,7 @@ import {
 } from '../src/auth/accessGateClient';
 import {
   EMPTY_ONBOARDING_ANSWERS,
+  V2_ONBOARDING_FOCUS_OPTIONS,
   firstIncompleteOnboardingStep,
   isOnboardingAnswerComplete,
   onboardingPreferenceWrite,
@@ -53,7 +54,7 @@ type ProfileStatePayload = {
 const STEP_COPY: Record<OnboardingStep, { title: string; description: string }> = {
   focus: {
     title: 'What would you like to focus on first?',
-    description: 'Choose a starting point. You can train across multiple sports and change this later.',
+    description: 'Choose where you would like to start—not your only goal. You can pursue multiple goals at once and change this later.',
   },
   training_pattern: {
     title: 'What kinds of training do you do now?',
@@ -76,16 +77,6 @@ const STEP_COPY: Record<OnboardingStep, { title: string; description: string }> 
     description: 'Set the level of in-app guidance and reminders. Device permissions are requested later, only when a feature needs them.',
   },
 };
-
-const FOCUS_OPTIONS: Choice[] = [
-  { value: 'general_fitness', label: 'General fitness' },
-  { value: 'running', label: 'Running' },
-  { value: 'strength', label: 'Strength' },
-  { value: 'cycling', label: 'Cycling' },
-  { value: 'swimming', label: 'Swimming' },
-  { value: 'triathlon_hybrid', label: 'Triathlon / Hybrid' },
-  { value: 'walking_hiking_rucking', label: 'Walking / Hiking / Rucking' },
-];
 
 const TRAINING_OPTIONS: Choice[] = [
   { value: 'running', label: 'Run' },
@@ -378,7 +369,7 @@ export default function OnboardingRequiredScreen() {
       case 'focus':
         return (
           <View style={styles.options}>
-            {FOCUS_OPTIONS.map(option => (
+            {V2_ONBOARDING_FOCUS_OPTIONS.map(option => (
               <ChoiceButton
                 key={option.value}
                 option={option}
