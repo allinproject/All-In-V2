@@ -15,6 +15,7 @@ on:
       - 'scripts/check-v2-supabase-target.test.mjs'
       - 'scripts/check-v2-dependency-manifest.mjs'
       - 'scripts/check-v2-dependency-manifest.test.mjs'
+      - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'apps/mobile-v2/.env.example'
   pull_request:
@@ -29,6 +30,7 @@ on:
       - 'scripts/check-v2-supabase-target.test.mjs'
       - 'scripts/check-v2-dependency-manifest.mjs'
       - 'scripts/check-v2-dependency-manifest.test.mjs'
+      - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'apps/mobile-v2/.env.example'
   workflow_dispatch:
@@ -61,6 +63,8 @@ jobs:
         run: node ../../scripts/check-v2-dependency-manifest.mjs
       - name: Test React pin and lockfile drift guards
         run: node --test ../../scripts/check-v2-dependency-manifest.test.mjs
+      - name: Guard V2 CI spending and full release validation gates
+        run: node --test ../../scripts/check-v2-ci-cost-policy.test.mjs
       - name: Run Auth tests
         run: npm run test:auth
       - name: Run Cookbook calculator tests
