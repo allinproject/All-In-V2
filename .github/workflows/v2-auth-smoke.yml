@@ -13,6 +13,7 @@ on:
       - '.github/workflows/v2-auth-smoke.yml'
       - 'scripts/check-v2-supabase-target.mjs'
       - 'scripts/check-v2-supabase-target.test.mjs'
+      - 'scripts/check-v2-dependency-manifest.mjs'
       - 'supabase/config.toml'
       - 'apps/mobile-v2/.env.example'
   pull_request:
@@ -25,6 +26,7 @@ on:
       - '.github/workflows/v2-auth-smoke.yml'
       - 'scripts/check-v2-supabase-target.mjs'
       - 'scripts/check-v2-supabase-target.test.mjs'
+      - 'scripts/check-v2-dependency-manifest.mjs'
       - 'supabase/config.toml'
       - 'apps/mobile-v2/.env.example'
   workflow_dispatch:
@@ -53,6 +55,8 @@ jobs:
         run: node ../../scripts/check-v2-supabase-target.mjs
       - name: Test V2 Supabase guard rejection cases
         run: node --test ../../scripts/check-v2-supabase-target.test.mjs
+      - name: Verify pinned React dependency versions
+        run: node ../../scripts/check-v2-dependency-manifest.mjs
       - name: Run Auth tests
         run: npm run test:auth
       - name: Run Cookbook calculator tests
