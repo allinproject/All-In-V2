@@ -5,6 +5,7 @@ import {
   V2_ONBOARDING_FOCUS_OPTIONS,
   firstIncompleteOnboardingStep,
   isOnboardingAnswerComplete,
+  matchesOnboardingRetryScope,
   onboardingPreferenceWrite,
   type OnboardingAnswers,
 } from './onboardingFlow.ts';
@@ -87,4 +88,21 @@ test('food-safety notes are optional and whitespace is normalized', () => {
     section: 'nutrition_preferences',
     patch: { food_safety: { selection: 'none', notes: null } },
   });
+});
+
+test('onboarding retry preserves action IDs only for the identical owner, step, action, and versions', () => {
+  const original = {
+    ownerId: 'user-a',
+    step: 'focus' as const,
+    action: 'complete' as const,
+    settingsVersion: 2,
+    progressVersion: 3,
+  };
+  assert.equal(matchesOnboardingRetryScope(null, original), false);
+  assert.equal(matchesOnboardingRetryScope(original, { ...original }), true);
+  assert.equal(matchesOnboardingRetryScope(original, { ...original, ownerId: 'user-b' }), false);
+  assert.equal(matchesOnboardingRetryScope(original, { ...original, step: 'coach' }), false);
+  assert.equal(matchesOnboardingRetryScope(original, { ...original, action: 'skip' }), false);
+  assert.equal(matchesOnboardingRetryScope(original, { ...original, settingsVersion: 3 }), false);
+  assert.equal(matchesOnboardingRetryScope(original, { ...original, progressVersion: 4 }), false);
 });
