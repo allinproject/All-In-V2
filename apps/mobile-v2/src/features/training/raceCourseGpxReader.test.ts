@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readRaceGpx} from './raceCourseGpxReader.ts';
 import type {RaceCourseEvidence} from './raceCourseEvidence.ts';
 
-const evidence=():Pick<RaceCourseEvidence,'raceId'|'courseVersion'|'routeFile'>=>({
+const evidence=():Pick<RaceCourseEvidence,'raceId'|'courseVersion'|'routeFile'|'routeId'>=>({
  raceId:'race-2027',routeId:'route-2027',courseVersion:'official-final-v2',
  routeFile:{kind:'gpx',fileRef:'private-upload-ref',source:'organizer_gpx'},
 });
