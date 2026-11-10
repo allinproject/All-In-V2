@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assertV2SessionOwner,
   parsePublishedV2LegalDocuments,
+  resolveV2Access,
   shouldEnterV2Onboarding,
   v2LegalAcceptanceMatches,
 } from './accessGateClient.ts';
@@ -82,4 +83,54 @@ test('session owner guard propagates session lookup errors', async () => {
     },
   } as unknown as Parameters<typeof assertV2SessionOwner>[0];
   await assert.rejects(assertV2SessionOwner(client, 'user-a'), /session lookup failed/);
+});
+
+const completeAccessState = {
+  profile: { user_id: 'user-a' },
+  required_legal_documents: docs,
+  latest_legal_acceptance: {
+    terms_version: 'terms-v2',
+    privacy_version: 'privacy-v2',
+    founder_beta_terms_version: 'founder-v2',
+    age_18_confirmed: true,
+  },
+  onboarding: {
+    completed_steps: ['focus', 'training_pattern', 'availability', 'coach', 'food_safety', 'proactivity'],
+    skipped_steps: [],
+  },
+};
+
+function mockAccessClient(data: unknown, error: Error | null = null): Parameters<typeof resolveV2Access>[0] {
+  return {
+    rpc: async () => ({ data, error }),
+  } as unknown as Parameters<typeof resolveV2Access>[0];
+}
+
+test('access resolver allows fully verified owner, legal versions and onboarding', async () => {
+  const result = await resolveV2Access(mockAccessClient(completeAccessState), { id: 'user-a' });
+  assert.equal(result.needsLegalAcceptance, false);
+  assert.equal(result.needsOnboarding, false);
+  assert.equal(result.requiredLegalDocuments.length, 3);
+});
+
+test('access resolver rejects profile ownership mismatch before granting access', async () => {
+  await assert.rejects(
+    resolveV2Access(mockAccessClient(completeAccessState), { id: 'user-b' }),
+    /not ready for this account/i,
+  );
+});
+
+test('access resolver rejects incomplete published legal data even for the correct owner', async () => {
+  const incomplete = { ...completeAccessState, required_legal_documents: docs.slice(0, 2) };
+  await assert.rejects(
+    resolveV2Access(mockAccessClient(incomplete), { id: 'user-a' }),
+    /signup remains closed/i,
+  );
+});
+
+test('access resolver propagates backend failures rather than treating them as access', async () => {
+  await assert.rejects(
+    resolveV2Access(mockAccessClient(null, new Error('backend unavailable')), { id: 'user-a' }),
+    /backend unavailable/i,
+  );
 });
