@@ -50,7 +50,7 @@ test('unverified race aid stations remain unknown alongside an otherwise reviewa
  const course:RaceCourseEvidence={
   version:1,raceId:'trail-50',eventDate:'2027-09-18',sourceUrls:['https://race.example/course'],
   routeFile:null,distance:field(80467),elevationGain:field<number>(null),elevationLoss:field<number>(null),
-  surface:field('trail'),technicality:field('moderate'),aidStationStatus:field('unknown'),
+  surface:field<'trail'>('trail'),technicality:field<'moderate'>('moderate'),aidStationStatus:field<'unknown'>('unknown'),
   aidStations:[],courseVersion:'2027-draft',completeness:'unverified',warnings:[],missingFields:[],
  };
  const verified=validateRaceCourseEvidence(course);
