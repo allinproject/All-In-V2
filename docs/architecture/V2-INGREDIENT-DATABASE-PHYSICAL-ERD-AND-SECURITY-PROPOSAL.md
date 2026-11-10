@@ -5,9 +5,9 @@
 **Consumers:** ALL-225 Calculator, ALL-218 Cookbook, ALL-226 Provider adapters, ALL-247 Fuel, ALL-248 Kitchen, ALL-235 Coach  
 **Repository:** allinproject/All-In-V2  
 **Branch reviewed:** integration/v2-foundation  
-**Reviewed branch head:** 07b7903520ffe1c2a987ec4117dfcba2b77ab922  
+**Reviewed branch head:** 820936636cfc48ddfd26a995aabe332882be60b4  
 **Supabase project:** xarhuczrtzuiljmtdaeu  
-**Current applied migrations:** five, through 20261110105423  
+**Current applied migrations:** six, through 20261110122952  
 **Last reconciled:** 2026-11-10
 
 > This is a first physical-schema proposal for a future V2 domain. It deliberately does not create or deploy tables. ALL-222 and the ALL-228 owner must approve the exact columns, constraints, role model and writer boundary before a migration is authored. The existing Auth/Profile/Legal foundation remains the only deployed business schema.
@@ -287,3 +287,10 @@ Implementation sequence after ALL-222 approval:
 9. Confirm source mapping and merge/supersession behavior when USDA/OFF records change or are withdrawn.
 
 Until these decisions are approved, do not create an ingredient migration, publish candidates, expose a write RPC or claim Ingredient Database implementation is complete.
+
+
+## 10. Provider-cache implementation verified after proposal — 2026-11-10
+
+The shared cache used by the proposed source-record layer is already a separate deployed infrastructure object. Migration 003 created the private cache/RPCs; migration 006 added `v2_provider_cache_prune_expired(integer)`, applied as database version `20261110122952`. The purge is service_role-only, bounded to 1–5,000 expired rows per call, and uses `FOR UPDATE SKIP LOCKED`. Live rollback-only verification passed and confirmed fresh rows survive; direct private table access remains denied to service_role.
+
+There is no scheduled invocation yet: pg_cron/pg_net/pgmq are absent. ALL-227 owns selecting and verifying an approved scheduled-maintenance path, quota telemetry and provider deployment gates. This does not change the ingredient-domain proposal: cache rows remain source responses/candidates only, never canonical reviewed food profiles.
