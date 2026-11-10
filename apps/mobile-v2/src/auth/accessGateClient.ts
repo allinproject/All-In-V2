@@ -70,15 +70,20 @@ export function parsePublishedV2LegalDocuments(value: unknown): V2LegalDocument[
 /** A review check applies only to the exact published legal document revision. */
 export function v2LegalReviewKey(
   ownerId: string,
-  document: Pick<V2LegalDocument, 'document_key' | 'version' | 'content_sha256'>,
+  document: V2LegalDocument,
 ): string {
-  return JSON.stringify([ownerId, document.document_key, document.version, document.content_sha256]);
+  // Bind review and age consent to the actual text, even when a publisher omits
+  // or fails to refresh the optional content digest or revision label.
+  return JSON.stringify([
+    ownerId, document.document_key, document.version, document.title,
+    document.content_markdown, document.content_sha256, document.effective_at,
+  ]);
 }
 
 /** Account- and revision-specific consent scope for all legal review controls. */
 export function v2LegalReviewSetKey(
   ownerId: string,
-  documents: readonly Pick<V2LegalDocument, 'document_key' | 'version' | 'content_sha256'>[],
+  documents: readonly V2LegalDocument[],
 ): string {
   return JSON.stringify(documents.map(document => v2LegalReviewKey(ownerId, document)));
 }
@@ -86,7 +91,7 @@ export function v2LegalReviewSetKey(
 /** Prior to account creation, bind age confirmation and acceptance retries to the email and legal set. */
 export function v2SignupConsentScope(
   email: string,
-  documents: readonly Pick<V2LegalDocument, 'document_key' | 'version' | 'content_sha256'>[],
+  documents: readonly V2LegalDocument[],
 ): string {
   return JSON.stringify([email.trim().toLowerCase(), v2LegalReviewSetKey('signup', documents)]);
 }
