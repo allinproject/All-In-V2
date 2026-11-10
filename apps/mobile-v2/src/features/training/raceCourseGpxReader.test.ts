@@ -4,7 +4,7 @@ import {readRaceGpx} from './raceCourseGpxReader.ts';
 import type {RaceCourseEvidence} from './raceCourseEvidence.ts';
 
 const evidence=():Pick<RaceCourseEvidence,'raceId'|'courseVersion'|'routeFile'>=>({
- raceId:'race-2027',courseVersion:'official-final-v2',
+ raceId:'race-2027',routeId:'route-2027',courseVersion:'official-final-v2',
  routeFile:{kind:'gpx',fileRef:'private-upload-ref',source:'organizer_gpx'},
 });
 const track=(points:string[],extra='')=>`<?xml version="1.0"?>
