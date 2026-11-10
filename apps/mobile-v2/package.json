@@ -8,7 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:auth": "node --experimental-strip-types --test src/auth/authRoute.test.ts src/auth/accessGateClient.test.ts"
+    "test:auth": "node --experimental-strip-types --test src/auth/authRoute.test.ts src/auth/accessGateClient.test.ts",
+    "test:nutrition": "node --experimental-strip-types --test src/recipes/ingredientNutritionCalculator.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
@@ -28,5 +29,7 @@
     "@types/react": "~19.3.0",
     "typescript": "~6.0.3"
   },
-  "engines": { "node": ">=22.13.0" }
+  "engines": {
+    "node": ">=22.13.0"
+  }
 }
