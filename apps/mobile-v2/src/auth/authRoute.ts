@@ -31,6 +31,11 @@ export function shouldApplyV2AuthEvent(
   return event !== 'INITIAL_SESSION' || !hasSeenAuthoritativeEvent;
 }
 
+/** Reauthentication and sign-out invalidate access even when the user ID is unchanged. */
+export function advancesV2AuthSessionGeneration(event: string): boolean {
+  return event === 'SIGNED_IN' || event === 'SIGNED_OUT';
+}
+
 /** A prior verification result must never grant access during a newer retry. */
 export function isV2AccessAttemptCurrent(
   resultOwnerId: string | null,
@@ -38,8 +43,11 @@ export function isV2AccessAttemptCurrent(
   activeOwnerId: string | null,
   activeAttempt: number,
   authLoading: boolean,
+  resultSessionGeneration: number,
+  activeSessionGeneration: number,
 ): boolean {
   return !authLoading && Boolean(activeOwnerId)
     && resultOwnerId === activeOwnerId
-    && resultAttempt === activeAttempt;
+    && resultAttempt === activeAttempt
+    && resultSessionGeneration === activeSessionGeneration;
 }
