@@ -5,7 +5,7 @@ import { Redirect, Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
-import { createV2AuthActionGuard, shouldOfferV2ConfirmationResend } from '../src/auth/authRoute';
+import { canStartV2SignedOutAction, createV2AuthActionGuard, shouldOfferV2ConfirmationResend } from '../src/auth/authRoute';
 import { colors } from '../src/theme/tokens';
 
 function messageFor(error: unknown) {
@@ -27,11 +27,12 @@ export default function SignInScreen() {
   const [confirmationPendingEmail, setConfirmationPendingEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const requestGuard = useRef(createV2AuthActionGuard());
+  const signedOutReady = canStartV2SignedOutAction(loading, user?.id ?? null);
 
   if (!loading && user) return <Redirect href="/home" />;
 
   async function signIn() {
-    if (submitting || resending) return;
+    if (!signedOutReady || submitting || resending) return;
     const normalizedEmail = email.trim();
     if (!normalizedEmail || !password) {
       setError('Enter your email and password.');
@@ -68,7 +69,7 @@ export default function SignInScreen() {
   }
 
   async function resendConfirmation() {
-    if (resending || submitting) return;
+    if (!signedOutReady || resending || submitting) return;
     const normalizedEmail = email.trim().toLowerCase();
     if (!shouldOfferV2ConfirmationResend(confirmationPendingEmail, normalizedEmail)) {
       setError('Sign in with the unconfirmed email address before requesting a new link.');
@@ -121,10 +122,10 @@ export default function SignInScreen() {
             <TextInput accessibilityLabel="Password" editable={!submitting && !resending} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder="Password" placeholderTextColor="#929292" style={styles.input} value={password} onChangeText={value => { if (requestGuard.current.isBusy()) return; setPassword(value); }} onSubmitEditing={() => void signIn()} />
             {visibleError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{visibleError}</Text> : null}
             {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
-            <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || resending, busy: submitting || resending }} disabled={submitting || resending} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, (submitting || resending) && styles.disabled]}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: !signedOutReady || submitting || resending, busy: submitting || resending }} disabled={!signedOutReady || submitting || resending} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, (submitting || resending) && styles.disabled]}>
               {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Sign in</Text>}
             </Pressable>
-            {shouldOfferV2ConfirmationResend(confirmationPendingEmail, email) ? (
+            {signedOutReady && shouldOfferV2ConfirmationResend(confirmationPendingEmail, email) ? (
               <Pressable accessibilityRole="button" disabled={resending} onPress={() => void resendConfirmation()} style={styles.resendButton}>
                 {resending ? <ActivityIndicator color={colors.gold} /> : <Text style={styles.link}>Resend confirmation email</Text>}
               </Pressable>
