@@ -84,6 +84,8 @@ function makeIssue(code:TrainingPlanIssue['code'],severity:TrainingPlanIssue['se
 
 export function synthesizeTrainingWeek(context:TrainingAthletePlanContext,proposed:TrainingSessionIntent[]):TrainingPlanDraft{
  if(!context?.primaryGoal?.id||!context.primaryGoal.label||!Array.isArray(context.availableDays)||!Array.isArray(proposed))throw new Error('Primary goal, availability and proposed session intents are required.');
+ if(context.maxSessionsPerDay!==undefined&&(!Number.isSafeInteger(context.maxSessionsPerDay)||context.maxSessionsPerDay<1))
+  throw new Error('Daily session capacity must be a positive whole number.');
  const available=DAYS.filter(day=>context.availableDays.includes(day)&&!(context.unavailableDays??[]).includes(day));
  if(!available.length)throw new Error('No available training days were confirmed.');
  const days=DAYS.map(day=>({day,sessions:[] as TrainingSessionIntent[]}));
