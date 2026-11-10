@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {V2_EXERCISE_PROFILE_DRAFTS} from './exerciseProfileDrafts.ts';
 import {validateExerciseScienceProfile} from './exerciseScienceProfile.ts';
+import {evaluateExerciseSuitability,type ExerciseSuitabilityOwnerSnapshots} from './exerciseSuitability.ts';
 
 test('five source-linked exact exercise variations are structurally valid but remain draft-only',()=>{
   assert.equal(V2_EXERCISE_PROFILE_DRAFTS.length,5);
@@ -55,6 +56,23 @@ test('draft research profiles do not introduce a direct running, cycling or swim
     for(const claim of profile.claims){
       assert.notEqual(claim.directness,'direct_sport_outcome');
       assert.ok(claim.targetSports.includes('general_fitness'));
+    }
+  }
+});
+
+test('none of the staged research drafts can be consumed as a Coach recommendation',()=>{
+  const context:ExerciseSuitabilityOwnerSnapshots={
+    goals:{owner:'ALL-239',status:'complete',active:[{goalId:'goal-strength',role:'primary',sports:['general_fitness'],exerciseGoals:['hypertrophy','maximal_strength']}]},
+    location:{owner:'ALL-251',status:'complete',selectedLocationId:'review-fixture',confirmedEquipmentIds:['standing_calf_raise_machine','seated_calf_raise_machine','barbell','stable_low_step']},
+    restrictions:{owner:'ALL-232',status:'complete',active:[]},
+    strengthExperience:{owner:'ALL-257',status:'complete',skillLevel:'advanced'},
+    trainingLoad:{owner:'ALL-246',status:'complete',nextSessionConflict:'clear',conflictingMuscleGroupIds:[]},
+  };
+  for(const profile of V2_EXERCISE_PROFILE_DRAFTS){
+    const result=evaluateExerciseSuitability(profile,context);
+    assert.equal(result.status,'review_required',profile.variationId);
+    if(result.status==='review_required'){
+      assert.ok(result.reasonCodes.includes('EXERCISE_PROFILE_NOT_REVIEWED'));
     }
   }
 });
