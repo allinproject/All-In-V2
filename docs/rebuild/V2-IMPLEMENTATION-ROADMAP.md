@@ -230,3 +230,43 @@ Meal Plan scales cooked ingredient demand for planned servings, consumes compati
 Before V2 catalog publication every standard recipe needs an audit of cooked/prepared ingredient quantities, explicit unit/state, serving reconciliation, yield metadata and review state. Freezer kits are counted separately as exempt. Report compliant/corrected/freezer-kit-exempt/yield-missing/manual-review counts; do not auto-rewrite uncertain recipes.
 
 See the detailed contract in `docs/architecture/V2-COOKBOOK-INGREDIENT-FIRST-NUTRITION-CALCULATOR.md`. The V2 vertical slice is tracked as ALL-229.
+
+
+## Coach training intelligence, athlete history, predictions and race/route quality — 2026-11-10
+
+The founder requires Coach to be more than a memory-enabled chatbot: it must synthesize coherent, evidence-grounded plans; coordinate multiple simultaneous sports; adapt safely from daily user input; understand the athlete's relevant full history; and produce coherent race and route plans.
+
+### Research assets recovered
+
+The V1 Library contains reviewed research/implementation handoffs:
+- `ALL-IN-Coach-Research-Audit-Implementation-Roadmap-v1.md`: 17 reviewed evidence domains and a recommendation to consolidate shared deterministic decision primitives and connect them to task-gated Coach knowledge. It explicitly distinguishes research breadth from implementation/deployment.
+- `ALL-IN-Concurrent-Hybrid-Training-Research-v1-Handoff.md`: running/cycling/swimming/strength/mixed modality, session priority/order/spacing, systemic vs mechanical/local load, energy availability, primary vs secondary goals and no fake modality conversions.
+- `ALL-IN-Training-Load-Fatigue-Adaptation-Research-v1-Handoff.md`: multi-dimensional load, sport-specific load decomposition, subjective/performance/recovery signal weighting, individual longitudinal response and smallest effective adjustment.
+- `ALL-IN-Strength-Programming-Intelligence-Research-v1-Handoff.md`: goal-first strength programming for maximal strength, hypertrophy, power, sport support, return, plateau and fatigue.
+- `Training-Planning-Prediction-Handoff.md` (2026-10-21): documents outside-live-app `performancePrediction.ts`, `multiGoalConflict.ts` and `trainingPlanBuilder.ts`, with live wiring still required at the time of that handoff.
+
+### V1 source reality checked
+
+- There are plan proposal validators, a reviewed race-plan outline/phase expander and whole-goal plan contracts. The current race-plan outline uses a conservative progression ceiling heuristic and scales reviewed sessions. It validates reviewed baseline, availability, recovery, session limits, long-session limits, phases, recovery/taper and race-week integrity. This is important safety/structure, but it is not yet evidence that Coach is a validated exercise-science optimizer for every mixed-sport athlete.
+- Session and conflict guards model cross-sport priorities and replacement-only substitutions. The codebase has an all-sport session journey and multisport progress summary. These are useful primitives; 3+ sport schedule synthesis still needs explicit scenario-based validation.
+- Coach task-gated canonical context refreshes Training plan/day, Progress evidence, completed workouts, race and Recovery on relevant tasks. It does not mean every historical workout/strength set/restriction is currently retrieved as one complete longitudinal profile on every plan decision.
+- V1 supports running prediction snapshot persistence/history and strict standard-running-distance payload validation. Ultra predictions are rejected. The prediction handoff says the algorithm and builder existed outside the live app and live wiring remained required. Until recovered and validated, V1's prediction engine is **not considered fully live/complete**.
+- Periodized race-plan validation, race-specificity decisions, Race Strategy attached to a canonical race workout/course version, and provider route geometry validation/ranking/explicit attach exist. Those contracts do not by themselves prove the generated strategy/plan is coherent for a particular athlete; end-to-end scenario evaluation is required.
+
+### V2 execution tracks
+
+- ALL-230: Coach must honor established workout structure, schedule and hard exercise restrictions.
+- ALL-231: evidence-grounded plan synthesis for running+strength, running+cycling+strength, triathlon+strength, primary/secondary goals, phase and whole-week load arbitration.
+- ALL-232: complete queryable longitudinal athlete history and bounded task-relevant retrieval with provenance, data-quality/coverage and latest canonical state.
+- ALL-233: recover/port and validate the performance prediction algorithm; sport-specific predictions only when model/evidence support them; running ultra predictions remain excluded.
+- ALL-234: audit Coach race strategy, full race plans and route plans for physiological/operational coherence, verified course/aid facts, route safety, race execution and end-to-end acceptance.
+
+### Durable Coach principles
+
+- Current user-approved Training plan and hard restrictions outrank generic templates, model defaults and stale conversation summaries.
+- Plan generation begins from primary/secondary goal hierarchy, actual multi-sport history/load, current plan, availability, recovery and exercise restrictions.
+- Do not convert run/cycle/swim/strength loads with fake universal ratios; preserve modality-specific mechanical, local and systemic stress components.
+- Multi-day planning and daily adjustment are separate: an individual missed/poor session does not automatically rewrite the entire block; proposed changes preview/review through Training's canonical writer.
+- Coach should retrieve the relevant complete history from canonical owner systems, not dump all data into every prompt. Include source, date, revision, confidence and known coverage gaps.
+- Unknown working weights, unavailable history, insufficient prediction data or unverified course details remain unknown. Coach must ask or present a bounded alternative, not invent.
+- A plan may look structurally valid but still be bad training. Acceptance therefore includes expert/human review of realistic scenarios, not only schema tests.
