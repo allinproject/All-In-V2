@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {shiftCalendarDate,weekDaysForDate,formatCalendarDay,calendarRecordsForDay,firstOfMonth,shiftCalendarMonth,monthCalendarWeeks,formatCalendarMonth,workoutMarkersForDay,monthDayMarkerSummary} from './calendarDayView.ts';
+import {shiftCalendarDate,weekDaysForDate,formatCalendarDay,calendarRecordsForDay,firstOfMonth,shiftCalendarMonth,monthCalendarWeeks,formatCalendarMonth,workoutMarkersForDay,monthDayMarkerSummary,monthDayAccessibilityLabel} from './calendarDayView.ts';
 
 test('week begins Monday and crosses month/year boundaries without UTC date drift',()=>{
  assert.deepEqual(weekDaysForDate('2027-01-01'),['2026-12-28','2026-12-29','2026-12-30','2026-12-31','2027-01-01','2027-01-02','2027-01-03']);
@@ -85,4 +85,18 @@ test('malformed rest source combinations do not generate misleading month marker
    {athleteLocalDate:'2026-11-10',kind:'rest' as const,status:'completed' as const},
  ];
  assert.deepEqual(monthDayMarkerSummary({status:'ready',records},'2026-11-10').visible,[]);
+});
+
+test('screen readers hear all monthly activity hints, including hidden overflow and unavailable source',()=>{
+ const records=[
+  {athleteLocalDate:'2026-11-10',kind:'running' as const,status:'planned' as const},
+  {athleteLocalDate:'2026-11-10',kind:'stair' as const,status:'completed' as const},
+  {athleteLocalDate:'2026-11-10',kind:'strength' as const,status:'missed' as const},
+ ];
+ const label=monthDayAccessibilityLabel({status:'ready',records},'2026-11-10');
+ assert.match(label,/running, planned/);
+ assert.match(label,/stair climber, completed/);
+ assert.match(label,/strength, missed/);
+ assert.match(monthDayAccessibilityLabel({status:'unavailable'},'2026-11-10'),/unavailable/);
+ assert.match(monthDayAccessibilityLabel({status:'ready',records:[]},'2026-11-10'),/No scheduled or completed/);
 });
