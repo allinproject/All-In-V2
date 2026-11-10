@@ -9,6 +9,7 @@ export default function HomeScreen() {
   const { user, loading, signOut } = useAuth();
   const gate = useAccessGate();
   if (!loading && !user) return <Redirect href="/sign-in" />;
+  if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
   if (gate.status === 'onboarding_required') return <Redirect href="/onboarding-required" />;
   if (gate.status !== 'ready') return <Redirect href="/" />;
 

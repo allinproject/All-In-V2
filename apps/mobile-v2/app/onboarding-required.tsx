@@ -17,7 +17,7 @@ export default function OnboardingRequiredScreen() {
       <View style={styles.content}>
         <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
         <Text accessibilityRole="header" style={styles.title}>Finish setting up your account</Text>
-        <Text style={styles.body}>This account still has required ALL IN 365 onboarding to complete. Finish setup in the current ALL IN 365 app before using this V2 preview. V2 will not skip or overwrite your existing onboarding state.</Text>
+        <Text style={styles.body}>This account still has required ALL IN 365 onboarding to complete. V2 onboarding is required before private features can open. The onboarding flow is being built against your new V2 profile and preferences; this page will remain locked until that V2 flow is available.</Text>
       </View>
     </SafeAreaView>
   );

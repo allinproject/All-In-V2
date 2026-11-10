@@ -1,126 +1,134 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
+export const REQUIRED_V2_LEGAL_KEYS = ['terms', 'privacy', 'founder_beta_terms'] as const;
+export type V2LegalDocumentKey = typeof REQUIRED_V2_LEGAL_KEYS[number];
+
+export type V2LegalDocument = {
+  document_key: V2LegalDocumentKey;
+  version: string;
+  title: string;
+  content_markdown: string;
+  content_sha256: string | null;
+  effective_at: string;
+};
+
 export type V2OnboardingState = {
-  profileVersion: number;
   completedSteps: string[];
   skippedSteps: string[];
 };
 
 export type V2AccessResult = {
+  needsLegalAcceptance: boolean;
   needsOnboarding: boolean;
+  requiredLegalDocuments: V2LegalDocument[];
 };
 
-function positiveInt(value: unknown, fallback = 1): number {
-  const number = Number(value);
-  return Number.isInteger(number) && number > 0 ? number : fallback;
+function normalizedText(value: unknown, max = 50000): string {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-export function parsePendingLegalAcceptance(value: unknown) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const raw = value as Record<string, unknown>;
-  const termsVersion = String(raw.terms_version ?? '').trim();
-  const privacyVersion = String(raw.privacy_version ?? '').trim();
-  const founderBetaTermsVersion = String(raw.founder_beta_terms_version ?? '').trim();
-  const acceptedAt = String(raw.accepted_at ?? '').trim();
-  const age18Confirmed = raw.age_18_confirmed === true;
-  if ([termsVersion, privacyVersion, founderBetaTermsVersion].some(version =>
-    !version || version.startsWith('pending-final-')
-  ) || !age18Confirmed) return null;
+export function parsePublishedV2LegalDocuments(value: unknown): V2LegalDocument[] {
+  if (!Array.isArray(value)) throw new Error('V2 legal documents are not available yet.');
+  const allowed = new Set<string>(REQUIRED_V2_LEGAL_KEYS);
+  const parsed: V2LegalDocument[] = [];
 
-  const parsed = new Date(acceptedAt);
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(acceptedAt)
-    || !Number.isFinite(parsed.getTime())
-    || parsed.toISOString() !== acceptedAt) return null;
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new Error('V2 legal document data is invalid.');
+    }
+    const item = raw as Record<string, unknown>;
+    const documentKey = normalizedText(item.document_key, 40);
+    const version = normalizedText(item.version, 120);
+    const title = normalizedText(item.title, 200);
+    const contentMarkdown = normalizedText(item.content_markdown);
+    const effectiveAt = normalizedText(item.effective_at, 80);
+    if (!allowed.has(documentKey) || !version || !title || !contentMarkdown || !effectiveAt) {
+      throw new Error('A published V2 legal document is incomplete.');
+    }
+    if (parsed.some(document => document.document_key === documentKey)) {
+      throw new Error('Duplicate V2 legal document key was returned.');
+    }
+    parsed.push({
+      document_key: documentKey as V2LegalDocumentKey,
+      version,
+      title,
+      content_markdown: contentMarkdown,
+      content_sha256: normalizedText(item.content_sha256, 64) || null,
+      effective_at: effectiveAt,
+    });
+  }
 
-  return { termsVersion, privacyVersion, founderBetaTermsVersion, age18Confirmed: true as const, acceptedAt };
+  if (parsed.length !== REQUIRED_V2_LEGAL_KEYS.length
+    || REQUIRED_V2_LEGAL_KEYS.some(key => !parsed.some(document => document.document_key === key))) {
+    throw new Error('V2 signup remains closed until Terms, Privacy and Founder Beta Terms are all published.');
+  }
+
+  return parsed.sort((a, b) => REQUIRED_V2_LEGAL_KEYS.indexOf(a.document_key) - REQUIRED_V2_LEGAL_KEYS.indexOf(b.document_key));
+}
+
+export function v2LegalAcceptanceMatches(
+  acceptance: unknown,
+  documents: V2LegalDocument[],
+): boolean {
+  if (!acceptance || typeof acceptance !== 'object' || Array.isArray(acceptance)) return false;
+  const saved = acceptance as Record<string, unknown>;
+  if (saved.age_18_confirmed !== true) return false;
+
+  const byKey = new Map(documents.map(document => [document.document_key, document.version]));
+  return saved.terms_version === byKey.get('terms')
+    && saved.privacy_version === byKey.get('privacy')
+    && saved.founder_beta_terms_version === byKey.get('founder_beta_terms');
 }
 
 export function shouldEnterV2Onboarding(
-  metadata: Record<string, unknown> | null | undefined,
+  _metadata: Record<string, unknown> | null | undefined,
   state: Pick<V2OnboardingState, 'completedSteps' | 'skippedSteps'>,
 ): boolean {
-  if (metadata?.allin_training_onboarding_complete === true) return false;
-  const count = new Set([...state.completedSteps, ...state.skippedSteps]).size;
-  if (count > 0) return true;
-  const legacySetup = Array.isArray(metadata?.allin_active_activities)
-    || Array.isArray(metadata?.allin_capability_interests);
-  return !legacySetup;
+  const completed = new Set([...state.completedSteps, ...state.skippedSteps]);
+  return !REQUIRED_V2_ONBOARDING_STEPS.every(step => completed.has(step));
 }
 
-async function fetchOnboardingState(client: SupabaseClient): Promise<V2OnboardingState> {
-  const { data, error } = await client.rpc('allin_my_profile_state');
-  if (error) throw error;
-  const profile = data?.profile ?? {};
-  const progress = data?.onboarding ?? {};
-  const allowedSteps = new Set(['focus', 'training_pattern', 'availability', 'coach', 'food_safety', 'proactivity']);
-  const normalize = (value: unknown) => Array.isArray(value)
-    ? [...new Set(value.filter((item): item is string => typeof item === 'string' && allowedSteps.has(item)))]
-    : [];
-  return {
-    profileVersion: positiveInt(profile.version),
-    completedSteps: normalize(progress.completed_steps),
-    skippedSteps: normalize(progress.skipped_steps),
-  };
-}
-
-/**
- * Temporary V2 adapter kept behavior-compatible with Native/src/data/betaSignupClient.ts
- * and Native/src/data/onboardingClient.ts. Both apps continue to use the same canonical
- * profile/onboarding RPCs; this adapter creates no second record or writer.
- */
-async function persistPendingLegalAcceptance(
-  client: SupabaseClient,
-  metadata: Record<string, unknown>,
-  expectedUserId: string,
-): Promise<boolean> {
-  const pendingValue = metadata.allin_legal_acceptance_pending;
-  const pending = parsePendingLegalAcceptance(pendingValue);
-  if (!pending) return false;
-  if (!expectedUserId) throw new Error('Legal acceptance account is required.');
-
-  const state = await fetchOnboardingState(client);
-  const requireOwner = async () => {
-    const { data, error } = await client.auth.getUser();
-    if (error || data.user?.id !== expectedUserId) throw new Error('Legal acceptance account changed.');
-  };
-
-  const acceptedAt = pending.acceptedAt;
-  const legalAcceptance = {
-    terms: { version: pending.termsVersion, accepted_at: acceptedAt },
-    privacy: { version: pending.privacyVersion, accepted_at: acceptedAt },
-    founder_beta_terms: { version: pending.founderBetaTermsVersion, accepted_at: acceptedAt },
-    eligibility: { age_18_confirmed: true, confirmed_at: acceptedAt },
-  };
-
-  await requireOwner();
-  const { error } = await client.rpc('allin_patch_profile_settings_section', {
-    p_section: 'legal_acceptance',
-    p_patch: legalAcceptance,
-    p_expected_version: state.profileVersion,
-    p_action_id: `legal-acceptance:${Date.now()}`,
-  });
-  if (error) throw error;
-  await requireOwner();
-
-  const updated = await client.auth.updateUser({ data: { allin_legal_acceptance_pending: null } });
-  if (updated.error) throw updated.error;
-  return true;
-}
+export const REQUIRED_V2_ONBOARDING_STEPS = [
+  'focus',
+  'training_pattern',
+  'availability',
+  'coach',
+  'food_safety',
+  'proactivity',
+] as const;
 
 export async function resolveV2Access(
   client: SupabaseClient,
-  user: Pick<User, 'id' | 'user_metadata'>,
+  user: Pick<User, 'id'>,
 ): Promise<V2AccessResult> {
-  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-  if (metadata.allin_legal_acceptance_pending) {
-    const saved = await persistPendingLegalAcceptance(client, metadata, user.id);
-    if (!saved) throw new Error('Pending legal acceptance could not be verified.');
+  const { data, error } = await client.rpc('v2_my_profile_state');
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('V2 account state could not be verified.');
   }
 
-  if (metadata.allin_training_onboarding_complete === true) {
-    return { needsOnboarding: false };
+  const state = data as Record<string, any>;
+  if (String(state.profile?.user_id ?? '') !== user.id) {
+    throw new Error('V2 profile is not ready for this account. Private access remains closed.');
   }
 
-  const state = await fetchOnboardingState(client);
-  return { needsOnboarding: shouldEnterV2Onboarding(metadata, state) };
+  const requiredLegalDocuments = parsePublishedV2LegalDocuments(state.required_legal_documents);
+  const needsLegalAcceptance = !v2LegalAcceptanceMatches(
+    state.latest_legal_acceptance,
+    requiredLegalDocuments,
+  );
+
+  const onboarding = state.onboarding ?? {};
+  const completedSteps = Array.isArray(onboarding.completed_steps)
+    ? onboarding.completed_steps.filter((value: unknown): value is string => typeof value === 'string')
+    : [];
+  const skippedSteps = Array.isArray(onboarding.skipped_steps)
+    ? onboarding.skipped_steps.filter((value: unknown): value is string => typeof value === 'string')
+    : [];
+
+  return {
+    needsLegalAcceptance,
+    needsOnboarding: !needsLegalAcceptance && shouldEnterV2Onboarding(null, { completedSteps, skippedSteps }),
+    requiredLegalDocuments,
+  };
 }

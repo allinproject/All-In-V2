@@ -1,45 +1,42 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePendingLegalAcceptance, shouldEnterV2Onboarding } from './accessGateClient.ts';
+import {
+  parsePublishedV2LegalDocuments,
+  shouldEnterV2Onboarding,
+  v2LegalAcceptanceMatches,
+} from './accessGateClient.ts';
 
-const validAcceptance = {
-  terms_version: 'terms-of-use-v1',
-  privacy_version: 'privacy-policy-v1',
-  founder_beta_terms_version: 'founder-beta-terms-v1',
-  age_18_confirmed: true,
-  accepted_at: '2026-11-09T19:00:00.000Z',
-};
+const docs = [
+  { document_key: 'terms', version: 'terms-v2', title: 'Terms', content_markdown: 'Terms text', content_sha256: null, effective_at: '2026-11-10T00:00:00.000Z' },
+  { document_key: 'privacy', version: 'privacy-v2', title: 'Privacy', content_markdown: 'Privacy text', content_sha256: null, effective_at: '2026-11-10T00:00:00.000Z' },
+  { document_key: 'founder_beta_terms', version: 'founder-v2', title: 'Founder Beta Terms', content_markdown: 'Beta text', content_sha256: null, effective_at: '2026-11-10T00:00:00.000Z' },
+];
 
-test('pending legal acceptance requires all exact versions, age confirmation and canonical timestamp', () => {
-  assert.ok(parsePendingLegalAcceptance(validAcceptance));
-  assert.equal(parsePendingLegalAcceptance({ ...validAcceptance, age_18_confirmed: false }), null);
-  assert.equal(parsePendingLegalAcceptance({ ...validAcceptance, terms_version: 'pending-final-terms' }), null);
-  assert.equal(parsePendingLegalAcceptance({ ...validAcceptance, accepted_at: 'not-a-date' }), null);
+test('all three published legal documents are required before V2 access can proceed', () => {
+  assert.equal(parsePublishedV2LegalDocuments(docs).length, 3);
+  assert.throws(() => parsePublishedV2LegalDocuments([]), /signup remains closed/i);
+  assert.throws(() => parsePublishedV2LegalDocuments(docs.slice(0, 2)), /signup remains closed/i);
 });
 
-test('completed onboarding metadata closes the onboarding gate', () => {
-  assert.equal(shouldEnterV2Onboarding({ allin_training_onboarding_complete: true }, {
-    completedSteps: [], skippedSteps: [],
+test('duplicate or incomplete legal document records fail closed', () => {
+  assert.throws(() => parsePublishedV2LegalDocuments([...docs, docs[0]]), /Duplicate/);
+  assert.throws(() => parsePublishedV2LegalDocuments([{ ...docs[0], content_markdown: '' }, ...docs.slice(1)]), /incomplete/i);
+});
+
+test('legal acceptance must match the currently published exact versions and age confirmation', () => {
+  const required = parsePublishedV2LegalDocuments(docs);
+  const accepted = { terms_version: 'terms-v2', privacy_version: 'privacy-v2', founder_beta_terms_version: 'founder-v2', age_18_confirmed: true };
+  assert.equal(v2LegalAcceptanceMatches(accepted, required), true);
+  assert.equal(v2LegalAcceptanceMatches({ ...accepted, terms_version: 'old-terms' }, required), false);
+  assert.equal(v2LegalAcceptanceMatches({ ...accepted, age_18_confirmed: false }, required), false);
+  assert.equal(v2LegalAcceptanceMatches(null, required), false);
+});
+
+test('all six canonical onboarding steps are required', () => {
+  assert.equal(shouldEnterV2Onboarding(null, { completedSteps: [], skippedSteps: [] }), true);
+  assert.equal(shouldEnterV2Onboarding(null, { completedSteps: ['focus', 'training_pattern'], skippedSteps: [] }), true);
+  assert.equal(shouldEnterV2Onboarding(null, {
+    completedSteps: ['focus', 'training_pattern', 'availability', 'coach', 'food_safety'],
+    skippedSteps: ['proactivity'],
   }), false);
-});
-
-test('existing partial onboarding remains required', () => {
-  assert.equal(shouldEnterV2Onboarding({}, {
-    completedSteps: ['focus'], skippedSteps: [],
-  }), true);
-});
-
-test('legacy configured accounts are not sent back through first-run onboarding', () => {
-  assert.equal(shouldEnterV2Onboarding({ allin_active_activities: ['run'] }, {
-    completedSteps: [], skippedSteps: [],
-  }), false);
-  assert.equal(shouldEnterV2Onboarding({ allin_capability_interests: ['strength'] }, {
-    completedSteps: [], skippedSteps: [],
-  }), false);
-});
-
-test('unconfigured new accounts remain on the onboarding path', () => {
-  assert.equal(shouldEnterV2Onboarding({}, {
-    completedSteps: [], skippedSteps: [],
-  }), true);
 });

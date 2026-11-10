@@ -17,6 +17,7 @@ export default function IndexRoute() {
   }
 
   if (route.state === 'signed_out') return <Redirect href="/sign-in" />;
+  if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
   if (gate.status === 'ready') return <Redirect href="/home" />;
   if (gate.status === 'onboarding_required') return <Redirect href="/onboarding-required" />;
 
