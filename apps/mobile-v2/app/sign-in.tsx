@@ -29,7 +29,7 @@ export default function SignInScreen() {
   if (!loading && user) return <Redirect href="/home" />;
 
   async function signIn() {
-    if (submitting) return;
+    if (submitting || resending) return;
     const normalizedEmail = email.trim();
     if (!normalizedEmail || !password) {
       setError('Enter your email and password.');
@@ -63,7 +63,7 @@ export default function SignInScreen() {
   }
 
   async function resendConfirmation() {
-    if (resending) return;
+    if (resending || submitting) return;
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
       setError('Enter the email address for your V2 account.');
@@ -110,7 +110,7 @@ export default function SignInScreen() {
             <TextInput accessibilityLabel="Password" autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder="Password" placeholderTextColor="#929292" style={styles.input} value={password} onChangeText={setPassword} onSubmitEditing={() => void signIn()} />
             {visibleError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{visibleError}</Text> : null}
             {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
-            <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting, busy: submitting }} disabled={submitting} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, submitting && styles.disabled]}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || resending, busy: submitting || resending }} disabled={submitting || resending} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, (submitting || resending) && styles.disabled]}>
               {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Sign in</Text>}
             </Pressable>
             {confirmationPending ? (
