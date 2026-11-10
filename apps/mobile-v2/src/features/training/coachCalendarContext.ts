@@ -1,6 +1,6 @@
 import { validAthleteLocalDate } from './manualActivityDraft.ts';
 import { weekDaysForDate } from './calendarDayView.ts';
-import type { ActivitySport } from './activityEntryContract.ts';
+import { V2_ACTIVITY_SPORTS, type ActivitySport } from './activityEntryContract.ts';
 
 /** ALL-240/246 — read-only, owner-verified Train calendar context for Coach. */
 export type CoachCalendarSession = {
@@ -43,7 +43,8 @@ export function prepareCoachCalendarContext(input: CoachCalendarInput): CoachCal
   for (const session of input.sessions) {
     if (!session.id || ids.has(session.id) || !validAthleteLocalDate(session.athleteLocalDate)
       || !['planned', 'completed', 'missed', 'cancelled'].includes(session.status)
-      || !session.sport || (session.planRevisionId !== null && !session.planRevisionId.trim())) {
+      || !V2_ACTIVITY_SPORTS.some(sport => sport === session.sport)
+      || (session.planRevisionId !== null && !session.planRevisionId.trim())) {
       return { kind: 'blocked', reason: 'invalid_session' };
     }
     ids.add(session.id);
