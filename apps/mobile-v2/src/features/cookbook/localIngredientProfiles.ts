@@ -111,7 +111,7 @@ export function resolveLocalIngredient(
   // Reject corrupt catalog snapshots where two records reuse one profile ID:
   // nutrient rows are joined by profile ID, so the wrong food could inherit
   // another ingredient's nutrition even if both state/default flags look valid.
-  if (!profile.id?.trim() ||
+  if (typeof profile.id !== 'string' || !profile.id.trim() ||
       catalog.profiles.filter(row => row && row.id === profile.id).length !== 1) {
     return { status: 'profile_conflict', ingredient_id: identityId };
   }
