@@ -91,6 +91,19 @@ export function v2SignupConsentScope(
   return JSON.stringify([email.trim().toLowerCase(), v2LegalReviewSetKey('signup', documents)]);
 }
 
+/** Fail closed if signup's reviewed legal snapshot differs from what is published now. */
+export function assertV2SignupLegalSnapshotCurrent(
+  reviewedDocuments: readonly V2LegalDocument[],
+  currentPublishedDocuments: unknown,
+): V2LegalDocument[] {
+  const current = parsePublishedV2LegalDocuments(currentPublishedDocuments);
+  const reviewed = parsePublishedV2LegalDocuments(reviewedDocuments);
+  if (v2LegalReviewSetKey('signup', reviewed) !== v2LegalReviewSetKey('signup', current)) {
+    throw new Error('The V2 legal documents changed. Review the current versions before creating an account.');
+  }
+  return current;
+}
+
 export function v2LegalAcceptanceMatches(
   acceptance: unknown,
   documents: V2LegalDocument[],
