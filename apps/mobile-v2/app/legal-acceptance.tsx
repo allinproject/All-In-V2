@@ -22,8 +22,9 @@ export default function LegalAcceptanceScreen() {
   if (gate.status !== 'legal_required') return <Redirect href="/" />;
 
   const documents = gate.requiredLegalDocuments;
-  const reviewSet = JSON.stringify([user?.id ?? null, ...documents.map(v2LegalReviewKey)]);
-  const allReviewed = documents.length === 3 && documents.every(doc => checked[v2LegalReviewKey(doc)]);
+  const reviewKey = (doc: typeof documents[number]) => v2LegalReviewKey(user?.id ?? '', doc);
+  const reviewSet = JSON.stringify(documents.map(reviewKey));
+  const allReviewed = documents.length === 3 && documents.every(doc => checked[reviewKey(doc)]);
   const canAccept = allReviewed && ageConfirmed && !submitting;
 
   async function acceptDocuments() {
@@ -63,13 +64,13 @@ export default function LegalAcceptanceScreen() {
         <Text accessibilityRole="header" style={styles.title}>Review and accept</Text>
         <Text style={styles.body}>Your access is limited until you review the current published V2 legal documents and confirm your age.</Text>
         {documents.map(doc => (
-          <View key={v2LegalReviewKey(doc)} style={styles.document}>
+          <View key={reviewKey(doc)} style={styles.document}>
             <Text style={styles.documentTitle}>{doc.title} · {doc.version}</Text>
             <ScrollView nestedScrollEnabled style={styles.documentBody}>
               <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
             </ScrollView>
-            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!checked[v2LegalReviewKey(doc)] }} onPress={() => setChecked(old => ({ ...old, [v2LegalReviewKey(doc)]: !old[v2LegalReviewKey(doc)] }))} style={styles.reviewRow}>
-              <Text style={styles.checkbox}>{checked[v2LegalReviewKey(doc)] ? '☑' : '☐'}</Text>
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!checked[reviewKey(doc)] }} onPress={() => setChecked(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] }))} style={styles.reviewRow}>
+              <Text style={styles.checkbox}>{checked[reviewKey(doc)] ? '☑' : '☐'}</Text>
               <Text style={styles.reviewText}>I have read and reviewed this document</Text>
             </Pressable>
           </View>
