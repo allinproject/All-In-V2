@@ -87,7 +87,15 @@ export function buildAthleteHistoryReadModel(input:{
  if(relevantCoverage.some(c=>c.status==='partial'||c.missingIntervals.length>0))warnings.push('One or more device/provider history intervals are missing.');
  if(relevantCoverage.some(c=>c.status==='unknown'))warnings.push('History coverage is unknown for one or more sports.');
  if(input.currentPlan&&(!Number.isInteger(input.currentPlan.revision)||input.currentPlan.revision<1))throw new Error('Current accepted Training plan revision is invalid.');
- const restrictions=input.restrictions.filter(r=>Boolean(r&&r.status==='active'&&typeof r.id==='string'&&r.id.trim()&&typeof r.subject==='string'&&r.subject.trim()&&typeof r.updatedAt==='string'&&Number.isFinite(Date.parse(r.updatedAt)))).sort((a,b)=>timestamp(b.updatedAt)-timestamp(a.updatedAt));
+ // Active hard constraints must never disappear because their reader returned
+ // a partial or malformed record. Require the owner to refresh/fix that read.
+ if(input.restrictions.some(r=>r&&r.status==='active'&&(
+    typeof r.id!=='string'||!r.id.trim()||typeof r.subject!=='string'||!r.subject.trim()||
+    !['exercise','equipment','schedule','pain_or_return','preference'].includes(r.category)||
+    !['explicit_user','approved_plan','system_inferred'].includes(r.source)||
+    typeof r.updatedAt!=='string'||!Number.isFinite(Date.parse(r.updatedAt))
+  )))throw new Error('An active athlete restriction is incomplete. Refresh canonical restrictions before Coach plans.');
+ const restrictions=input.restrictions.filter(r=>r&&r.status==='active').sort((a,b)=>timestamp(b.updatedAt)-timestamp(a.updatedAt));
  const events=input.events.filter(safeEvent).filter(e=>e.occurredAt.slice(0,10)>=input.fromDate&&e.occurredAt.slice(0,10)<=input.throughDate&&(!e.sport||sports.includes(e.sport)));
  const max=Math.max(1,Math.min(100,Math.floor(input.maxEvents??50)));
  events.sort((a,b)=>timestamp(b.occurredAt)-timestamp(a.occurredAt)||timestamp(b.recordedAt)-timestamp(a.recordedAt));
