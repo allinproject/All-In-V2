@@ -282,6 +282,7 @@ export default function OnboardingRequiredScreen() {
   const canComplete = activeStep ? isOnboardingAnswerComplete(activeStep, answers) : false;
 
   const updateAnswers = (update: (current: OnboardingAnswers) => OnboardingAnswers) => {
+    if (saveGuard.current.isBusy()) return;
     setAnswers(current => update(current));
     setPendingAction(null);
     setActionError(null);
@@ -545,7 +546,7 @@ export default function OnboardingRequiredScreen() {
           {actionError ? <Text accessibilityRole="alert" style={styles.error}>{actionError}</Text> : null}
           <View style={styles.actions}>
             {activeStepIndex > 0 ? (
-              <Pressable accessibilityRole="button" disabled={saving} onPress={() => { setActionError(null); setActiveStepIndex(index => Math.max(0, index - 1)); }} style={styles.secondaryButton}>
+              <Pressable accessibilityRole="button" disabled={saving} onPress={() => { if (saveGuard.current.isBusy()) return; setActionError(null); setActiveStepIndex(index => Math.max(0, index - 1)); }} style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>Back</Text>
               </Pressable>
             ) : <View style={styles.secondarySpacer} />}
