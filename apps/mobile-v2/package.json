@@ -9,7 +9,7 @@
     "ios": "expo run:ios",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:auth": "node --experimental-strip-types --test src/auth/authRoute.test.ts src/auth/accessGateClient.test.ts",
-    "test:calculator": "node --experimental-strip-types --test src/features/cookbook/recipeNutritionCalculator.test.ts src/features/cookbook/cookingYieldIntelligence.test.ts src/features/cookbook/cookingYieldReferenceCatalog.test.ts"
+    "test:calculator": "node --experimental-strip-types --test src/features/cookbook/recipeNutritionCalculator.test.ts src/features/cookbook/cookingYieldIntelligence.test.ts src/features/cookbook/cookingYieldReferenceCatalog.test.ts src/features/cookbook/foodDataCentral.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
