@@ -159,3 +159,27 @@ export async function assertV2SessionOwner(
     throw new Error('The signed-in account changed. Sign in again before continuing.');
   }
 }
+
+/**
+ * Only release a profile snapshot to a screen after both the returned
+ * profile and the current session still belong to the expected account.
+ */
+export async function readV2OwnedProfileState(
+  client: SupabaseClient<Database>,
+  expectedUserId: string,
+): Promise<Record<string, unknown>> {
+  if (!expectedUserId.trim()) throw new Error('A V2 account identity is required.');
+  const { data, error } = await client.rpc('v2_my_profile_state');
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('V2 account state could not be verified.');
+  }
+  const state = data as Record<string, unknown>;
+  const profile = state.profile;
+  if (!profile || typeof profile !== 'object' || Array.isArray(profile)
+    || (profile as Record<string, unknown>).user_id !== expectedUserId) {
+    throw new Error('The account changed while onboarding was open. Private access remains closed.');
+  }
+  await assertV2SessionOwner(client, expectedUserId);
+  return state;
+}
