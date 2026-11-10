@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.v2-lookup-food-barcode]
 verify_jwt = true
+
+[functions.v2-search-openfoodfacts-products]
+verify_jwt = true
