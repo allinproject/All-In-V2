@@ -83,7 +83,7 @@ export default function SignUpScreen() {
       if (signUpError) throw signUpError;
 
       if (data.session) {
-        const action = actionId.current ?? (globalThis.crypto?.randomUUID?.() ?? `legal-${Date.now()}`);
+        const action = actionId.current ?? `signup-legal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
         actionId.current = action;
         const byKey = new Map(documents.map(doc => [doc.document_key, doc.version]));
         const { error: acceptanceError } = await supabase.rpc('v2_accept_legal_documents', {

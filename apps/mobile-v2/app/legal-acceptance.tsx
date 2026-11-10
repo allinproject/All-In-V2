@@ -30,7 +30,7 @@ export default function LegalAcceptanceScreen() {
     setMessage(null);
     try {
       const versions = new Map(documents.map(doc => [doc.document_key, doc.version]));
-      const id = actionId.current ?? (globalThis.crypto?.randomUUID?.() ?? `accept-${user.id}-${Date.now()}`);
+      const id = actionId.current ?? `accept-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
       actionId.current = id;
       const { error } = await supabase.rpc('v2_accept_legal_documents', {
         p_terms_version: versions.get('terms'),

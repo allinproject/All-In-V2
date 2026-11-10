@@ -1,23 +1,51 @@
-# V2 mobile application
+# ALL IN 365 V2
 
-This is the independent ALL IN 365 V2 Expo application.
+Independent V2 mobile application and backend.
 
-## Current scope
+## Canonical V2 resources
 
-- V2 sign-in screen and session adapter scaffold; fresh V2 account creation is a separate, upcoming slice.
-- Persistent local session storage.
-- Fail-closed legal acceptance and onboarding access gate.
-- No Coach writes, recipe writes, or data migration yet.
+- GitHub repository: https://github.com/allinproject/All-In-V2
+- Implementation branch: `integration/v2-foundation`
+- Supabase project: `xarhuczrtzuiljmtdaeu` (All-In-V2, us-west-2)
+- Linear project: https://linear.app/allin365/project/all-in-365-v2-rebuild-1a9ab6dddfca
 
-## Backend warning
+V1 is a read-only reference for approved product behavior and selected assets. There is no customer base to migrate; the founder creates a fresh V2 account. Do not import V1 credentials, the one test Coach thread or personal training/Food Log records by default.
 
-The dedicated V2 Supabase project (`xarhuczrtzuiljmtdaeu`) is currently empty and does not contain existing V1 users or history. The founder will create a fresh V2 account; V1 account credentials and Coach history are not being migrated. Signup remains disabled until the V2 schema and approved legal package are ready. Never place V1 production secrets or service-role keys in this repository.
+## Mobile application
 
-## Local checks
+The Expo Router app is under `apps/mobile-v2/`.
 
-1. Copy `.env.example` to `.env` only for isolated V2-development tests.
+Current source foundation:
+- V2 Supabase client with persistent native session storage.
+- AuthProvider for session restoration, token refresh lifecycle, sign-out and identity changes.
+- V2-native sign-in and sign-up screens.
+- Sign-up reads the exact published V2 legal documents. It remains disabled until Terms, Privacy and Founder Beta Terms are all published.
+- V2 legal acceptance is persisted through `v2_accept_legal_documents` with exact current versions, age attestation and idempotent action ID.
+- Access gate reads `v2_my_profile_state`, compares current legal versions and requires all six onboarding steps before opening private routes.
+- Shared visual tokens follow the approved App Art Handoff v2.
+
+## Supabase foundation
+
+Two migrations have been applied to the dedicated V2 project:
+
+1. `20261110000100_v2_auth_profile_legal_foundation.sql`
+2. `20261110000200_v2_tighten_profile_privileges_and_legal_versions.sql`
+
+They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/onboarding, versioned legal document store, immutable acceptance receipts, RLS and guarded versioned/idempotent RPCs.
+
+**Current legal status:** no legal documents have been published. Public signup and private app access must remain closed until the working V1 legal draft is reviewed/finalized and the three exact V2 versions are deliberately published. Do not seed or publish draft legal text automatically.
+
+**Current backend status:** no Coach, Cookbook, Training, Nutrition, Pantry, Meal Prep or Community schema/functions have been ported yet. The V1 Coach v18 bundle is preserved as a non-deployable reference at `docs/migration/reference/coach-v18/`.
+
+## Local setup
+
+1. Copy `.env.example` to `.env` and use only the V2 Supabase URL and publishable key for isolated V2 development.
 2. Install dependencies with the approved npm workflow (Node >=22.13).
 3. Run `npm run test:auth` and `npm run typecheck`.
 4. Start with `npm run start`.
 
-Fresh V2 signup, live authentication, Coach operation, cookbook seed, canonical history and device installation are not yet validated.
+The package install/lockfile and full TypeScript/app/device checks have not yet passed. Do not claim build or device acceptance until the exact branch is installed and tested.
+
+## Security note
+
+Public API tables use least-privilege grants and owner RLS. The private schema table `allin_private.v2_profile_settings_actions` has no schema usage or table privileges granted to `anon` or `authenticated`; Supabase still reports an RLS-disabled advisory for it. Before closing the database foundation issue, review the explicit remediation in Linear ALL-216 and apply it only with the accepted RLS plan.
