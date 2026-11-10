@@ -36,6 +36,29 @@ export function advancesV2AuthSessionGeneration(event: string): boolean {
   return event === 'SIGNED_IN' || event === 'SIGNED_OUT';
 }
 
+/** Keep account-scoped screen state separate across reauthentication. */
+export function v2AuthenticatedScreenKey(ownerId: string | null, sessionGeneration: number): string {
+  return JSON.stringify([ownerId, sessionGeneration]);
+}
+
+/** Claim a local button action synchronously before React can disable its control. */
+export function createV2AuthActionGuard() {
+  let busy = false;
+  return {
+    tryEnter(): boolean {
+      if (busy) return false;
+      busy = true;
+      return true;
+    },
+    leave(): void {
+      busy = false;
+    },
+    isBusy(): boolean {
+      return busy;
+    },
+  };
+}
+
 /** A prior verification result must never grant access during a newer retry. */
 export function isV2AccessAttemptCurrent(
   resultOwnerId: string | null,
