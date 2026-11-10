@@ -54,7 +54,7 @@ export default function SignInScreen() {
           <View style={styles.card}>
             <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
             <Text accessibilityRole="header" style={styles.title}>Welcome back</Text>
-            <Text style={styles.body}>Sign in with your existing ALL IN 365 account.</Text>
+            <Text style={styles.body}>Sign in to your ALL IN 365 V2 account.</Text>
             <TextInput accessibilityLabel="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor="#929292" style={styles.input} value={email} onChangeText={setEmail} />
             <TextInput accessibilityLabel="Password" autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder="Password" placeholderTextColor="#929292" style={styles.input} value={password} onChangeText={setPassword} onSubmitEditing={() => void signIn()} />
             {visibleError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{visibleError}</Text> : null}
