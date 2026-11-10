@@ -35,3 +35,17 @@ test('Coach also matches spaced stress tags against underscored restrictions',()
  assert.equal(p.issues.some(i=>i.code==='EXERCISE_RESTRICTED'),false);
  assert.ok(blocked.issues.some(i=>i.code==='EXERCISE_RESTRICTED'));
 });
+
+test('malformed preferred days fail closed instead of throwing during scheduling',()=>{
+ const invalid={...session('run','running','key','moderate','run_impact'),preferredDays:'monday' as any};
+ const result=synthesizeTrainingWeek(context(['running']),[invalid]);
+ assert.equal(result.status,'blocked');
+ assert.ok(result.issues.some(issue=>issue.code==='UNSUPPORTED_PRESCRIPTION'));
+});
+
+test('unknown fixed days fail closed without a planner exception',()=>{
+ const invalid={...session('run','running','key','moderate','run_impact'),fixedDay:'funday' as any};
+ const result=synthesizeTrainingWeek(context(['running']),[invalid]);
+ assert.equal(result.status,'blocked');
+ assert.ok(result.issues.some(issue=>issue.code==='UNSUPPORTED_PRESCRIPTION'));
+});
