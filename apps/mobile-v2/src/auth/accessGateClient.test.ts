@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   assertV2SessionOwner,
+  assertV2SignupLegalSnapshotCurrent,
   parsePublishedV2LegalDocuments,
   resolveV2Access,
   readV2OwnedProfileState,
@@ -82,6 +83,40 @@ test('signup consent scope requires the same email and published legal revisions
 test('signup legal parsing rejects incomplete published documents and duplicates', () => {
   assert.throws(() => parsePublishedV2LegalDocuments([{ ...docs[0], content_markdown: '' }, ...docs.slice(1)]), /incomplete/i);
   assert.throws(() => parsePublishedV2LegalDocuments([...docs, { ...docs[0], version: 'old-version' }]), /Duplicate/);
+});
+
+test('signup preflight detects a newly published legal version before account creation', () => {
+  const original = parsePublishedV2LegalDocuments(docs);
+  const same = original.map(doc => ({ ...doc }));
+  assert.deepEqual(assertV2SignupLegalSnapshotCurrent(original, same), original);
+  assert.throws(
+    () => assertV2SignupLegalSnapshotCurrent(original, [
+      { ...docs[0], version: 'terms-v3' }, ...docs.slice(1),
+    ]),
+    /legal documents changed/i,
+  );
+});
+
+test('signup preflight refuses revised legal wording even when content digest and version were not updated', () => {
+  const original = parsePublishedV2LegalDocuments(docs);
+  assert.throws(
+    () => assertV2SignupLegalSnapshotCurrent(original, [
+      { ...docs[0], content_markdown: 'New terms text' }, ...docs.slice(1),
+    ]),
+    /legal documents changed/i,
+  );
+  assert.throws(
+    () => assertV2SignupLegalSnapshotCurrent(original, [
+      { ...docs[0], title: 'Revised Terms' }, ...docs.slice(1),
+    ]),
+    /legal documents changed/i,
+  );
+});
+
+test('signup preflight fails closed if legal documents become incomplete or unavailable', () => {
+  const original = parsePublishedV2LegalDocuments(docs);
+  assert.throws(() => assertV2SignupLegalSnapshotCurrent(original, docs.slice(0, 2)), /signup remains closed/i);
+  assert.throws(() => assertV2SignupLegalSnapshotCurrent(original, null), /not available/i);
 });
 
 test('all six canonical onboarding steps are required', () => {
