@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { coalesceProviderRequest, getProviderCache, putProviderCache, providerCacheKey } from "../_shared/providerCache.ts";
 
 const HEADERS = {
   "content-type": "application/json",
@@ -51,10 +52,13 @@ Deno.serve(async (request: Request) => {
   if (query.length < 2 || query.length > 80) {
     return reply({ error: "invalid_query", message: "Enter a 2–80 character product name or brand." }, 400);
   }
+  const cacheKey = await providerCacheKey("open_food_facts_search", query);
+  const cached = await getProviderCache("open_food_facts_search", cacheKey);
+  if (cached) return reply({ ...(cached.payload as Record<string, unknown>), cached: true });
 
   let upstream: Response;
   try {
-    upstream = await fetch(SEARCH_URL, {
+    upstream = await coalesceProviderRequest("off-search:" + cacheKey, () => fetch(SEARCH_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -73,7 +77,7 @@ Deno.serve(async (request: Request) => {
         ],
       }),
       signal: AbortSignal.timeout(8000),
-    });
+    }));
   } catch {
     return reply({ error: "open_food_facts_search_unavailable", retryable: true }, 503);
   }
@@ -83,7 +87,7 @@ Deno.serve(async (request: Request) => {
   if (!upstream.ok) {
     return reply({ error: "open_food_facts_search_unavailable", retryable: upstream.status >= 500 }, 502);
   }
-  const data = await upstream.json().catch(() => null);
+  const data = await upstream.clone().json().catch(() => null);
   const hits = Array.isArray(data?.hits) ? data.hits : [];
   const deduped = new Map<string, ReturnType<typeof normalizeProduct>>();
   for (const hit of hits) {
@@ -93,7 +97,7 @@ Deno.serve(async (request: Request) => {
   const results = [...deduped.values()]
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
     .slice(0, 15);
-  return reply({
+  const payload = {
     query,
     provider: "open_food_facts_search_a_licious",
     source_quality: "community_unverified",
@@ -101,5 +105,12 @@ Deno.serve(async (request: Request) => {
     exact_identity_confirmed: false,
     barcode_lookup_required: true,
     results,
-  });
+    retrieved_at: new Date().toISOString(),
+  };
+  await putProviderCache(
+    "open_food_facts_search", cacheKey, payload,
+    "community_unverified", "Open Food Facts database / ODbL; individual contents / DbCL",
+    60 * 60, payload.retrieved_at
+  );
+  return reply({ ...payload, cached: false });
 });
