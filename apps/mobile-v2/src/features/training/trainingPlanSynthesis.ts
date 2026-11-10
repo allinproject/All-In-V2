@@ -35,10 +35,18 @@ export type TrainingPlanDraft={
 const DAYS:TrainingDay[]=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 const PRIORITY:Record<TrainingPriority,number>={optional:0,supporting:1,key:2,competition:3};
 function validSession(s:TrainingSessionIntent):boolean{
+ const demand=s?.demand;
+ const validLevels=['low','moderate','high','unknown'];
  return Boolean(s&&typeof s.id==='string'&&s.id.trim()&&typeof s.label==='string'&&s.label.trim()&&typeof s.purpose==='string'&&s.purpose.trim()&&
  ['running','cycling','swimming','strength','hiking','rucking','rowing','elliptical','stair','yoga','mobility','other'].includes(s.sport)&&
  ['competition','key','supporting','optional'].includes(s.priority)&&['easy','moderate','hard','unknown'].includes(s.intensity)&&
- (s.durationMinutes===null||(Number.isFinite(s.durationMinutes)&&s.durationMinutes>0&&s.durationMinutes<=900))&&s.demand&&Array.isArray(s.stressTags)&&Array.isArray(s.evidenceRefs));
+ (s.durationMinutes===null||(Number.isFinite(s.durationMinutes)&&s.durationMinutes>0&&s.durationMinutes<=900))&&
+ demand&&validLevels.includes(demand.aerobic)&&validLevels.includes(demand.localMuscular)&&
+ ['low','moderate','high','not_applicable','unknown'].includes(demand.mechanicalImpact)&&
+ ['low','moderate','high','not_applicable','unknown'].includes(demand.technicalSkill)&&
+ Array.isArray(s.stressTags)&&s.stressTags.every(x=>typeof x==='string')&&
+ Array.isArray(s.evidenceRefs)&&s.evidenceRefs.every(x=>typeof x==='string')&&
+ (s.strengthWorkout===undefined||(s.strengthWorkout&&Array.isArray(s.strengthWorkout.blocks)&&s.strengthWorkout.blocks.every(b=>b&&typeof b==='object'&&Array.isArray(b.movements)&&b.movements.every(m=>m&&typeof m==='object')))));
 }
 function strengthStructureIssue(s:TrainingSessionIntent,context:TrainingAthletePlanContext):string|null{
  const allRules=(context.strengthStructureRules??[]);
@@ -81,7 +89,9 @@ export function synthesizeTrainingWeek(context:TrainingAthletePlanContext,propos
  const issues:TrainingPlanIssue[]=[];
  const ids=new Set<string>(),accepted=new Set(context.existingAcceptedSessionIds??[]);
  const maxPerDay=Math.max(1,Math.min(3,Math.floor(context.maxSessionsPerDay??2)));
- const ordered=[...proposed].sort((a,b)=>(PRIORITY[b.priority]??0)-(PRIORITY[a.priority]??0)||Number(hardDemand(b))-Number(hardDemand(a)));
+ const priorityValue=(s:unknown)=>PRIORITY[(s as TrainingSessionIntent|null)?.priority]??-1;
+ const safeHard=(s:unknown)=>{const v=s as TrainingSessionIntent|null;return Boolean(v&&(v.intensity==='hard'||v.demand?.aerobic==='high'||v.demand?.localMuscular==='high'||v.demand?.mechanicalImpact==='high'))};
+ const ordered=[...proposed].sort((a,b)=>priorityValue(b)-priorityValue(a)||Number(safeHard(b))-Number(safeHard(a)));
  for(const s of ordered){
   if(!validSession(s)){issues.push(makeIssue('UNSUPPORTED_PRESCRIPTION','blocking','A proposed session is missing valid identity, purpose, intensity, demand or quantity fields.'));continue}
   if(ids.has(s.id)||accepted.has(s.id)){issues.push(makeIssue('DUPLICATE_SESSION_ID','blocking','A session identity is duplicated or already accepted.',[s.id]));continue}
