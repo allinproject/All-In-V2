@@ -18,6 +18,8 @@ on:
       - 'scripts/check-v2-dependency-manifest.test.mjs'
       - 'scripts/prepare-v2-lockfile.ps1'
       - 'scripts/prepare-v2-lockfile.test.mjs'
+      - 'scripts/prepare-v2-usda-foundation-snapshot.ps1'
+      - 'scripts/prepare-v2-usda-foundation-snapshot.test.mjs'
       - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
@@ -37,6 +39,8 @@ on:
       - 'scripts/check-v2-dependency-manifest.test.mjs'
       - 'scripts/prepare-v2-lockfile.ps1'
       - 'scripts/prepare-v2-lockfile.test.mjs'
+      - 'scripts/prepare-v2-usda-foundation-snapshot.ps1'
+      - 'scripts/prepare-v2-usda-foundation-snapshot.test.mjs'
       - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
@@ -75,6 +79,8 @@ jobs:
         run: node --test ../../scripts/check-v2-ci-cost-policy.test.mjs
       - name: Test Windows lockfile helper safety
         run: node --test ../../scripts/prepare-v2-lockfile.test.mjs
+      - name: Test USDA source acquisition safety
+        run: node --test ../../scripts/prepare-v2-usda-foundation-snapshot.test.mjs
       - name: Run Auth tests
         run: npm run test:auth
       - name: Run Cookbook calculator tests
