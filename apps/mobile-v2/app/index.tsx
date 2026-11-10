@@ -12,7 +12,7 @@ export default function IndexRoute() {
 
   if (route.state === 'loading' || (route.state === 'signed_in' && gate.status === 'loading')) {
     return <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-      <ActivityIndicator color=colors.gold />
+      <ActivityIndicator color={colors.gold} />
     </View>;
   }
 
