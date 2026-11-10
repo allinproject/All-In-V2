@@ -15,9 +15,38 @@ test('independent actual stair completion preserves planned run in same day',()=
  assert.deepEqual(indicatorsForCalendarDay(x,'2026-11-10').visible.map(m=>[m.kind,m.status]),
    [['running','planned'],['stair','completed']]);
 });
-test('explicit link removes planned duplicate without changing completed sport',()=>{
+test('a matching planned completion renders once, without hiding a different sport',()=>{
+ const actual={...completed,id:'run-actual',sport:'running' as const,plannedSessionId:'run-1'};
+ const x=combineCalendarReads({...input,completed:{...input.completed,records:[actual]}});
+ assert.equal(x.status,'ready');
+ assert.deepEqual(indicatorsForCalendarDay(x,'2026-11-10').visible.map(m=>[m.kind,m.status]),[['running','completed']]);
+});
+test('a mistaken stair-to-run plan link must not hide the scheduled run',()=>{
  const x=combineCalendarReads({...input,completed:{...input.completed,records:[{...completed,plannedSessionId:'run-1'}]}});
- assert.deepEqual(indicatorsForCalendarDay(x,'2026-11-10').visible.map(m=>[m.kind,m.status]),[['stair','completed']]);
+ assert.equal(x.status,'partial');
+ assert.equal(x.planned.status,'ready');
+ assert.equal(x.completed.status,'unavailable');
+ assert.equal(x.markers.status,'unavailable');
+});
+test('cross-date linked activity cannot erase the planned date without a plan revision',()=>{
+ const later={...completed,id:'run-actual',sport:'running' as const,athleteLocalDate:'2026-11-12',plannedSessionId:'run-1'};
+ const x=combineCalendarReads({...input,completed:{...input.completed,records:[later]}});
+ assert.equal(x.status,'ready');
+ assert.deepEqual(indicatorsForCalendarDay(x,'2026-11-10').visible.map(m=>[m.kind,m.status]),[['running','planned']]);
+ assert.deepEqual(indicatorsForCalendarDay(x,'2026-11-12').visible.map(m=>[m.kind,m.status]),[['running','completed']]);
+});
+test('duplicate completion links never certify a complete day',()=>{
+ const c={...completed,id:'run-actual',sport:'running' as const,plannedSessionId:'run-1'};
+ const d={...c,id:'run-actual-again'};
+ const x=combineCalendarReads({...input,completed:{...input.completed,records:[c,d]}});
+ assert.equal(x.status,'partial');
+ assert.equal(x.markers.status,'unavailable');
+});
+test('cancelled or recovery planned events cannot be completed by a linked workout',()=>{
+ const x=combineCalendarReads({...input,planned:{...input.planned,records:[{...planned,state:'cancelled' as const}]},
+   completed:{...input.completed,records:[{...completed,id:'completed-run',sport:'running' as const,plannedSessionId:'run-1'}]}});
+ assert.equal(x.status,'partial');
+ assert.equal(x.markers.status,'unavailable');
 });
 test('partial reads cannot claim complete markers or interpret silence as rest',()=>{
  const x=combineCalendarReads({...input,completed:{status:'unavailable' as const}});
