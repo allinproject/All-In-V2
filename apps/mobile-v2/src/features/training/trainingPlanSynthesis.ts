@@ -45,7 +45,7 @@ function validSession(s:TrainingSessionIntent):boolean{
  ['low','moderate','high','not_applicable','unknown'].includes(demand.mechanicalImpact)&&
  ['low','moderate','high','not_applicable','unknown'].includes(demand.technicalSkill)&&
  Array.isArray(s.stressTags)&&s.stressTags.every(x=>typeof x==='string')&&
- Array.isArray(s.evidenceRefs)&&s.evidenceRefs.every(x=>typeof x==='string')&&
+ Array.isArray(s.evidenceRefs)&&s.evidenceRefs.every(x=>typeof x==='string'&&x.trim().length>0)&&
  (s.fixedDay===undefined||DAYS.includes(s.fixedDay))&&
  (s.preferredDays===undefined||(Array.isArray(s.preferredDays)&&s.preferredDays.every(day=>DAYS.includes(day))))&&
  (s.strengthWorkout===undefined||(s.strengthWorkout&&Array.isArray(s.strengthWorkout.blocks)&&s.strengthWorkout.blocks.every(b=>b&&typeof b==='object'&&Array.isArray(b.movements)&&b.movements.every(m=>m&&typeof m==='object')))));
