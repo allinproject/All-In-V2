@@ -21,6 +21,7 @@ The source filenames and Supabase migration history use different timestamps. Th
 | `20261110000200_v2_tighten_profile_privileges_and_legal_versions.sql` | `20261110022457` | Column-limited Profile updates, updated-at triggers, immutable published legal content and current-version acceptance checks. |
 | `20261110000300_v2_provider_cache_and_private_rls.sql` | `20261110032039` | RLS defense-in-depth on private operational ledger, server-only provider cache and service-role cache RPCs. |
 | `20261110000400_v2_onboarding_progress_writer.sql` | `20261110101200` | Private onboarding action ledger and authenticated owner-only step writer with complete/skip/reset, expected-version and idempotent retry semantics. |
+| `20261110000500_v2_expected_owner_mutation_guards.sql` | `20261110105423` | Replaces the three authenticated mutation RPC signatures with expected-owner UUIDs checked against `auth.uid()` inside PostgreSQL. |
 
 No V1 migration or object is part of this schema.
 
@@ -120,10 +121,10 @@ Notes:
 | Physical table | Owner / class | RLS and policy | API grants | Canonical mutation path / current limitation |
 |---|---|---|---|---|
 | `public.v2_profiles` | Auth/Profile; user-private | RLS enabled. SELECT own row. UPDATE own row with identical USING/WITH CHECK owner test. | Authenticated SELECT; UPDATE only `display_name`, `avatar_path`. No anon access, INSERT, DELETE or whole-table UPDATE. | Auth trigger creates the row. User edits only the two approved columns. `updated_at` trigger owns timestamp. |
-| `public.v2_profile_settings` | Profile settings; user-private | RLS enabled. SELECT own row only. | Authenticated SELECT only. No direct authenticated writes. | `v2_patch_profile_settings_section` is the canonical write RPC; validates allowlisted section/object patch/action ID/expected version, serializes per-user writes, returns exact retry outcome and writes private idempotency ledger. |
-| `public.v2_onboarding_progress` | Profile onboarding; user-private | RLS enabled. SELECT own row only. | Authenticated SELECT only. No direct authenticated writes. | Auth trigger initializes one empty row. `v2_set_onboarding_step` is the canonical authenticated writer; supports complete/skip/reset, per-user serialization, expected-version checks, exact retry replay and private idempotency ledger. No direct authenticated table writes. |
+| `public.v2_profile_settings` | Profile settings; user-private | RLS enabled. SELECT own row only. | Authenticated SELECT only. No direct authenticated writes. | `v2_patch_profile_settings_section(expected_user_id, section, patch, expected_version, action_id)` is the canonical write RPC; checks expected owner equals `auth.uid()`, validates allowlisted section/object patch/action ID/expected version, serializes per-user writes, returns exact retry outcome and writes private idempotency ledger. |
+| `public.v2_onboarding_progress` | Profile onboarding; user-private | RLS enabled. SELECT own row only. | Authenticated SELECT only. No direct authenticated writes. | Auth trigger initializes one empty row. `v2_set_onboarding_step(expected_user_id, step, action, expected_version, action_id)` is the canonical authenticated writer; checks expected owner equals `auth.uid()`, supports complete/skip/reset, per-user serialization, expected-version checks, exact retry replay and private idempotency ledger. No direct authenticated table writes. |
 | `public.v2_legal_documents` | Legal operations; published product content | RLS enabled. SELECT only rows with `status='published'` and `effective_at <= now()`. | anon/authenticated SELECT only. No client writes. | Reviewed operator/migration publication workflow. Published content fields are immutable; insert a new version instead of editing published content. No documents are currently published. |
-| `public.v2_legal_acceptances` | Legal/account lifecycle; user-private immutable receipt | RLS enabled. SELECT own rows only. | Authenticated SELECT only. No direct INSERT/UPDATE/DELETE. | `v2_accept_legal_documents` checks age attestation, exact latest published versions and actor; per-user client action is unique and idempotent. |
+| `public.v2_legal_acceptances` | Legal/account lifecycle; user-private immutable receipt | RLS enabled. SELECT own rows only. | Authenticated SELECT only. No direct INSERT/UPDATE/DELETE. | `v2_accept_legal_documents(expected_user_id, terms, privacy, founder_terms, age_confirmed, action_id)` checks expected owner equals `auth.uid()`, age attestation, exact latest published versions and actor; per-user client action is unique and idempotent. |
 | `allin_private.v2_profile_settings_actions` | Profile settings infrastructure; private operational metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. Owner `postgres` retains migration/function-owner privileges. | Only reached from `v2_patch_profile_settings_section` SECURITY DEFINER path. Never add permissive policies to silence no-policy INFO. |
 | `allin_private.v2_onboarding_actions` | Onboarding infrastructure; private per-user idempotency metadata | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only reached from `v2_set_onboarding_step` SECURITY DEFINER path.
 | `allin_private.v2_provider_cache` | Provider infrastructure; private operational cache | RLS enabled, deliberately no policies. | No schema USAGE or direct table privilege for anon/authenticated/service_role. | Only service-role-only `v2_provider_cache_get/put` SECURITY DEFINER RPCs. Not canonical ingredient/nutrition truth. |
@@ -148,9 +149,9 @@ All listed functions are owned by `postgres` and have an empty function search p
 |---|---:|---|---|
 | `public.v2_handle_new_user()` | Yes | No anon/authenticated/service_role direct EXECUTE | Auth.users AFTER INSERT trigger creates Profile, Settings and Onboarding rows. Not a client API. |
 | `public.v2_my_profile_state()` | Yes | authenticated only | Requires `auth.uid()`; returns only the caller's Profile, Settings, Onboarding, current published legal documents and latest acceptance. |
-| `public.v2_patch_profile_settings_section(text,jsonb,bigint,text)` | Yes | authenticated only | Requires `auth.uid()`; per-user advisory transaction lock; allowlisted sections; nonempty JSON object; positive expected version; bounded action ID; exact retry returns original version; changed-payload action-ID reuse fails; stale version raises serialization conflict. |
-| `public.v2_set_onboarding_step(text,text,bigint,text)` | Yes | authenticated only | Requires `auth.uid()`; one allowlisted step per call; complete/skip/reset; advisory lock; expected-version guard; same-state no-op without version bump; exact retries return original version even after later changes; changed action-ID reuse fails.
-| `public.v2_accept_legal_documents(text,text,text,boolean,text)` | Yes | authenticated only | Requires `auth.uid()`; exact latest current published Terms/Privacy/Founder Beta Terms; age attestation; bounded per-user idempotency key; changed-payload reuse fails. |
+| `public.v2_patch_profile_settings_section(uuid,text,jsonb,bigint,text)` | Yes | authenticated only | Requires `p_expected_user_id = auth.uid()` and fails SQLSTATE 42501 on mismatch; per-user advisory transaction lock; allowlisted sections; nonempty JSON object; positive expected version; bounded action ID; exact retry returns original version; changed-payload action-ID reuse fails; stale version raises serialization conflict. |
+| `public.v2_set_onboarding_step(uuid,text,text,bigint,text)` | Yes | authenticated only | Requires `p_expected_user_id = auth.uid()` and fails SQLSTATE 42501 on mismatch; one allowlisted step per call; complete/skip/reset; advisory lock; expected-version guard; same-state no-op without version bump; exact retries return original version even after later changes; changed action-ID reuse fails.
+| `public.v2_accept_legal_documents(uuid,text,text,text,boolean,text)` | Yes | authenticated only | Requires `p_expected_user_id = auth.uid()` and fails SQLSTATE 42501 on mismatch; exact latest current published Terms/Privacy/Founder Beta Terms; age attestation; bounded per-user idempotency key; changed-payload reuse fails. |
 | `public.v2_provider_cache_get(text,text)` | Yes | service_role only | Explicitly checks `auth.role()='service_role'`; returns unexpired cache plus source/license/freshness metadata. |
 | `public.v2_provider_cache_put(text,text,jsonb,text,text,timestamptz,timestamptz)` | Yes | service_role only | Explicitly checks service role; provider allowlist, key, payload size/type and fetch/expiry bounds; upsert by provider/cache key. |
 | `public.v2_set_updated_at()` | No | No API EXECUTE | Trigger helper for Profile, Settings and Onboarding timestamps. |
@@ -184,3 +185,26 @@ Verified against the live project catalog on 2026-11-10:
 6. **Clean rebuild / app validation:** live database types are now generated and checked in at `apps/mobile-v2/src/types/database.types.ts`, and the mobile Supabase client is parameterized with `Database`. Clean project reset/replay, npm install, typecheck, test suites and reproducible app bundle remain in ALL-224/ALL-222.
 
 No future domain table should be added until its owner supplies the same physical record: columns/types/nullability/defaults/checks/PK/FKs/indexes, classification, grants, RLS policies, writer/read RPCs, idempotency/version contract, function owner/search path/EXECUTE and authenticated two-user negative tests.
+
+
+## 7. Expected-owner mutation guard — migration 005
+
+Applied migration:
+- Source: `supabase/migrations/20261110000500_v2_expected_owner_mutation_guards.sql`
+- Live database version: `20261110105423` (`v2_expected_owner_mutation_guards`).
+
+All three authenticated mutation RPCs now require the caller's captured expected account UUID as the first argument. The function compares it to `auth.uid()` inside the SECURITY DEFINER body before performing any read/write or checking action-ledger replay. A mismatch or null expected identity fails with SQLSTATE `42501`.
+
+| RPC | Current argument contract |
+|---|---|
+| `v2_patch_profile_settings_section(uuid,text,jsonb,bigint,text)` | expected user, settings section, patch, expected settings version, action ID |
+| `v2_accept_legal_documents(uuid,text,text,text,boolean,text)` | expected user, Terms version, Privacy version, Founder Beta Terms version, age attestation, action ID |
+| `v2_set_onboarding_step(uuid,text,text,bigint,text)` | expected user, step, complete/skip/reset action, expected onboarding version, action ID |
+
+The previous signatures were dropped; no unbound overload remains. Authenticated-only EXECUTE grants were applied to the new signatures. Function ownership remains postgres, SECURITY DEFINER remains enabled, search path remains empty, and existing idempotency/version guards are unchanged.
+
+Committed rollback-only regression fixtures:
+- `supabase/tests/v2_expected_owner_mutation_guard.sql`: all three RPCs reject Account B as expected owner while Account A's JWT is active; then checks Account A's correct Settings owner passes the identity boundary. Switches JWT to Account B and verifies Account A is rejected.
+- `supabase/tests/v2_onboarding_progress_writer_replay.sql`: the complete onboarding lifecycle/retry/isolation replay now passes the explicit expected owner.
+
+Both fixtures executed against V2 without SQL errors. The synthetic accounts, progress/settings rows, legal receipts and both action ledgers were verified at zero after rollback. Live signature/grant inspection confirms only the new argument signatures exist; anon/service_role cannot execute them, authenticated can. The three private-table INFO and four per-user SECURITY DEFINER WARN advisor findings remain the expected documented posture.
