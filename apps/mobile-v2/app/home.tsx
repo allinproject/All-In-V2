@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
+import { colors } from '../src/theme/tokens';
 
 export default function HomeScreen() {
   const { user, loading, signOut } = useAuth();
@@ -27,13 +28,13 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0B0B0B' },
+  safe: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1, justifyContent: 'center', padding: 24, gap: 18 },
-  brand: { color: '#F7F4EC', fontSize: 18, fontWeight: '800', letterSpacing: 1.4 },
-  gold: { color: '#B79A57' },
-  title: { color: '#F7F4EC', fontSize: 30, fontWeight: '800' },
-  body: { color: '#AAA69D', fontSize: 15, lineHeight: 22 },
-  email: { color: '#B79A57', fontSize: 14 },
-  button: { minHeight: 48, backgroundColor: '#1D1D1D', borderColor: '#30302E', borderWidth: 1, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  buttonText: { color: '#F7F4EC', fontWeight: '700' }
+  brand: { color: colors.warmWhite, fontSize: 18, fontWeight: '800', letterSpacing: 1.4 },
+  gold: { color: colors.gold },
+  title: { color: colors.warmWhite, fontSize: 30, fontWeight: '800' },
+  body: { color: colors.mutedText, fontSize: 15, lineHeight: 22 },
+  email: { color: colors.gold, fontSize: 14 },
+  button: { minHeight: 48, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  buttonText: { color: colors.warmWhite, fontWeight: '700' }
 });

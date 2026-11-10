@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
+import { colors } from '../src/theme/tokens';
 
 export default function OnboardingRequiredScreen() {
   const { user, loading } = useAuth();
@@ -23,10 +24,10 @@ export default function OnboardingRequiredScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0B0B0B' },
+  safe: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1, justifyContent: 'center', padding: 24, gap: 18 },
-  brand: { color: '#F7F4EC', fontSize: 18, fontWeight: '800', letterSpacing: 1.4 },
-  gold: { color: '#B79A57' },
-  title: { color: '#F7F4EC', fontSize: 28, fontWeight: '800' },
-  body: { color: '#AAA69D', fontSize: 15, lineHeight: 23 },
+  brand: { color: colors.warmWhite, fontSize: 18, fontWeight: '800', letterSpacing: 1.4 },
+  gold: { color: colors.gold },
+  title: { color: colors.warmWhite, fontSize: 28, fontWeight: '800' },
+  body: { color: colors.mutedText, fontSize: 15, lineHeight: 23 },
 });
