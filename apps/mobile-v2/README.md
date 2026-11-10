@@ -70,3 +70,16 @@ Signup, legal acceptance and onboarding verify that the active Supabase session 
 
 
 All user-scoped mutation RPCs now require `p_expected_user_id` and compare it to `auth.uid()` inside PostgreSQL. A mismatch fails closed with SQLSTATE `42501`, even if an account switch occurs after a client-side session check but before the RPC reaches the database. Old signatures were dropped. Client call sites and generated public types pass the captured account ID. Rollback-only SQL tests for all three RPCs and onboarding idempotency/isolation passed.
+
+
+## Email confirmation and password recovery deep links
+
+V2 now sends signup confirmation and password-reset emails back through the Expo Router callback route:
+- App scheme: `allin365v2` (already declared in `app.config.ts`).
+- Callback route: `/auth/callback`.
+- Standalone/native callback URI: `allin365v2://auth/callback`.
+- Password recovery adds `?type=recovery` and continues to `/reset-password`; signup/email confirmation exchanges the PKCE code and returns to the existing access gate.
+
+**Required external Supabase Auth configuration:** add `allin365v2://**` to the V2 project's Auth Redirect URLs / Additional Redirect URLs allowlist before sending test confirmation or recovery emails. The Supabase project-details API available in this environment does not expose that Auth URL configuration, so its current allowlist has not been verified or changed. Test callbacks in a native development build/installed app, not Expo Go, because Expo Go uses a transient development URL rather than the stable app scheme.
+
+The callback exchanges the one-time PKCE code using `exchangeCodeForSession`. Malformed/expired links fail closed. Password change is guarded by the captured authenticated owner and returns to the normal V2 access gate. The local pure callback resolver tests pass; email delivery, allowlist, and installed-device callback acceptance remain pending.
