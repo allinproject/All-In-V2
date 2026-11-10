@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { advancesV2AuthSessionGeneration, authRouteState, isV2AccessAttemptCurrent, shouldApplyV2AuthEvent, shouldOfferV2ConfirmationResend } from './authRoute.ts';
+import { advancesV2AuthSessionGeneration, authRouteState, createV2AuthActionGuard, isV2AccessAttemptCurrent, shouldApplyV2AuthEvent, shouldOfferV2ConfirmationResend, v2AuthenticatedScreenKey } from './authRoute.ts';
 
 test('auth routing remains loading until session restoration settles', () => {
   assert.deepEqual(authRouteState({ loading: true, userId: null }), { state: 'loading' });
@@ -51,4 +51,24 @@ test('only sign-in and sign-out change the session identity generation', () => {
   assert.equal(advancesV2AuthSessionGeneration('INITIAL_SESSION'), false);
   assert.equal(advancesV2AuthSessionGeneration('TOKEN_REFRESHED'), false);
   assert.equal(advancesV2AuthSessionGeneration('USER_UPDATED'), false);
+});
+
+test('home auth UI state is isolated across account and session changes', () => {
+  const first = v2AuthenticatedScreenKey('user-a', 3);
+  assert.equal(first, v2AuthenticatedScreenKey('user-a', 3));
+  assert.notEqual(first, v2AuthenticatedScreenKey('user-a', 4));
+  assert.notEqual(first, v2AuthenticatedScreenKey('user-b', 3));
+  assert.notEqual(first, v2AuthenticatedScreenKey(null, 3));
+});
+
+test('local auth action guard rejects rapid repeated sign-out and releases after errors', () => {
+  const guard = createV2AuthActionGuard();
+  assert.equal(guard.isBusy(), false);
+  assert.equal(guard.tryEnter(), true);
+  assert.equal(guard.isBusy(), true);
+  assert.equal(guard.tryEnter(), false);
+  guard.leave();
+  assert.equal(guard.isBusy(), false);
+  assert.equal(guard.tryEnter(), true);
+  guard.leave();
 });
