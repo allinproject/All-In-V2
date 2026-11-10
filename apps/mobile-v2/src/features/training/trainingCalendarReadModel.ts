@@ -110,3 +110,32 @@ export function combineCalendarReads(args:{
 export function indicatorsForCalendarDay(result:CombinedCalendarResult,day:string){
   return monthDayMarkerSummary(result.markers,day);
 }
+
+/**
+ * Selected-day sections consume the same validated facts as month markers.
+ * A linked actual completion appears under Completed Activities, not twice in
+ * Scheduled Workouts. Unavailable source reads remain unavailable, not empty.
+ */
+export function calendarDaySections(result: CombinedCalendarResult, day: string): {
+  scheduled: CalendarEvidence<PlannedCalendarItem>;
+  completed: CalendarEvidence<CompletedCalendarItem>;
+} {
+  if (!validAthleteLocalDate(day)) {
+    return { scheduled: {status:'unavailable'}, completed: {status:'unavailable'} };
+  }
+  const completed:CalendarEvidence<CompletedCalendarItem> = result.completed.status==='ready'
+    ? {status:'ready',records:result.completed.records.filter(item=>item.athleteLocalDate===day)}
+    : {status:'unavailable'};
+  if (result.planned.status!=='ready') {
+    return {scheduled:{status:'unavailable'},completed};
+  }
+  // Do not suppress a scheduled session if actual data is absent or corrupt.
+  const linkedToday = new Set(completed.status==='ready'
+    ? completed.records.filter(item=>item.plannedSessionId).map(item=>item.plannedSessionId)
+    : []);
+  const scheduled = result.planned.records.filter(item=>
+    item.athleteLocalDate===day && item.state!=='cancelled'
+    && !(item.state==='planned' && linkedToday.has(item.id))
+  );
+  return {scheduled:{status:'ready',records:scheduled},completed};
+}
