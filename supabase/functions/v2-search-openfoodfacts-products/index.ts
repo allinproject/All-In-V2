@@ -36,7 +36,7 @@ function normalizeProduct(hit: any) {
     unique_scans_n: num(row.unique_scans_n),
     provider: "open_food_facts_search_a_licious",
     source_quality: "community_unverified",
-    source_license: "Open Food Facts / ODbL; community-contributed product data",
+    source_license: "Open Food Facts database / ODbL; individual contents / DbCL",
     review_required: true,
     exact_identity_confirmed: false,
   };
@@ -97,7 +97,7 @@ Deno.serve(async (request: Request) => {
     query,
     provider: "open_food_facts_search_a_licious",
     source_quality: "community_unverified",
-    source_license: "Open Food Facts / ODbL; community-contributed product data",
+    source_license: "Open Food Facts database / ODbL; individual contents / DbCL",
     exact_identity_confirmed: false,
     barcode_lookup_required: true,
     results,

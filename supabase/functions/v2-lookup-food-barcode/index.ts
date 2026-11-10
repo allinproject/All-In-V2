@@ -108,7 +108,7 @@ function normalizeOffProduct(barcode: string, product: any) {
     image_url: text(product.image_front_small_url) ?? text(product.image_front_url),
     usable: isBasisKnown && complete(suffix),
     source_quality: "community_unverified",
-    source_license: "Open Food Facts / ODbL; community-contributed product data",
+    source_license: "Open Food Facts database / ODbL; individual contents / DbCL",
     retrieved_at: new Date().toISOString(),
     review_required: true,
   };
