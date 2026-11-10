@@ -1,0 +1,4 @@
+project_id = "xarhuczrtzuiljmtdaeu"
+
+[functions.v2-search-usda-ingredients]
+verify_jwt = true
