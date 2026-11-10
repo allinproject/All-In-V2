@@ -143,3 +143,22 @@ V1 currently has an ACTIVE v7 JWT-protected `search-food-products` function (dep
 Provider choices: USDA FDC is the primary generic ingredient reference; Open Food Facts is the packaged/branded product and barcode source, retaining community-unverified quality and ODbL obligations. Do not add paid Edamam initially: the deterministic calculator plus USDA/OFF matches the reviewed V1 design. Reconsider only after a measured source-coverage gap.
 
 See [V2 Cookbook Ingredient-first Nutrition Calculator](../architecture/V2-COOKBOOK-INGREDIENT-FIRST-NUTRITION-CALCULATOR.md). Implementation order: ALL-225 calculator/yield port, ALL-226 provider adapters, then ALL-218 recipe catalog seed without macro fields.
+
+
+## Calculator implementation source preserved — 2026-11-10
+
+The following exact V1 source files at reference commit `b285fd7ddac879f6732d1a5bae5532cfecfd297f` have been copied into V2 under `docs/migration/reference/cookbook-calculator-v1/` as **reference-only inputs**:
+
+- `recipeAdaptationNutritionEvidence.ts` — pure deterministic calculator kernel.
+- `recipeNutritionOnOpen.ts` — latest app's ingredient-first nutrition display/estimate flow.
+- `cookingYieldIntelligence.ts` — exact evidence-keyed cooking-yield conversion.
+- `cookbookCookingYieldAdmission.ts` — ingest classification and manual-review/batch-required safeguards.
+- `SOURCE-MANIFEST.md` — source commit and porting warnings.
+
+These are not wired into V2 and are not deployable V2 modules. They retain V1 types and schema assumptions. The V2 implementation must adapt them into V2-owned source modules and preserve the no-recipe-macro rule.
+
+V1 provider runtime was also confirmed:
+- `search-food-products` ACTIVE v7, `verify_jwt=true`, deployed SHA-256 `6ffc6825214f20bb484078b47c35b79f43f6fcfce5447c9f7473ac1fc6267346`.
+- Generic ingredient lookup: USDA FoodData Central; packaged branded search: Open Food Facts / Search-a-licious.
+- Exact barcode lookup is a distinct path: USDA Branded candidate followed by Open Food Facts Product API v3.
+- V2 requires its own USDA FDC API key stored as an Edge Function secret; the V1 key is not copied or exposed.
