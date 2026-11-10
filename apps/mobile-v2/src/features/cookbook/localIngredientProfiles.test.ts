@@ -169,6 +169,32 @@ test('recalculate is deterministic for portions, and incomplete entries block th
   }
 });
 
+test('untrusted catalog shape and corrupted profile metadata cannot validate nutrition', () => {
+  assert.equal(resolveLocalIngredient(null as any, request()).status, 'missing');
+  assert.equal(resolveLocalIngredient({ ...catalog(), profiles: null } as any, request()).status, 'missing');
+
+  const malformedProfileId = catalog();
+  malformedProfileId.profiles = malformedProfileId.profiles.map(p =>
+    p.id === 'chicken-cooked-v1' ? { ...p, id: 42 as any } : p);
+  assert.equal(resolveLocalIngredient(malformedProfileId, request()).status, 'profile_conflict');
+
+  const corruptSource = catalog();
+  corruptSource.profiles = corruptSource.profiles.map(p =>
+    p.id === 'chicken-cooked-v1' ? { ...p, source_record_id: { id: 'fdc-123' } as any } : p);
+  assert.equal(resolveLocalIngredient(corruptSource, request()).status, 'review_required');
+
+  const corruptItem = catalog();
+  corruptItem.profiles = corruptItem.profiles.map(p =>
+    p.id === 'egg-item' ? { ...p, basis_label: 12 as any } : p);
+  assert.equal(resolveLocalIngredient(corruptItem, {
+    line_id: 'egg-line', label: 'large egg', preparation_state: 'as_sold', quantity_each: 2,
+  }).status, 'invalid_quantity');
+
+  const nullNutrient = catalog();
+  nullNutrient.nutrients = [...nullNutrient.nutrients, null as any];
+  assert.equal(resolveLocalIngredient(nullNutrient, request()).status, 'ready');
+});
+
 test('malformed ingredient request identities or labels fail closed without throwing', () => {
   for (const changes of [
     { line_id: null as any },
