@@ -168,3 +168,15 @@ test('recalculate is deterministic for portions, and incomplete entries block th
     assert.ok(incomplete.reasons.includes('local_ingredient_missing:missing-line'));
   }
 });
+
+test('malformed ingredient request identities or labels fail closed without throwing', () => {
+  for (const changes of [
+    { line_id: null as any },
+    { preparation_state: 12 as any },
+    { ingredient_id: 123 as any },
+    { label: { name: 'chicken breast' } as any },
+  ]) {
+    const result = resolveLocalIngredient(catalog(), request(changes));
+    assert.equal(result.status, 'missing');
+  }
+});
