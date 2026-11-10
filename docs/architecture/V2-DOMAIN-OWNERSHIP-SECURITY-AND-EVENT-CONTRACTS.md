@@ -575,3 +575,18 @@ No universal writer, generic SQL/RPC authority, persistent global action ledger 
 This carries the same capability/parity rule into all domain work: Coach is another interface to the same canonical owner operations, not a parallel AI-only writer. Direct UI remains correct for scanning, permissions, ambiguous identity and sensitive/destructive confirmation.
 
 **Not yet implemented:** this is a reviewed architecture proposal, not a deployed Coach runtime. ALL-240 remains blocked by ALL-222 and ALL-230. The finite action registry, typed context schemas, manifest integrity/lifetime, per-domain preview/result adapters, timeout reconciliation and Coach parity test harness still require owner approval and implementation.
+
+
+## 33. Provider-cache expiry schedule and first-run verification — 2026-11-10
+
+The private provider-response cache now has a bounded recurring expiry cleanup path:
+
+- Migration 006 `20261110000600_v2_provider_cache_expired_cleanup.sql` (live DB version `20261110122952`) adds the service-role-only public purge wrapper and bounded private owner-only helper.
+- Migration 007 `20261110000700_v2_provider_cache_cron_schedule.sql` (live DB version `20261110124420`) installs pg_cron 1.6.4 and creates active job `allin-v2-provider-cache-expired-purge`.
+- Schedule: `17 * * * *` UTC (minute 17 every hour); database and owner: `postgres`; command: `select allin_private.v2_provider_cache_prune_expired(5000);`.
+- Cron schema USAGE is restricted to postgres. The private helper is SECURITY INVOKER with empty search_path and no anon/authenticated/service_role EXECUTE; the public SECURITY DEFINER wrapper remains service_role-only. Service role has no direct private cache table privilege.
+- Rollback-only cleanup, owner/grant/schedule assertions and service-role wrapper checks passed. The live advisor remains at three intentional private-table INFO notices and four existing per-user authenticated SECURITY DEFINER WARN notices.
+
+**First scheduled run verified in live `cron.job_run_details`:** 2026-11-10 13:17:00.135811 UTC start; 13:17:00.143181 UTC end (7:17 AM Central); status `succeeded`; return message `1 row`. The cache row count was zero; no expired record needed deletion. This verifies the recurring path actually executed, not only that it was registered.
+
+ALL-227 remains In Progress for USDA quota-header telemetry and cross-isolate throttling, Search-a-Licious quota/terms, Deno/provider integration tests, V2 USDA secret, OFF User-Agent/licence review and safe Edge Function deployment. Provider endpoints remain source-only; this Cron job does not deploy or call external providers.
