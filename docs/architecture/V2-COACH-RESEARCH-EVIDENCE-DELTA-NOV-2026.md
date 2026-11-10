@@ -86,7 +86,7 @@
 
 ## Remaining research and validation debt — explicit
 
-This document covers eight evidence themes across several increments, **not all 17 historical evidence domains**. The next research audit must inventory each prior registry topic against current primary reviews/guidelines, record checked year/source/claim/population, mark retained/revised/retired/unknown, name a canonical V2 decision owner and require at least one positive and one negative executable scenario. The 2024 heat guidance and 2026 mental-health consensus are **source reviews only**; they have not yet been tested against live Coach generations or verified on a device.
+This document covers nine evidence themes across several increments, **not all 17 historical evidence domains**. The next research audit must inventory each prior registry topic against current primary reviews/guidelines, record checked year/source/claim/population, mark retained/revised/retired/unknown, name a canonical V2 decision owner and require at least one positive and one negative executable scenario. The 2024 heat guidance and 2026 mental-health consensus are **source reviews only**; they have not yet been tested against live Coach generations or verified on a device.
 
 
 ## Evidence 6 — acute/chronic workload and injury inference (2026 synthesis)
@@ -115,7 +115,7 @@ This document covers eight evidence themes across several increments, **not all 
 
 ## Research audit status update
 
-The delta now covers **eight evidence themes**, some sharing a primary source. This is not seven independently verified implementation domains and does not complete the legacy 17-domain evidence review. Every evaluation above remains **proposed** until the canonical ALL-241 harness executes against actual typed readers, model output, application state and safety/cost acceptance. Research documentation cannot substitute for those checks.
+The delta now covers **nine evidence themes**, some sharing a primary source. This is not seven independently verified implementation domains and does not complete the legacy 17-domain evidence review. Every evaluation above remains **proposed** until the canonical ALL-241 harness executes against actual typed readers, model output, application state and safety/cost acceptance. Research documentation cannot substitute for those checks.
 
 ## Executed V2 cross-domain fixture inventory — 2026-11-10
 
@@ -148,3 +148,21 @@ The repository now includes `apps/mobile-v2/src/features/training/coachCrossDoma
   6. User with concerning exercise symptoms or a medically restricted activity: no categorical clearance or mandatory progression.
 
 **Research scope:** This adds one *theme*, not an executed Coach model evaluation, a clinical algorithm or approval for automatic training writes. WHO population targets and the 2025 cohort correlations must not be used to diagnose fitness or assign precise individual risk.
+
+## Evidence 9 — endurance fueling, gut tolerance and overhydration (2019–2026)
+
+- **Current endurance fuel synthesis:** *From Metabolism to Medals: Contemporary Perspectives and Revisiting Carbohydrate Guidelines for Fueling Endurance Athletes during Exercise*, Journal of Nutrition 156(5):101442 (May 2026), published online 25 February 2026, DOI [10.1016/j.tjnut.2026.101442](https://doi.org/10.1016/j.tjnut.2026.101442). Historical ACSM sport-nutrition guidance considers up to about 90 g/hour with multiple transportable carbohydrate sources for sustained exercise beyond ~2.5–3 hours. The 2026 review notes emerging research where up to ~120 g/hour may be tolerable/effective for some trained participants but **does not substantiate the highest reported field intakes, including 120–200 g/hour, as a universal evidence-backed prescription**. Intensity, duration, training status, carbohydrate formulation, course access and gastrointestinal tolerance matter.
+- **Corroborating nutrition framework:** *The 4Ps framework of nutritional strategies for optimal performance* (2026), [Springer Nutrition](https://link.springer.com/article/10.1186/s44410-026-00022-0), discusses event-specific intake and practicing the intended fueling during training (gut training), not debuting an untested high-dose strategy on race day.
+- **Hydration/EAH clinical guideline:** Wilderness Medical Society *Clinical Practice Guidelines for the Management of Exercise-Associated Hyponatremia: 2019 Update*, DOI [10.1016/j.wem.2019.11.003](https://doi.org/10.1016/j.wem.2019.11.003). Overdrinking hypotonic fluids contributes to hyponatremia; sodium supplements do **not** neutralize overdrinking risk. Individual sweat/fluid losses vary widely. Thirst-guided drinking can help prevent overhydration for many endurance settings, while some demanding scenarios warrant carefully estimated individual needs. These clinical guidelines are not a consumer-app diagnosis, treatment protocol or blanket instruction to ignore thirst/medical circumstances.
+- **Coach rule:** Derive fuel suggestions from confirmed sport, expected moving time, intensity, course accessibility/aid-station evidence, athlete's previously tolerated foods and intake history, heat and preferences. Do not assign a blanket 90/120 g per hour to a novice or equate the exact number with a required minimum; higher trial doses need gradual practice and informed review. Ingredient calories/macros come from reviewed local Cookbook profiles, not guessed snack brands. Unverified aid stations and missing Food Log history remain unknown. Never prescribe precision sweat-rate, sodium, or bottle-hour values without observations; avoid advice to drink beyond tolerance to 'stay ahead' of thirst. Serious exertional symptoms warrant urgent assessment, not Coach diagnosis.
+- **Proposed ALL-234/235/236/241 evaluation cases:**
+  1. Experienced ultra runner with verified aid stations and documented tolerable gels/foods: review a testable fueling approach tied to course sections without inventing exact station offerings.
+  2. First long-distance athlete without prior carbohydrate tolerance data: avoid an unqualified high-grams-per-hour directive or race-day novelty.
+  3. Short easy walk or indoor bike recovery ride: do not demand endurance-race carbohydrate loading.
+  4. Provider carbohydrate label or local Cookbook profile is missing: no fabricated nutrition value for that food.
+  5. Hot race without individual sweat test: do not invent exact sodium-loss or hydration formula; discuss individualized practice and avoiding overdrinking.
+  6. Aid stations unknown: no claim of available sports drink, gels, snacks or water at specific mile markers.
+  7. Athlete reports repeated GI distress at prior intakes: prioritize tolerance review/adjustment rather than increasing intake because a review supports higher trained-athlete ranges.
+- **Safety limitation:** This is evidence for reviewable Coach guidance, not an approved athlete-specific medical/nutrition intervention. Any medication/condition-specific recommendations, REDs concerns or suspected EAH require appropriate qualified care.
+
+**Audit state:** Nine themes documented, not the full legacy 17-domain audit; the proposed model response scenarios above are NOT executed.
