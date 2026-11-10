@@ -12,7 +12,7 @@
 
 ## 1. Binding ownership and product contracts
 
-1. Goals owns the athlete's explicit outcome/intent: what they want to achieve, why, the target window, measurable baseline/target, priority and evidence requirements.
+1. Goals owns the athlete's explicit outcome or intention: what they want to change, why it matters, optional target window, optional measurable baseline/target, priority and evidence requirements. A valid goal may begin as a qualitative intention with no baseline, numeric metric or deadline.
 2. Goals does not own training plans, workout calendars, planned sessions, completed activities, exercise definitions, race/course records, PRs, badges, milestone totals or Coach conversations.
 3. Training (ALL-246) consumes an accepted goal revision to create a reviewable plan. It owns plan/session dates, progression, daily structure and acceptance. Goal changes do not silently rewrite an accepted Training revision.
 4. Completed Activity (ALL-243) owns measured activity facts and the versioned metric registry. Goals references a metric definition/version for outcome measures; it does not recreate sport metric definitions or source facts.
@@ -20,7 +20,7 @@
 6. Exercise identity and movement variants remain with Exercise Library (ALL-258). A strength goal references an exact canonical exercise ID; it does not invent a new exercise label or treat a generic workout as a verified lift result.
 7. Progress (ALL-249) owns the user-facing progress, PR, Badge and Milestone projections. It reads Goals, Training and Completed Activity; it does not create a second goal, workout or result database.
 8. Every goal is sport-/measure-specific. Do not collapse running distance, cycling distance, swim pace, machine steps/floors, lifting load/reps, consistency and general capacity into one universal score or interchangeable unit.
-9. A goal without a reliable baseline or target measure may remain a bounded draft. It is not silently assigned a 1RM, FTP, stair count, pack weight, pace, course distance or other missing value.
+9. A goal may be an active qualitative intention or behavior goal without a reliable baseline, numeric target or deadline. It can still receive small, user-approved next steps. Never force a numeric target or deadline and never silently assign a 1RM, FTP, stair count, pack weight, pace, course distance, calories or body weight.
 10. Baseline, target, actual evidence and prediction are distinct: a user-entered baseline is not measured device evidence; a prediction is not a completed result; a goal being scheduled is not a goal being achieved.
 
 ## 2. Proposed physical ERD
@@ -31,7 +31,7 @@ The proposal separates stable goal identity, immutable goal revisions, typed mea
 erDiagram
   auth_users ||--o{ v2_goals : owns
   v2_goals ||--o{ v2_goal_revisions : versions
-  v2_goal_revisions ||--o{ v2_goal_revision_measures : defines
+  v2_goal_revisions ||--o{ v2_goal_revision_measures : optionally_defines\n  v2_goal_revisions ||--o{ v2_goal_revision_behavior_targets : optionally_defines
   v2_goals ||--o{ v2_goal_relationships : relates
   v2_goal_revisions ||--o{ v2_goal_measure_evidence : supports
   v2_goal_revision_measures ||--o{ v2_goal_measure_evidence : evidence_for
@@ -62,7 +62,7 @@ erDiagram
     text goal_schema_version
     timestamptz accepted_at
   }
-  v2_goal_revision_measures {
+  v2_goal_revision_behavior_targets {\n    uuid id PK\n    uuid goal_revision_id FK\n    text behavior_code\n    text behavior_description\n    text cadence_kind\n    numeric target_frequency\n    text frequency_period\n    boolean user_confirmed\n  }\n  v2_goal_revision_measures {
     uuid id PK
     uuid goal_revision_id FK
     text metric_code
@@ -142,14 +142,14 @@ Proposed columns:
 - source_kind TEXT not null: athlete_authored, coach_proposal, import_review, controlled_system.
 - source_ref TEXT null for the exact proposal/import reference; it is provenance, not a permission grant.
 - priority_role TEXT not null: primary, secondary, maintenance, optional. The role is time-scoped to this revision, not an immutable personality trait.
-- start_date DATE not null; target_date DATE not null; timezone TEXT null only if there is no date/time interpretation requiring one.
+- start_date DATE null; target_date DATE null; optional check_in_date DATE null; timezone TEXT null only if there is no date/time interpretation requiring one. Missing dates remain null; the system may use created_at for display context but must not represent it as an athlete-selected start date.
 - goal_schema_version TEXT not null; created_at, reviewed_at, accepted_at.
 - bounded change/rationale summary.
 
 Constraints and rules:
 - Unique (goal_id,revision_number) and (id,goal_id,user_id).
 - At most one accepted/current revision per goal. A new accepted revision supersedes the old one; historical revisions remain immutable and queryable.
-- target_date must be on or after start_date; date semantics are explicit athlete-local dates where applicable.
+- When both dates exist, target_date must be on or after start_date; date semantics are explicit athlete-local dates where applicable. Neither date is mandatory for a qualitative intention. A check-in date is a review prompt, not a deadline or promise of completion.
 - Goal revision acceptance checks expected goal version and exact approval/action ID. Stale revision updates fail rather than overwriting a newer target.
 - coach_proposal is never accepted merely because Coach created it. User approval and the canonical Goal writer are required.
 - A goal change creates a new revision. It does not rewrite existing Training plan revisions or historical Completed Activity.
@@ -173,7 +173,27 @@ Metric/ownership contract:
 - Unit, comparator and precision are inherited from the referenced metric contract. No cross-sport or display-unit conversion occurs in the stored target without a named, reviewed conversion.
 - Baseline absence remains null. No default 0, 1RM, FTP, pace, floors, weight or distance is inserted.
 
-### 3.4 public.v2_goal_relationships — concurrent and hierarchical goals
+### 3.4 public.v2_goal_revision_behavior_targets — user-approved habit/behavior intentions
+
+Proposed columns:
+- id UUID primary key; goal_revision_id UUID not null; user_id UUID not null.
+- behavior_code TEXT null: an approved behavior category when one exists; null is allowed for a plain-language custom intention.
+- behavior_description TEXT not null: concise athlete-approved action in the athlete's own words or a reviewed Coach proposal.
+- cadence_kind TEXT null: daily, weekly, count_per_period, event_based, or qualitative/no_fixed_cadence.
+- target_frequency NUMERIC null and frequency_period TEXT null: both optional; used only when the athlete chooses a measurable cadence.
+- evidence_owner TEXT null: references an existing owner such as Training completion, Food Log, Meal Prep or user check-in. Do not create a shadow habit log.
+- evidence_policy TEXT not null: user_check_in, canonical_activity, canonical_food_or_meal_prep, mixed, or no_tracking.
+- user_confirmed BOOLEAN not null; accepted_at and timestamps.
+
+Rules:
+- A qualitative intention may have no numeric metric or fixed cadence.
+- A behavior becomes a plan only after the athlete confirms the proposed action and any frequency. Do not turn a broad intention into a long checklist.
+- Evidence should come from existing canonical events when available. Self-report remains explicitly user-reported; an unlogged behavior is not assumed to have happened.
+- No punitive streaks, missed-day shame, forced notifications or engagement rewards. A missed action prompts a neutral review only when helpful.
+- Behavior targets are optional revision children, not another independent Goal or habit engine.
+- The user may keep a broad intention active while choosing one small next step; changing the step creates a new revision or superseding behavior target according to the approved version contract.
+
+### 3.5 public.v2_goal_relationships — concurrent and hierarchical goals
 
 Proposed columns:
 - id UUID primary key; user_id UUID not null; goal_id UUID not null; related_goal_id UUID not null.
@@ -188,7 +208,7 @@ Rules:
 - Relative priority role is explicitly stored on a goal revision. A relationship does not automatically make one goal primary or lower another's role.
 - A goal can be secondary/maintenance to one active training context and primary in another later context. Do not hard-code one global forever-primary flag.
 
-### 3.5 public.v2_goal_measure_evidence — provenance and review lifecycle
+### 3.6 public.v2_goal_measure_evidence — provenance and review lifecycle
 
 Proposed columns:
 - id UUID primary key; goal_revision_measure_id UUID not null; user_id UUID not null.
@@ -209,7 +229,7 @@ Rules:
 - An activity only counts when its sport/subtype, metric definition/version, measurement kind, source quality and comparison class satisfy the goal measure.
 - DNF/DNS/DQ remain neutral race-result states; no shame/failure goal outcome. A goal can be retired or revised without rewriting race history.
 
-### 3.6 Private idempotency and audit
+### 3.7 Private idempotency and audit
 
 Proposed allin_private.v2_goal_actions:
 - Composite primary key (user_id,client_action_id); goal ID; action type; payload hash; expected/result goal version; resulting revision ID; created time.
@@ -221,11 +241,31 @@ Proposed audit:
 - Actor identity and action source are explicit. Athlete edits and Coach-proposed changes are distinguishable.
 - Private ledger RLS enabled, no policies, no direct anon/authenticated/service_role grants; narrow owner functions only.
 
+## 3.8 Goal classes and progressive refinement
+
+The goal framework supports these broad, non-exclusive domains:
+- **Performance/capability:** race results, distance/time, strength benchmarks, swimming, cycling, stair/elliptical, hike/ruck and sport skills.
+- **Body composition/physique:** weight change, muscle development, strength/physique intentions and other user-selected indicators. Scale weight and measurements are optional. Do not promise a six-pack or imply spot reduction; body-composition outcomes vary by person and are not guaranteed.
+- **Nutrition/food habits:** eat more consistently, cook at home, improve food variety, include more vegetables, improve protein habits or reduce reliance on takeout. Calorie/macro tracking is optional unless the athlete explicitly chooses it and the required data is adequate.
+- **Activity/fitness habits:** walk more, establish an exercise routine, improve mobility or develop consistency.
+- **General wellbeing:** feel healthier, improve day-to-day energy or establish a sustainable routine. Keep claims subjective and user-reported unless a supported measure exists.
+- **Exploratory intention:** the athlete knows they want a change but is not yet sure what outcome or measure they want.
+
+A goal may move through a progressive refinement path:
+1. Plain-language intention (no forced metric/date).
+2. Clarified direction and why it matters.
+3. One small athlete-approved behavior or next step, optionally with a cadence.
+4. Optional measurable baseline/target and check-in window when useful and supported.
+5. Accepted coordinated plan/commitments across existing Training, Fuel, Kitchen and Recovery owners.
+6. Review and revise based on actual experience and the athlete's feedback.
+
+An athlete may remain at any stage. Not every goal must become a performance plan. Multiple goals may coexist with primary/secondary/maintenance roles and effective dates; Coach must explain tradeoffs rather than collapsing them into a universal score.
+
 ## 4. Cross-domain ownership and no-duplicate rules
 
 | Concern | Canonical owner | Goal relationship |
 |---|---|---|
-| Goal intent, baseline/target revision, goal priority/relationships | Goals — ALL-239 | Owns goal identity and revision; does not create plan/activity facts. |
+| Goal intention, optional baseline/target revision, behavior targets, priority/relationships | Goals — ALL-239 | Owns qualitative and measurable goal identity/revision; does not create plan/activity facts. |
 | Daily/weekly plan and workout schedule | Training — ALL-246 | Consumes accepted goal revision; creates separate plan revision/session identities. |
 | Completed workout facts and sport metric definitions | Completed Activity — ALL-243 | Provides exact evidence/measure definitions; owns actual values and source provenance. |
 | Race/event/course/result | Race/Route — ALL-234 | Provides canonical race/result identity and verified course evidence. |
@@ -321,3 +361,21 @@ Training plan creation/rebuild is not part of these Goal operations. When a goal
 12. How accepted goal revisions inform Training replan preview, and what changes require a new Training revision.
 
 Until these decisions are approved, do not create Goals DDL, seed an unreviewed goal metric catalog, expose Goal write RPCs or claim all-sport goal persistence is implemented.
+
+
+## 10. Non-race lifestyle goals — founder-approved extension, 2026-11-10
+
+The goal model must serve an athlete with no race, benchmark or numeric body target. Example starting statements include “I want to eat better,” “I want to get in shape,” “I want to lose some weight,” “I want to build muscle,” “I want a six-pack,” or “I want to feel healthier.”
+
+Required behavior:
+- These are valid goals and must not be rejected or forced into the race-plan schema.
+- A broad intention can be saved/started without a measured baseline, numeric target, calorie target, goal weight, start date or target deadline.
+- Coach converses to understand what the user means and what is realistic in their life (work schedule, budget, food preferences, cooking access, current activity, exercise access and tracking preferences) without turning onboarding into an interrogation.
+- Coach offers one or two useful starting actions, not a long generic checklist. User chooses/approves the behavior and any cadence. Examples may include cooking a few meals at home, adding a walk, establishing a manageable strength routine or improving meal consistency.
+- Weight-loss and physique goals coordinate Nutrition/Fuel, Training/Strength, activity and Recovery. No aggressive restriction, mandatory weigh-ins, guaranteed visible abs, spot-reduction claims or forced calorie/macro tracking. Scale weight, body measurements and photos are optional and private.
+- “Eat better” does not automatically mean weight loss or calorie tracking. Coach first discovers what better means to that athlete; nutrition improvements can use behavior goals and qualitative check-ins.
+- General wellbeing goals use user-reported feedback unless a canonical evidence measure exists. No invented universal wellness score.
+- Goals may be refined later into measurable outcomes or behaviors without losing the original intention/history. Adding a measurable target or deadline is a new revision and requires user approval.
+- Progress presents goal-specific evidence and optional self-assessment. It avoids punitive streaks or shame for missed habits, and never celebrates dangerous restriction/overtraining.
+
+No new global habit engine, calorie engine or body-composition scoring system is authorized. Behavior evidence reuses existing Training, Food Log, Meal Prep and user-check-in sources.
