@@ -113,7 +113,13 @@ export function buildAthleteHistoryReadModel(input:{
     typeof r.updatedAt!=='string'||!Number.isFinite(Date.parse(r.updatedAt))
   )))throw new Error('An active athlete restriction is incomplete. Refresh canonical restrictions before Coach plans.');
  const restrictions=input.restrictions.filter(r=>r&&r.status==='active').sort((a,b)=>timestamp(b.updatedAt)-timestamp(a.updatedAt));
- const events=input.events.filter(safeEvent).filter(e=>e.occurredAt.slice(0,10)>=input.fromDate&&e.occurredAt.slice(0,10)<=input.throughDate&&(!e.sport||sports.includes(e.sport)));
+ const generatedAtMs=Date.parse(input.generatedAt);
+ // Completed history must have happened before it was recorded, and no record
+ // may be presented as already known before this context snapshot existed.
+ const events=input.events.filter(safeEvent).filter(e=>
+   Date.parse(e.occurredAt)<=Date.parse(e.recordedAt)&&Date.parse(e.recordedAt)<=generatedAtMs&&
+   e.occurredAt.slice(0,10)>=input.fromDate&&e.occurredAt.slice(0,10)<=input.throughDate&&
+   (!e.sport||sports.includes(e.sport)));
  const max=Math.max(1,Math.min(100,Math.floor(input.maxEvents??50)));
  events.sort((a,b)=>timestamp(b.occurredAt)-timestamp(a.occurredAt)||timestamp(b.recordedAt)-timestamp(a.recordedAt));
  return{
