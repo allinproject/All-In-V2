@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.v2-search-openfoodfacts-products]
 verify_jwt = true
+
+[functions.v2-stripe-billing]
+verify_jwt = false
