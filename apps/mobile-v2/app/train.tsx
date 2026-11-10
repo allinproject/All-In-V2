@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Link, Redirect } from 'expo-router';
+import { Link, Redirect, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import { formatCalendarDay, shiftCalendarDate, weekDaysForDate } from '../src/features/training/calendarDayView';
+import { validAthleteLocalDate } from '../src/features/training/manualActivityDraft';
 
 function todayOnDevice(): string {
   const now = new Date();
@@ -19,8 +20,9 @@ function todayOnDevice(): string {
  */
 export default function TrainingCalendarScreen() {
   const { user, loading } = useAuth();
+  const params = useLocalSearchParams<{ date?: string }>();
   const gate = useAccessGate();
-  const [day, setDay] = useState(todayOnDevice);
+  const [day, setDay] = useState(() => typeof params.date === 'string' && validAthleteLocalDate(params.date) ? params.date : todayOnDevice());
   const week = weekDaysForDate(day);
 
   if (!loading && !user) return <Redirect href="/sign-in" />;
