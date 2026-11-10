@@ -75,6 +75,12 @@ export default function SignUpScreen() {
     setError(null);
     setNotice(null);
     try {
+      const { data: currentSession, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (currentSession.session) {
+        throw new Error('A V2 account is already signed in. Sign out before creating another account.');
+      }
+
       const normalizedEmail = email.trim().toLowerCase();
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: normalizedEmail,
@@ -95,6 +101,7 @@ export default function SignUpScreen() {
           p_client_action_id: action,
         });
         if (acceptanceError) throw acceptanceError;
+        await assertV2SessionOwner(supabase, data.session.user.id);
         setNotice('Your V2 account was created and the reviewed legal versions were recorded. Opening ALL IN 365…');
       } else {
         setNotice('Your V2 account request was accepted. Check your email to confirm the address, then sign in to finish the legal acceptance receipt before entering the app.');
