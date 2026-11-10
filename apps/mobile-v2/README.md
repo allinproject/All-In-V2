@@ -1,19 +1,23 @@
-# ALL IN 365 V2 mobile foundation
+# V2 mobile application
 
-This is a new, isolated Expo application path. It intentionally does not import the legacy `Native/` application's route components or stores.
+This is the independent ALL IN 365 V2 Expo application.
 
-## First slice status
+## Current scope
 
-- V2 app shell and routes: scaffolded.
-- Supabase Auth adapter: uses the existing project's public URL/publishable key and persistent Expo SQLite-backed localStorage.
-- Existing-account email/password sign-in, session restore and sign-out: implemented in source.
-- Auth route-state unit tests: added.
-- Real credentials, device install and live existing-account acceptance: not yet run.
+- Existing-account sign-in screen and session adapter scaffold.
+- Persistent local session storage.
+- Fail-closed legal acceptance and onboarding access gate.
+- No Coach writes, recipe writes, or data migration yet.
 
-## Local setup
+## Backend warning
 
-1. Copy `.env.example` to `.env` and fill it with the same existing ALL IN 365 Supabase project URL and publishable key used by the current Native app. Do not add service-role keys.
-2. Install dependencies from this directory with the repository-approved npm workflow.
-3. Run `npm run typecheck`, `npm run test:auth`, then `npm run start`.
+The dedicated V2 Supabase project (`xarhuczrtzuiljmtdaeu`) is currently empty and does not contain existing V1 users or history. Do not assume existing credentials work against it. Do not connect this app to V2 for real-user sign-in until the identity and data-continuity strategy is approved. Never place V1 production secrets or service-role keys in this repository.
 
-Do not add production credentials to the repository. V2 currently exposes only a minimal authenticated shell; no Coach or recipe write is claimed yet.
+## Local checks
+
+1. Copy `.env.example` to `.env` only for isolated V2-development tests.
+2. Install dependencies with the approved npm workflow (Node >=22.13).
+3. Run `npm run test:auth` and `npm run typecheck`.
+4. Start with `npm run start`.
+
+Real-user authentication, Coach continuity, canonical history and device installation are not yet validated.
