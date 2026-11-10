@@ -238,3 +238,56 @@ Use three coordinated owners: Daily Sport Nutrition Intelligence; existing Endur
 
 ### Review scope honesty
 This audit covers the current conversation/project context, indexed project/library research handoffs and inspected V1 source/tests. It does not claim review of every archived ChatGPT chat in the user's account; archived chats not exposed/indexed in this project are not independently accessible to this session. The user can supply/export those records for a true conversation-by-conversation review.
+
+
+## 11. Gear, environment and outdoor-session intelligence
+
+Coach must use the actual planned session, official race/course, terrain, scheduled weather, daylight/UV, athlete-owned gear, preferences and history to suggest useful equipment.
+
+- Trail races/plans identify terrain, technicality, elevation and surface from verified course evidence. Suggest local trail routes/exposures appropriate to the athlete's ability, planned purpose, route distance/elevation and current access/closures. Do not suggest random nearby trails merely because the race is a trail event.
+- Suggest trail-appropriate footwear for verified trail/technical sessions; road footwear for road sessions. Consider athlete's owned shoes, role tags, mileage inspection state, comfort feedback and rotation preference. Never auto-assign, buy, retire or claim shoe rotation prevents injury.
+- For cold/wet/windy/hot sessions, give context-specific clothing and safety suggestions (layers, gloves, hat/ear coverage, visibility, traction, airflow) using scheduled-session forecast, not just current weather.
+- For long outdoor daytime sessions in strong sun, use trusted UV/daylight/forecast evidence to suggest sunscreen, sunglasses/hat and reapplication planning. Never assume full sun or daytime from "outdoor" alone. Unknown UV remains unknown.
+- Prefer gear the athlete already owns. Ask/offer alternatives when inventory is unknown; no shopping upsell.
+- Missing route/weather/time/UV evidence means no false-specific recommendation. Severe weather safety alerts outrank optional gear tips.
+
+V1 assets to preserve: canonical shoe inventory/mileage/assigned-workout history, shoe role recommendation, structured user feedback, route validation and NWS forecast/alert source. V1 shoe context is mainly triggered by shoe-related requests; V2 needs context-aware recommendation during plan/session preparation.
+
+## 12. Low-noise proactive notifications
+
+Preserve V1's existing notification event ledger, preferences/push gate, terminal/expiry integrity, dedupe, delivery bridge, consume-after-action and relevance scoring. Do not create a second notification system.
+
+Notification policy:
+- relevance over volume; default calm.
+- one actionable notification per decision/event, deduped across retries/devices.
+- respect user category preferences, quiet hours, local timezone, push permission, opt-outs, snooze/decline/dismiss and in-app action/completion.
+- batch low-priority insights into Today/in-app digest; push only for timely action.
+- no generic motivation spam, shame, streak pressure, every-workout prompts or repeated declined reminders.
+- separate critical/time-sensitive, actionable today and optional insights. Severe weather/urgent safety may outrank optional coaching, but never bypass system push permission or explicit user opt-out.
+- candidate events: key session prep, relevant scheduled weather/gear/UV, race/course update, pending plan reflow approval, long-session fueling prompt, repeated recovery pattern, gear inspection threshold and user-configured meal prep reminders.
+- allow category tuning and explain why a notification was sent.
+
+## 13. Smart Recovery and activity-personalized mobility
+
+Recovery must be based on what the athlete **actually completed**, current cumulative load and what is next—not simply the next uncompleted session.
+
+V1 finding: `recoveryStretchCatalog.ts` chooses a small fixed set by looking at the next uncompleted item in today's Training snapshot (run/ride/strength/default); its Coach state includes that single activity plus sleep, HRV, resting HR and hydration. A separate proposal contract requires user approval before applying a stretch-set change. This is useful but too shallow for longitudinal, whole-athlete personalization.
+
+V2 requirements:
+- retrieve recent completed activities, sport/session details and actual strength exercise/muscle-group history separately from upcoming plans;
+- account for trail/elevation/terrain, run impact, cycling posture, actual strength movements/sets/load/RPE, swim shoulder/upper-body demand, multisport and two-a-days;
+- enforce active exercise restrictions, pain/illness/return-to-training rules and user's mobility preferences;
+- offer rest, easy movement, gentle mobility, breathing or no intervention when appropriate; stretching is not mandatory and must not be claimed to prevent injury or accelerate recovery;
+- distinguish pain/illness from ordinary soreness; safety/return policies override;
+- explain briefly why suggested items match completed training; ask optional helpful/not-helpful/discomfort feedback;
+- preserve proposal/review/approval before modifying a saved Recovery plan;
+- wearable data is contextual, not a diagnosis or automatic readiness verdict.
+
+## 14. V1 audit summary — gear, notifications and recovery
+
+- Gear: real owned-shoe inventory/mileage/history and role-based recommendation primitives exist; current Coach Gear context is primarily shoe-query-triggered. Context-aware cold/UV/clothing/gear prep is not proven end-to-end.
+- Routes/environment: V1 has run/cycling route validation and NWS scheduled weather/alert evidence. Local trail recommendation must be course/goal/ability-specific, not merely nearest route.
+- Notifications: V1 has a substantial event/dedupe/preferences/delivery/relevance system. V2 should extend it with coaching categories and intelligent batching rather than replacing it.
+- Recovery: V1 fixed stretch catalog and activity-type rules exist, but selection currently looks at the next uncompleted item rather than rich completed exercise/load history. V2 must correct that.
+
+Tracked in ALL-236 Gear/Environment, ALL-237 Notification Intelligence and ALL-238 Smart Recovery under ALL-217.
