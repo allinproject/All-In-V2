@@ -70,15 +70,34 @@ export function combineCalendarReads(args:{
     && ['planned','missed','rest','recovery','cancelled'].includes(item.state)
     && (item.state==='rest'?item.sport==='rest':item.state==='recovery'?item.sport==='recovery':isSport(item.sport))
   );
-  const completed=validatedRead(args.completed,ownerId,fromDate,throughDate,item=>
+  const candidateCompleted=validatedRead(args.completed,ownerId,fromDate,throughDate,item=>
     isSport(item.sport)&&['manual_entry','recorded','device_import','race_result'].includes(item.source)
     &&(item.plannedSessionId===null||(typeof item.plannedSessionId==='string'&&item.plannedSessionId.trim().length>0))
   );
+  // A linked completion must not silently hide an unrelated sport, an earlier/later
+  // scheduled day, or a second actual completion tied to the same plan session.
+  // Cross-day links may be legitimate after rescheduling: display both dates until
+  // the authoritative owner revises the planned date; never pretend they coincide.
+  const knownPlanned=planned.status==='ready'?new Map(planned.records.map(p=>[p.id,p])):null;
+  const seenLinked=new Set<string>();
+  const invalidLinks=candidateCompleted.status==='ready'&&candidateCompleted.records.some(c=>{
+    if(!c.plannedSessionId)return false;
+    if(seenLinked.has(c.plannedSessionId))return true;
+    seenLinked.add(c.plannedSessionId);
+    const target=knownPlanned?.get(c.plannedSessionId);
+    return Boolean(target && (target.sport!==c.sport || target.state==='rest'
+      || target.state==='recovery'||target.state==='cancelled'));
+  });
+  const completed:CalendarEvidence<CompletedCalendarItem> = invalidLinks
+    ? {status:'unavailable'} : candidateCompleted;
   // Do not claim complete month indicators if only one of the two sources loaded.
   // The same planned session, when linked to a completion, must not appear as both planned and completed.
   const markers:CalendarEvidence<CalendarWorkoutMarker> = planned.status==='ready' && completed.status==='ready'
     ? {status:'ready',records:(()=>{
-        const linked=new Set(completed.records.map(c=>c.plannedSessionId).filter((id):id is string=>Boolean(id)));
+        const linked=new Set(completed.records.filter(c=>{
+          const match=c.plannedSessionId?knownPlanned?.get(c.plannedSessionId):undefined;
+          return match?.athleteLocalDate===c.athleteLocalDate && match?.sport===c.sport;
+        }).map(c=>c.plannedSessionId).filter((id):id is string=>Boolean(id)));
         return [
           ...planned.records.filter(p=>p.state!=='cancelled'&&!linked.has(p.id))
             .map(p=>({athleteLocalDate:p.athleteLocalDate,kind:p.sport,status:p.state} as CalendarWorkoutMarker)),
