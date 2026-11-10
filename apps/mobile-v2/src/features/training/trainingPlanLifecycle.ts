@@ -6,7 +6,8 @@
 import type {TrainingDay,TrainingSessionIntent} from './trainingPlanSynthesis.ts';
 const DAY_MS=86400000;
 const dayNames:TrainingDay[]=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-export type RacePlanCalendarDay={date:string;day:TrainingDay;weekStart:string;weekNumber:number;phase:string;isRaceDay:boolean};
+export type RacePlanDayState='planned'|'rest'|'recovery'|'unavailable'|'race'|'review_required';
+export type RacePlanCalendarDay={date:string;day:TrainingDay;weekStart:string;weekNumber:number;phase:string;state:RacePlanDayState;isRaceDay:boolean};
 export type RacePlanCalendar={startDate:string;raceDate:string;totalDays:number;totalWeeks:number;days:RacePlanCalendarDay[]};
 function validDate(value:string):boolean{
  if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
@@ -27,6 +28,7 @@ export function buildRacePlanCalendar(input:{
  startDate:string;
  raceDate:string;
  phaseByWeekStart?:Record<string,string>;
+ dayStates?:Record<string,RacePlanDayState>;
  maxWeeks?:number;
 }):RacePlanCalendar{
  const {startDate,raceDate}=input;
@@ -38,7 +40,7 @@ export function buildRacePlanCalendar(input:{
  if(totalWeeks>max)throw new Error('The selected race horizon exceeds the supported planning window.');
  const days:RacePlanCalendarDay[]=Array.from({length:totalDays},(_,offset)=>{
   const date=shiftDate(startDate,offset),weekStart=mondayOf(date),weekNumber=Math.min(totalWeeks,Math.floor(offset/7)+1);
-  return{date,day:dayNames[(new Date(date+'T12:00:00Z').getUTCDay()+6)%7],weekStart,weekNumber,phase:input.phaseByWeekStart?.[weekStart]??'review_required',isRaceDay:date===raceDate};
+  const isRaceDay=date===raceDate;\n  const state=input.dayStates?.[date]??(isRaceDay?'race':'review_required');\n  if((isRaceDay&&state!=='race')||(!isRaceDay&&state==='race'))throw new Error('Only the exact goal date may carry the race state.');\n  return{date,day:dayNames[(new Date(date+'T12:00:00Z').getUTCDay()+6)%7],weekStart,weekNumber,phase:input.phaseByWeekStart?.[weekStart]??'review_required',state,isRaceDay};
  });
  if(days[days.length-1]?.date!==raceDate||days.filter(d=>d.isRaceDay).length!==1)throw new Error('Calendar must include the race date exactly once as its final day.');
  return{startDate,raceDate,totalDays,totalWeeks,days};
@@ -115,4 +117,13 @@ export function adaptRemainingPlanAfterMiss(input:{
  if(input.reason==='fatigue'||input.reason==='soreness'||input.reason==='illness_or_pain')recommendations.push('Reassess recent load and recovery. A pain/illness concern requires the appropriate safety/return-to-training pathway before proposing a replacement.');
  if(input.reason==='schedule_conflict'||input.reason==='gym_unavailable'||input.reason==='weather')recommendations.push('Treat this as a missed opportunity, not lost fitness. Change the remaining calendar only where the actual availability or purpose conflict requires it.');
  return{version:1,missedSessionId:target.id,missedSessionDate:target.date,reason:input.reason,sessions,recommendations,issues,status:issues.some(i=>i.severity==='blocking')?'blocked':'review_required',invariants:{missedWorkNotAutomaticallyRescheduled:true,completedHistoryPreserved:true,raceDayPreserved:true,requiresAthleteApproval:true}};
+}
+
+/** Accepted race calendars cannot contain unclassified gaps. */
+export function assertRacePlanCalendarAssigned(calendar:RacePlanCalendar):void{
+ if(!calendar.days.length||calendar.days[0].date!==calendar.startDate||calendar.days[calendar.days.length-1].date!==calendar.raceDate)
+  throw new Error('The complete selected-start-to-race calendar is required.');
+ if(calendar.days.some(day=>day.state==='review_required'))throw new Error('Every date must be assigned a workout, rest, recovery, unavailable or race state before plan acceptance.');
+ if(calendar.days.filter(day=>day.state==='race').length!==1||!calendar.days[calendar.days.length-1].isRaceDay)
+  throw new Error('The goal race must be the final and only race-state date.');
 }
