@@ -49,3 +49,13 @@ test('unknown fixed days fail closed without a planner exception',()=>{
  assert.equal(result.status,'blocked');
  assert.ok(result.issues.some(issue=>issue.code==='UNSUPPORTED_PRESCRIPTION'));
 });
+
+test('malformed daily session capacity is rejected rather than silently mis-scheduling Coach intents',()=>{
+ for(const maxSessionsPerDay of [Number.NaN,0,-1,1.5,Number.POSITIVE_INFINITY]){
+  const c=context(['running']);c.maxSessionsPerDay=maxSessionsPerDay;
+  assert.throws(()=>synthesizeTrainingWeek(c,[session('run','running','key','moderate','run_impact')]),/Daily session capacity/);
+ }
+ const c=context(['running']);c.maxSessionsPerDay=1;
+ const result=synthesizeTrainingWeek(c,[session('run','running','key','moderate','run_impact')]);
+ assert.equal(result.status,'review_required');
+});
