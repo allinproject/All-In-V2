@@ -183,3 +183,35 @@ The repository now includes `apps/mobile-v2/src/features/training/coachCrossDoma
 - **Implementation status:** Source-level research and test requirements only. Existing `forecastEvidence.ts` can gate time/area provenance, but forecast provider integration, exact route/gear inventory and Coach model output remain unverified.
 
 **Audit state:** Ten themes documented; not proof that 10 of the original 17 domains are fully reconciled or that live-model/model-safety checks have executed.
+
+## Reconciliation with the 17-domain V1 Evidence Registry — recovered 2026-11-10
+
+**Primary prior research authority recovered from the user's Library:** `ALL-IN-Coach-Research-Audit-Implementation-Roadmap-v1.md` (2026-10-27) and `ALL-IN-Coach-Evidence-Registry-v1-Handoff.md` (2026-10-26). The October audit reports **17 reviewed legacy evidence domains** with versioned source provenance, but explicitly says that provenance is not scientific certainty and that broad research is sufficiently mature to begin beta integration/evals. Its highest-priority next step is connecting shared decision primitives to canonical data, not commissioning another broad series of generic research modules. The ten 2026 themes in this document are an **additive cross-cutting delta**, not a numerator of domains completed. Never display `10/17` as a completion percentage.
+
+| Legacy evidence domain (V1) | Relevant V2 delta theme(s) | Remaining evidence/application check before beta acceptance |
+|---|---|---|
+| Recovery & Sleep | 5, 6, 7 | Wearable uncertainty, repeated/subjective sleep patterns, actual Recovery read, safe session review |
+| Environmental Performance | 4, 10 | Weather time/location and AQI, heat/cold, altitude evidence; live forecast + sport-specific model eval |
+| Return to Training | 4, 5, 6, 10 | Injury/illness flag priority, clinician restrictions and safe post-illness return; no automated clearance |
+| Causal Confidence | 5, 6, 7 | Unknown versus zero, multi-signal confidence, recovery/training/environment confounding |
+| Mental Performance | 5, 7 | Competition stress and noncoercive support, safety/clinical boundary, no diagnostic labels |
+| Body Composition / Performance | 3, 5, 9 | Multiple primary goals, energy availability/REDs risk, athlete-controlled tracking and non-diagnostic recommendations |
+| Race Tactics | 2, 4, 9, 10 | Actual course, aid stations, terrain, event-specific strategy and fuel; no fabricated source facts |
+| Masters Athlete | 1, 7, 8 | Training age rather than chronological stereotypes; needs explicit masters-context model scenarios |
+| Optional Female-Athlete Context | 3, 5 | Consent/context gating, cycle and life-stage uncertainty; no automatic sex/cycle prescription |
+| Travel & Jet Lag | 7, 10 | Sleep, time zones, event travel evidence; travel-specific scenarios remain to be reconciled |
+| Technique & Skill | 1, 2 | Skill prescriptions must distinguish confirmed observation from hypothetical form; future video confidence gate |
+| Gear Intelligence | 4, 10 | Existing owned equipment, weather/terrain/UV, real routes and foot/hand protection; no fabricated inventory |
+| Sport Nutrition | 3, 9 | Local reviewed ingredient nutrition, goal/activity timing, food preferences and hard exclusions |
+| Cross-Training Priority | 1, 2, 6, 8 | Distinct mechanical/systemic/local load, user goal hierarchy, walking/cycling/strength and review-only adaptations |
+| Competition Nutrition | 3, 9 | Canonical Endurance Fueling Brain, prior practiced tolerance, verified aid stations, no fluid/sodium guessing |
+| Sport Supplements | 3, 5, 9 | Preserve prior optional evidence-ranked scope, clinical contraindication uncertainty; do not fabricate a supplement protocol |
+| Sport Intelligence | 1, 2, 6, 8, 9 | Domain-specific workload and technique, sport-specific planning and performance prediction limits |
+
+**Reconciliation status:** The crosswalk establishes where the V1 registry applies, but DOES NOT verify that every original source artifact/module hash still matches the archived reference, that each current 2026 source updates every claim, or that live V2 Coach actually retrieves and applies the right evidence. Those require original byte-level registry validation, source claim review only where changed, canonical task-gated source readers, and real model/integration tests. Do not manufacture new confidence, review dates, source IDs, or superseded flags.
+
+**Actual priority after this crosswalk (ALL-217 / ALL-241):**
+1. Recover/verify the V1 17-entry evidence registry and source hashes as immutable **reference**, not an operational V1 dependency.
+2. Preserve the existing V2 Coach capability manifest and task-gated decision boundaries; map knowledge domains to the appropriate canonical reader and safe proposal, without duplicating Training, Fueling or Recovery calculations.
+3. Run the existing ten ALL-241 scenario suites at progressively stronger levels: deterministic fixture, canonical domain-reader integration, real-model response, authenticated/app/device acceptance.
+4. Only commission focused updated research for claims with changed science, missing population, contradictory guidance or known beta safety holes. Do not use a theme count as release readiness.
