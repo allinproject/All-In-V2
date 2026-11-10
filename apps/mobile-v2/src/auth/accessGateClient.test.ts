@@ -45,6 +45,9 @@ test('legal review checkmarks are scoped to document versions, content and curre
   assert.equal(current, v2LegalReviewKey('user-a', { ...terms }));
   assert.notEqual(current, v2LegalReviewKey('user-a', { ...terms, version: 'terms-v3' }));
   assert.notEqual(current, v2LegalReviewKey('user-a', { ...terms, content_sha256: 'new-content-sha' }));
+  assert.notEqual(current, v2LegalReviewKey('user-a', { ...terms, content_markdown: 'Changed text without digest' }));
+  assert.notEqual(current, v2LegalReviewKey('user-a', { ...terms, title: 'Changed document title' }));
+  assert.notEqual(current, v2LegalReviewKey('user-a', { ...terms, effective_at: '2026-11-11T00:00:00.000Z' }));
   assert.notEqual(current, v2LegalReviewKey('user-b', terms));
 
   const reviewed = { [current]: true };
@@ -64,6 +67,10 @@ test('legal age confirmation applies only to the current account and legal revis
     { ...docs[0], content_sha256: 'changed-content' },
     ...docs.slice(1),
   ]));
+  assert.notEqual(confirmedSet, v2LegalReviewSetKey('user-a', [
+    { ...docs[0], content_markdown: 'New Terms without updated digest' },
+    ...docs.slice(1),
+  ]));
 });
 
 test('signup consent scope requires the same email and published legal revisions', () => {
@@ -76,6 +83,10 @@ test('signup consent scope requires the same email and published legal revisions
   ]));
   assert.notEqual(original, v2SignupConsentScope('athlete@example.com', [
     { ...docs[0], content_sha256: 'new-content' },
+    ...docs.slice(1),
+  ]));
+  assert.notEqual(original, v2SignupConsentScope('athlete@example.com', [
+    { ...docs[0], content_markdown: 'Revised without hash' },
     ...docs.slice(1),
   ]));
 });
