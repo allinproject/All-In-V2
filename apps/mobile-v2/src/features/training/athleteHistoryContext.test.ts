@@ -77,6 +77,21 @@ test('unrecognized event types or sports cannot enter Coach as trusted activity'
  assert.deepEqual(result.events.map(e=>e.id),['good-run']);
 });
 
+test('Coach history rejects malformed or nonaccepted current Training plan metadata',()=>{
+ const base={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
+  sports:['running' as const],restrictions:[],coverage:[coverage('running')],events:[event()]};
+ const valid={id:'training-plan-1',revision:3,weekStart:'2026-11-09',status:'accepted' as const};
+ assert.equal(buildAthleteHistoryReadModel({...base,currentPlan:valid}).currentPlan?.id,'training-plan-1');
+ for(const bad of [
+  {...valid,id:'  '},
+  {...valid,weekStart:'2026-02-30'},
+  {...valid,status:'draft' as any},
+  {...valid,revision:1.25},
+ ]){
+  assert.throws(()=>buildAthleteHistoryReadModel({...base,currentPlan:bad}),/Current accepted Training plan identity/);
+ }
+});
+
 test('contradictory provider coverage cannot turn partial history into complete athlete knowledge',()=>{
  const base={
   generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
