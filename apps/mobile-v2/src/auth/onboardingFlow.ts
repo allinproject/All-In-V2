@@ -2,6 +2,26 @@ import { REQUIRED_V2_ONBOARDING_STEPS } from './accessGateClient.ts';
 import type { Json } from '../types/database.types';
 
 export type OnboardingStep = typeof REQUIRED_V2_ONBOARDING_STEPS[number];
+
+export type OnboardingFocusOption = {
+  value: string;
+  label: string;
+};
+
+// This is the athlete's initial orientation, not their canonical Goal list.
+// Users can pursue several goals concurrently after onboarding.
+export const V2_ONBOARDING_FOCUS_OPTIONS: readonly OnboardingFocusOption[] = [
+  { value: 'general_fitness', label: 'General fitness' },
+  { value: 'running', label: 'Running' },
+  { value: 'strength', label: 'Strength' },
+  { value: 'cycling', label: 'Cycling' },
+  { value: 'swimming', label: 'Swimming' },
+  { value: 'triathlon_hybrid', label: 'Triathlon / Hybrid' },
+  { value: 'walking_hiking_rucking', label: 'Walking / Hiking / Rucking' },
+  { value: 'nutrition_habits', label: 'Nutrition & eating habits' },
+  { value: 'body_composition', label: 'Weight & body composition' },
+  { value: 'general_wellbeing', label: 'General wellbeing' },
+] as const;
 export type SettingsSection =
   | 'training_preferences'
   | 'coach_preferences'
