@@ -85,8 +85,7 @@ export function combineCalendarReads(args:{
     if(seenLinked.has(c.plannedSessionId))return true;
     seenLinked.add(c.plannedSessionId);
     const target=knownPlanned?.get(c.plannedSessionId);
-    return Boolean(target && (target.sport!==c.sport || target.state==='rest'
-      || target.state==='recovery'||target.state==='cancelled'));
+    return Boolean(target && (target.sport!==c.sport || target.state!=='planned'));
   });
   const completed:CalendarEvidence<CompletedCalendarItem> = invalidLinks
     ? {status:'unavailable'} : candidateCompleted;
