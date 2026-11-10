@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { advancesV2AuthSessionGeneration, authRouteState, createV2AuthActionGuard, isV2AccessAttemptCurrent, shouldApplyV2AuthEvent, shouldOfferV2ConfirmationResend, v2AuthenticatedScreenKey } from './authRoute.ts';
+import { advancesV2AuthSessionGeneration, authRouteState, canStartV2SignedOutAction, createV2AuthActionGuard, isV2AccessAttemptCurrent, shouldApplyV2AuthEvent, shouldOfferV2ConfirmationResend, v2AuthenticatedScreenKey } from './authRoute.ts';
 
 test('auth routing remains loading until session restoration settles', () => {
   assert.deepEqual(authRouteState({ loading: true, userId: null }), { state: 'loading' });
@@ -71,4 +71,12 @@ test('local auth action guard rejects rapid repeated sign-out and releases after
   assert.equal(guard.isBusy(), false);
   assert.equal(guard.tryEnter(), true);
   guard.leave();
+});
+
+test('direct sign-in and signup block requests while auth restores or an account is present', () => {
+  assert.equal(canStartV2SignedOutAction(true, null), false);
+  assert.equal(canStartV2SignedOutAction(true, 'user-a'), false);
+  assert.equal(canStartV2SignedOutAction(false, 'user-a'), false);
+  assert.equal(canStartV2SignedOutAction(false, '  '), true);
+  assert.equal(canStartV2SignedOutAction(false, null), true);
 });
