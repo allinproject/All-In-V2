@@ -1,4 +1,4 @@
-import { REQUIRED_V2_ONBOARDING_STEPS } from './accessGateClient';
+import { REQUIRED_V2_ONBOARDING_STEPS } from './accessGateClient.ts';
 import type { Json } from '../types/database.types';
 
 export type OnboardingStep = typeof REQUIRED_V2_ONBOARDING_STEPS[number];
