@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Redirect } from 'expo-router';
 import {
   ActivityIndicator,
@@ -20,6 +20,7 @@ import {
 import {
   EMPTY_ONBOARDING_ANSWERS,
   V2_ONBOARDING_FOCUS_OPTIONS,
+  createOnboardingSaveGuard,
   firstIncompleteOnboardingStep,
   isOnboardingAnswerComplete,
   matchesOnboardingRetryScope,
@@ -224,6 +225,7 @@ export default function OnboardingRequiredScreen() {
   const [progressVersion, setProgressVersion] = useState<number | null>(null);
   const [answers, setAnswers] = useState<OnboardingAnswers>({ ...EMPTY_ONBOARDING_ANSWERS });
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const saveGuard = useRef(createOnboardingSaveGuard());
 
   const readSnapshot = useCallback(async (preserveDraft: boolean, isCurrent: () => boolean = () => true): Promise<OnboardingStep | null> => {
     if (!ownerId) throw new Error('Your V2 account could not be verified. Please sign in again.');
@@ -291,6 +293,7 @@ export default function OnboardingRequiredScreen() {
       setActionError('Choose an answer or skip this step for now. Skipped answers remain unknown.');
       return;
     }
+    if (!saveGuard.current.tryEnter()) return;
 
     const scope: OnboardingActionScope = {
       ownerId,
@@ -364,6 +367,7 @@ export default function OnboardingRequiredScreen() {
         ? caught.message
         : 'Your answer could not be saved. Please retry; private access remains closed.');
     } finally {
+      saveGuard.current.leave();
       setSaving(false);
     }
   };
