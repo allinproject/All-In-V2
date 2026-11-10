@@ -51,7 +51,11 @@ export type AthleteHistoryReadModel={
  warnings:string[];
 };
 const DATE=/^\d{4}-\d{2}-\d{2}$/;
-function validDate(value:string):boolean{return DATE.test(value)&&Number.isFinite(Date.parse(value+'T12:00:00Z'))}
+function validDate(value:string):boolean{
+ if(typeof value!=='string'||!DATE.test(value))return false;
+ const parsed=new Date(value+'T12:00:00Z');
+ return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
+}
 function timestamp(value:string):number{const n=Date.parse(value);return Number.isFinite(n)?n:0}
 function safeEvent(e:AthleteHistoryEvent):boolean{
  return Boolean(e&&typeof e.id==='string'&&e.id.trim()&&typeof e.summary==='string'&&e.summary.trim()&&
@@ -67,7 +71,8 @@ export function buildAthleteHistoryReadModel(input:{
  maxEvents?:number;
 }):AthleteHistoryReadModel{
  if(!Number.isFinite(Date.parse(input.generatedAt))||!validDate(input.fromDate)||!validDate(input.throughDate)||input.fromDate>input.throughDate||
-    !Array.isArray(input.sports)||input.sports.length===0||!Array.isArray(input.restrictions)||!Array.isArray(input.coverage)||!Array.isArray(input.events))
+    !Array.isArray(input.sports)||input.sports.length===0||!Array.isArray(input.restrictions)||!Array.isArray(input.coverage)||!Array.isArray(input.events)||
+    (input.maxEvents!==undefined&&(!Number.isSafeInteger(input.maxEvents)||input.maxEvents<1)))
   throw new Error('Valid athlete-history scope, sport selection, collections and retrieval timestamp are required.');
  const sports=[...new Set(input.sports)];
  const coverage=input.coverage.filter(c=>Boolean(c&&sports.includes(c.sport)&&validDate(c.fromDate)&&validDate(c.throughDate)&&c.fromDate<=c.throughDate&&
