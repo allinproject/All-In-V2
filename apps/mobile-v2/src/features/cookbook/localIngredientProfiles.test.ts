@@ -195,6 +195,17 @@ test('untrusted catalog shape and corrupted profile metadata cannot validate nut
   assert.equal(resolveLocalIngredient(nullNutrient, request()).status, 'ready');
 });
 
+test('invalid recipe line lists return canonical insufficient-evidence output, not exceptions', () => {
+  const malformed = calculateRecipeFromLocalCatalog({
+    catalog: catalog(), recipe_id: 'invalid-recipe', recipe_state_version: '2',
+    servings: 2, ingredients: null as any,
+  });
+  assert.equal(malformed.status, 'insufficient_evidence');
+  if (malformed.status === 'insufficient_evidence') {
+    assert.ok(malformed.reasons.includes('ingredient_lines_required'));
+  }
+});
+
 test('malformed ingredient request identities or labels fail closed without throwing', () => {
   for (const changes of [
     { line_id: null as any },
