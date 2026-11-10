@@ -80,19 +80,25 @@ export function buildAthleteHistoryReadModel(input:{
  const coverage=input.coverage.filter(c=>Boolean(c&&sports.includes(c.sport)&&validDate(c.fromDate)&&validDate(c.throughDate)&&c.fromDate<=c.throughDate&&
    ['complete','partial','none','unknown'].includes(c.status)&&Array.isArray(c.missingIntervals)));
  const requestedStart=Date.parse(input.fromDate+'T00:00:00Z'),requestedEnd=Date.parse(input.throughDate+'T23:59:59Z');
+ // Malformed coverage from a requested sport is itself evidence of an unknown
+ // sync interval, not permission to ignore the report and assert completeness.
+ const malformedCoverageSports=new Set(input.coverage.filter(c=>
+   c&&sports.includes(c.sport)&&!coverage.includes(c)).map(c=>c.sport));
  const relevantCoverage=coverage.filter(c=>sports.includes(c.sport));
  // Conflicting source intervals cannot be merged into a fabricated 'complete'
  // history. A complete report for a sport must span the requested window AND
  // have no competing partial, unknown or missing-interval coverage record.
  const coveredSports=new Set(sports.filter(sport=>{
    const reports=relevantCoverage.filter(c=>c.sport===sport);
-   return reports.some(c=>c.status==='complete'&&Date.parse(c.fromDate+'T00:00:00Z')<=requestedStart&&Date.parse(c.throughDate+'T23:59:59Z')>=requestedEnd&&c.missingIntervals.length===0)&&
+   return !malformedCoverageSports.has(sport)&&
+     reports.some(c=>c.status==='complete'&&Date.parse(c.fromDate+'T00:00:00Z')<=requestedStart&&Date.parse(c.throughDate+'T23:59:59Z')>=requestedEnd&&c.missingIntervals.length===0)&&
      reports.every(c=>c.status==='complete'&&c.missingIntervals.length===0);
  }));
  const complete=sports.length>0&&sports.every(s=>coveredSports.has(s));
  const anyCoverage=relevantCoverage.some(c=>c.status!=='none');
  const warnings:string[]=[];
  if(!complete)warnings.push('History is incomplete for at least one requested sport or date range. Do not treat missing records as zero activity.');
+ if(malformedCoverageSports.size)warnings.push('One or more coverage source records are malformed; refresh source coverage before treating history as complete.');
  if(relevantCoverage.some(c=>c.status==='partial'||c.missingIntervals.length>0))warnings.push('One or more device/provider history intervals are missing.');
  if(relevantCoverage.some(c=>c.status==='unknown'))warnings.push('History coverage is unknown for one or more sports.');
  if(input.currentPlan&&(!Number.isInteger(input.currentPlan.revision)||input.currentPlan.revision<1))throw new Error('Current accepted Training plan revision is invalid.');
