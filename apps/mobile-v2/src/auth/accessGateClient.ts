@@ -127,6 +127,10 @@ export async function resolveV2Access(
     ? onboarding.skipped_steps.filter((value: unknown): value is string => typeof value === 'string')
     : [];
 
+  // The session may have changed while the account-state RPC was in flight.
+  // Never return a positive gate decision for a different active account.
+  await assertV2SessionOwner(client, user.id);
+
   return {
     needsLegalAcceptance,
     needsOnboarding: !needsLegalAcceptance && shouldEnterV2Onboarding(null, { completedSteps, skippedSteps }),
