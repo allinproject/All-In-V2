@@ -56,6 +56,45 @@ Source: [PubMed 40632222](https://pubmed.ncbi.nlm.nih.gov/40632222/) · [Full te
 
 Source: [PubMed 39129754](https://pubmed.ncbi.nlm.nih.gov/39129754/) · [Full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC11310150/)
 
+
+
+### Middle- and long-distance running — race performance is not the same outcome as running economy
+
+**Llanos-Lagos et al., 2024, systematic review and meta-analysis.** This is a separate review from the running-economy review above. It evaluated time-trial and time-to-exhaustion performance plus performance determinants in middle- and long-distance runners. It included 38 studies and 894 runners. High-load resistance training and combined methods showed beneficial effects on running performance; plyometric-only training did not reach statistical significance in this analysis. The authors graded certainty from very low to moderate. None of the methods significantly improved VO2max, velocity at VO2max, maximal metabolic steady state or sprint capacity in the pooled results.
+
+**Allowed use:** a cautious, population-bounded claim that high-load or combined strength methods may improve measured running performance in middle-/long-distance runners. Keep the low-to-moderate certainty and intervention context attached.
+
+**Not allowed:** merging this result with running-economy findings as if they are the same endpoint; stating that plyometrics are proven to improve race times based on this review; promising a faster ultra or trail-race result; assuming the reviewed intervention identifies a single best lift or a universal weekly dose.
+
+Source: [PubMed 38627351](https://pubmed.ncbi.nlm.nih.gov/38627351/) · [Full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC11258194/) · DOI: 10.1007/s40279-024-02018-z
+
+### Competitive swimming — multi-modal training evidence, not proof for an individual lift
+
+**Wang et al., 2025, two-tier network meta-analysis.** This review compared training modalities for swimming performance in competitive swimmers. It included 36 randomized controlled trials and 844 participants. The network rankings favored combined aquatic and dryland approaches across several outcomes, with modality-specific rankings varying by distance and outcome; dryland resistance, core and power approaches showed selective rather than universal effects.
+
+**Allowed use:** carefully qualified evidence that combined in-water and dryland preparation may benefit some measured competitive-swimming outcomes in the studied populations. A specific claim must preserve the stroke/distance/intervention/outcome actually represented by the evidence.
+
+**Not allowed:** assigning a swimmer an arbitrary upper-body lift and claiming it improves their stroke; generalizing network rankings to recreational, masters, open-water or every-stroke athletes; treating indirect network comparisons as proof of one movement's superiority; making injury-prevention claims from performance outcomes.
+
+Source: [PubMed 40951636](https://pubmed.ncbi.nlm.nih.gov/40951636/) · [Full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC12423047/) · DOI: 10.3389/fphys.2025.1636595
+
+### Cycling — distinguish pooled intervention evidence from practical narrative guidance
+
+**De Pablos et al., 2026, narrative review.** This review discusses resistance training and on-bike torque training for cyclists and offers practical programming suggestions. Importantly, its own methods describe a **non-systematic** search and the authors acknowledge that the selection strategy is prone to selection bias. Recommendations in this review should therefore not be stored as if they were a systematic-review result or a high-certainty universal prescription.
+
+**Allowed use:** a lower-tier practical reference to inform hypotheses and questions for later athlete-specific evaluation, clearly labeled as narrative guidance and checked against the stronger cyclist-specific systematic review/meta-analysis above.
+
+**Not allowed:** promoting its suggested frequency, intensity, exercise count or velocity-loss values to mandatory Coach rules; presenting these recommendations as causal proof; ignoring an athlete's race phase, next key session, recovery, equipment, lifting experience or current strength plan.
+
+Source: [PubMed 42828469](https://pubmed.ncbi.nlm.nih.gov/42828469/) · [Full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC13633594/) · DOI: 10.1111/sms.70377
+
+## Evidence interpretation update — practical consequences for Coach
+
+- The two runner reviews answer different questions. Running economy is a physiological efficiency outcome; time-trial/time-to-exhaustion performance is a performance outcome. They must be represented as separate claims with separate sources and certainty.
+- A sport-level intervention result does not prove that every exercise in that category transfers equally. The canonical movement variation still needs its own anatomy, joint-demand, equipment, coaching and caution evidence.
+- Network meta-analysis rankings and narrative-review programming suggestions are not substitutes for direct exercise-variation evidence. Coach should describe the relevant training method and uncertainty, not infer a winning lift.
+- No source reviewed here supports automatic injury-prevention promises, spot-reduction claims, or a guaranteed personal performance gain.
+
 ## Sport and athlete gaps still requiring research
 
 The sources above do **not** establish exercise-to-performance mappings for every population ALL IN serves. Dedicated reviews and evidence grading are still needed for trail/ultra running, hiking, rucking, triathlon/multisport scheduling, rowing, beginners and older athletes with varied capability, strength/power sports, and athlete-specific restrictions. Do not fill those gaps with plausible-sounding muscle-transfer assumptions.
