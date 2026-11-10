@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { authRouteState, isV2AccessAttemptCurrent, shouldApplyV2AuthEvent, shouldOfferV2ConfirmationResend } from './authRoute.ts';
+import { advancesV2AuthSessionGeneration, authRouteState, isV2AccessAttemptCurrent, shouldApplyV2AuthEvent, shouldOfferV2ConfirmationResend } from './authRoute.ts';
 
 test('auth routing remains loading until session restoration settles', () => {
   assert.deepEqual(authRouteState({ loading: true, userId: null }), { state: 'loading' });
@@ -34,11 +34,21 @@ test('bootstrap auth state cannot overwrite a later sign-in, token refresh or si
   assert.equal(shouldApplyV2AuthEvent('INITIAL_SESSION', true), false);
 });
 
-test('access gate fails closed immediately when retry attempt or account changes', () => {
-  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-a', 2, false), true);
-  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-a', 3, false), false);
-  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-b', 2, false), false);
-  assert.equal(isV2AccessAttemptCurrent('user-a', 2, null, 2, false), false);
-  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-a', 2, true), false);
-  assert.equal(isV2AccessAttemptCurrent(null, 2, 'user-a', 2, false), false);
+test('access gate fails closed on retry, owner change, or a new session for the same user', () => {
+  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-a', 2, false, 4, 4), true);
+  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-a', 3, false, 4, 4), false);
+  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-b', 2, false, 4, 4), false);
+  assert.equal(isV2AccessAttemptCurrent('user-a', 2, null, 2, false, 4, 4), false);
+  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-a', 2, true, 4, 4), false);
+  assert.equal(isV2AccessAttemptCurrent(null, 2, 'user-a', 2, false, 4, 4), false);
+  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-a', 2, false, 4, 5), false);
+  assert.equal(isV2AccessAttemptCurrent('user-a', 2, 'user-a', 2, false, 5, 5), true);
+});
+
+test('only sign-in and sign-out change the session identity generation', () => {
+  assert.equal(advancesV2AuthSessionGeneration('SIGNED_IN'), true);
+  assert.equal(advancesV2AuthSessionGeneration('SIGNED_OUT'), true);
+  assert.equal(advancesV2AuthSessionGeneration('INITIAL_SESSION'), false);
+  assert.equal(advancesV2AuthSessionGeneration('TOKEN_REFRESHED'), false);
+  assert.equal(advancesV2AuthSessionGeneration('USER_UPDATED'), false);
 });
