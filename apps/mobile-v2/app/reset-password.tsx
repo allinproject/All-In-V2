@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { useAuth } from '../src/auth/AuthProvider';
 import { assertV2SessionOwner } from '../src/auth/accessGateClient';
 import { v2PasswordResetValidationError } from '../src/auth/passwordPolicy';
 import { colors } from '../src/theme/tokens';
+import { createV2AuthActionGuard } from '../src/auth/authRoute';
 
 export default function ResetPasswordScreen() {
   const { user, loading } = useAuth();
@@ -15,6 +16,7 @@ export default function ResetPasswordScreen() {
   const [confirmation, setConfirmation] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestGuard = useRef(createV2AuthActionGuard());
 
   if (!loading && !user) return <Redirect href="/sign-in" />;
 
@@ -27,6 +29,7 @@ export default function ResetPasswordScreen() {
     }
     if (!user) return;
 
+    if (!requestGuard.current.tryEnter()) return;
     const ownerId = user.id;
     const submittedPassword = password;
     setSubmitting(true);
@@ -40,6 +43,7 @@ export default function ResetPasswordScreen() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Your password could not be updated. Try again.');
     } finally {
+      requestGuard.current.leave();
       setSubmitting(false);
     }
   }
@@ -60,8 +64,8 @@ export default function ResetPasswordScreen() {
             <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
             <Text accessibilityRole="header" style={styles.title}>Choose a new password</Text>
             <Text style={styles.body}>Use at least 12 characters. Your V2 account and training history stay the same.</Text>
-            <TextInput accessibilityLabel="New password" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="New password" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={value => { setPassword(value); setError(null); }} />
-            <TextInput accessibilityLabel="Confirm new password" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Confirm new password" placeholderTextColor={colors.mutedText} style={styles.input} value={confirmation} onChangeText={value => { setConfirmation(value); setError(null); }} onSubmitEditing={() => void updatePassword()} />
+            <TextInput accessibilityLabel="New password" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="New password" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={value => { if (requestGuard.current.isBusy()) return; setPassword(value); setError(null); }} />
+            <TextInput accessibilityLabel="Confirm new password" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Confirm new password" placeholderTextColor={colors.mutedText} style={styles.input} value={confirmation} onChangeText={value => { if (requestGuard.current.isBusy()) return; setConfirmation(value); setError(null); }} onSubmitEditing={() => void updatePassword()} />
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting, busy: submitting }} disabled={submitting} onPress={() => void updatePassword()} style={[styles.button, submitting && styles.disabled]}>
               {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Save new password</Text>}
