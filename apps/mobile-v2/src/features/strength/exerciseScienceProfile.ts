@@ -103,8 +103,11 @@ export type ExerciseScienceProfile = {
   skillLevel: 'beginner' | 'intermediate' | 'advanced';
   equipmentRequiredIds: readonly string[];
   equipmentOptionalIds: readonly string[];
-  primaryMuscleGroupIds: readonly string[];
-  secondaryMuscleGroupIds: readonly string[];
+  muscleGroups: readonly {
+    muscleGroupId: string;
+    role: 'primary' | 'secondary' | 'stabilizer';
+    sourceIds: readonly string[];
+  }[];
   jointDemands: readonly {
     jointId: string;
     action: string;
@@ -150,6 +153,25 @@ const GOALS: readonly ExerciseGoal[] = [
   'maximal_strength','hypertrophy','power','muscular_endurance','balance',
   'mobility','sport_performance','general_function',
 ];
+const MOVEMENT_PATTERNS = [
+  'squat','hinge','lunge','step','horizontal_push','vertical_push',
+  'horizontal_pull','vertical_pull','carry','rotation','anti_rotation',
+  'trunk_flexion','trunk_extension','jump_or_landing','calf_or_ankle',
+  'locomotion','other',
+] as const;
+const PLANES = ['sagittal','frontal','transverse','multi_planar','varies'] as const;
+const ROM_RANGES = ['short','moderate','long','variable','unknown'] as const;
+const RELATIVE_DEMANDS = ['low','moderate','high','variable','unknown'] as const;
+const CLAIM_TYPES = ['muscle_emphasis','movement_demand','general_adaptation','sport_transfer','recovery_or_load','caution'] as const;
+const DIRECTNESS = ['direct_sport_outcome','general_training_adaptation','mechanistic_rationale'] as const;
+const CONFIDENCE = ['high','moderate','low','very_low','not_rated'] as const;
+const LATERALITY = ['bilateral','unilateral','alternating','mixed'] as const;
+const SKILL_LEVELS = ['beginner','intermediate','advanced'] as const;
+const CONTRACTION_MODES = ['concentric','eccentric','isometric','plyometric'] as const;
+
+function oneOf<T extends string>(value: unknown, allowed: readonly T[]): value is T {
+  return typeof value === 'string' && (allowed as readonly string[]).includes(value);
+}
 
 function nonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -184,16 +206,34 @@ export function validateExerciseScienceProfile(
   if (!nonEmpty(profile?.displayName) || !nonEmpty(profile?.variationDescription)) errors.push('Exercise name and exact variation description are required.');
   if (!Array.isArray(profile?.aliases) || !profile.aliases.every(nonEmpty)) errors.push('Exercise aliases must be non-empty strings.');
   else if (!unique(profile.aliases.map((alias) => alias.trim().toLowerCase()))) errors.push('Exercise aliases must be unique.');
-  if (!nonEmpty(profile?.movementPattern)) errors.push('Movement pattern is required.');
-  if (!nonEmpty(profile?.laterality)) errors.push('Laterality is required.');
+  if (!oneOf(profile?.movementPattern,MOVEMENT_PATTERNS)) errors.push('Movement pattern is invalid.');
+  if (!oneOf(profile?.laterality,LATERALITY)) errors.push('Laterality is invalid.');
   if (!Array.isArray(profile?.contractionModes) || profile.contractionModes.length === 0 ||
-    !profile.contractionModes.every((mode) => ['concentric','eccentric','isometric','plyometric'].includes(mode)) ||
+    !profile.contractionModes.every((mode) => oneOf(mode,CONTRACTION_MODES)) ||
     !unique(profile.contractionModes)) errors.push('At least one valid, unique contraction mode is required.');
-  if (!nonEmpty(profile?.skillLevel)) errors.push('Skill level is required.');
+  if (!oneOf(profile?.skillLevel,SKILL_LEVELS)) errors.push('Skill level is invalid.');
   if (!stringList(profile?.equipmentRequiredIds) || !unique(profile.equipmentRequiredIds || [])) errors.push('Required equipment IDs must be unique non-empty canonical IDs.');
   if (!stringList(profile?.equipmentOptionalIds) || !unique(profile.equipmentOptionalIds || [])) errors.push('Optional equipment IDs must be unique non-empty canonical IDs.');
-  if (!stringList(profile?.primaryMuscleGroupIds, 1) || !unique(profile.primaryMuscleGroupIds || [])) errors.push('At least one primary muscle group ID is required.');
-  if (!stringList(profile?.secondaryMuscleGroupIds) || !unique(profile.secondaryMuscleGroupIds || [])) errors.push('Secondary muscle group IDs must be unique non-empty canonical IDs.');
+  if (!Array.isArray(profile?.muscleGroups) || profile.muscleGroups.length === 0) {
+    errors.push('At least one sourced muscle-group role is required.');
+  }
+  const muscleGroupIds = new Set<string>();
+  let hasPrimaryMuscle = false;
+  for (const muscle of profile?.muscleGroups || []) {
+    if (!nonEmpty(muscle.muscleGroupId) || muscleGroupIds.has(muscle.muscleGroupId) ||
+      !oneOf(muscle.role,['primary','secondary','stabilizer'] as const)) {
+      errors.push('Muscle group identities and roles must be valid and unique.');
+      continue;
+    }
+    muscleGroupIds.add(muscle.muscleGroupId);
+    if (muscle.role === 'primary') hasPrimaryMuscle = true;
+    if (!stringList(muscle.sourceIds,1) || muscle.sourceIds.some((id) => !sourceIds.has(id))) {
+      errors.push('Each muscle-group role must link to registered sources.');
+    }
+  }
+  if (Array.isArray(profile?.muscleGroups) && profile.muscleGroups.length > 0 && !hasPrimaryMuscle) {
+    errors.push('At least one primary muscle-group role is required.');
+  }
 
   if (!Array.isArray(profile?.sources)) errors.push('Source registry must be a list.');
   const sourceIds = new Set<string>();
@@ -205,7 +245,7 @@ export function validateExerciseScienceProfile(
     sourceIds.add(source.id);
     if (!nonEmpty(source.title) || !nonEmpty(source.url) || !httpsUrl(source.url)) errors.push('Each source needs a title and HTTPS URL.');
     if (!Number.isInteger(source.publishedYear) || source.publishedYear < 1900 || source.publishedYear > 2100) errors.push('Source publication year is invalid.');
-    if (!EVIDENCE_TIERS.includes(source.sourceType)) errors.push('Source evidence tier is invalid.');
+    if (!oneOf(source.sourceType,EVIDENCE_TIERS)) errors.push('Source evidence tier is invalid.');
     if (source.doi !== null && !nonEmpty(source.doi)) errors.push('DOI must be null or a non-empty identifier.');
     if (source.pmid !== null && !/^\d+$/.test(source.pmid)) errors.push('PMID must be null or numeric.');
   }
@@ -213,7 +253,7 @@ export function validateExerciseScienceProfile(
   if (!Array.isArray(profile?.jointDemands)) errors.push('Joint demands must be a list.');
   for (const demand of profile?.jointDemands || []) {
     if (!nonEmpty(demand.jointId) || !nonEmpty(demand.action) ||
-      !nonEmpty(demand.plane) || !nonEmpty(demand.rangeOfMotion) || !nonEmpty(demand.relativeDemand)) {
+      !oneOf(demand.plane,PLANES) || !oneOf(demand.rangeOfMotion,ROM_RANGES) || !oneOf(demand.relativeDemand,RELATIVE_DEMANDS)) {
       errors.push('Each joint demand needs a joint, action, plane and demand level.');
     }
     if (!stringList(demand.sourceIds, 1) || demand.sourceIds.some((id) => !sourceIds.has(id))) {
@@ -257,9 +297,10 @@ export function validateExerciseScienceProfile(
     }
     claimIds.add(claim.id);
     if (!nonEmpty(claim.statement) || !nonEmpty(claim.population) || !nonEmpty(claim.limitations)) errors.push('Each claim needs a bounded statement, population and limitations.');
+    if (!oneOf(claim.claimType,CLAIM_TYPES)) errors.push('Claim type is invalid.');
     if (!Array.isArray(claim.targetSports) || !claim.targetSports.every((sport) => SPORTS.includes(sport)) || !unique(claim.targetSports)) errors.push('Claim target sports must be valid and unique.');
     if (!Array.isArray(claim.targetGoals) || !claim.targetGoals.every((goal) => GOALS.includes(goal)) || !unique(claim.targetGoals)) errors.push('Claim target goals must be valid and unique.');
-    if (!nonEmpty(claim.directness) || !nonEmpty(claim.evidenceTier) || !nonEmpty(claim.confidence)) errors.push('Claim directness, evidence tier and confidence are required.');
+    if (!oneOf(claim.directness,DIRECTNESS) || !oneOf(claim.evidenceTier,EVIDENCE_TIERS) || !oneOf(claim.confidence,CONFIDENCE)) errors.push('Claim directness, evidence tier and confidence are invalid.');
     if (!stringList(claim.sourceIds, 1) || claim.sourceIds.some((id) => !sourceIds.has(id))) errors.push('Each claim must link to registered source records.');
     if (claim.directness === 'direct_sport_outcome' && claim.targetSports.length === 0) errors.push('Direct sport-outcome claims must name the studied sport.');
     if (claim.directness === 'mechanistic_rationale' && !['biomechanical_study','expert_consensus'].includes(claim.evidenceTier)) errors.push('Mechanistic rationale cannot be presented as direct outcome evidence.');
