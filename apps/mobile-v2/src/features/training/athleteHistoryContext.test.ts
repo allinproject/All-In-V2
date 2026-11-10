@@ -34,3 +34,14 @@ test('malformed active athlete restrictions fail closed rather than disappearing
  assert.throws(()=>buildAthleteHistoryReadModel({...base,restrictions:[{...restriction,updatedAt:'invalid'}]}),/active athlete restriction is incomplete/);
  assert.equal(buildAthleteHistoryReadModel({...base,restrictions:[restriction]}).restrictions[0].subject,'lying_leg_curl');
 });
+
+test('malformed numeric or nested activity metrics never reach Coach as trusted history',()=>{
+ const base={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running' as const],currentPlan:null,restrictions:[],coverage:[coverage('running')]};
+ const result=buildAthleteHistoryReadModel({...base,events:[
+  event({id:'nan',metrics:{distanceMiles:Number.NaN}}),
+  event({id:'infinite',metrics:{durationMinutes:Number.POSITIVE_INFINITY}}),
+  event({id:'nested',metrics:{nested:{distance:20} as any}}),
+  event({id:'good',metrics:{distanceMiles:18,sourceTag:'measured',verified:true,heartRate:null}}),
+ ]});
+ assert.deepEqual(result.events.map(e=>e.id),['good']);
+});
