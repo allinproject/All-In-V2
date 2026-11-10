@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  assertV2SessionOwner,
   parsePublishedV2LegalDocuments,
   shouldEnterV2Onboarding,
   v2LegalAcceptanceMatches,
@@ -39,4 +40,46 @@ test('all six canonical onboarding steps are required', () => {
     completedSteps: ['focus', 'training_pattern', 'availability', 'coach', 'food_safety'],
     skippedSteps: ['proactivity'],
   }), false);
+});
+
+test('session owner guard permits the expected authenticated account', async () => {
+  const client = {
+    auth: {
+      getSession: async () => ({
+        data: { session: { user: { id: 'user-a' } } },
+        error: null,
+      }),
+    },
+  } as unknown as Parameters<typeof assertV2SessionOwner>[0];
+  await assertV2SessionOwner(client, 'user-a');
+});
+
+test('session owner guard rejects missing or switched accounts', async () => {
+  const switchedClient = {
+    auth: {
+      getSession: async () => ({
+        data: { session: { user: { id: 'user-b' } } },
+        error: null,
+      }),
+    },
+  } as unknown as Parameters<typeof assertV2SessionOwner>[0];
+  const signedOutClient = {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+    },
+  } as unknown as Parameters<typeof assertV2SessionOwner>[0];
+  await assert.rejects(assertV2SessionOwner(switchedClient, 'user-a'), /account changed/i);
+  await assert.rejects(assertV2SessionOwner(signedOutClient, 'user-a'), /account changed/i);
+});
+
+test('session owner guard propagates session lookup errors', async () => {
+  const client = {
+    auth: {
+      getSession: async () => ({
+        data: { session: null },
+        error: new Error('session lookup failed'),
+      }),
+    },
+  } as unknown as Parameters<typeof assertV2SessionOwner>[0];
+  await assert.rejects(assertV2SessionOwner(client, 'user-a'), /session lookup failed/);
 });
