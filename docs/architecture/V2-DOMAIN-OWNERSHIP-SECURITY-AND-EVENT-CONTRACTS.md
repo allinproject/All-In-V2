@@ -606,3 +606,20 @@ One athlete may pursue multiple active goals at once. It is valid for a race goa
 The goal proposal supports multiple independent goal identities/revisions and allows equal priority. An optional athlete-selected priority order may help Coach explain scheduling emphasis, but ties are permitted and no primary goal is silently demoted. Each goal keeps its own optional target window, baseline, behavior targets, evidence and Progress view.
 
 Coach coordinates one accepted Training plan and one coherent nutrition/Recovery approach across the active goal set. If goals compete, it explains the real tradeoff and offers user-controlled alternatives; it does not automatically choose one, change a deadline, increase training, or impose a calorie deficit. Example: a race and a six-pack/physique goal remain separate, concurrently active primary goals, with the race phase informing safe pacing of body-composition changes. The athlete may change priority or timing only after seeing the implications and approving the change.
+
+
+## 36. Founder design authority — preserve the approved V2 UI
+
+The founder explicitly likes the current approved V2 UI and does not want it redesigned. V2 work must make the existing interface function correctly and fulfil the product's whole-athlete purpose, not reopen visual design by default.
+
+Binding rules:
+- Approved App Art v2, screen layouts, information hierarchy, visual styling, components, navigation and interaction patterns remain closed design authority.
+- Prefer correcting behavior, canonical reads/writes, state transitions, feedback, error handling, loading/empty/offline/permission states and cross-workspace connections inside the existing approved screens.
+- New functionality (including concurrent primary goals and qualitative/lifestyle goals) must use existing approved layouts/components/navigation wherever possible. Add the smallest necessary field/control/state; do not create a new tab/dashboard or redesign the goal screen to fit the expanded model.
+- No unrequested changes to colors, typography, spacing, card styles, icons, motion, screen composition, branding or tab structure for aesthetic polish or engineer preference.
+- A visual change is allowed only for a demonstrated reproducible functional/usability defect, a required accessibility correction, a hard platform constraint, or explicit founder request. Record the evidence, exact affected screen/control, reproduction, and smallest viable correction before changing it.
+- Accessibility is mandatory but must preserve the existing visual language and use the smallest necessary adjustment. It is not a reason for a broad redesign.
+- Keep exactly five root tabs: Today / Fuel / Train / Community / Coach. Profile remains accessible through the approved avatar/header pattern.
+- Functional correctness and visual regression are separate acceptance dimensions. A functional audit is not a mandate to change approved visual design.
+
+ALL-254 owns full-route/control/functionality verification under this guardrail. ALL-242 must not propose a visual redesign as the answer to a cross-domain product gap.
