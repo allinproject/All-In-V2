@@ -170,7 +170,7 @@ Proposed private operational records:
 - allin_private.v2_ingredient_review_events: immutable audit events for candidate/profile/source review, state transition, rationale, prior/new revision, operator/system actor reference and event time.
 - allin_private.v2_ingredient_seed_runs: deterministic seed version, source snapshot date/hash, importer version, start/end, terminal status and reconciled counts (inserted, updated, unchanged, rejected, unmapped).
 - Candidate queue/staging is only added when a real operator review workflow requires durable pending candidates; do not duplicate v2_provider_cache or build a second raw provider payload store.
-- Actor identity/role is unresolved until ALL-251's operator/account lifecycle contract is reviewed. Do not guess that every authenticated athlete is an ingredient reviewer. Until then, profile publication remains a controlled release/migration process with database-owner credentials; no athlete-facing mutation RPC exists.
+- Actor identity/role for internal catalog review is not currently defined by the V2 Auth/Profile work. ALL-222 must identify the designated business/operations owner and approve a narrowly scoped reviewer capability before any persistent review writer is exposed; ALL-251 contributes user account lifecycle, privacy and consent semantics but does not itself establish an internal operator role. Do not guess that every authenticated athlete is an ingredient reviewer. Until the operator role is approved, profile publication remains a controlled release/migration process with database-owner credentials; no athlete-facing mutation RPC exists.
 
 ## 4. Relationships and lifecycle
 
@@ -280,7 +280,7 @@ Implementation sequence after ALL-222 approval:
 2. Confirm launch nutrient definitions/units and versioned calculation-ready minimum set.
 3. Confirm if branded GTIN products are separate v2_ingredients identity_kind='branded_product' rows (recommended) and the exact source identity uniqueness contract.
 4. Confirm profile default selection/preference when multiple valid source profiles exist for one ingredient/preparation state.
-5. Confirm operator/reviewer identity, privilege and publication workflow with ALL-251. No athlete-facing canonical mutation is recommended.
+5. Confirm the designated business/operations reviewer identity, privilege and publication workflow through ALL-222; coordinate account lifecycle and privacy implications with ALL-251. No athlete-facing canonical mutation is recommended.
 6. Confirm whether pending candidates are transient responses or need private persisted review staging. Do not store a second copy of raw provider responses.
 7. Confirm exact household-unit code list and how reviewed volume/density/item conversions enter the calculator.
 8. Confirm retention and deletion behavior for private review/seed audit records.
