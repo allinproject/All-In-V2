@@ -1,13 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { shouldApplyV2AuthEvent } from './authRoute';
+import { advancesV2AuthSessionGeneration, shouldApplyV2AuthEvent } from './authRoute';
 
 export type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
   authNotice: string | null;
+  sessionGeneration: number;
   signOut: () => Promise<void>;
 };
 
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionGeneration, setSessionGeneration] = useState(0);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const currentUserId = useRef<string | null>(null);
   const authoritativeEvent = useRef(false);
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted || !shouldApplyV2AuthEvent(event, authoritativeEvent.current)) return;
       const nextUserId = nextSession?.user?.id ?? null;
       if (event !== 'INITIAL_SESSION') authoritativeEvent.current = true;
+      if (advancesV2AuthSessionGeneration(event)) setSessionGeneration(value => value + 1);
       if (nextUserId !== currentUserId.current || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         identityGeneration.current += 1;
       }
@@ -101,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         currentUserId.current = null;
         hadAuthenticatedSession.current = false;
         identityGeneration.current += 1;
+        setSessionGeneration(value => value + 1);
         setSession(null);
         setLoading(false);
       }
@@ -117,8 +121,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: session?.user ?? null,
     loading,
     authNotice,
+    sessionGeneration,
     signOut,
-  }), [session, loading, authNotice, signOut]);
+  }), [session, loading, authNotice, sessionGeneration, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
