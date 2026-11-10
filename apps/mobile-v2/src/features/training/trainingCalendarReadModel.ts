@@ -75,27 +75,17 @@ export function combineCalendarReads(args:{
     &&(item.plannedSessionId===null||(typeof item.plannedSessionId==='string'&&item.plannedSessionId.trim().length>0))
   );
   // Do not claim complete month indicators if only one of the two sources loaded.
-  const markers:CalendarEvidence<CalendarWorkoutMarker> = planned.status==='ready'&&completed.status==='ready'
-    ?{status:'ready',records:[
-       ...planned.records.filter(p=>p.state!=='cancelled').map(p=>({
-         athleteLocalDate:p.athleteLocalDate,kind:p.sport,
-         status:p.state,
-       } as CalendarWorkoutMarker)),
-       ...completed.records.map(c=>({
-         athleteLocalDate:c.athleteLocalDate,kind:c.sport,status:'completed' as const,
-       })),
-     ]}
-    :{status:'unavailable'};
-  // The same planned session, when linked to a completion, should not show as both planned AND completed.
-  if(markers.status==='ready'){
-    const linked=new Set(completed.status==='ready'
-      ? completed.records.map(c=>c.plannedSessionId).filter((id):id is string=>Boolean(id)) : []);
-    const shown=planned.status==='ready'?planned.records.filter(p=>p.state!=='cancelled'&&!linked.has(p.id)):[];
-    markers.records=[
-      ...shown.map(p=>({athleteLocalDate:p.athleteLocalDate,kind:p.sport,status:p.state} as CalendarWorkoutMarker)),
-      ...completed.records.map(c=>({athleteLocalDate:c.athleteLocalDate,kind:c.sport,status:'completed' as const})),
-    ];
-  }
+  // The same planned session, when linked to a completion, must not appear as both planned and completed.
+  const markers:CalendarEvidence<CalendarWorkoutMarker> = planned.status==='ready' && completed.status==='ready'
+    ? {status:'ready',records:(()=>{
+        const linked=new Set(completed.records.map(c=>c.plannedSessionId).filter((id):id is string=>Boolean(id)));
+        return [
+          ...planned.records.filter(p=>p.state!=='cancelled'&&!linked.has(p.id))
+            .map(p=>({athleteLocalDate:p.athleteLocalDate,kind:p.sport,status:p.state} as CalendarWorkoutMarker)),
+          ...completed.records.map(c=>({athleteLocalDate:c.athleteLocalDate,kind:c.sport,status:'completed' as const})),
+        ];
+      })()}
+    : {status:'unavailable'};
   return {planned,completed,markers,status:planned.status==='ready'&&completed.status==='ready'?'ready'
     :planned.status==='ready'||completed.status==='ready'?'partial':'unavailable'};
 }
