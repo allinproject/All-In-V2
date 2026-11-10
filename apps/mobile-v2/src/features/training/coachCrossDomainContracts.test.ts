@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildAthleteHistoryReadModel, type AthleteRestriction } from './athleteHistoryContext.ts';
-import { synthesizeTrainingWeek, type TrainingSessionIntent } from './trainingPlanSynthesis.ts';
+import { synthesizeTrainingWeek, adaptTrainingDay, type TrainingSessionIntent } from './trainingPlanSynthesis.ts';
 import { validateRaceCourseEvidence, type RaceCourseEvidence } from './raceCourseEvidence.ts';
 import { calculateRecipeFromLocalCatalog, type LocalIngredientCatalog } from '../cookbook/localIngredientProfiles.ts';
 
@@ -90,4 +90,26 @@ test('Cookbook calculates reviewed local food only; missing profile cannot becom
  assert.equal(incomplete.status,'insufficient_evidence');
  if(incomplete.status==='insufficient_evidence')
   assert.ok(incomplete.reasons.includes('local_ingredient_state_mismatch:sauce-line'));
+});
+
+test('incomplete wearable recovery does not rewrite a key session, but pain prompts review',()=>{
+ const history=buildAthleteHistoryReadModel({
+  generatedAt:'2026-11-10T12:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
+  sports:['running'],currentPlan:{id:'approved-plan',revision:2,weekStart:'2026-11-09',status:'accepted'},
+  restrictions:[],coverage:[],events:[],
+ });
+ assert.equal(history.completeness,'unavailable');
+ const unknown=adaptTrainingDay({planned:keyRun(),report:{
+  fatigue:'unknown',soreness:'unknown',sleep:'unknown',performance:'unknown',painOrIllnessConcern:false,
+ },recentPattern:'unknown'});
+ assert.equal(unknown.action,'keep');
+ assert.equal(unknown.confidence,'low');
+ assert.equal(unknown.preservesOriginalPlan,true);
+ assert.equal(unknown.requiresAthleteApproval,true);
+ const concern=adaptTrainingDay({planned:keyRun(),report:{
+  fatigue:'high',soreness:'severe',sleep:'poor',performance:'below_expected',painOrIllnessConcern:true,
+ },recentPattern:'unknown'});
+ assert.equal(concern.action,'review');
+ assert.equal(concern.requiresAthleteApproval,true);
+ assert.equal(concern.preservesOriginalPlan,true);
 });
