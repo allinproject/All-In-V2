@@ -28,6 +28,7 @@ import {
   type OnboardingActionScope,
   type OnboardingAnswers,
   type OnboardingStep,
+  v2OnboardingScreenKey,
 } from '../src/auth/onboardingFlow';
 import { supabase } from '../src/lib/supabase';
 import { colors, radius, spacing } from '../src/theme/tokens';
@@ -208,6 +209,12 @@ function ChoiceButton({
 }
 
 export default function OnboardingRequiredScreen() {
+  const { user, sessionGeneration } = useAuth();
+  // A remount discards drafts, errors and retry IDs belonging to a prior session.
+  return <OnboardingOwnerFlow key={v2OnboardingScreenKey(user?.id ?? null, sessionGeneration)} />;
+}
+
+function OnboardingOwnerFlow() {
   const { user, loading: authLoading } = useAuth();
   const gate = useAccessGate();
   const ownerId = user?.id ?? null;
