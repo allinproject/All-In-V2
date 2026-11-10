@@ -13,8 +13,7 @@
 param(
   [Parameter(Mandatory = $true)]
   [ValidateNotNullOrEmpty()]
-  [string]$DestinationDirectory,
-  [switch]$Force
+  [string]$DestinationDirectory
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -24,6 +23,12 @@ $sourceName = 'FoodData_Central_foundation_food_json_2026-10-29.zip'
 $manifestName = 'foundation-2026-10-29-manifest.json'
 
 $target = [System.IO.Path]::GetFullPath($DestinationDirectory)
+$repoRoot = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
+$repoPrefix = $repoRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+if ($target.Equals($repoRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+    $target.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+  throw 'USDA archive destination must be outside the Git repository to avoid accidentally tracking source ZIPs.'
+}
 if (-not [System.IO.Directory]::Exists($target)) {
   [System.IO.Directory]::CreateDirectory($target) | Out-Null
 }
@@ -33,9 +38,6 @@ $partialPath = [System.IO.Path]::Combine($target, "$sourceName.partial")
 
 if ((Test-Path -LiteralPath $partialPath)) {
   throw "A partial archive already exists at $partialPath. Inspect and remove it manually before retrying."
-}
-if ((Test-Path -LiteralPath $zipPath) -and $Force) {
-  throw 'Force does not replace an existing verified archive. Move old snapshots aside first to preserve provenance.'
 }
 if (-not (Test-Path -LiteralPath $zipPath)) {
   try {
