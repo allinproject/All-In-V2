@@ -30,3 +30,16 @@ export function shouldApplyV2AuthEvent(
 ): boolean {
   return event !== 'INITIAL_SESSION' || !hasSeenAuthoritativeEvent;
 }
+
+/** A prior verification result must never grant access during a newer retry. */
+export function isV2AccessAttemptCurrent(
+  resultOwnerId: string | null,
+  resultAttempt: number,
+  activeOwnerId: string | null,
+  activeAttempt: number,
+  authLoading: boolean,
+): boolean {
+  return !authLoading && Boolean(activeOwnerId)
+    && resultOwnerId === activeOwnerId
+    && resultAttempt === activeAttempt;
+}
