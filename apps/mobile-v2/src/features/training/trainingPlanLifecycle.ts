@@ -34,7 +34,8 @@ export function buildRacePlanCalendar(input:{
  const {startDate,raceDate}=input;
  if(!validDate(startDate)||!validDate(raceDate)||raceDate<startDate)throw new Error('Choose a valid training start date on or before race day.');
  const totalDays=dateDiff(startDate,raceDate)+1;
- const elapsedWeeks=Math.ceil(dateDiff(startDate,raceDate)/7);\n const totalWeeks=Math.max(1,elapsedWeeks);
+ const elapsedWeeks=Math.ceil(dateDiff(startDate,raceDate)/7);
+ const totalWeeks=Math.max(1,elapsedWeeks);
  const max=Math.max(1,Math.min(260,Math.floor(input.maxWeeks??260)));
  if(totalWeeks<2)throw new Error('A race plan needs at least two calendar weeks; review the race date or use a short-horizon plan.');
  if(totalWeeks>max)throw new Error('The selected race horizon exceeds the supported planning window.');
