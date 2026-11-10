@@ -95,6 +95,7 @@ export default function SignUpScreen() {
         const byKey = new Map(documents.map(doc => [doc.document_key, doc.version]));
         const { error: acceptanceError } = await supabase.rpc('v2_accept_legal_documents', {
           p_expected_user_id: data.session.user.id,
+          p_expected_user_id: data.session.user.id,
           p_terms_version: byKey.get('terms'),
           p_privacy_version: byKey.get('privacy'),
           p_founder_beta_terms_version: byKey.get('founder_beta_terms'),
