@@ -107,3 +107,22 @@ A V2-owned brand/product operating authority was created at `docs/product/ALL-IN
 
 The legal draft and D&B submission identify `https://allin365.app` as the company-supplied website. The current website's actual source/editor/hosting and asset library have not yet been located. Connected Wix returned no sites, so do not assume Wix is its owner and do not change DNS or deploy a replacement.
 
+
+
+## Full approved design package transferred — 2026-11-10
+
+The V2 repo now preserves these exact V1 Library sources:
+
+1. `docs/product/ALL-IN-365-APP-ART-DESIGN-HANDOFF-v2.md` — authoritative 30 KB approved screen/interaction handoff (v2, not v1).
+2. `docs/product/ALL-IN-365-APP-ART-CURRENT-AUTHORITY.md` — source pointer and closure rule.
+3. `docs/product/ALL-IN-365-UI-COMPONENT-ASSET-SPEC-v1.md` — production-ready component, icon, imagery, motion, responsive, system-state, accessibility and Watch visual requirements.
+4. `docs/product/ALL-IN-365-BADGE-SYSTEM-SPEC-v1.md` — badge / PR / milestone semantics and visual rules.
+5. `docs/migration/reference/ALL-IN-APP-ART-VISUAL-QA-V1-CHECKPOINT.md` — historical observations of V1 implementation drift, explicitly labelled as not V2 acceptance evidence.
+
+Use handoff v2 over v1 wherever they differ. Its APPROVED = CLOSED rule is non-negotiable: do not regenerate or re-approve screens the founder already approved. Preserve newer explicit product decisions and feature acceptance contracts if they supersede a handoff detail. The canonical primary nav is Today / Fuel / Train / Community / Coach; Profile is reached from the avatar/header. The token file `apps/mobile-v2/src/theme/tokens.ts` now carries the approved base palette, spacing, radius and navigation constants. The V2 shell sign-in/home/index/onboarding screens have been moved onto the exact approved color values.
+
+Editable Figma file key(s) remain undiscovered. The design transfer is nevertheless sufficient to begin implementing the approved screens and global components without reopening design approval. Continue locating the editable Figma file/library for source-layer access and future asset handoff only.
+
+## Business plan completeness
+
+V2 has transferred the approved brand/product operating summary and the dated first-year revenue estimate, plus the historical referral pricing handoff with a clear supersession note. This is **not** yet a complete business plan. The existing source set does not yet include a complete current operating model covering market/competition, acquisition, budget, operating costs, runway, unit economics, support/operations, and sensitivity scenarios. Build that plan from verified founder-approved inputs; do not infer missing costs or forecasts from the $8,991 gross sales estimate.
