@@ -231,6 +231,7 @@ export function matchRaceCourseGpsPosition(
   const ambiguityDistance = Math.max(30, sample.horizontalAccuracyMeters * 2);
   const second = candidates.find(
     (candidate) =>
+      Math.abs(candidate.index - best.index) > 1 &&
       Math.abs(candidate.distanceOnCourseMeters - best.distanceOnCourseMeters) > ambiguityDistance,
   );
   if (
