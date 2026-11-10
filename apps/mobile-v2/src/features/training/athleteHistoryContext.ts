@@ -4,7 +4,8 @@
  * Its purpose is to retain provenance, active constraints and coverage gaps
  * when building a bounded Coach context.
  */
-export type AthleteHistorySport='running'|'walking'|'cycling'|'swimming'|'strength'|'hiking'|'rucking'|'rowing'|'elliptical'|'stair'|'yoga'|'mobility'|'other';
+import { V2_ACTIVITY_SPORTS, type ActivitySport } from './activityEntryContract.ts';
+export type AthleteHistorySport=ActivitySport;
 export type AthleteHistorySource='canonical_training'|'device_import'|'manual_entry'|'race_result';
 export type AthleteHistoryCoverageStatus='complete'|'partial'|'none'|'unknown';
 export type AthleteHistoryEvent={
@@ -62,7 +63,7 @@ function safeEvent(e:AthleteHistoryEvent):boolean{
  typeof e.occurredAt==='string'&&Number.isFinite(Date.parse(e.occurredAt))&&validDate(e.occurredAt.slice(0,10))&&
  typeof e.recordedAt==='string'&&Number.isFinite(Date.parse(e.recordedAt))&&
  ['completed_session','race_result','strength_session','plan_change','adaptation_outcome'].includes(e.kind)&&
- (e.sport===null||['running','walking','cycling','swimming','strength','hiking','rucking','rowing','elliptical','stair','yoga','mobility','other'].includes(e.sport))&&
+ (e.sport===null||V2_ACTIVITY_SPORTS.some(sport=>sport===e.sport))&&
  (!['completed_session','race_result','strength_session'].includes(e.kind)||e.sport!==null)&&
  ['canonical_training','device_import','manual_entry','race_result'].includes(e.source)&&
  ['low','moderate','high'].includes(e.confidence)&&e.metrics&&typeof e.metrics==='object'&&!Array.isArray(e.metrics)&&
