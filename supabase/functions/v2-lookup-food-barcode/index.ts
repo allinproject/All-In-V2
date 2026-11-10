@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { coalesceProviderRequest, getProviderCache, putProviderCache, providerCacheKey } from "../_shared/providerCache.ts";
 
 const HEADERS = {
   "content-type": "application/json",
@@ -114,35 +115,70 @@ function normalizeOffProduct(barcode: string, product: any) {
   };
 }
 async function fetchUsdaBranded(barcode: string, apiKey: string) {
+  const cacheKey = await providerCacheKey("usda_fdc_branded_gtin", barcode);
+  const cached = await getProviderCache("usda_fdc_branded_gtin", cacheKey);
+  if (cached) {
+    const payload = cached.payload as any;
+    return { limited: false, candidate: payload?.not_found ? null : payload };
+  }
   const url = new URL(FDC_BASE + "/foods/search");
   url.searchParams.set("api_key", apiKey);
-  const upstream = await fetch(url.toString(), {
+  const upstream = await coalesceProviderRequest("fdc-branded:" + cacheKey, () => fetch(url.toString(), {
     method: "POST",
     headers: { "content-type": "application/json", "accept": "application/json" },
     body: JSON.stringify({ query: barcode, dataType: ["Branded"], pageSize: 25, pageNumber: 1 }),
     signal: AbortSignal.timeout(8000),
-  });
+  }));
   if (upstream.status === 429) return { limited: true, candidate: null };
   if (!upstream.ok) return { limited: false, candidate: null };
-  const json = await upstream.json().catch(() => null);
-  return { limited: false, candidate: normalizeUsdaBranded(barcode, json?.foods) };
+  const json = await upstream.clone().json().catch(() => null);
+  const candidate = normalizeUsdaBranded(barcode, json?.foods);
+  if (candidate) {
+    await putProviderCache(
+      "usda_fdc_branded_gtin", cacheKey, candidate,
+      "reference_unverified", "USDA FoodData Central / CC0 1.0", 24 * 60 * 60,
+      candidate.retrieved_at
+    );
+  }
+  return { limited: false, candidate };
 }
 async function fetchOff(barcode: string) {
+  const cacheKey = await providerCacheKey("open_food_facts_gtin", barcode);
+  const cached = await getProviderCache("open_food_facts_gtin", cacheKey);
+  if (cached) {
+    const payload = cached.payload as any;
+    return { limited: false, candidate: payload?.not_found ? null : payload };
+  }
   const fields = [
     "code", "product_name", "product_name_en", "brands", "serving_size",
     "product_quantity_unit", "serving_quantity_unit", "image_front_small_url",
     "image_front_url", "nutriments",
   ].join(",");
   const url = OFF_BASE + "/" + encodeURIComponent(barcode) + ".json?fields=" + encodeURIComponent(fields);
-  const upstream = await fetch(url, {
+  const upstream = await coalesceProviderRequest("off-product:" + cacheKey, () => fetch(url, {
     headers: { "user-agent": USER_AGENT, "accept": "application/json" },
     signal: AbortSignal.timeout(8000),
-  });
+  }));
   if (upstream.status === 429 || upstream.status === 503) return { limited: true, candidate: null };
   if (!upstream.ok) return { limited: false, candidate: null };
-  const json = await upstream.json().catch(() => null);
-  if (!json?.product || Number(json?.status ?? 1) === 0) return { limited: false, candidate: null };
-  return { limited: false, candidate: normalizeOffProduct(barcode, json.product) };
+  const json = await upstream.clone().json().catch(() => null);
+  if (!json?.product || Number(json?.status ?? 1) === 0) {
+    await putProviderCache(
+      "open_food_facts_gtin", cacheKey, { not_found: true },
+      "community_unverified", "Open Food Facts database / ODbL; individual contents / DbCL",
+      6 * 60 * 60
+    );
+    return { limited: false, candidate: null };
+  }
+  const candidate = normalizeOffProduct(barcode, json.product);
+  if (candidate) {
+    await putProviderCache(
+      "open_food_facts_gtin", cacheKey, candidate,
+      "community_unverified", "Open Food Facts database / ODbL; individual contents / DbCL",
+      7 * 24 * 60 * 60, candidate.retrieved_at
+    );
+  }
+  return { limited: false, candidate };
 }
 
 Deno.serve(async (request: Request) => {
