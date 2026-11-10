@@ -54,3 +54,26 @@ V1 does contain one profile and a single Coach thread with 16 message rows (8 us
 - No Figma file or website ownership confirmed.
 - No legal draft declared final.
 - No existing V1 account or personal data migrated.
+
+
+## Cookbook source-quality profile (read-only V1 inspection)
+
+V1 `allin_recipes` contains 1,019 rows, but visibility and readiness are not equivalent:
+
+- 20 rows: `status=draft`, `published=false`.
+- 886 rows: `status=draft`, `published=true`.
+- 1 row: `status=tested`, `published=true`.
+
+Do not infer that every row with `published=true` is cookbook-ready. Preserve both status fields and all provenance; resolve the meaning of the `draft + published` combination against current V1 app behavior and Cookbook readiness rules before setting V2 catalog visibility.
+
+Recipe selector/option state is also mixed:
+
+- Selectors: 187 awaiting_alternative_formula and inactive; 3 false_positive and inactive; 3 interactive_unverified_macros and inactive; 181 no_alternative_method_documented and inactive; 13 not_generic_swap and inactive; 310 fully_calculated and active; 1 default_only_estimated and active; 563 interactive_unverified_macros and active; 29 needs_review and active; 3 reviewed and active.
+- Selector options: 12 blocked_pending_calculation inactive; 960 documented_method inactive; 270 documented_method active; 5 estimated active; 1 existing_default_estimated active; 452 form_preserving_generic active; 374 needs_formula inactive; 1 needs_label_mapping inactive; 176 needs_label_mapping active; 1,615 needs_review active; 648 not_universally_compatible inactive; 113 retired_duplicate inactive; 102 retired_redundant inactive; 4 reviewed active; 1 verified_default inactive; 1,110 verified_default active; 32 verified_recipe_specific active.
+- Component mappings: 27 verified, 2,828 unverified.
+
+The seed/import must preserve these lifecycle and verification fields. The V2 UI/calculation pipeline must not treat `active=true` or `published=true` alone as proof of nutrition or cooking-method validation. The product's cookbook-ready threshold and source-of-truth status semantics must be reviewed before public V2 visibility.
+
+## Security reference finding
+
+V1 Supabase table inspection surfaced a critical advisory: `allin_private.race_verifier_state` has RLS disabled. This is a V1 issue to review separately. V2 must never reproduce that security posture; all V2 private tables require RLS and tested grants/policies before use. No V1 policy was changed during this inspection.
