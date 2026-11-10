@@ -42,3 +42,12 @@ test('callback request identity distinguishes provider errors and subsequent val
     authCallbackRequestKey({ error: 'access_denied', error_description: 'different' }),
   );
 });
+
+test('google oauth callback uses the same PKCE exchange and access gate', () => {
+  assert.deepEqual(resolveAuthCallback({ code: 'google-pkce-code' }), {
+    kind: 'exchange',
+    code: 'google-pkce-code',
+    destination: 'app',
+  });
+  assert.notEqual(authCallbackRequestKey({ code: 'google-pkce-code' }), authCallbackRequestKey({ error: 'access_denied' }));
+});
