@@ -54,7 +54,9 @@ const DATE=/^\d{4}-\d{2}-\d{2}$/;
 function validDate(value:string):boolean{return DATE.test(value)&&Number.isFinite(Date.parse(value+'T12:00:00Z'))}
 function timestamp(value:string):number{const n=Date.parse(value);return Number.isFinite(n)?n:0}
 function safeEvent(e:AthleteHistoryEvent):boolean{
- return Boolean(e&&e.id&&e.summary&&validDate(e.occurredAt.slice(0,10))&&Number.isFinite(Date.parse(e.recordedAt))&&
+ return Boolean(e&&typeof e.id==='string'&&e.id.trim()&&typeof e.summary==='string'&&e.summary.trim()&&
+ typeof e.occurredAt==='string'&&Number.isFinite(Date.parse(e.occurredAt))&&validDate(e.occurredAt.slice(0,10))&&
+ typeof e.recordedAt==='string'&&Number.isFinite(Date.parse(e.recordedAt))&&
  ['canonical_training','device_import','manual_entry','race_result'].includes(e.source)&&
  ['low','moderate','high'].includes(e.confidence)&&e.metrics&&typeof e.metrics==='object'&&!Array.isArray(e.metrics));
 }
@@ -64,9 +66,12 @@ export function buildAthleteHistoryReadModel(input:{
  restrictions:AthleteRestriction[];coverage:AthleteHistoryCoverage[];events:AthleteHistoryEvent[];
  maxEvents?:number;
 }):AthleteHistoryReadModel{
- if(!Number.isFinite(Date.parse(input.generatedAt))||!validDate(input.fromDate)||!validDate(input.throughDate)||input.fromDate>input.throughDate)throw new Error('Valid athlete-history scope and retrieval timestamp are required.');
+ if(!Number.isFinite(Date.parse(input.generatedAt))||!validDate(input.fromDate)||!validDate(input.throughDate)||input.fromDate>input.throughDate||
+    !Array.isArray(input.sports)||input.sports.length===0||!Array.isArray(input.restrictions)||!Array.isArray(input.coverage)||!Array.isArray(input.events))
+  throw new Error('Valid athlete-history scope, sport selection, collections and retrieval timestamp are required.');
  const sports=[...new Set(input.sports)];
- const coverage=input.coverage.filter(c=>sports.includes(c.sport)&&validDate(c.fromDate)&&validDate(c.throughDate)&&c.fromDate<=c.throughDate);
+ const coverage=input.coverage.filter(c=>Boolean(c&&sports.includes(c.sport)&&validDate(c.fromDate)&&validDate(c.throughDate)&&c.fromDate<=c.throughDate&&
+   ['complete','partial','none','unknown'].includes(c.status)&&Array.isArray(c.missingIntervals)));
  const requestedStart=Date.parse(input.fromDate+'T00:00:00Z'),requestedEnd=Date.parse(input.throughDate+'T23:59:59Z');
  const coveredSports=new Set(coverage.filter(c=>c.status==='complete'&&Date.parse(c.fromDate+'T00:00:00Z')<=requestedStart&&Date.parse(c.throughDate+'T23:59:59Z')>=requestedEnd&&c.missingIntervals.length===0).map(c=>c.sport));
  const relevantCoverage=coverage.filter(c=>sports.includes(c.sport));
@@ -77,7 +82,7 @@ export function buildAthleteHistoryReadModel(input:{
  if(relevantCoverage.some(c=>c.status==='partial'||c.missingIntervals.length>0))warnings.push('One or more device/provider history intervals are missing.');
  if(relevantCoverage.some(c=>c.status==='unknown'))warnings.push('History coverage is unknown for one or more sports.');
  if(input.currentPlan&&(!Number.isInteger(input.currentPlan.revision)||input.currentPlan.revision<1))throw new Error('Current accepted Training plan revision is invalid.');
- const restrictions=input.restrictions.filter(r=>r.status==='active'&&r.id&&r.subject&&r.updatedAt&&Number.isFinite(Date.parse(r.updatedAt))).sort((a,b)=>timestamp(b.updatedAt)-timestamp(a.updatedAt));
+ const restrictions=input.restrictions.filter(r=>Boolean(r&&r.status==='active'&&typeof r.id==='string'&&r.id.trim()&&typeof r.subject==='string'&&r.subject.trim()&&typeof r.updatedAt==='string'&&Number.isFinite(Date.parse(r.updatedAt)))).sort((a,b)=>timestamp(b.updatedAt)-timestamp(a.updatedAt));
  const events=input.events.filter(safeEvent).filter(e=>e.occurredAt.slice(0,10)>=input.fromDate&&e.occurredAt.slice(0,10)<=input.throughDate&&(!e.sport||sports.includes(e.sport)));
  const max=Math.max(1,Math.min(100,Math.floor(input.maxEvents??50)));
  events.sort((a,b)=>timestamp(b.occurredAt)-timestamp(a.occurredAt)||timestamp(b.recordedAt)-timestamp(a.recordedAt));
