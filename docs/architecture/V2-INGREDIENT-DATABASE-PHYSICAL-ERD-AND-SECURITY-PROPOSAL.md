@@ -323,3 +323,22 @@ Migration 007 has now installed pg_cron 1.6.4 and scheduled the private purge he
 2. **Data source evidence:** Pin licensed USDA bulk snapshot/version/hash, selected V1 ingredient references and provider license/attribution before bulk import; record unmapped and rejected source rows.
 3. **Build gate:** ALL-224 real Windows lockfile, clean install, TypeScript/Expo and live integration tests.
 4. **Acceptance:** No athlete can publish shared ingredient facts; candidate data is never calculation-ready; exact identity/state/units are enforced; local recipe read and recalculation remain available without provider HTTP requests.
+
+## 12. USDA initial-source candidate snapshot — official release verified, archive bytes pending
+
+**Source investigation 2026-11-10:** USDA's [official downloadable datasets](https://fdc.nal.usda.gov/download-datasets/) list **Foundation Foods October 2026** and **Branded October 2026** as the latest bulk release categories; the [inventory/update log](https://fdc.nal.usda.gov/log/) identifies the **2026-10-29 v16.0** update. [USDA documentation](https://fdc.nal.usda.gov/faq/) confirms that SR Legacy's final release was April 2018, and that Branded product API records update monthly between twice-yearly bulk downloads.
+
+**Proposed initial bootstrap sources (not yet locked or ingested):**
+
+| Data type | Release | Official file | Intended treatment |
+|---|---|---|---|
+| Foundation Foods | 2026-10-29 / v16.0 | `https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_json_2026-10-29.zip` | First generic-food source **candidates**; exact FDC ID/data type and raw/cooked state review |
+| SR Legacy | 2018-04 (final) | `https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip` | Supplementary generic candidates for reviewed gaps; preserve historical source class |
+| Branded | 2026-10 | Official [download listing](https://fdc.nal.usda.gov/download-datasets/) | Separate branded candidates; no generic auto-merges, no package-to-generic substitution |
+| Open Food Facts | Provider-controlled versioned source | Not part of USDA archive | Distinct community-sourced product candidate, quality and source license/review preserved |
+
+**Byte verification status:** Downloading the official Foundation ZIP did **not** succeed in this session. Therefore there is **no verified SHA-256, actual record count, extracted contents audit, final importer field mapping, or approved seed file**. Never substitute an older release's checksum. Before any imported source is trusted, obtain the official archive, compute and store SHA-256, record byte length and archive member names, review FDC nutrient IDs/method/basis and snapshot a versioned manifest. This is a prospective source selection, **not** proof that data were downloaded.
+
+**Licensing:** USDA [states FoodData Central data are public domain under CC0 1.0](https://fdc.nal.usda.gov/api-guide/), and asks for source attribution. Cite USDA/FoodData Central in the published ingredient source metadata; verify independent rights for other providers such as OFF rather than transferring USDA licensing assumptions to them.
+
+**Required import review and reconciliation:** The existing dry-run `ingredientSeedPreview.ts` accepts candidates with exact provider+data-type+ID and payload hash; candidates remain unreviewed. Do not publish an automatically chosen USDA nutrient profile, assume SR Legacy is newer than Foundation, or turn missing values into zero. Store full, verified source-mapping/provenance and reviewed nutrient completeness only through the approved ALL-228 writer after ALL-222 authorization.
