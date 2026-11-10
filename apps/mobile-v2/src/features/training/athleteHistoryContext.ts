@@ -103,7 +103,11 @@ export function buildAthleteHistoryReadModel(input:{
  if(malformedCoverageSports.size)warnings.push('One or more coverage source records are malformed; refresh source coverage before treating history as complete.');
  if(relevantCoverage.some(c=>c.status==='partial'||c.missingIntervals.length>0))warnings.push('One or more device/provider history intervals are missing.');
  if(relevantCoverage.some(c=>c.status==='unknown'))warnings.push('History coverage is unknown for one or more sports.');
- if(input.currentPlan&&(!Number.isInteger(input.currentPlan.revision)||input.currentPlan.revision<1))throw new Error('Current accepted Training plan revision is invalid.');
+ if(input.currentPlan&&(
+    typeof input.currentPlan.id!=='string'||!input.currentPlan.id.trim()||
+    !Number.isSafeInteger(input.currentPlan.revision)||input.currentPlan.revision<1||
+    !validDate(input.currentPlan.weekStart)||input.currentPlan.status!=='accepted'
+  ))throw new Error('Current accepted Training plan identity, revision or status is invalid.');
  // Active hard constraints must never disappear because their reader returned
  // a partial or malformed record. Require the owner to refresh/fix that read.
  if(input.restrictions.some(r=>r&&r.status==='active'&&(
