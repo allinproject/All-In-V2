@@ -214,27 +214,6 @@ export function validateExerciseScienceProfile(
   if (!oneOf(profile?.skillLevel,SKILL_LEVELS)) errors.push('Skill level is invalid.');
   if (!stringList(profile?.equipmentRequiredIds) || !unique(profile.equipmentRequiredIds || [])) errors.push('Required equipment IDs must be unique non-empty canonical IDs.');
   if (!stringList(profile?.equipmentOptionalIds) || !unique(profile.equipmentOptionalIds || [])) errors.push('Optional equipment IDs must be unique non-empty canonical IDs.');
-  if (!Array.isArray(profile?.muscleGroups) || profile.muscleGroups.length === 0) {
-    errors.push('At least one sourced muscle-group role is required.');
-  }
-  const muscleGroupIds = new Set<string>();
-  let hasPrimaryMuscle = false;
-  for (const muscle of profile?.muscleGroups || []) {
-    if (!nonEmpty(muscle.muscleGroupId) || muscleGroupIds.has(muscle.muscleGroupId) ||
-      !oneOf(muscle.role,['primary','secondary','stabilizer'] as const)) {
-      errors.push('Muscle group identities and roles must be valid and unique.');
-      continue;
-    }
-    muscleGroupIds.add(muscle.muscleGroupId);
-    if (muscle.role === 'primary') hasPrimaryMuscle = true;
-    if (!stringList(muscle.sourceIds,1) || muscle.sourceIds.some((id) => !sourceIds.has(id))) {
-      errors.push('Each muscle-group role must link to registered sources.');
-    }
-  }
-  if (Array.isArray(profile?.muscleGroups) && profile.muscleGroups.length > 0 && !hasPrimaryMuscle) {
-    errors.push('At least one primary muscle-group role is required.');
-  }
-
   if (!Array.isArray(profile?.sources)) errors.push('Source registry must be a list.');
   const sourceIds = new Set<string>();
   for (const source of profile?.sources || []) {
@@ -250,9 +229,34 @@ export function validateExerciseScienceProfile(
     if (source.pmid !== null && !/^\d+$/.test(source.pmid)) errors.push('PMID must be null or numeric.');
   }
 
+  const muscleGroups = Array.isArray(profile?.muscleGroups) ? profile.muscleGroups : [];
+  const jointDemands = Array.isArray(profile?.jointDemands) ? profile.jointDemands : [];
+  const cautionFlags = Array.isArray(profile?.cautionFlags) ? profile.cautionFlags : [];
+  const evidenceClaims = Array.isArray(profile?.claims) ? profile.claims : [];
+  if (!Array.isArray(profile?.muscleGroups) || profile.muscleGroups.length === 0) {
+    errors.push('At least one sourced muscle-group role is required.');
+  }
+  const muscleGroupIds = new Set<string>();
+  let hasPrimaryMuscle = false;
+  for (const muscle of muscleGroups) {
+    if (!nonEmpty(muscle.muscleGroupId) || muscleGroupIds.has(muscle.muscleGroupId) ||
+      !oneOf(muscle.role,['primary','secondary','stabilizer'] as const)) {
+      errors.push('Muscle group identities and roles must be valid and unique.');
+      continue;
+    }
+    muscleGroupIds.add(muscle.muscleGroupId);
+    if (muscle.role === 'primary') hasPrimaryMuscle = true;
+    if (!stringList(muscle.sourceIds,1) || muscle.sourceIds.some((id) => !sourceIds.has(id))) {
+      errors.push('Each muscle-group role must link to registered sources.');
+    }
+  }
+  if (Array.isArray(profile?.muscleGroups) && profile.muscleGroups.length > 0 && !hasPrimaryMuscle) {
+    errors.push('At least one primary muscle-group role is required.');
+  }
+
   if (!Array.isArray(profile?.jointDemands)) errors.push('Joint demands must be a list.');
-  for (const demand of profile?.jointDemands || []) {
-    if (!nonEmpty(demand.jointId) || !nonEmpty(demand.action) ||
+  for (const demand of jointDemands) {
+    if (!demand || !nonEmpty(demand.jointId) || !nonEmpty(demand.action) ||
       !oneOf(demand.plane,PLANES) || !oneOf(demand.rangeOfMotion,ROM_RANGES) || !oneOf(demand.relativeDemand,RELATIVE_DEMANDS)) {
       errors.push('Each joint demand needs a joint, action, plane and demand level.');
     }
@@ -263,8 +267,8 @@ export function validateExerciseScienceProfile(
 
   if (!Array.isArray(profile?.cautionFlags)) errors.push('Caution flags must be a list.');
   const cautionIds = new Set<string>();
-  for (const caution of profile?.cautionFlags || []) {
-    if (!nonEmpty(caution.flagId) || cautionIds.has(caution.flagId) || !nonEmpty(caution.description)) {
+  for (const caution of cautionFlags) {
+    if (!caution || !nonEmpty(caution.flagId) || cautionIds.has(caution.flagId) || !nonEmpty(caution.description)) {
       errors.push('Caution flags need unique IDs and descriptions.');
       continue;
     }
@@ -283,15 +287,15 @@ export function validateExerciseScienceProfile(
     ['regression',profile?.regressionVariationIds],
     ['alternative',profile?.alternativeVariationIds],
   ] as const) {
-    if (!stringList(ids) || !unique(ids || []) || (ids || []).includes(profile?.variationId)) {
+    if (!stringList(ids) || !unique(ids || []) || (ids || []).includes(profile.variationId)) {
       errors.push(`Exercise ${label} variation IDs must be unique, non-self references.`);
     }
   }
 
   if (!Array.isArray(profile?.claims)) errors.push('Exercise evidence claims must be a list.');
   const claimIds = new Set<string>();
-  for (const claim of profile?.claims || []) {
-    if (!nonEmpty(claim.id) || claimIds.has(claim.id)) {
+  for (const claim of evidenceClaims) {
+    if (!claim || !nonEmpty(claim.id) || claimIds.has(claim.id)) {
       errors.push('Evidence claim IDs must be present and unique.');
       continue;
     }
@@ -302,7 +306,7 @@ export function validateExerciseScienceProfile(
     if (!Array.isArray(claim.targetGoals) || !claim.targetGoals.every((goal) => GOALS.includes(goal)) || !unique(claim.targetGoals)) errors.push('Claim target goals must be valid and unique.');
     if (!oneOf(claim.directness,DIRECTNESS) || !oneOf(claim.evidenceTier,EVIDENCE_TIERS) || !oneOf(claim.confidence,CONFIDENCE)) errors.push('Claim directness, evidence tier and confidence are invalid.');
     if (!stringList(claim.sourceIds, 1) || claim.sourceIds.some((id) => !sourceIds.has(id))) errors.push('Each claim must link to registered source records.');
-    if (claim.directness === 'direct_sport_outcome' && claim.targetSports.length === 0) errors.push('Direct sport-outcome claims must name the studied sport.');
+    if (claim.directness === 'direct_sport_outcome' && Array.isArray(claim.targetSports) && claim.targetSports.length === 0) errors.push('Direct sport-outcome claims must name the studied sport.');
     if (claim.directness === 'mechanistic_rationale' && !['biomechanical_study','expert_consensus'].includes(claim.evidenceTier)) errors.push('Mechanistic rationale cannot be presented as direct outcome evidence.');
   }
 
