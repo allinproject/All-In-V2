@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { Database } from '../types/database.types';
 
 export const REQUIRED_V2_LEGAL_KEYS = ['terms', 'privacy', 'founder_beta_terms'] as const;
 export type V2LegalDocumentKey = typeof REQUIRED_V2_LEGAL_KEYS[number];
@@ -98,7 +99,7 @@ export const REQUIRED_V2_ONBOARDING_STEPS = [
 ] as const;
 
 export async function resolveV2Access(
-  client: SupabaseClient,
+  client: SupabaseClient<Database>,
   user: Pick<User, 'id'>,
 ): Promise<V2AccessResult> {
   const { data, error } = await client.rpc('v2_my_profile_state');
