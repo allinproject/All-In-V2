@@ -32,7 +32,7 @@ The latest reviewed V1 application source at the reference commit contains:
 | `Native/src/data/cookbookIngredientUsdaCoverage.ts` | Cookbook ingest/save readiness check; exact reviewed USDA FDC source, unique aliases, complete calculator input, preparation and source-proof rules. |
 | `Native/src/data/cookbookCookingYieldAdmission.ts` | Recipe-ingest cooking-yield metadata admission; exact source metadata only, unresolved prepared-state inputs stay manual-review/batch-required. |
 | `Native/src/data/cookingYieldIntelligence.ts` and related tests | Evidence-keyed raw/dry-to-cooked conversion and measured-yield aggregation. |
-| `supabase/functions/search-food-products/index.ts` | Live V1 `search-food-products` v7: USDA generic FDC candidates plus Open Food Facts/Searach-a-licious branded discovery; V1 cache is backend-owned. |
+| `supabase/functions/search-food-products/index.ts` | Live V1 `search-food-products` v7: USDA generic FDC candidates plus Open Food Facts / Search-a-licious branded discovery; V1 cache is backend-owned. |
 | `supabase/functions/lookup-food-barcode/index.ts` + `usdaBrandedFood.ts` | Exact GTIN lookup; USDA Branded first, then Open Food Facts product v3; source quality/licence retained. |
 
 Important separation: the pure arithmetic kernel consumes already-resolved ingredient evidence; it does not choose a food identity or invent conversions. The V2 port must retain that separation.
