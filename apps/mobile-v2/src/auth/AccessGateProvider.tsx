@@ -1,11 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthProvider';
+import { isV2AccessAttemptCurrent } from './authRoute';
 import { resolveV2Access, type V2LegalDocument } from './accessGateClient';
 import { supabase } from '../lib/supabase';
 
 export type V2AccessStatus = 'loading' | 'ready' | 'legal_required' | 'onboarding_required' | 'error';
 type OwnedStatus = {
   ownerId: string | null;
+  attempt: number;
   status: V2AccessStatus;
   message: string | null;
   requiredLegalDocuments: V2LegalDocument[];
@@ -25,6 +27,7 @@ export function AccessGateProvider({ children }: { children: React.ReactNode }) 
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<OwnedStatus>({
     ownerId: null,
+    attempt: 0,
     status: 'loading',
     message: null,
     requiredLegalDocuments: [],
@@ -33,12 +36,12 @@ export function AccessGateProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      setResult({ ownerId: null, status: 'loading', message: null, requiredLegalDocuments: [] });
+      setResult({ ownerId: null, attempt, status: 'loading', message: null, requiredLegalDocuments: [] });
       return;
     }
 
     let current = true;
-    setResult({ ownerId: user.id, status: 'loading', message: null, requiredLegalDocuments: [] });
+    setResult({ ownerId: user.id, attempt, status: 'loading', message: null, requiredLegalDocuments: [] });
     void resolveV2Access(supabase, user).then(access => {
       if (!current) return;
       const status: V2AccessStatus = access.needsLegalAcceptance
@@ -48,6 +51,7 @@ export function AccessGateProvider({ children }: { children: React.ReactNode }) 
           : 'ready';
       setResult({
         ownerId: user.id,
+        attempt,
         status,
         message: null,
         requiredLegalDocuments: access.requiredLegalDocuments,
@@ -59,6 +63,7 @@ export function AccessGateProvider({ children }: { children: React.ReactNode }) 
         : 'V2 account setup could not be verified. Private access remains closed.';
       setResult({
         ownerId: user.id,
+        attempt,
         status: 'error',
         message,
         requiredLegalDocuments: [],
@@ -69,7 +74,9 @@ export function AccessGateProvider({ children }: { children: React.ReactNode }) 
   }, [authLoading, user?.id, attempt]);
 
   const retry = useCallback(() => setAttempt(value => value + 1), []);
-  const status = !ownerId || result.ownerId !== ownerId ? 'loading' : result.status;
+  const status = isV2AccessAttemptCurrent(result.ownerId, result.attempt, ownerId, attempt, authLoading)
+    ? result.status
+    : 'loading';
   const value = useMemo(() => ({
     status,
     message: status === 'error' ? result.message : null,
