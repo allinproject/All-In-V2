@@ -61,6 +61,7 @@ test('independent archive SHA check detects tampering without importing ingredie
  const archive=join(directory,OFFICIAL_FOUNDATION_ZIP),manifest=join(directory,'manifest.json');
  try{
   const bytes=Buffer.alloc(1500,0x53);
+  bytes.set([0x50,0x4b,0x03,0x04],0);
   await writeFile(archive,bytes);
   await writeFile(manifest,JSON.stringify(sample({
    archive_sha256:createHash('sha256').update(bytes).digest('hex'),
@@ -69,6 +70,16 @@ test('independent archive SHA check detects tampering without importing ingredie
   assert.equal(accepted.verified,true);
   assert.equal(accepted.imported,false);
   assert.equal(accepted.nutritionReviewed,false);
+  const fakeZip=Buffer.alloc(1500,0x53);
+  await writeFile(archive,fakeZip);
+  await writeFile(manifest,JSON.stringify(sample({
+   archive_sha256:createHash('sha256').update(fakeZip).digest('hex'),
+  })));
+  await assert.rejects(()=>verifyFoundationArchive(manifest,archive),/ZIP local-file header/);
+  await writeFile(archive,bytes);
+  await writeFile(manifest,JSON.stringify(sample({
+   archive_sha256:createHash('sha256').update(bytes).digest('hex'),
+  })));
   bytes[100]=0x54;
   await writeFile(archive,bytes);
   await assert.rejects(()=>verifyFoundationArchive(manifest,archive),/SHA-256/);
