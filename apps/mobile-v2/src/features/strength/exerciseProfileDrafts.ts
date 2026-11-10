@@ -286,7 +286,7 @@ export const V2_EXERCISE_PROFILE_DRAFTS:readonly ExerciseScienceProfile[]=[
         limitations:'Acute EMG does not prove superior hypertrophy, strength gains or sport transfer. The tested cohort was small and highly experienced; this profile is not a medical or return-to-training recommendation.',
       },
     ],
-  },,
+  },
 
   {
     schemaVersion:1,
