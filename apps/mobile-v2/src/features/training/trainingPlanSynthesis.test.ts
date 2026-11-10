@@ -59,3 +59,18 @@ test('malformed daily session capacity is rejected rather than silently mis-sche
  const result=synthesizeTrainingWeek(c,[session('run','running','key','moderate','run_impact')]);
  assert.equal(result.status,'review_required');
 });
+
+test('Coach may not pass a whitespace-only reference as evidence for a proposed key workout',()=>{
+ const intent={...session('quality-run','running','key','hard','run_impact'),evidenceRefs:['   ']};
+ const result=synthesizeTrainingWeek(context(['running']),[intent]);
+ assert.equal(result.status,'blocked');
+ assert.ok(result.issues.some(issue=>issue.code==='UNSUPPORTED_PRESCRIPTION'));
+ assert.equal(result.days.flatMap(day=>day.sessions).length,0);
+});
+
+test('missing evidence remains visibly review-required rather than fabricated',()=>{
+ const intent={...session('quality-run','running','key','hard','run_impact'),evidenceRefs:[]};
+ const result=synthesizeTrainingWeek(context(['running']),[intent]);
+ assert.equal(result.status,'review_required');
+ assert.ok(result.issues.some(issue=>issue.code==='MISSING_EVIDENCE'));
+});
