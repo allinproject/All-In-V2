@@ -45,6 +45,31 @@ test('changed source digest requires explicit review, never overwrites published
   assert.equal(preview([fdc({ mapped_ingredient_id: 'another-v2' })], existing).counts.conflict, 1);
 });
 
+test('a changed digest cannot conceal a conflicting canonical ingredient mapping', () => {
+  const existing = [{
+    provider: 'usda_fdc' as const, source_data_type: 'Foundation' as const,
+    external_record_id: '12345', payload_sha256: shaA, ingredient_id: 'approved-v2-identity',
+  }];
+  const outcome = preview([fdc({
+    payload_sha256: shaB, mapped_ingredient_id: 'wrong-v2-identity',
+  })], existing);
+  assert.equal(outcome.counts.conflict, 1);
+  assert.equal(outcome.counts.review_changed_source, 0);
+});
+
+test('a malformed existing source cannot masquerade as an unchanged reviewed import', () => {
+  const base = {
+    provider: 'usda_fdc' as const, source_data_type: 'Foundation' as const,
+    external_record_id: '12345', payload_sha256: shaA, ingredient_id: 'v2-chicken',
+  };
+  assert.throws(() => preview([fdc()], [{ ...base, payload_sha256: 'invalid' }]),
+    /Existing ingredient source identity/);
+  assert.throws(() => preview([fdc()], [{ ...base, external_record_id: '000000' }]),
+    /Existing ingredient source identity/);
+  assert.throws(() => preview([fdc()], [{ ...base, ingredient_id: ' ' }]),
+    /Existing ingredient source identity/);
+});
+
 test('source identity includes provider and data type; exact duplicates conflict', () => {
   const a = fdc();
   const b = fdc({ source_data_type: 'SR Legacy' });
