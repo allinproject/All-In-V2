@@ -558,3 +558,20 @@ The proposal separates stable goal identity, immutable goal revisions, typed bas
 The ownership boundary is explicit: Goals owns outcome intent and target revisions; Training owns plan/calendar/session revisions; Completed Activity owns actual sport measurements and metric definitions; Race/Route owns race/course/result facts; Exercise Library owns canonical movement IDs; Athlete History supplies coverage-aware history; Progress owns user-facing PR/Badge/Milestone projections. Goals stores no duplicate workout, activity, metric catalog, course, exercise, progress or achievement records.
 
 **Not approved / not deployed:** no Goals DDL, metric seed, RPC or RLS policy was created. ALL-239 remains blocked by ALL-232 and ALL-222. Decisions before DDL include the canonical goal-kind vocabulary, supported non-activity measures (skill/consistency), evidence sources/baseline acceptance, comparator/tolerance rules, metric registry FK contracts, revision-scoped priority semantics and downstream Training/Progress notification behavior.
+
+
+## 32. Coach action capability manifest and Apply contract — 2026-11-10
+
+A dedicated action/authorization contract is committed:
+
+[ V2 Coach Action Capability Manifest — Ephemeral Authorization & Apply Contract ](https://github.com/allinproject/All-In-V2/blob/integration/v2-foundation/docs/architecture/V2-COACH-ACTION-CAPABILITY-MANIFEST-AND-APPLY-CONTRACT.md)
+
+**Architecture decision:** the capability manifest is a bounded, host-generated, per-turn in-memory contract. It is not a canonical business object and does not need a new database table. It expires with the turn/session/target context. It contains only the exact typed capabilities, owner, target identity/version, required inputs and approval mode valid for the current context.
+
+Coach may propose only actions present in the manifest. Material changes use the same domain-owned preview/validation and explicit approval path as manual UI. Apply dispatches to the existing owner-specific writer, which independently checks authenticated owner, target ownership, expected version/revision and its own idempotency key. The host re-reads the canonical object before reporting success. A lost response is reconciled by the exact owner action key; a new generic action is never invented to retry.
+
+No universal writer, generic SQL/RPC authority, persistent global action ledger or duplicate domain idempotency store is introduced. Durable mutations and audit remain with Goals, Training, Completed Activity, Food Log, Cookbook, Kitchen, Recovery, Profile, Community and other canonical owners. Coach conversation may reference the owner result, but does not copy the business object.
+
+This carries the same capability/parity rule into all domain work: Coach is another interface to the same canonical owner operations, not a parallel AI-only writer. Direct UI remains correct for scanning, permissions, ambiguous identity and sensitive/destructive confirmation.
+
+**Not yet implemented:** this is a reviewed architecture proposal, not a deployed Coach runtime. ALL-240 remains blocked by ALL-222 and ALL-230. The finite action registry, typed context schemas, manifest integrity/lifetime, per-domain preview/result adapters, timeout reconciliation and Coach parity test harness still require owner approval and implementation.
