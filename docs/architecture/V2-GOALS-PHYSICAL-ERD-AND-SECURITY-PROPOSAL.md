@@ -74,7 +74,7 @@ erDiagram
     text frequency_period
     boolean user_confirmed
   }
- v2_goal_revision_measures {
+  v2_goal_revision_measures {
     uuid id PK
     uuid goal_revision_id FK
     text metric_code
