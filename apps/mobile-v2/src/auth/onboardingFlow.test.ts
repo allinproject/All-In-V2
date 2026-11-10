@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   EMPTY_ONBOARDING_ANSWERS,
+  V2_ONBOARDING_FOCUS_OPTIONS,
   firstIncompleteOnboardingStep,
   isOnboardingAnswerComplete,
   onboardingPreferenceWrite,
@@ -26,6 +27,16 @@ test('empty optional answers remain unknown until the user chooses or skips', ()
   assert.equal(isOnboardingAnswerComplete('coach', answers), false);
   assert.equal(isOnboardingAnswerComplete('food_safety', answers), false);
   assert.equal(isOnboardingAnswerComplete('proactivity', answers), false);
+});
+
+test('initial focus options cover sports and non-race lifestyle starting points', () => {
+  const values = V2_ONBOARDING_FOCUS_OPTIONS.map(option => option.value);
+  assert.equal(new Set(values).size, values.length);
+  assert.ok(values.includes('general_fitness'));
+  assert.ok(values.includes('nutrition_habits'));
+  assert.ok(values.includes('body_composition'));
+  assert.ok(values.includes('general_wellbeing'));
+  assert.ok(values.includes('running'));
 });
 
 test('explicit onboarding answers map to the owning versioned profile settings sections', () => {
