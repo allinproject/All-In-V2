@@ -8,6 +8,7 @@ import {
   isOnboardingAnswerComplete,
   matchesOnboardingRetryScope,
   onboardingPreferenceWrite,
+  v2OnboardingScreenKey,
   type OnboardingAnswers,
 } from './onboardingFlow.ts';
 
@@ -120,4 +121,12 @@ test('onboarding save guard rejects rapid complete/skip attempts until the curre
   assert.equal(guard.tryEnter(), true);
   guard.leave();
   assert.equal(guard.tryEnter(), true);
+});
+
+test('onboarding drafts are isolated by both account and authenticated session', () => {
+  const first = v2OnboardingScreenKey('athlete-a', 1);
+  assert.equal(first, v2OnboardingScreenKey('athlete-a', 1));
+  assert.notEqual(first, v2OnboardingScreenKey('athlete-b', 1));
+  assert.notEqual(first, v2OnboardingScreenKey('athlete-a', 2));
+  assert.notEqual(first, v2OnboardingScreenKey(null, 1));
 });
