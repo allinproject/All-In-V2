@@ -320,3 +320,13 @@ V2 will coordinate Daily Sport Nutrition Intelligence, the existing canonical En
 - ALL-236: Coach uses course/terrain, planned session, scheduled weather, daylight/UV and owned gear to suggest trail shoes, cold/wet/hot clothing, traction/visibility and sunscreen for long sunny daytime sessions only when evidence supports it. Trail race prep should identify appropriate local trail routes by course specificity, ability, elevation, distance and access.
 - ALL-237: Extend existing V1 notification ledger/preferences/dedupe/delivery/relevance system; do not create a second system. More helpful notifications, not more noise: category preferences, quiet hours, per-event dedupe, batching, cooldowns, action/decline suppression, push permission and safety priority.
 - ALL-238: Smart Recovery uses recent completed activities and strength exercises, whole-sport load, current restrictions/pain, recovery signals and upcoming session. V1 stretch recommendations currently choose from a small catalog based mainly on the next uncompleted activity; V2 should personalize to completed activity and explain why. Proposal only, user approval before save.
+
+
+## Additional V1 Coach gaps — 2026-11-10
+
+Full V1 self-review and whole-athlete simulation revealed three gaps not covered by the first Coach capability split:
+- Non-race goal models: long-horizon strength goals (e.g., bench), stair-stepper goals and distance-specific cycling progression are failed/not shown; yoga/mobility guided execution is partial. Tracked ALL-239.
+- Coach safe action manifest: reads are more unified than proposal/write actions; create a per-turn capability manifest with target identity/version, action scope, review/apply semantics and canonical owner writer; remove supported legacy freeform screen context. Tracked ALL-240.
+- End-to-end acceptance: many sport, hardware, onboarding, Food/Pantry/Meal Prep, Coach action, accessibility, offline/retry, notification and account-isolation journeys remain unverified or blocked. Build one evidence-backed scenario/evaluation suite. Tracked ALL-241.
+
+Preserve V1 architectural strengths: task-gated context instead of sending all app data, canonical ownership/no shadow stores, provenance/fact-estimate distinction, graceful degradation, consent/least-privilege, canonical AI router/limits/telemetry and explicit proposal/apply semantics.

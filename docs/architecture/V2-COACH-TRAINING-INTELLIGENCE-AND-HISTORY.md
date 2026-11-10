@@ -291,3 +291,39 @@ V2 requirements:
 - Recovery: V1 fixed stretch catalog and activity-type rules exist, but selection currently looks at the next uncompleted item rather than rich completed exercise/load history. V2 must correct that.
 
 Tracked in ALL-236 Gear/Environment, ALL-237 Notification Intelligence and ALL-238 Smart Recovery under ALL-217.
+
+
+## 15. Additional V1 gaps found in full Coach self-review and whole-athlete simulation
+
+### Non-race goal planning is not solved by race-plan intelligence
+
+V1's whole-athlete simulation explicitly marks several non-race goal journeys failed/not shown:
+- 36-month bench press target: race-centric planner rejects strength goals; no generic long-horizon strength goal model.
+- 18-month stair-stepper goal: race-centric planner rejects stair goals and requires native steps/stairs/floors metric/device source.
+- 24-month 100-mile cycling target: horizon fixture exists, but distance-specific cycling progression is not shown.
+- Yoga/Mobility: basic recorder exists, but full guided execution is a known partial gap.
+V2 needs typed sport-specific goal schemas/builders for race, lift/strength benchmark, cycling, swimming and other native device metrics. Do not force stair/elliptical/ruck/hike into running miles or invented equivalencies. ALL-239 owns this.
+
+### Coach action authorization is fragmented
+
+V1's 2026-10-31 self-review identified that Coach reads are more unified than its mutation/proposal mechanisms. Recipe, Recovery, Food/Shopping/Meal Prep, Training and Today use different proposal/write paths. The recommended missing contract is a bounded machine-readable action-capability manifest per current turn: exact target identity/revision, action type, permissions, preview/apply mode and canonical owner writer. This is not permission for a universal model writer. Also remove legacy freeform screenContext from supported entry points in favor of typed identity/versioned context. ALL-240 owns this.
+
+### Whole-athlete evaluation is not the same as unit-test presence
+
+V1's 2026-11-06 acceptance matrix marks major goal/sport journeys unverified, blocked or failed; source presence is not execution. It identifies remaining gaps in actual sport plan creation, Watch/Health/device execution, Food/Pantry/Recipe/Meal Prep, Coach action/apply, notifications, accessibility, offline/retry, account switching and full end-to-end behavior. V2 needs one evidence-backed quality program spanning Coach model behavior, canonical readers/writers, providers, devices, app lifecycle and cost. ALL-241 owns this.
+
+### Data boundary and graceful degradation must survive the port
+
+Preserve V1 strengths:
+- one persistent Coach, task-relevant rather than full-app prompt dump;
+- canonical domain ownership, bounded object identity and versioned typed context;
+- learned/settled facts kept distinct from canonical app truth;
+- explicit provenance separating facts, estimates, predictions, inference and recommendations;
+- graceful degradation when context or settled-state readers fail;
+- one capability manifest to constrain safe proposals;
+- canonical router/limits/telemetry and cost regression review;
+- user consent and least-privilege for Health, location, device, push and notifications.
+Coach should say when data is unavailable, never invent completeness, and never claim a domain write succeeded before readback.
+
+### Additional V2 scope
+Tracked under ALL-239 (non-race goals), ALL-240 (action capability), ALL-241 (end-to-end Coach evaluation).
