@@ -28,12 +28,13 @@ Current source foundation:
 
 ## Supabase foundation
 
-Four migrations have been applied to the dedicated V2 project:
+Five migrations have been applied to the dedicated V2 project:
 
 1. `20261110000100_v2_auth_profile_legal_foundation.sql` — Auth-linked Profile, Settings, Onboarding and Legal foundation.
 2. `20261110000200_v2_tighten_profile_privileges_and_legal_versions.sql` — narrowed Profile privileges and immutable published legal versions.
 3. `20261110000300_v2_provider_cache_and_private_rls.sql` — private provider cache and defense-in-depth RLS on private operational tables.
 4. `20261110000400_v2_onboarding_progress_writer.sql` — private onboarding idempotency ledger and authenticated versioned complete/skip/reset writer.
+5. `20261110000500_v2_expected_owner_mutation_guards.sql` — replaces Settings, Legal Acceptance and Onboarding mutation RPC signatures with database-enforced expected-user identity checks.
 
 They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/onboarding, versioned legal document store, immutable acceptance receipts, private Settings/Onboarding action ledgers, RLS and guarded versioned/idempotent RPCs. The six-step onboarding UI uses `v2_set_onboarding_step` for progress and the existing Profile Settings writer for selected answers.
 
@@ -66,3 +67,6 @@ The short six-step flow covers focus, current training pattern, availability, Co
 ## Authenticated write ownership
 
 Signup, legal acceptance and onboarding verify that the active Supabase session still belongs to the expected V2 account before sensitive writes. The shared guard lives in `src/auth/accessGateClient.ts`; it fails closed on sign-out, account switch or session lookup failure. This source path has focused unit coverage; installed-device account-switch testing and full package/typecheck acceptance remain pending.
+
+
+All user-scoped mutation RPCs now require `p_expected_user_id` and compare it to `auth.uid()` inside PostgreSQL. A mismatch fails closed with SQLSTATE `42501`, even if an account switch occurs after a client-side session check but before the RPC reaches the database. Old signatures were dropped. Client call sites and generated public types pass the captured account ID. Rollback-only SQL tests for all three RPCs and onboarding idempotency/isolation passed.
