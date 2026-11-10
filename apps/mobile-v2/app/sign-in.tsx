@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Redirect } from 'expo-router';
+import { Redirect, Link } from 'expo-router';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { colors } from '../src/theme/tokens';
@@ -62,7 +62,7 @@ export default function SignInScreen() {
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting, busy: submitting }} disabled={submitting} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, submitting && styles.disabled]}>
               {submitting ? <ActivityIndicator color=colors.background /> : <Text style={styles.buttonText}>Sign in</Text>}
             </Pressable>
-            <Text style={styles.note}>V2 foundation preview · existing accounts only</Text>
+            <Text style={styles.note}>New to ALL IN 365 V2? <Link href="/sign-up" style={styles.link}>Create your V2 account</Link></Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -85,5 +85,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.9 },
   disabled: { opacity: 0.65 },
   buttonText: { color: colors.background, fontSize: 16, fontWeight: '800' },
-  note: { color: colors.mutedText, fontSize: 12, textAlign: 'center' }
+  note: { color: colors.mutedText, fontSize: 12, textAlign: 'center' },
+  link: { color: colors.gold, textDecorationLine: 'underline', fontWeight: '700' }
 });
