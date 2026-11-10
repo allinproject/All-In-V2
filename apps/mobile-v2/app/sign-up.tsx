@@ -6,7 +6,7 @@ import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { colors, radius, spacing } from '../src/theme/tokens';
-import { assertV2SessionOwner, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2LegalReviewSetKey, type V2LegalDocument } from '../src/auth/accessGateClient';
+import { assertV2SessionOwner, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2SignupConsentScope, type V2LegalDocument } from '../src/auth/accessGateClient';
 import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
 
 function errorMessage(error: unknown) {
@@ -65,7 +65,7 @@ export default function SignUpScreen() {
   if (!loading && user) return <Redirect href="/" />;
 
   const reviewKey = (doc: V2LegalDocument) => v2LegalReviewKey('signup', doc);
-  const reviewScope = JSON.stringify([email.trim().toLowerCase(), v2LegalReviewSetKey('signup', documents)]);
+  const reviewScope = v2SignupConsentScope(email, documents);
   const ageConfirmed = ageConfirmedScope === reviewScope;
   const allReviewed = documents.length === 3 && documents.every(doc => reviewed[reviewKey(doc)]);
   const ready = !loadingDocuments && !submitting && documents.length === 3
