@@ -19,3 +19,14 @@ export function shouldOfferV2ConfirmationResend(
   return Boolean(pendingEmail)
     && pendingEmail === currentEmail.trim().toLowerCase();
 }
+
+/**
+ * An INITIAL_SESSION notification is a bootstrap snapshot, not a newer
+ * authentication decision. Never let it overwrite a subsequent auth event.
+ */
+export function shouldApplyV2AuthEvent(
+  event: string,
+  hasSeenAuthoritativeEvent: boolean,
+): boolean {
+  return event !== 'INITIAL_SESSION' || !hasSeenAuthoritativeEvent;
+}
