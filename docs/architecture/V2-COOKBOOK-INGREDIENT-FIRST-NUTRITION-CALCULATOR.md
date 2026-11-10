@@ -62,7 +62,7 @@ V2's server-side `search-food-products` equivalent will:
 - Keep `USDA_FDC_API_KEY` in V2 Edge Function secrets only; never return it to the app or commit it.
 - Cache server-side with query normalization, bounded page size, TTL and in-flight request controls. Read and monitor USDA rate-limit headers and return a retryable rate-limit response rather than model fallback.
 
-USDA requires a data.gov API key on each API request. Its published default is 1,000 requests/hour/IP; exceeding the limit results in HTTP 429 and a temporary one-hour block. USDA states FDC data are public domain/CC0 1.0 and requests attribution. Cite: https://fdc.nal.usda.gov/api-guide/
+USDA requires a data.gov API key on each API request. Its current published default is 1,000 requests/hour/IP; exceeding the limit results in HTTP 429 and a temporary one-hour block. V2 should inspect the X-RateLimit-Limit and X-RateLimit-Remaining response headers and apply bounded server-side caching/coalescing. USDA currently lists Foundation Foods October 2026 and SR Legacy April 2018 downloads. USDA states FDC data are public domain/CC0 1.0 and requests attribution. Cite: https://fdc.nal.usda.gov/api-guide/ and https://fdc.nal.usda.gov/download-datasets/
 
 Foundation Foods contain analytical samples of minimally processed foods; SR Legacy is historical Standard Reference data. Branded Foods are label-derived and monthly updated, not the same authority as generic Foundation data. Preserve dataType and quality distinction. Cite: https://fdc.nal.usda.gov/data-documentation/
 
@@ -71,13 +71,13 @@ Foundation Foods contain analytical samples of minimally processed foods; SR Leg
 Use a distinct branded-product path for exact GTIN/UPC identity:
 - Exact GTIN-8/12/13/14 and valid check digit; preserve leading zeros.
 - Prefer Open Food Facts current Product API v3 for product reads; do not build new work on deprecated API v2.
-- Use its search-a-licious search service for text discovery only, not as proof of exact product identity. Exact barcode scan is preferred.
+- Use its Search-a-licious service for full-text discovery only, not as proof of exact product identity; the OFF documentation says full-text search is not available through the current v3 product API. Exact barcode scan is preferred. Search-a-licious is a distinct service with its own API (POST search).
 - Preserve community-contributed quality status and ODbL attribution. A result is a candidate, not a manufacturer-verified label.
 - Never convert 100 mL values to 100 g without explicit verified density. Prefer complete exact one-item serving panel only when the serving is exactly one identified unit and all required nutrients are present.
 - Retain rate-limit handling. Current OFF documentation lists 15 product reads/minute/IP and 10 search requests/minute/IP; don't call search-as-you-type.
 - Use a descriptive User-Agent and follow current API terms/database licence requirements.
 
-OFF's data are community contributed and not guaranteed accurate/complete; it is ODbL data, so V2 must preserve licence attribution and review reuse obligations. Cite: https://openfoodfacts.github.io/documentation/docs/Product-Opener/api/
+OFF's data are community contributed and not guaranteed accurate/complete; it is ODbL data, so V2 must preserve licence attribution and review reuse obligations. Current official documentation says v3 is recommended and v2 deprecated, with product reads limited to 15 requests/min/IP and search to 10 requests/min/IP. It requests an identifying User-Agent and encourages integrators to submit their API usage form. Cite: https://openfoodfacts.github.io/documentation/docs/Product-Opener/api/, https://openfoodfacts.github.io/documentation/docs/Product-Opener/v3/products/get-api-v3-product-code/, and https://openfoodfacts.github.io/search-a-licious/users/ref-openapi/
 
 ### Do not add a paid nutrition engine by default
 
