@@ -118,6 +118,10 @@ Deno.serve(async (request: Request) => {
   const apiKey = (Deno.env.get("USDA_FDC_API_KEY") ?? "").trim();
   if (!apiKey) return response({ error: "usda_not_configured", retryable: false }, 503);
 
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > 16_384) {
+    return response({ error: "request_too_large" }, 413);
+  }
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return response({ error: "invalid_request" }, 400);
