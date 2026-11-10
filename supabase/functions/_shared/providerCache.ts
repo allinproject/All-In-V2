@@ -83,3 +83,24 @@ export async function putProviderCache(
     // Cache is an optimization. Provider availability is handled by the caller.
   }
 }
+
+const inFlightProviderRequests = new Map<string, Promise<unknown>>();
+
+/** Coalesce duplicate in-flight calls within a warm Edge Function isolate. */
+export async function coalesceProviderRequest<T>(
+  key: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const existing = inFlightProviderRequests.get(key) as Promise<T> | undefined;
+  if (existing) return await existing;
+  const pending = operation().finally(() => {
+    inFlightProviderRequests.delete(key);
+  });
+  inFlightProviderRequests.set(key, pending);
+  try {
+    return await pending;
+  } catch (error) {
+    inFlightProviderRequests.delete(key);
+    throw error;
+  }
+}
