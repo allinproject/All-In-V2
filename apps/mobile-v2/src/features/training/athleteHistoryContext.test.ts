@@ -46,6 +46,17 @@ test('malformed numeric or nested activity metrics never reach Coach as trusted 
  assert.deepEqual(result.events.map(e=>e.id),['good']);
 });
 
+test('malformed coverage for a requested sport invalidates another source complete claim',()=>{
+ const base={
+  generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
+  sports:['running' as const],currentPlan:null,restrictions:[],events:[event()],
+ };
+ const broken={...coverage('running'),missingIntervals:'not-an-array' as any};
+ const result=buildAthleteHistoryReadModel({...base,coverage:[coverage('running'),broken]});
+ assert.equal(result.completeness,'partial');
+ assert.ok(result.warnings.some(w=>w.includes('malformed')));
+});
+
 test('contradictory provider coverage cannot turn partial history into complete athlete knowledge',()=>{
  const base={
   generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
