@@ -154,3 +154,14 @@ test('never emits sets, reps, weights, volume, or a Training plan mutation',()=>
   assert.equal(result.noDoseOrPlanWrite,true);
  }
 });
+
+test('malformed persisted owner snapshots fail closed instead of bypassing the skill gate',()=>{
+ const invalidSkill=context();(invalidSkill.strengthExperience as any).skillLevel='expert';
+ assert.equal(evaluateExerciseSuitability(profile(),invalidSkill).status,'review_required');
+ const invalidGoal=context();(invalidGoal.goals.active as any)=[null];
+ assert.equal(evaluateExerciseSuitability(profile(),invalidGoal).status,'review_required');
+ const invalidEquipment=context();(invalidEquipment.location.confirmedEquipmentIds as any)=[null];
+ assert.equal(evaluateExerciseSuitability(profile(),invalidEquipment).status,'review_required');
+ const invalidRestriction=context();(invalidRestriction.restrictions.active as any)=[{status:'active',category:'unknown',subject:'x'}];
+ assert.equal(evaluateExerciseSuitability(profile(),invalidRestriction).status,'review_required');
+});
