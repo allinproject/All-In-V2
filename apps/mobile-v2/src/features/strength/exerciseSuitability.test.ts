@@ -44,6 +44,7 @@ test('returns a sourced movement explanation for a matched sport goal with the e
  assert.match(result.whyThisFits[0],/running performance/);
  assert.equal(result.evidence[0].claimId,'claim-running');
  assert.deepEqual(result.evidence[0].sourceIds,['source-running']);
+ assert.deepEqual(result.sources.map((source)=>source.id),['source-running']);
  assert.equal(result.noDoseOrPlanWrite,true);
 });
 
