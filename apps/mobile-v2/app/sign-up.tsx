@@ -6,7 +6,7 @@ import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { colors, radius, spacing } from '../src/theme/tokens';
-import { assertV2SessionOwner, type V2LegalDocument } from '../src/auth/accessGateClient';
+import { assertV2SessionOwner, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2LegalReviewSetKey, type V2LegalDocument } from '../src/auth/accessGateClient';
 import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
 
 function errorMessage(error: unknown) {
@@ -27,11 +27,11 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [reviewed, setReviewed] = useState<Record<string, boolean>>({});
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [ageConfirmedScope, setAgeConfirmedScope] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const actionId = useRef<string | null>(null);
+  const pendingAcceptance = useRef<{ scope: string; id: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -45,16 +45,13 @@ export default function SignUpScreen() {
           setError('The V2 legal documents could not be loaded. Signup remains unavailable.');
           return;
         }
-        const rows = (data ?? []) as V2LegalDocument[];
-        const required = ['terms', 'privacy', 'founder_beta_terms'];
-        const valid = required.every(key => rows.filter(row => row.document_key === key).length === 1);
-        if (!valid || rows.length !== 3) {
+        try {
+          setDocuments(parsePublishedV2LegalDocuments(data));
+          setError(null);
+        } catch {
           setDocuments([]);
-          setError('V2 signup is not open yet. The reviewed Terms, Privacy Policy and Founder Beta Terms must all be published first.');
-          return;
+          setError('V2 signup is not open yet. Valid Terms, Privacy Policy and Founder Beta Terms must all be published first.');
         }
-        setDocuments(rows);
-        setError(null);
       })
       .catch(() => {
         if (active) setError('The V2 legal documents could not be loaded. Signup remains unavailable.');
@@ -67,7 +64,10 @@ export default function SignUpScreen() {
 
   if (!loading && user) return <Redirect href="/" />;
 
-  const allReviewed = documents.length === 3 && documents.every(doc => reviewed[doc.document_key]);
+  const reviewKey = (doc: V2LegalDocument) => v2LegalReviewKey('signup', doc);
+  const reviewScope = JSON.stringify([email.trim().toLowerCase(), v2LegalReviewSetKey('signup', documents)]);
+  const ageConfirmed = ageConfirmedScope === reviewScope;
+  const allReviewed = documents.length === 3 && documents.every(doc => reviewed[reviewKey(doc)]);
   const ready = !loadingDocuments && !submitting && documents.length === 3
     && allReviewed && ageConfirmed && email.trim().length > 0 && meetsV2PasswordMinimum(password);
 
@@ -95,8 +95,10 @@ export default function SignUpScreen() {
 
       if (data.session) {
         await assertV2SessionOwner(supabase, data.session.user.id);
-        const action = actionId.current ?? `signup-legal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-        actionId.current = action;
+        const action = pendingAcceptance.current?.scope === reviewScope
+          ? pendingAcceptance.current.id
+          : `signup-legal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+        pendingAcceptance.current = { scope: reviewScope, id: action };
         const byKey = new Map(documents.map(doc => [doc.document_key, doc.version]));
         const { error: acceptanceError } = await supabase.rpc('v2_accept_legal_documents', {
           p_expected_user_id: data.session.user.id,
@@ -108,6 +110,7 @@ export default function SignUpScreen() {
         });
         if (acceptanceError) throw acceptanceError;
         await assertV2SessionOwner(supabase, data.session.user.id);
+        pendingAcceptance.current = null;
         setNotice('Your V2 account was created and the reviewed legal versions were recorded. Opening ALL IN 365…');
       } else {
         setNotice('Your V2 account request was accepted. Check your email to confirm the address, then sign in to finish the legal acceptance receipt before entering the app.');
@@ -129,20 +132,20 @@ export default function SignUpScreen() {
             <Text style={styles.body}>This creates a fresh account in the dedicated ALL IN 365 V2 backend. V1 account credentials and personal history are not imported.</Text>
             {loadingDocuments ? <ActivityIndicator color={colors.gold} /> : null}
             {!loadingDocuments && documents.map(doc => (
-              <View key={doc.document_key} style={styles.document}>
+              <View key={reviewKey(doc)} style={styles.document}>
                 <Text style={styles.documentTitle}>{doc.title} · {doc.version}</Text>
                 <ScrollView nestedScrollEnabled style={styles.documentBody}>
                   <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
                 </ScrollView>
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!reviewed[doc.document_key] }} onPress={() => setReviewed(old => ({ ...old, [doc.document_key]: !old[doc.document_key] }))} style={styles.reviewRow}>
-                  <Text style={styles.checkbox}>{reviewed[doc.document_key] ? '☑' : '☐'}</Text>
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!reviewed[reviewKey(doc)] }} onPress={() => setReviewed(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] }))} style={styles.reviewRow}>
+                  <Text style={styles.checkbox}>{reviewed[reviewKey(doc)] ? '☑' : '☐'}</Text>
                   <Text style={styles.reviewText}>I have read and reviewed this document</Text>
                 </Pressable>
               </View>
             ))}
             {documents.length === 3 ? (
               <>
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed }} onPress={() => setAgeConfirmed(value => !value)} style={styles.reviewRow}>
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed }} onPress={() => setAgeConfirmedScope(current => current === reviewScope ? null : reviewScope)} style={styles.reviewRow}>
                   <Text style={styles.checkbox}>{ageConfirmed ? '☑' : '☐'}</Text>
                   <Text style={styles.reviewText}>I confirm that I am at least 18 years old.</Text>
                 </Pressable>
