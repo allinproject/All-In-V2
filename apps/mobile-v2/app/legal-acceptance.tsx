@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
+import { assertV2SessionOwner } from '../src/auth/accessGateClient';
 import { supabase } from '../src/lib/supabase';
 import { colors, radius, spacing } from '../src/theme/tokens';
 
@@ -29,6 +30,7 @@ export default function LegalAcceptanceScreen() {
     setSubmitting(true);
     setMessage(null);
     try {
+      await assertV2SessionOwner(supabase, user.id);
       const versions = new Map(documents.map(doc => [doc.document_key, doc.version]));
       const id = actionId.current ?? `accept-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
       actionId.current = id;
@@ -40,6 +42,7 @@ export default function LegalAcceptanceScreen() {
         p_client_action_id: id,
       });
       if (error) throw error;
+      await assertV2SessionOwner(supabase, user.id);
       gate.retry();
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : 'Legal acceptance could not be saved. Please retry.');
