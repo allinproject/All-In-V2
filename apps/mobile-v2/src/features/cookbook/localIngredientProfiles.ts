@@ -182,6 +182,17 @@ export function calculateRecipeFromLocalCatalog(input: {
   ingredients: readonly IngredientRequest[];
   measured_edible_weight_g?: number | null;
 }): RecipeIngredientNutritionCalculation {
+  // Use the calculator's existing missing-lines evidence contract for malformed
+  // boundary payloads; do not throw or turn an empty recipe into validated food.
+  if (!input || !Array.isArray(input.ingredients)) {
+    return calculateRecipeIngredientNutrition({
+      recipe_id: input?.recipe_id ?? '',
+      recipe_state_version: input?.recipe_state_version ?? '',
+      servings: input?.servings ?? Number.NaN,
+      measured_edible_weight_g: input?.measured_edible_weight_g,
+      ingredients: [],
+    });
+  }
   const resolutions = input.ingredients.map(row => resolveLocalIngredient(input.catalog, row));
   const blocked = resolutions.flatMap((result, index) =>
     result.status === 'ready' ? [] : [`local_ingredient_${result.status}:${input.ingredients[index].line_id}`]);
