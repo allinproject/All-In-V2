@@ -332,8 +332,38 @@ A separate physical schema record is now committed and verified against the live
 
 Commit: `3f071af97d56943a63147ed910c9fc114caa40ae`.
 
-This physical slice covers the seven deployed tables only: Profile, Settings, Onboarding, Legal Documents, Legal Acceptances, private Settings action ledger and private Provider Cache. It records exact deployed migration version mapping, table columns/types/keys/FKs/indexes/checks, physical ERD, all public RLS policies, role/column grants, SECURITY DEFINER function EXECUTE grants/search paths/owner checks, and trigger map. The live catalog confirms all seven tables currently contain zero rows; no legal documents have been published.
+This physical slice now covers the eight deployed tables: Profile, Settings, Onboarding, Legal Documents, Legal Acceptances, private Settings and Onboarding action ledgers, and private Provider Cache. It records exact deployed migration version mapping, table columns/types/keys/FKs/indexes/checks, physical ERD, all public RLS policies, role/column grants, SECURITY DEFINER function EXECUTE grants/search paths/owner checks, and trigger map. The live catalog confirms all eight tables currently contain zero rows; no legal documents have been published.
 
-Important explicit gap discovered: Onboarding has owner-only SELECT, Auth-trigger initialization and no direct client mutation grants, but there is not yet a dedicated versioned onboarding mutation RPC. Do not implement client step writes until its canonical writer/idempotency/version contract and tests exist. Legal publication is also operator-controlled and remains unpopulated.
+Onboarding now has a dedicated authenticated versioned writer and private idempotency ledger (migration 004 below). The actual six-step user interface/client integration remains outstanding. Legal publication is operator-controlled and remains unpopulated.
 
 This completes the physical ERD/security record for the deployed foundation slice. **It does not complete ALL-222's entire acceptance.** Each future Coach, Cookbook, Training, Food, Recovery, Community, device, billing and privacy schema still requires its own reviewed physical object/policy/function matrix before DDL. ALL-224 still owns clean-reset/type generation/npm install/CI/app validation; those checks are not claimed passed here.
+
+
+## 19. Onboarding writer implemented and replay-verified — 2026-11-10
+
+The deployed foundation now includes:
+
+- Migration source: `supabase/migrations/20261110000400_v2_onboarding_progress_writer.sql`
+- Applied Supabase migration: `20261110101200` (`v2_onboarding_progress_writer`)
+- Canonical mutation RPC: `public.v2_set_onboarding_step(step, action, expected_version, client_action_id)`
+- Private idempotency table: `allin_private.v2_onboarding_actions`
+- Repeatable SQL replay fixture: `supabase/tests/v2_onboarding_progress_writer_replay.sql`
+
+The writer supports one allowlisted step per call and `complete`, `skip` or `reset`. It uses authenticated `auth.uid()`, per-user transaction serialization, an expected-version guard, a private per-user idempotency ledger and exact retry replay. Changed-action-ID reuse fails closed. Repeating an already-current state with a new action ID records the outcome without a needless version bump. Completed/skipped arrays remain in the canonical six-step order and cannot overlap. The overall completion timestamp is set only when every required step is either completed or skipped, and is cleared when any step is reset.
+
+The authenticated SQL replay passed against two temporary Auth users:
+- First completion advanced version 1→2.
+- Exact retry returned version 2.
+- Same-state no-op retained version 2.
+- Reusing an action ID with changed step/action was rejected.
+- Stale expected-version write was rejected.
+- Skip advanced version 2→3.
+- Reset advanced version 3→4 and removed the completed step.
+- A retry of the original version-1 action after version 4 still returned its original version 2.
+- Direct authenticated INSERT/UPDATE was denied.
+- User B could not read User A's progress and could mutate only User B's row.
+- The SQL transaction rolled back; synthetic users, progress rows and action-ledger rows all returned to zero.
+
+Live privilege/catalog verification confirms the new private ledger has RLS enabled, no policies, no schema/table access for anon/authenticated/service_role, and is reached only by the authenticated SECURITY DEFINER writer. The function is postgres-owned, uses an empty search path and checks auth identity. The security advisor now reports three intentional private-table no-policy INFO notices and four authenticated per-user SECURITY DEFINER WARN notices.
+
+**Remaining UI work:** `apps/mobile-v2/app/onboarding-required.tsx` is still a holding screen. Build the actual six-step flow, call this RPC with a fresh action ID and latest version per step action, refresh `v2_my_profile_state` after success, and keep access fail-closed on timeout/conflict/session change. No onboarding UI or installed-device acceptance is claimed from this database work.
