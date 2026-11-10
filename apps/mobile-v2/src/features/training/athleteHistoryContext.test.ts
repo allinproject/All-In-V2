@@ -57,6 +57,16 @@ test('malformed coverage for a requested sport invalidates another source comple
  assert.ok(result.warnings.some(w=>w.includes('malformed')));
 });
 
+test('unrecognized event types or sports cannot enter Coach as trusted activity',()=>{
+ const base={generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',sports:['running' as const],currentPlan:null,restrictions:[],coverage:[coverage('running')]};
+ const result=buildAthleteHistoryReadModel({...base,events:[
+  event({id:'bad-type',kind:'restored_server_event' as any}),
+  event({id:'bad-sport',sport:'motorcycling' as any}),
+  event({id:'good-run'}),
+ ]});
+ assert.deepEqual(result.events.map(e=>e.id),['good-run']);
+});
+
 test('contradictory provider coverage cannot turn partial history into complete athlete knowledge',()=>{
  const base={
   generatedAt:'2026-11-09T15:00:00Z',fromDate:'2026-10-01',throughDate:'2026-11-09',
