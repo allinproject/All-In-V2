@@ -4,8 +4,8 @@ import {V2_EXERCISE_PROFILE_DRAFTS} from './exerciseProfileDrafts.ts';
 import {validateExerciseScienceProfile} from './exerciseScienceProfile.ts';
 import {evaluateExerciseSuitability,type ExerciseSuitabilityOwnerSnapshots} from './exerciseSuitability.ts';
 
-test('five source-linked exact exercise variations are structurally valid but remain draft-only',()=>{
-  assert.equal(V2_EXERCISE_PROFILE_DRAFTS.length,5);
+test('nine source-linked exact exercise variations are structurally valid but remain draft-only',()=>{
+  assert.equal(V2_EXERCISE_PROFILE_DRAFTS.length,9);
   const variationIds=V2_EXERCISE_PROFILE_DRAFTS.map(profile=>profile.variationId);
   assert.equal(new Set(variationIds).size,variationIds.length);
   for(const profile of V2_EXERCISE_PROFILE_DRAFTS){
@@ -51,6 +51,33 @@ test('deadlift variation research remains mechanistic EMG evidence, not sport ou
   assert.match(stiff.claims[0].statement,/greater ascending-phase gluteus-maximus excitation/);
 });
 
+
+test('seated versus prone leg-curl profiles retain the measured hamstring growth comparison',()=>{
+  const seated=V2_EXERCISE_PROFILE_DRAFTS.find(p=>p.variationId==='seated-hamstring-leg-curl')!;
+  const prone=V2_EXERCISE_PROFILE_DRAFTS.find(p=>p.variationId==='prone-hamstring-leg-curl')!;
+  assert.equal(seated.movementPattern,'knee_flexion');
+  assert.equal(prone.movementPattern,'knee_flexion');
+  assert.equal(seated.claims[0].evidenceTier,'within_subject_controlled_intervention');
+  assert.equal(prone.claims[0].evidenceTier,'within_subject_controlled_intervention');
+  assert.match(seated.claims[0].statement,/\+14% versus \+9%/);
+  assert.match(prone.claims[0].statement,/prone leg-curl training increased whole-hamstring volume by 9%/);
+  assert.match(seated.claims[0].limitations,/does not establish better running speed/);
+  assert.match(prone.claims[0].limitations,/does not show that prone leg curls are ineffective/);
+});
+
+test('overhead versus neutral cable triceps-extension profiles retain the hypertrophy outcome and limitations',()=>{
+  const overhead=V2_EXERCISE_PROFILE_DRAFTS.find(p=>p.variationId==='overhead-cable-triceps-extension')!;
+  const neutral=V2_EXERCISE_PROFILE_DRAFTS.find(p=>p.variationId==='neutral-arm-cable-triceps-extension')!;
+  assert.equal(overhead.movementPattern,'elbow_extension');
+  assert.equal(neutral.movementPattern,'elbow_extension');
+  assert.equal(overhead.claims[0].evidenceTier,'within_subject_controlled_intervention');
+  assert.equal(neutral.claims[0].evidenceTier,'within_subject_controlled_intervention');
+  assert.match(overhead.claims[0].statement,/28\.5% versus 19\.6%/);
+  assert.match(neutral.claims[0].statement,/still represented measurable hypertrophy/);
+  assert.match(overhead.claims[0].limitations,/not evidence for swimming/);
+  assert.match(neutral.claims[0].limitations,/was not ineffective/);
+});
+
 test('draft research profiles do not introduce a direct running, cycling or swimming performance claim',()=>{
   for(const profile of V2_EXERCISE_PROFILE_DRAFTS){
     for(const claim of profile.claims){
@@ -63,7 +90,7 @@ test('draft research profiles do not introduce a direct running, cycling or swim
 test('none of the staged research drafts can be consumed as a Coach recommendation',()=>{
   const context:ExerciseSuitabilityOwnerSnapshots={
     goals:{owner:'ALL-239',status:'complete',active:[{goalId:'goal-strength',role:'primary',sports:['general_fitness'],exerciseGoals:['hypertrophy','maximal_strength']}]},
-    location:{owner:'ALL-251',status:'complete',selectedLocationId:'review-fixture',confirmedEquipmentIds:['standing_calf_raise_machine','seated_calf_raise_machine','barbell','stable_low_step']},
+    location:{owner:'ALL-251',status:'complete',selectedLocationId:'review-fixture',confirmedEquipmentIds:['standing_calf_raise_machine','seated_calf_raise_machine','barbell','stable_low_step','seated_leg_curl_machine','prone_leg_curl_machine','cable_machine','single_handle']},
     restrictions:{owner:'ALL-232',status:'complete',active:[]},
     strengthExperience:{owner:'ALL-257',status:'complete',skillLevel:'advanced'},
     trainingLoad:{owner:'ALL-246',status:'complete',nextSessionConflict:'clear',conflictingMuscleGroupIds:[]},
