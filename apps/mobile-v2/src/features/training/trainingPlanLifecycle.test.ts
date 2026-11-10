@@ -15,3 +15,18 @@ test('a race calendar cannot mark an earlier date as race day',()=>{assert.throw
 
 test('missed-session adaptation fails closed if the canonical race-day commitment is missing',()=>{const noRace=sessions.filter(s=>s.id!=='race');const p=adaptRemainingPlanAfterMiss({today:'2026-11-09',missedSessionId:'missed-gym',reason:'gym_unavailable',sessions:noRace,raceDate:'2027-03-13'});assert.equal(p.status,'blocked');assert.ok(p.issues.some(i=>i.code==='RACE_DATE_PROTECTED'))});
 test('malformed dates in the accepted plan cannot be silently ignored during adaptation',()=>{const bad=[...sessions,{...sessions[1],id:'bad-date',date:'not-a-date'}];assert.throws(()=>adaptRemainingPlanAfterMiss({today:'2026-11-09',missedSessionId:'missed-gym',reason:'other',sessions:bad,raceDate:'2027-03-13'}))});
+
+test('race plan acceptance rejects missing, duplicated and swapped days inside the horizon',()=>{
+ const dates=buildRacePlanCalendar({startDate:'2026-11-09',raceDate:'2026-11-23'});
+ const states=Object.fromEntries(dates.days.map(d=>[d.date,d.isRaceDay?'race' as const:'rest' as const]));
+ const accepted=buildRacePlanCalendar({startDate:'2026-11-09',raceDate:'2026-11-23',dayStates:states});
+ assert.doesNotThrow(()=>assertRacePlanCalendarAssigned(accepted));
+ const removed={...accepted,days:accepted.days.filter(d=>d.date!=='2026-11-15')};
+ assert.throws(()=>assertRacePlanCalendarAssigned(removed),/contiguous/);
+ const duplicated={...accepted,days:[...accepted.days]};
+ duplicated.days[6]=duplicated.days[5];
+ assert.throws(()=>assertRacePlanCalendarAssigned(duplicated),/contiguous/);
+ const wrongRaceFlag={...accepted,days:accepted.days.map(d=>({...d}))};
+ wrongRaceFlag.days[2].isRaceDay=true;
+ assert.throws(()=>assertRacePlanCalendarAssigned(wrongRaceFlag),/contiguous/);
+});
