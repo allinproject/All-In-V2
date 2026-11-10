@@ -1,10 +1,8 @@
-import type { TrainingSport } from './trainingPlanSynthesis';
-
 /** ALL-246/243: one sport identity, two always-available entry modes. */
 export const V2_ACTIVITY_SPORTS = [
   'running', 'walking', 'cycling', 'swimming', 'strength', 'hiking',
   'rucking', 'rowing', 'elliptical', 'stair', 'yoga', 'mobility', 'other',
-] as const satisfies readonly TrainingSport[];
+] as const;
 
 export type ActivityEntryMode = 'start_activity' | 'manual_entry';
 export type ActivitySport = typeof V2_ACTIVITY_SPORTS[number];
