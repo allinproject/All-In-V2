@@ -376,3 +376,10 @@ Supabase TypeScript types were generated from the live V2 project after migratio
 The existing `src/lib/supabase.ts` client now uses `createClient<Database>` with the generated type. Auth persistence, native storage, auto-refresh and environment variables were otherwise left unchanged.
 
 This is generated schema alignment, not a typecheck/build result. ALL-224 still requires a network-enabled clean checkout, canonical npm lockfile, install, unit test suites, TypeScript check, Expo bundle and CI.
+
+
+## 21. Typed access-gate client alignment — 2026-11-10
+
+The access-gate data reader now accepts `SupabaseClient<Database>` from the generated public schema type (`apps/mobile-v2/src/auth/accessGateClient.ts`, commit `5c9cf7c666218c1710408c992492f23cd41d1b11`). This ensures `v2_my_profile_state` is resolved through the generated RPC contract. The shared client, sign-up/legal public-table reads and legal-acceptance RPC calls all use the same typed Supabase client. AuthProvider retains its existing Auth-only usage.
+
+This is static source alignment, not a successful TypeScript compiler run; ALL-224 still owns the reproducible typecheck gate.
