@@ -3,7 +3,7 @@ import test from 'node:test';
 import {resolveWatchWriterAcknowledgement,type WatchAcknowledgementInput,type TrainingWriterAcknowledgement} from './watchWriterAcknowledgement.ts';
 const cmd={kind:'submit_to_training_writer' as const,instanceId:'session-a',clientActionId:'action-1',expectedSessionVersion:4,action:'pause' as const,noLocalCommit:true as const};
 const receipt=():TrainingWriterAcknowledgement=>({ownerId:'athlete-1',instanceId:'session-a',clientActionId:'action-1',expectedSessionVersion:4,resultSessionVersion:5,action:'pause',resultState:'paused',committed:true});
-const sample=():WatchAcknowledgementInput=>({authenticatedOwnerId:'athlete-1',expectedOwnerId:'athlete-1',submitted:cmd,receipt:receipt()});
+const sample=():WatchAcknowledgementInput=>({authenticatedOwnerId:'athlete-1',expectedOwnerId:'athlete-1',activeSessionGeneration:9,submittedAuthSessionGeneration:9,submitted:cmd,receipt:receipt()});
 
 test('only exact committed canonical pause receipt confirms state',()=>{
  assert.deepEqual(resolveWatchWriterAcknowledgement(sample()),{kind:'confirmed',instanceId:'session-a',action:'pause',sessionVersion:5,displayState:'paused',completionPending:false});
@@ -48,4 +48,14 @@ test('a terminal completed status cannot masquerade as committed finish request'
 test('no approved submission cannot be upgraded into a writer confirmation',()=>{
  const x=sample();x.submitted={kind:'reconcile',reason:'offline',noLocalCommit:true};
  assert.equal(resolveWatchWriterAcknowledgement(x).kind,'blocked');
+});
+
+test('same-account reauthentication invalidates a late writer receipt',()=>{
+ const stale=sample();stale.activeSessionGeneration=10;
+ assert.deepEqual(resolveWatchWriterAcknowledgement(stale),{kind:'reconcile',reason:'auth_generation_changed_before_writer_ack',noConfirmedState:true});
+ stale.submittedAuthSessionGeneration=10;
+ assert.equal(resolveWatchWriterAcknowledgement(stale).kind,'confirmed');
+ for(const invalid of [-1,1.5,Number.NaN]){
+  assert.equal(resolveWatchWriterAcknowledgement({...sample(),activeSessionGeneration:invalid}).kind,'reconcile');
+ }
 });
