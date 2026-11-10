@@ -414,3 +414,27 @@ Use this guard immediately before auth-sensitive writes and before continuing af
 Three new unit cases cover the matching identity, missing/switched identity and session lookup failure. The shared guard reduces divergent account-switch behavior across screen-specific write flows. This source-level integration is not yet a mounted race test or installed-device acceptance.
 
 The V2 route/auth-provider source scan found and fixed invalid bare theme-object JSX props in both the sign-in and root loading indicators. The source scan then returned no remaining instances of the checked invalid JSX attribute pattern. Do not substitute source scans for TypeScript/Expo compilation.
+
+
+## 24. Database-enforced expected-owner identity for mutation RPCs — 2026-11-10
+
+A client-side session check alone cannot close the race between `getSession()` and the subsequent PostgREST request: the bearer token can change after the check and before the database receives the RPC call. The mutation API therefore also carries the screen's captured expected owner UUID and checks it against `auth.uid()` inside PostgreSQL.
+
+Applied migration:
+- `supabase/migrations/20261110000500_v2_expected_owner_mutation_guards.sql`
+- V2 migration version `20261110105423` (`v2_expected_owner_mutation_guards`).
+
+The three user-scoped mutation RPCs now require `p_expected_user_id` and fail with `42501` before any operation if it is null or differs from the authenticated actor:
+- `v2_patch_profile_settings_section`
+- `v2_accept_legal_documents`
+- `v2_set_onboarding_step`
+
+Old unbound signatures were dropped, preventing clients from bypassing this check through an older overload. All existing expected-version, per-user lock, legal-version and idempotency semantics remain intact. Authenticated-only EXECUTE grants remain; each function remains postgres-owned, SECURITY DEFINER with an empty search path.
+
+Client call sites now provide the screen-captured owner ID from onboarding, signup and returning-user legal acceptance. This complements (does not replace) the shared `assertV2SessionOwner` client guard. Even if the auth session changes after the client check, the database compares the captured owner against the token's current `auth.uid()` and rejects the write.
+
+Rollback-only SQL tests:
+- `supabase/tests/v2_expected_owner_mutation_guard.sql` exercises wrong-owner rejection for all three RPCs and correct-owner progression.
+- `supabase/tests/v2_onboarding_progress_writer_replay.sql` retains full complete/skip/reset, idempotency, stale-version and two-account isolation coverage using the new expected-owner signature.
+
+Both passed against live V2 with no SQL error. Post-rollback verification: zero synthetic users, progress/settings/legal rows and action-ledger rows. Live catalog check confirms the old signatures are absent and the new signatures have authenticated-only EXECUTE. The regenerated public database types include the expected-owner argument on all three RPCs.
