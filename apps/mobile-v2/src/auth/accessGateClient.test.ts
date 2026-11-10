@@ -9,6 +9,7 @@ import {
   v2LegalAcceptanceMatches,
   v2LegalReviewKey,
   v2LegalReviewSetKey,
+  v2SignupConsentScope,
 } from './accessGateClient.ts';
 
 const docs = [
@@ -62,6 +63,25 @@ test('legal age confirmation applies only to the current account and legal revis
     { ...docs[0], content_sha256: 'changed-content' },
     ...docs.slice(1),
   ]));
+});
+
+test('signup consent scope requires the same email and published legal revisions', () => {
+  const original = v2SignupConsentScope(' Athlete@Example.COM ', docs);
+  assert.equal(original, v2SignupConsentScope('athlete@example.com', docs.map(doc => ({ ...doc }))));
+  assert.notEqual(original, v2SignupConsentScope('other@example.com', docs));
+  assert.notEqual(original, v2SignupConsentScope('athlete@example.com', [
+    { ...docs[0], version: 'terms-v3' },
+    ...docs.slice(1),
+  ]));
+  assert.notEqual(original, v2SignupConsentScope('athlete@example.com', [
+    { ...docs[0], content_sha256: 'new-content' },
+    ...docs.slice(1),
+  ]));
+});
+
+test('signup legal parsing rejects incomplete published documents and duplicates', () => {
+  assert.throws(() => parsePublishedV2LegalDocuments([{ ...docs[0], content_markdown: '' }, ...docs.slice(1)]), /incomplete/i);
+  assert.throws(() => parsePublishedV2LegalDocuments([...docs, { ...docs[0], version: 'old-version' }]), /Duplicate/);
 });
 
 test('all six canonical onboarding steps are required', () => {
