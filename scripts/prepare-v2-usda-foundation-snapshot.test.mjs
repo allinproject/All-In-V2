@@ -32,6 +32,10 @@ test('source acquisition refuses unsafe ZIP inventory before manifest publicatio
   assert.match(script, /\-not \$seenMembers\.Add\(\$name\)/);
   assert.match(script, /\$name\.StartsWith\('\/'\)/);
   assert.match(script, /\$name\.Contains/);
+  assert.ok(script.includes(String.raw`$name.StartsWith('\')`));
+  assert.ok(script.includes(String.raw`$name.Contains('\')`));
+  assert.ok(script.includes(String.raw`$name -match '[\x00-\x1F]'`));
+
   assert.match(script, /\$hasJson = \$true/);
   assert.match(script, /if \(\-not \$hasJson\)/);
   assert.match(script, /nonempty JSON member/);
