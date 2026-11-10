@@ -7,7 +7,7 @@ import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import {
   formatCalendarDay, formatCalendarMonth, firstOfMonth, monthCalendarWeeks,
-  shiftCalendarDate, shiftCalendarMonth, weekDaysForDate, workoutMarkersForDay,
+  shiftCalendarDate, shiftCalendarMonth, weekDaysForDate, monthDayMarkerSummary,
   type CalendarEvidence, type CalendarWorkoutMarker,
 } from '../src/features/training/calendarDayView';
 import { validAthleteLocalDate } from '../src/features/training/manualActivityDraft';
@@ -24,6 +24,7 @@ const markerSymbols: Record<CalendarWorkoutMarker['kind'], string> = {
   running: 'Run', walking: 'Walk', cycling: 'Bike', swimming: 'Swim',
   strength: 'Lift', hiking: 'Hike', rucking: 'Ruck', rowing: 'Row',
   elliptical: 'Ellip', stair: 'Stair', yoga: 'Yoga', mobility: 'Move', other: 'Other',
+  rest: 'Rest', recovery: 'Recover',
 };
 
 /**
@@ -95,11 +96,16 @@ export default function TrainingCalendarScreen() {
                     onPress={() => selectDate(date)}
                     style={[styles.monthDay, date.slice(0,7) !== month.slice(0,7) && styles.outsideMonth]}>
                     <Text style={date.slice(0,7) === month.slice(0,7) ? styles.white : styles.muted}>{Number(date.slice(-2))}</Text>
-                    {workoutMarkersForDay(workoutEvidence, date)?.slice(0, 2).map((item, index) => (
+                    {monthDayMarkerSummary(workoutEvidence, date).visible.map((item, index) => (
                       <Text key={index} style={styles.marker} accessibilityLabel={`${markerSymbols[item.kind]} ${item.status}`}>
-                        {markerSymbols[item.kind]} {item.status === 'completed' ? '✓' : '•'}
+                        {markerSymbols[item.kind]} {item.status === 'completed' ? '✓' : item.status === 'missed' ? '!' : item.status === 'rest' ? '–' : item.status === 'recovery' ? '~' : '•'}
                       </Text>
                     ))}
+                    {monthDayMarkerSummary(workoutEvidence, date).additionalCount > 0 && (
+                      <Text style={styles.marker} accessibilityLabel={`${monthDayMarkerSummary(workoutEvidence, date).additionalCount} additional activities`}>
+                        +{monthDayMarkerSummary(workoutEvidence, date).additionalCount}
+                      </Text>
+                    )}
                   </Pressable>
                 ))}
               </View>
