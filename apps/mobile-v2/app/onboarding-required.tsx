@@ -492,17 +492,6 @@ export default function OnboardingRequiredScreen() {
   if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
   if (gate.status !== 'onboarding_required') return <Redirect href="/" />;
 
-  if (authLoading || loadingState || finishing || !activeStep || gate.status === 'loading') {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.gold} />
-          <Text style={styles.helper}>Preparing your V2 setup…</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   if (loadError) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -512,6 +501,17 @@ export default function OnboardingRequiredScreen() {
           <Pressable accessibilityRole="button" onPress={() => setReloadToken(value => value + 1)} style={styles.primaryButton}>
             <Text style={styles.primaryButtonText}>Retry</Text>
           </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (authLoading || loadingState || finishing || !activeStep || gate.status === 'loading') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.loading}>
+          <ActivityIndicator color={colors.gold} />
+          <Text style={styles.helper}>Preparing your V2 setup…</Text>
         </View>
       </SafeAreaView>
     );
