@@ -446,3 +446,18 @@ Rollback-only SQL tests:
 - `supabase/tests/v2_onboarding_progress_writer_replay.sql` retains full complete/skip/reset, idempotency, stale-version and two-account isolation coverage using the new expected-owner signature.
 
 Both passed against live V2 with no SQL error. Post-rollback verification: zero synthetic users, progress/settings/legal rows and action-ledger rows. Live catalog check confirms the old signatures are absent and the new signatures have authenticated-only EXECUTE. The regenerated public database types include the expected-owner argument on all three RPCs.
+
+
+## 25. Signup email confirmation and password recovery deep links
+
+Slice 1 now includes:
+- `app/auth/callback.tsx` for PKCE email confirmation and reset-link exchange.
+- `app/forgot-password.tsx` for generic password-reset requests (does not disclose whether an address exists).
+- `app/reset-password.tsx` for setting the new password under the recovered session, with the shared expected-session owner guard.
+- Signup supplies `emailRedirectTo: Linking.createURL('/auth/callback')`.
+- Password-reset supplies `Linking.createURL('/auth/callback', { queryParams: { type: 'recovery' } })`.
+- The callback resolver routes confirmation to the existing root/access gate and recovery to the reset-password screen; all flows exchange the one-time PKCE code with `exchangeCodeForSession`.
+
+The existing Expo scheme is `allin365v2`. The V2 Supabase Auth Redirect URLs allowlist must include `allin365v2://**`. The Supabase project-details API available in this execution environment does not expose the Auth redirect allowlist, so this setting remains externally unverified/unconfigured until checked in the Supabase Auth dashboard. Native deep-link acceptance must use a development build or installed app; Expo Go uses a transient development URL.
+
+Pure callback resolver tests pass for signup/email confirmation, recovery routing, missing code and provider errors. Actual SMTP delivery, redirect allowlist, phone link handling, password update and email-confirmation-to-legal-gate remain unvalidated until configured and tested on device.
