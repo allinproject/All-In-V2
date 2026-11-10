@@ -41,8 +41,10 @@ function validSession(s:TrainingSessionIntent):boolean{
  (s.durationMinutes===null||(Number.isFinite(s.durationMinutes)&&s.durationMinutes>0&&s.durationMinutes<=900))&&s.demand&&Array.isArray(s.stressTags)&&Array.isArray(s.evidenceRefs));
 }
 function strengthStructureIssue(s:TrainingSessionIntent,context:TrainingAthletePlanContext):string|null{
- const rules=(context.strengthStructureRules??[]).filter(rule=>s.sport==='strength'&&(!rule.day||rule.day===s.fixedDay||(s.preferredDays??[]).includes(rule.day)));
+ const allRules=(context.strengthStructureRules??[]);
  if(s.sport!=='strength')return s.strengthWorkout?'Strength prescription attached to a non-strength session.':null;
+ if(allRules.some(rule=>rule.day)&&!s.fixedDay&&!(s.preferredDays?.length))return 'A strength session must bind to its planned day so the correct athlete-approved structure can be enforced.';
+ const rules=allRules.filter(rule=>!rule.day||rule.day===s.fixedDay||(s.preferredDays??[]).includes(rule.day));
  if(s.strengthWorkout){
   if(!['supersets','straight_sets'].includes(s.strengthWorkout.format)||!Array.isArray(s.strengthWorkout.blocks)||s.strengthWorkout.blocks.length===0)return 'Strength workout structure is invalid.';
   for(const block of s.strengthWorkout.blocks){
