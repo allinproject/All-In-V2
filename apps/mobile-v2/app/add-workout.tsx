@@ -53,9 +53,9 @@ export default function AddWorkoutScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Link href="/home" asChild>
+        <Link href="/train" asChild>
           <Pressable accessibilityRole="button" style={styles.back}>
-            <Text style={styles.muted}>‹ Back to Today</Text>
+            <Text style={styles.muted}>‹ Back to Calendar</Text>
           </Pressable>
         </Link>
         <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
