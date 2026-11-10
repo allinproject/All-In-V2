@@ -98,7 +98,7 @@ Do not assume that every current implementation is bad or that the database must
 
 ### Replace only with evidence
 
-Replace backend services, SQL schema, data models, provider integrations or domain algorithms only when the baseline demonstrates a specific defect that cannot be safely corrected by extending the existing canonical owner. Every replacement requires a compatibility plan, migration/rollback strategy, and proof that existing user data/history survives. No schema change is needed for the first vertical slice unless inspection proves otherwise.
+Port approved V1 behavior and product-owned assets into the clean V2 architecture. The V2 schema is intentionally new; design its canonical domain owners from the reviewed product contracts rather than replaying historical migrations. Personal V1 records and the single founder/test Coach thread are not imported by default. Every product-owned catalog import must be reproducible, versioned and integrity-checked.
 
 ## 5. Target V2 architecture
 
@@ -135,7 +135,7 @@ domain contracts + ports
         ↓
 adapters (auth, Coach API, canonical recipe writer)
         ↓
-existing Supabase / deployed Coach / canonical data
+new V2 Supabase / ported V1 Coach behavior / V2 canonical data
 ```
 
 - Screens render state and dispatch typed intents; they do not contain SQL/RPC details.
@@ -159,7 +159,7 @@ existing Supabase / deployed Coach / canonical data
 
 | Concern | Authoritative owner | V2 rule |
 |---|---|---|
-| Identity / session | Existing Supabase Auth | Sign in existing users; never provision a parallel identity store |
+| Identity / session | New V2 Supabase Auth | Create a fresh founder account; no V1 password migration or customer-base import |
 | Profile / preferences | Existing profile RPCs and policies | Read and patch through existing owner/version contracts |
 | Coach messages / thread | Existing persistent Coach APIs/service | Preserve thread ID and message/history semantics; no second chat store |
 | Coach proposed action | Existing typed proposal/action contract | Proposal is not a write; validate action kind/object/version and require explicit user approval |
@@ -171,7 +171,7 @@ existing Supabase / deployed Coach / canonical data
 | Recovery / health | Existing scoped records and consent boundaries | No invented facts or cross-account reads |
 | Apple / equipment | Existing adapters and canonical event linkage | Device observations do not become a second canonical event |
 
-Backend inventory at baseline includes the existing Supabase migrations and Edge Functions for Coach-related source/tests, recipe/food import, receipt and product lookup, health ingestion, routes and privacy. The current app's exact deployed function names/versions and project database state must be refreshed before any deployment or schema action. The staged Coach successor must not be confused with the live deployed endpoint.
+V1 backend inventory is a reference only. V2 must create its own schema, RLS, RPCs, secrets and Edge Functions. Do not wholesale replay the V1 migration chain. At transfer inventory V1 has `allin-coach` ACTIVE v18 with JWT verification and deployed SHA-256 `da56531e252d924a0915b1168f923f51985a004fd6d4c91bb1a8e341f90fefe3`; the staged V13 repository candidate is not the live v18 source. Port the exact v18 source and adapt its dependencies to V2 before deployment.
 
 ## 7. Migration boundaries and rollout
 
@@ -191,11 +191,11 @@ Backend inventory at baseline includes the existing Supabase migrations and Edge
 ### Slice A — V2 boot and existing-user auth
 
 - New V2 app launches without depending on legacy Native route components.
-- User signs in with an existing account using the current Supabase Auth project.
+- Founder creates a fresh account in the dedicated V2 Supabase project after the V2 legal/signup and schema gates are implemented.
 - Session restore, expired session, sign-out and account switch are deterministic.
 - No new signup, legal onboarding, profile schema or auth provider is introduced in this slice unless required by the existing gate.
 
-**Pass evidence:** real authenticated test account; cold launch/session restore; sign-out/sign-in; no cross-account cache/thread leakage.
+**Pass evidence:** fresh V2 founder account; cold launch/session restore; sign-out/sign-in; no cross-account cache/thread leakage.
 
 ### Slice B — persistent Coach continuity
 
@@ -276,7 +276,7 @@ Backend inventory at baseline includes the existing Supabase migrations and Edge
 - Identify the approved isolated authenticated integration-test environment. Do not create a paid Supabase branch or write production fixtures just to make tests convenient.
 - Record ownership and exact acceptance evidence in Linear before implementation; each new work item must be a small independently verifiable slice.
 
-**Definition of success:** V2 is not a prettier blank shell. It must complete the first real account-to-Coach-to-approved-recipe-save-to-history journey against existing user data without duplicating identity, conversation, recipe state or canonical writes.
+**Definition of success:** V2 is not a prettier blank shell. It must complete the fresh-founder-account → new persistent Coach thread → recipe proposal → explicit approval → exactly-once V2 recipe save → durable V2 history journey. V1 supplies validated behavior and product-owned catalog assets, not a customer base to migrate.
 
 
 ## V2 infrastructure decision — 2026-11-10
