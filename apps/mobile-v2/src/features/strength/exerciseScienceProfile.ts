@@ -97,6 +97,8 @@ export type ExerciseScienceProfile = {
     | 'trunk_extension'
     | 'jump_or_landing'
     | 'calf_or_ankle'
+    | 'knee_flexion'
+    | 'elbow_extension'
     | 'locomotion'
     | 'other';
   laterality: 'bilateral' | 'unilateral' | 'alternating' | 'mixed';
@@ -159,7 +161,7 @@ const MOVEMENT_PATTERNS = [
   'squat','hinge','lunge','step','horizontal_push','vertical_push',
   'horizontal_pull','vertical_pull','carry','rotation','anti_rotation',
   'trunk_flexion','trunk_extension','jump_or_landing','calf_or_ankle',
-  'locomotion','other',
+  'knee_flexion','elbow_extension','locomotion','other',
 ] as const;
 const PLANES = ['sagittal','frontal','transverse','multi_planar','varies'] as const;
 const ROM_RANGES = ['short','moderate','long','variable','unknown'] as const;
