@@ -27,6 +27,8 @@ export type OwnerCalendarRead<T> =
   | { status: 'unavailable' | 'loading' | 'error'; records?: never }
   | { status: 'ready'; ownerId: string; fromDate: string; throughDate: string; records: readonly T[] };
 export type CombinedCalendarResult = {
+  /** Verified requested read window; null means an invalid request, never a known-empty day. */
+  requestedRange: { fromDate: string; throughDate: string } | null;
   planned: CalendarEvidence<PlannedCalendarItem>;
   completed: CalendarEvidence<CompletedCalendarItem>;
   markers: CalendarEvidence<CalendarWorkoutMarker>;
@@ -63,7 +65,7 @@ export function combineCalendarReads(args:{
 }):CombinedCalendarResult {
   const {ownerId,fromDate,throughDate}=args;
   if (!ownerId || !validAthleteLocalDate(fromDate) || !validAthleteLocalDate(throughDate) || fromDate>throughDate) {
-    return {planned:{status:'unavailable'},completed:{status:'unavailable'},markers:{status:'unavailable'},status:'unavailable'};
+    return {requestedRange:null,planned:{status:'unavailable'},completed:{status:'unavailable'},markers:{status:'unavailable'},status:'unavailable'};
   }
   const planned=validatedRead(args.planned,ownerId,fromDate,throughDate,item=>
     typeof item.planRevisionId==='string'&&item.planRevisionId.trim().length>0
@@ -104,10 +106,14 @@ export function combineCalendarReads(args:{
         ];
       })()}
     : {status:'unavailable'};
-  return {planned,completed,markers,status:planned.status==='ready'&&completed.status==='ready'?'ready'
+  return {requestedRange:{fromDate,throughDate},planned,completed,markers,status:planned.status==='ready'&&completed.status==='ready'?'ready'
     :planned.status==='ready'||completed.status==='ready'?'partial':'unavailable'};
 }
 export function indicatorsForCalendarDay(result:CombinedCalendarResult,day:string){
+  if (!validAthleteLocalDate(day) || !result.requestedRange
+    || day < result.requestedRange.fromDate || day > result.requestedRange.throughDate) {
+    return monthDayMarkerSummary({status:'unavailable'},day);
+  }
   return monthDayMarkerSummary(result.markers,day);
 }
 
@@ -120,7 +126,8 @@ export function calendarDaySections(result: CombinedCalendarResult, day: string)
   scheduled: CalendarEvidence<PlannedCalendarItem>;
   completed: CalendarEvidence<CompletedCalendarItem>;
 } {
-  if (!validAthleteLocalDate(day)) {
+  if (!validAthleteLocalDate(day) || !result.requestedRange
+    || day < result.requestedRange.fromDate || day > result.requestedRange.throughDate) {
     return { scheduled: {status:'unavailable'}, completed: {status:'unavailable'} };
   }
   const completed:CalendarEvidence<CompletedCalendarItem> = result.completed.status==='ready'
