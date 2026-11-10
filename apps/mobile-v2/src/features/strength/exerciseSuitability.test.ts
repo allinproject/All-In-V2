@@ -41,7 +41,7 @@ test('returns a sourced movement explanation for a matched sport goal with the e
  assert.deepEqual(result.matchedGoalIds,['goal-trail-race']);
  assert.deepEqual(result.matchedSports,['running']);
  assert.equal(result.transfer,'direct_sport_evidence');
- assert.match(result.whyThisFits[0],/running performance/);
+ assert.match(result.whyThisFits[0],/TEST FIXTURE ONLY/);
  assert.equal(result.evidence[0].claimId,'claim-running');
  assert.deepEqual(result.evidence[0].sourceIds,['source-running']);
  assert.deepEqual(result.sources.map((source)=>source.id),['source-running']);
@@ -58,6 +58,7 @@ test('general adaptation is clearly labeled as indirect and never upgraded to di
  candidate.sources=[{...candidate.sources[0],id:'general-source'}];
  candidate.muscleGroups=candidate.muscleGroups.map(x=>({...x,sourceIds:['general-source']}));
  candidate.jointDemands=candidate.jointDemands.map(x=>({...x,sourceIds:['general-source']}));
+ candidate.cautionFlags=candidate.cautionFlags.map(x=>({...x,sourceIds:['general-source']}));
  candidate.claims[0].sourceIds=['general-source'];
  const result=evaluateExerciseSuitability(candidate,context());
  assert.equal(result.status,'recommended');
