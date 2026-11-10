@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import {
+  assertV2SessionOwner,
   REQUIRED_V2_ONBOARDING_STEPS,
 } from '../src/auth/accessGateClient';
 import {
@@ -168,14 +169,6 @@ function makeActionId(ownerId: string, step: OnboardingStep, kind: string): stri
   return ['onboarding', kind, ownerId, step, Date.now().toString(36), Math.random().toString(36).slice(2, 12)].join(':');
 }
 
-async function assertCurrentOwner(expectedOwnerId: string): Promise<void> {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  if (data.session?.user.id !== expectedOwnerId) {
-    throw new Error('The signed-in account changed. Your onboarding progress was not advanced.');
-  }
-}
-
 function toggleValue(current: string[], value: string, exclusiveValue?: string): string[] {
   if (value === exclusiveValue) return current.includes(value) ? [] : [value];
   const withoutExclusive = exclusiveValue ? current.filter(item => item !== exclusiveValue) : current;
@@ -327,7 +320,7 @@ export default function OnboardingRequiredScreen() {
     setActionError(null);
 
     try {
-      await assertCurrentOwner(ownerId);
+      await assertV2SessionOwner(supabase, ownerId);
       if (action === 'complete') {
         const write = onboardingPreferenceWrite(activeStep, answers);
         const { data: savedSettingsVersion, error: settingsError } = await supabase.rpc(
@@ -348,7 +341,7 @@ export default function OnboardingRequiredScreen() {
         }
       }
 
-      await assertCurrentOwner(ownerId);
+      await assertV2SessionOwner(supabase, ownerId);
 
       const { error: progressError } = await supabase.rpc('v2_set_onboarding_step', {
         p_step: activeStep,
