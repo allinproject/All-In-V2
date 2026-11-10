@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../src/lib/supabase';
+import { resolveAuthCallback } from '../../src/auth/authCallback';
 import { colors } from '../../src/theme/tokens';
 
 export default function AuthCallbackScreen() {
@@ -18,33 +19,23 @@ export default function AuthCallbackScreen() {
 
   useEffect(() => {
     if (processed.current) return;
-    const code = Array.isArray(params.code) ? params.code[0] : params.code;
-    const type = Array.isArray(params.type) ? params.type[0] : params.type;
-    const callbackError = Array.isArray(params.error_description)
-      ? params.error_description[0]
-      : (Array.isArray(params.error) ? params.error[0] : (params.error_description ?? params.error));
-
-    if (callbackError) {
+    const resolution = resolveAuthCallback(params);
+    if (resolution.kind === 'error') {
       processed.current = true;
-      setError('The email link could not be verified. Request a new link and try again.');
-      return;
-    }
-    if (!code) {
-      processed.current = true;
-      setError('This email link is missing its verification code. Request a new link and open it on this device.');
+      setError(resolution.message);
       return;
     }
 
     processed.current = true;
     let active = true;
-    void supabase.auth.exchangeCodeForSession(code)
+    void supabase.auth.exchangeCodeForSession(resolution.code)
       .then(({ error: exchangeError }) => {
         if (!active) return;
         if (exchangeError) {
           setError('This email link is invalid or has expired. Request a new link and try again.');
           return;
         }
-        router.replace(type === 'recovery' ? '/reset-password' : '/');
+        router.replace(resolution.destination === 'reset-password' ? '/reset-password' : '/');
       })
       .catch(() => {
         if (active) setError('The email link could not be verified. Check your connection and request a new link if needed.');
