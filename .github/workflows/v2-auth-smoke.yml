@@ -20,6 +20,8 @@ on:
       - 'scripts/prepare-v2-lockfile.test.mjs'
       - 'scripts/prepare-v2-usda-foundation-snapshot.ps1'
       - 'scripts/prepare-v2-usda-foundation-snapshot.test.mjs'
+      - 'scripts/verify-v2-usda-foundation-manifest.mjs'
+      - 'scripts/verify-v2-usda-foundation-manifest.test.mjs'
       - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
@@ -41,6 +43,8 @@ on:
       - 'scripts/prepare-v2-lockfile.test.mjs'
       - 'scripts/prepare-v2-usda-foundation-snapshot.ps1'
       - 'scripts/prepare-v2-usda-foundation-snapshot.test.mjs'
+      - 'scripts/verify-v2-usda-foundation-manifest.mjs'
+      - 'scripts/verify-v2-usda-foundation-manifest.test.mjs'
       - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
@@ -81,6 +85,8 @@ jobs:
         run: node --test ../../scripts/prepare-v2-lockfile.test.mjs
       - name: Test USDA source acquisition safety
         run: node --test ../../scripts/prepare-v2-usda-foundation-snapshot.test.mjs
+      - name: Test USDA archive manifest verification
+        run: node --test ../../scripts/verify-v2-usda-foundation-manifest.test.mjs
       - name: Run Auth tests
         run: npm run test:auth
       - name: Run Cookbook calculator tests
