@@ -120,6 +120,10 @@ select public.v2_coach_append_exchange(
  'How should I train?',
  'Please review your accepted plan.'
 );
+-- The service-only writer has been exercised above. Subsequent direct
+-- diagnostic table reads run as disposable test administrator, not as a
+-- client/service API role; do not grant direct Coach table reads for tests.
+reset role;
 -- Exact retry does not add rows OR refresh the thread's "latest activity".
 do $retry$
 declare before_retry timestamptz; after_retry timestamptz;
@@ -216,7 +220,7 @@ $s$;
 
 -- Deterministic lease takeover: an expired execution version 1 must not
 -- write after version 2 has claimed the same immutable request identity.
-set local role service_role;
+reset role;
 do $fence$
 declare
   v_first jsonb;
