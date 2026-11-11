@@ -17,7 +17,7 @@ export const PROFILE_GUIDE_STEPS: readonly GuidedStep[] = [
   { id:'kitchen',title:'Kitchen equipment',target:'kitchen',body:'Kitchen tracks home cooking equipment, work reheating options and meal-prep constraints. Only changes you save become preferences.' },
   { id:'coach',title:'How Coach responds',target:'coach',body:'Coach Preferences holds guidance, explanation detail, plan-change review and coaching tone. Coach behavior integration is still being built.' },
   { id:'help',title:'Help & Tutorials',target:'help',body:'Return to Help & Tutorials to explore other screens. Additional guided lessons are coming as those features work.' },
-  { id:'account-safety',title:'Account controls',target:'legal',body:'You can review accepted legal versions and sign out from Profile. The guide never signs you out or changes account state.' },
+  { id:'account-safety',title:'Legal acceptance',target:'legal',body:'This section shows the legal versions accepted for your account. The guide never changes your acceptance or signs you out.' },
 ] as const;
 export type GuidePosition = { index:number; done:boolean };
 export function initialGuidePosition(): GuidePosition { return {index:0,done:false}; }
