@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, Redirect } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +17,10 @@ import { colors } from '../../src/theme/tokens';
 export default function TutorialsRoute() {
   const { user, loading } = useAuth();
   const gate = useAccessGate();
+  const [showUpcoming, setShowUpcoming] = useState(false);
+  const ready = V2_TUTORIAL_CATALOG.filter(canStartTutorial);
+  const upcoming = V2_TUTORIAL_CATALOG.filter(t => !canStartTutorial(t));
+  const visible = showUpcoming ? V2_TUTORIAL_CATALOG : ready;
   if (!loading && !user) return <Redirect href="/sign-in" />;
   if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
   if (gate.status === 'onboarding_required') return <Redirect href="/onboarding-required" />;
@@ -33,9 +38,14 @@ export default function TutorialsRoute() {
         Guides are being rebuilt for the new ALL IN 365. Working Profile settings have early
         walkthroughs available for testing. None has been validated on a device.
       </Text>
-      {tutorialCatalogCategories().map(category => <View style={styles.section} key={category}>
+      <Pressable accessibilityRole="button" accessibilityState={{expanded:showUpcoming}}
+        accessibilityLabel={showUpcoming ? 'Hide upcoming tutorials' : `Show ${upcoming.length} upcoming tutorials`}
+        style={styles.toggle} onPress={() => setShowUpcoming(old => !old)}>
+        <Text style={styles.toggleText}>{showUpcoming ? 'Hide upcoming guides' : `Show upcoming guides (${upcoming.length})`}</Text>
+      </Pressable>
+      {tutorialCatalogCategories(visible).map(category => <View style={styles.section} key={category}>
         <Text style={styles.heading}>{category}</Text>
-        {V2_TUTORIAL_CATALOG.filter(t => t.category===category).map(t => <View style={styles.card} key={t.id}>
+        {visible.filter(t => t.category===category).map(t => <View style={styles.card} key={t.id}>
           <Text style={styles.itemTitle}>{t.title}</Text>
           <Text style={styles.description}>{t.summary}</Text>
           <Text style={styles.status}>{canStartTutorial(t) ? 'Early walkthrough · device testing pending' : 'Tutorial coming later'}</Text>
@@ -68,6 +78,8 @@ const styles=StyleSheet.create({
   itemTitle:{fontSize:16,fontWeight:'800',color:colors.warmWhite},
   description:{fontSize:13,lineHeight:20,color:colors.mutedText},
   status:{fontSize:12,color:colors.goldSoft,fontWeight:'700'},
+  toggle:{minHeight:48,justifyContent:'center',borderWidth:1,borderColor:colors.border,borderRadius:12,padding:12},
+  toggleText:{color:colors.goldSoft,fontWeight:'800'},
   primary:{borderRadius:10,padding:12,backgroundColor:colors.gold,alignSelf:'flex-start'},
   primaryLabel:{color:colors.background,fontSize:13,fontWeight:'800'},
   explore:{borderWidth:1,borderColor:colors.border,borderRadius:10,padding:11,alignSelf:'flex-start'},
