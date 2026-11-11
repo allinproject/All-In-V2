@@ -29,6 +29,8 @@ export function evaluatePublicProfileView(input:PublicProfileViewer):PublicProfi
  if(!input.ownerId.trim()||!['public','private'].includes(input.profileVisibility)||
  !['self','approved_follower','follow_requested','not_following','blocked_either_way'].includes(input.relationship))
   throw new Error('Invalid canonical public profile evidence.');
+ if(input.viewerId===null&&['self','approved_follower','follow_requested'].includes(input.relationship))
+  throw new Error('Signed-out viewer cannot claim an authenticated follow relationship.');
  const isSelf=input.viewerId!==null&&input.viewerId===input.ownerId;
  if(isSelf!== (input.relationship==='self'))
   throw new Error('Public profile viewer relationship does not match owner identity.');
@@ -55,6 +57,7 @@ export function evaluatePublicProfileView(input:PublicProfileViewer):PublicProfi
  */
 export function canViewProfilePost(audience:PublicProfileAudience,profile:PublicProfileView):boolean{
  if(profile.label==='blocked')return false;
+ if(!['public','followers','private'].includes(audience))return false;
  if(audience==='private')return profile.label==='own_profile';
  if(audience==='followers')return profile.canViewPrivateContent;
  // A private account is not made readable by an individual post marked public.
