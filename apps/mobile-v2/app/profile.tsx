@@ -106,6 +106,15 @@ function OwnedProfileScreen() {
               </Link>
             </View>
             <View style={styles.card}>
+              <Text style={styles.section}>Personalize ALL IN</Text>
+              <Link href="/profile/sports" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}>
+                  <Text style={styles.buttonText}>Sports & Interests</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.muted}>Training Focus and Active Activities</Text>
+            </View>
+            <View style={styles.card}>
               <Text style={styles.section}>Legal acceptance</Text>
               <Text style={styles.muted}>Accepted versions for this account</Text>
               <Text style={styles.white}>Terms: {snapshot.latest_legal_acceptance?.terms_version ?? 'Not available'}</Text>
