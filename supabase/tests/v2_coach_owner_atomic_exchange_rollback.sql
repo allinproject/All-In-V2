@@ -335,7 +335,7 @@ begin
   select count(*) into v_count from public.v2_coach_read_messages(
     'aa11aa11-1111-4111-8111-111111111111',
     'cc33cc33-3333-4333-8333-333333333333',null,null,40);
-  if v_count<>2 then raise exception 'A did not read both canonical messages'; end if;
+  if v_count<>4 then raise exception 'A did not read both canonical exchanges'; end if;
   -- Exact RPC readback must require both message IDs + owner + request.
   select count(*) into v_count from public.v2_coach_read_exchange(
     'aa11aa11-1111-4111-8111-111111111111',
