@@ -52,6 +52,12 @@ BEGIN
        has_table_privilege(r,'allin_private.v2_subscription_purchases','INSERT') OR
        has_table_privilege(r,'allin_private.v2_subscription_verified_events','INSERT') OR
        has_function_privilege(r,
+       'allin_private.v2_register_pending_subscription_checkout(uuid,uuid,uuid,text,text,text)',
+       'EXECUTE') OR
+       has_function_privilege(r,
+       'allin_private.v2_confirm_pending_subscription_checkout(uuid,uuid,text,text,text,text)',
+       'EXECUTE') OR
+       has_function_privilege(r,
        'allin_private.v2_bind_confirmed_subscription_purchase(uuid)', 'EXECUTE') OR
        has_function_privilege(r,
        'allin_private.v2_apply_verified_subscription_event(uuid,text,text,text,text,bigint,text,timestamptz)',
@@ -76,6 +82,10 @@ GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_checkout_attempts TO
 GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_purchases TO service_role;
 GRANT SELECT,INSERT ON allin_private.v2_subscription_verified_events TO service_role;
 GRANT USAGE,SELECT ON SEQUENCE allin_private.v2_subscription_verified_events_id_seq TO service_role;
+GRANT EXECUTE ON FUNCTION allin_private.v2_register_pending_subscription_checkout(
+  uuid,uuid,uuid,text,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION allin_private.v2_confirm_pending_subscription_checkout(
+  uuid,uuid,text,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_bind_confirmed_subscription_purchase(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_apply_verified_subscription_event(
   uuid,text,text,text,text,bigint,text,timestamptz) TO service_role;
@@ -96,13 +106,83 @@ RESET ROLE;
 
 -- Simulate a distinct approved checkout/restore prebinding transaction;
 -- no webhook is permitted to perform this initial INSERT itself.
-INSERT INTO allin_private.v2_subscription_checkout_attempts
-  (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id,state,verified_at)
-VALUES
-  ('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001',
-   'stripe_web','sandbox','cs_1','sub_1','server_confirmed',now()),
-  ('10000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000002',
-   'stripe_web','sandbox','cs_2','sub_2','server_confirmed',now());
+SET ROLE service_role;
+DO $checkout_lifecycle$
+DECLARE v_result text;
+BEGIN
+  SELECT allin_private.v2_register_pending_subscription_checkout(
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'stripe_web','sandbox','cs_1') INTO v_result;
+  IF v_result <> 'pending' THEN RAISE EXCEPTION 'Expected pending: %',v_result; END IF;
+  SELECT allin_private.v2_register_pending_subscription_checkout(
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'stripe_web','sandbox','cs_1') INTO v_result;
+  IF v_result <> 'already_pending' THEN RAISE EXCEPTION 'Expected replay: %',v_result; END IF;
+
+  BEGIN
+    PERFORM allin_private.v2_register_pending_subscription_checkout(
+      '10000000-0000-0000-0000-000000000002',
+      '00000000-0000-0000-0000-000000000002',
+      '00000000-0000-0000-0000-000000000001',
+      'stripe_web','sandbox','cs_2');
+    RAISE EXCEPTION 'Cross-account pending checkout unexpectedly accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM allin_private.v2_bind_confirmed_subscription_purchase(
+      '10000000-0000-0000-0000-000000000001');
+    RAISE EXCEPTION 'Unconfirmed pending checkout unexpectedly bound';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM allin_private.v2_confirm_pending_subscription_checkout(
+      '10000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      'stripe_web','sandbox','cs_1','sub_1');
+    RAISE EXCEPTION 'Foreign owner confirmed pending checkout';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+
+  SELECT allin_private.v2_confirm_pending_subscription_checkout(
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'stripe_web','sandbox','cs_1','sub_1') INTO v_result;
+  IF v_result <> 'confirmed' THEN RAISE EXCEPTION 'Expected confirmation: %',v_result; END IF;
+  SELECT allin_private.v2_confirm_pending_subscription_checkout(
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'stripe_web','sandbox','cs_1','sub_1') INTO v_result;
+  IF v_result <> 'already_confirmed' THEN RAISE EXCEPTION 'Confirmation replay: %',v_result; END IF;
+
+  BEGIN
+    PERFORM allin_private.v2_confirm_pending_subscription_checkout(
+      '10000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000001',
+      'stripe_web','sandbox','cs_1','sub_forged');
+    RAISE EXCEPTION 'Confirmed subscription overwritten';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+
+  SELECT allin_private.v2_register_pending_subscription_checkout(
+    '10000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000002',
+    'stripe_web','sandbox','cs_2') INTO v_result;
+  IF v_result <> 'pending' THEN RAISE EXCEPTION 'Second pending: %',v_result; END IF;
+  SELECT allin_private.v2_confirm_pending_subscription_checkout(
+    '10000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000002',
+    'stripe_web','sandbox','cs_2','sub_2') INTO v_result;
+  IF v_result <> 'confirmed' THEN RAISE EXCEPTION 'Second confirmation: %',v_result; END IF;
+END
+$checkout_lifecycle$;
+RESET ROLE;
 
 DO $unverified_purchase$
 BEGIN
