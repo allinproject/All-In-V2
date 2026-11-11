@@ -19,17 +19,20 @@ const dayRows=allDays.map((date,i)=>({id:'day-'+i,ownerId:owner,planRevisionId:r
  athleteLocalDate:date,dayState:events.some(e=>e.date===date)?'race' as const:'rest' as const}));
 const plannedRows=events.map((e,i)=>({id:'session-'+i,ownerId:owner,athleteLocalDate:e.date,
  sport:'running' as const,state:'planned' as const,planRevisionId:revision}));
-const bindings=events.map((e,i)=>({eventId:e.id,sessionId:'session-'+i,planRevisionId:revision}));
+const bindings=events.map((e,i)=>({eventId:e.id,sessionId:'session-'+i,planRevisionId:revision,
+ ownerId:owner,athleteLocalDate:e.date,sport:e.sport,competitionConfirmed:true as const}));
 function fixture(){
  return {expectedOwnerId:owner,authenticatedOwnerId:owner,activeSessionGeneration:generation,
  accessGateReady:true,activePlanRevisionId:revision,startDate,events:[...events],
- eventBindings:[...bindings],
  plannedSnapshot:{ownerId:owner,authSessionGeneration:generation,fromDate:startDate,
   throughDate:'2027-06-05',snapshotVersion:'snapshot-9',complete:true,nextCursor:null as string|null,
   records:[...plannedRows]},
  daySnapshot:{ownerId:owner,authSessionGeneration:generation,fromDate:startDate,
   throughDate:'2027-06-05',snapshotVersion:'snapshot-9',complete:true,nextCursor:null as string|null,
-  records:[...dayRows]}}
+  records:[...dayRows]},
+ competitionSnapshot:{ownerId:owner,authSessionGeneration:generation,fromDate:startDate,
+  throughDate:'2027-06-05',snapshotVersion:'snapshot-9',complete:true,nextCursor:null as string|null,
+  records:[...bindings]}}
 }
 test('certified current-revision owner calendar builds one season with exact A and B events',()=>{
  const result=proposeSeasonFromVerifiedTraining(fixture());
@@ -57,11 +60,11 @@ test('missing middle date cannot silently become a rest day',()=>{
  assert.equal(proposeSeasonFromVerifiedTraining(f).status,'unavailable');
 });
 test('event bindings require unique exact canonical session, date, sport and revision',()=>{
- const wrong=fixture();wrong.eventBindings[0]={...wrong.eventBindings[0],planRevisionId:'old'};
+ const wrong=fixture();wrong.competitionSnapshot.records[0]={...wrong.competitionSnapshot.records[0],planRevisionId:'old'};
  assert.equal(proposeSeasonFromVerifiedTraining(wrong).status,'unavailable');
  const moved=fixture();moved.plannedSnapshot.records[0]={...moved.plannedSnapshot.records[0],athleteLocalDate:'2027-04-11'};
  assert.equal(proposeSeasonFromVerifiedTraining(moved).status,'unavailable');
- const dup=fixture();dup.eventBindings[1]={...dup.eventBindings[1],sessionId:'session-0'};
+ const dup=fixture();dup.competitionSnapshot.records[1]={...dup.competitionSnapshot.records[1],sessionId:'session-0'};
  assert.equal(proposeSeasonFromVerifiedTraining(dup).status,'unavailable');
 });
 test('foreign and stale accepted plan rows do not reach Coach proposal',()=>{
@@ -73,4 +76,20 @@ test('foreign and stale accepted plan rows do not reach Coach proposal',()=>{
 test('event owner date must be certified race and snapshot cannot suppress it',()=>{
  const f=fixture();f.daySnapshot.records=f.daySnapshot.records.map(d=>d.athleteLocalDate==='2027-04-10'?{...d,dayState:'rest' as const}:d);
  assert.equal(proposeSeasonFromVerifiedTraining(f).status,'unavailable');
+});
+
+test('competition classification must be certified by the same Training owner snapshot',()=>{
+ const unconfirmed=fixture();
+ unconfirmed.competitionSnapshot.records[0]={
+  ...unconfirmed.competitionSnapshot.records[0],competitionConfirmed:false as never
+ };
+ assert.equal(proposeSeasonFromVerifiedTraining(unconfirmed).status,'unavailable');
+ const stale=fixture();stale.competitionSnapshot.snapshotVersion='old-snapshot';
+ assert.equal(proposeSeasonFromVerifiedTraining(stale).status,'unavailable');
+ const foreign=fixture();foreign.competitionSnapshot.records[0]={
+  ...foreign.competitionSnapshot.records[0],ownerId:'different'
+ };
+ assert.equal(proposeSeasonFromVerifiedTraining(foreign).status,'unavailable');
+ const partial=fixture();partial.competitionSnapshot.nextCursor='page-two';
+ assert.equal(proposeSeasonFromVerifiedTraining(partial).status,'unavailable');
 });
