@@ -15,6 +15,7 @@ DECLARE
  v_uid uuid := auth.uid();
  v_session_claim text := pg_catalog.current_setting('request.jwt.claim.session_id',true);
  v_session_id uuid;
+ v_server_fingerprint text;
 BEGIN
  IF v_uid IS NULL OR p_expected_user_id IS DISTINCT FROM v_uid THEN
     RAISE EXCEPTION 'Expected owner does not match authenticated account'
@@ -40,11 +41,17 @@ BEGIN
  IF p_expected_version IS NULL OR p_expected_version<0 THEN
    RAISE EXCEPTION 'Expected session version is required' USING ERRCODE='22023';
  END IF;
- -- Trusted server identity from auth.uid(), never accept the client-provided
- -- owner as authority or let a malicious user call the private helper.
+ -- Derive the exact retry identity on the server, not from a client
+ -- supplied opaque hash. A reused action ID with changed request fields must
+ -- fail, not misleadingly report success for a different command payload.
+ v_server_fingerprint:=pg_catalog.encode(pg_catalog.sha256(
+   pg_catalog.convert_to(
+     pg_catalog.jsonb_build_array(p_session_id,p_command,p_expected_version,
+       p_local_date,p_timezone,p_occurred_at)::text,'UTF8')
+   ),'hex');
  RETURN allin_private.v2_training_apply_session_candidate(
    v_uid,p_session_id,p_action_id,p_command,p_expected_version,
-   p_request_fingerprint,p_local_date,p_timezone,p_occurred_at
+   v_server_fingerprint,p_local_date,p_timezone,p_occurred_at
  );
 END;
 $owner_action$;
