@@ -144,6 +144,7 @@ jobs:
           PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           docker exec "$PG_CONTAINER" createdb -U "$PGUSER" completed_scalar_read
+          docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql"
           docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql"
           docker cp scripts/test-v2-completed-scalar-read-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-completed-scalar-read-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d completed_scalar_read -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-completed-scalar-read-postgres.psql
