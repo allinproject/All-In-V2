@@ -90,3 +90,11 @@ test('durable reservation precedes pending provider checkout',()=>{
   assert.match(sql,/revoke all on function allin_private\.v2_reserve_subscription_checkout/);
   assert.match(sql,/checkout reservation identity collision/);
 });
+
+test('atomic checkout finalization remains service-only and preserves original binding',()=>{
+  assert.match(sql,/create or replace function allin_private\.v2_finalize_verified_subscription_checkout/);
+  assert.match(sql,/checkout finalization requires service role/);
+  assert.match(sql,/v2_confirm_pending_subscription_checkout\(/);
+  assert.match(sql,/v2_bind_confirmed_subscription_purchase\(p_attempt_id\)/);
+  assert.match(sql,/revoke all on function allin_private\.v2_finalize_verified_subscription_checkout/);
+});
