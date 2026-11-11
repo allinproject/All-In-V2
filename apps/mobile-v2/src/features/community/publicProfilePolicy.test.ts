@@ -24,6 +24,7 @@ test('pending follow does not grant access; approved follower sees follower cont
  const follower=evaluatePublicProfileView(viewer({relationship:'approved_follower'}));
  assert.equal(follower.canViewPrivateContent,true);
  assert.equal(canViewProfilePost('followers',follower),true);
+ assert.equal(canViewProfilePost('public',follower),true);
  assert.equal(canViewProfilePost('private',follower),false);
 });
 test('public profile does not expose followers-only posts or races',()=>{
