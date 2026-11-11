@@ -180,6 +180,25 @@ begin
     'aa11aa11-1111-4111-8111-111111111111',
     'cc33cc33-3333-4333-8333-333333333333',null,null,40);
   if v_count<>2 then raise exception 'A did not read both canonical messages'; end if;
+  -- Exact RPC readback must require both message IDs + owner + request.
+  select count(*) into v_count from public.v2_coach_read_exchange(
+    'aa11aa11-1111-4111-8111-111111111111',
+    'cc33cc33-3333-4333-8333-333333333333',
+    'ee55ee55-5555-4555-8555-555555555555',
+    'dd44dd44-4444-4444-8444-444444444444',
+    'ff66ff66-6666-4666-8666-666666666666');
+  if v_count<>2 then
+    raise exception 'Exact owner readback did not return the message pair';
+  end if;
+  select count(*) into v_count from public.v2_coach_read_exchange(
+    'aa11aa11-1111-4111-8111-111111111111',
+    'cc33cc33-3333-4333-8333-333333333333',
+    'ee55ee55-5555-4555-8555-555555555555',
+    'dd44dd44-4444-4444-8444-444444444444',
+    '33333333-3333-4333-8333-333333333333');
+  if v_count<>0 then
+    raise exception 'Wrong assistant message ID returned a partial exchange';
+  end if;
   begin
     perform * from public.v2_coach_read_messages(
       'aa11aa11-1111-4111-8111-111111111111',
@@ -192,6 +211,16 @@ $r$;
 select set_config('request.jwt.claim.sub','bb22bb22-2222-4222-8222-222222222222',true);
 do $r$
 begin
+  begin
+    perform * from public.v2_coach_read_exchange(
+      'bb22bb22-2222-4222-8222-222222222222',
+      'cc33cc33-3333-4333-8333-333333333333',
+      'ee55ee55-5555-4555-8555-555555555555',
+      'dd44dd44-4444-4444-8444-444444444444',
+      'ff66ff66-6666-4666-8666-666666666666');
+    raise exception 'B read A exact Coach exchange';
+  exception when insufficient_privilege then null;
+  end;
   begin
     perform * from public.v2_coach_read_messages(
       'bb22bb22-2222-4222-8222-222222222222',
