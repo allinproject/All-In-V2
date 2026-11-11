@@ -45,9 +45,12 @@ DECLARE
  action uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
  result jsonb;
 BEGIN
- IF has_function_privilege('authenticated',
- 'allin_private.v2_training_apply_session_candidate(uuid,uuid,uuid,text,bigint,text,date,text,timestamptz)','EXECUTE')
- THEN RAISE EXCEPTION 'Client has raw writer rights'; END IF;
+ BEGIN
+   PERFORM allin_private.v2_training_apply_session_candidate(
+     u,sess,action,'start',0,repeat('a',64),
+     '2026-11-11','America/Chicago','2026-11-11 12:00+00');
+   RAISE EXCEPTION 'Client reached private writer directly';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN
    PERFORM public.v2_training_session_action_candidate(foreign_u,sess,action,'start',
       0,repeat('a',64),'2026-11-11','America/Chicago','2026-11-11 12:00+00');
