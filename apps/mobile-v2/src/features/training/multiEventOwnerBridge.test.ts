@@ -20,7 +20,7 @@ const dayRows=allDays.map((date,i)=>({id:'day-'+i,ownerId:owner,planRevisionId:r
 const plannedRows=events.map((e,i)=>({id:'session-'+i,ownerId:owner,athleteLocalDate:e.date,
  sport:'running' as const,state:'planned' as const,planRevisionId:revision}));
 const bindings=events.map((e,i)=>({eventId:e.id,sessionId:'session-'+i,planRevisionId:revision,
- ownerId:owner,athleteLocalDate:e.date,sport:e.sport,competitionConfirmed:true as const}));
+ ownerId:owner,athleteLocalDate:e.date,sport:e.sport,priority:e.priority,competitionConfirmed:true as const}));
 function fixture(){
  return {expectedOwnerId:owner,authenticatedOwnerId:owner,activeSessionGeneration:generation,
  accessGateReady:true,activePlanRevisionId:revision,startDate,events:[...events],
@@ -106,4 +106,11 @@ test('race marker projection cannot bypass owner, revision or certified race sta
  assert.equal(projectVerifiedMultiEventDayMarkers(swapped).status,'unavailable');
  const date=fixture();date.daySnapshot.records=date.daySnapshot.records.map(d=>d.athleteLocalDate==='2027-04-10'?{...d,dayState:'rest' as const}:d);
  assert.equal(projectVerifiedMultiEventDayMarkers(date).status,'unavailable');
+});
+
+test('athlete-confirmed event priority cannot be silently changed',()=>{
+ const x=fixture();x.events=[{...x.events[0],priority:'A' as const},x.events[1]];
+ assert.equal(proposeSeasonFromVerifiedTraining(x).status,'unavailable');
+ const y=fixture();y.competitionSnapshot.records[1]={...y.competitionSnapshot.records[1],priority:'C' as const};
+ assert.equal(projectVerifiedMultiEventDayMarkers(y).status,'unavailable');
 });
