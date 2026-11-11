@@ -13,6 +13,7 @@ import { summarizeTodayTraining } from '../src/features/today/todayTrainingCard'
 import { todayEnergyGlance } from '../src/features/today/todayEnergyGlance';
 import { todayFoodLog } from '../src/features/today/todayFoodLog';
 import { todayWellnessGlance } from '../src/features/today/todayWellnessGlances';
+import { todayKitchenDue } from '../src/features/today/todayKitchenDue';
 
 /**
  * Today is the one existing /home entry point.
@@ -63,6 +64,9 @@ function HomeOwnerScreen() {
   // than manufacturing performance statistics or a readiness recommendation.
   const progressGlance = todayWellnessGlance({status:'unavailable'}, user?.id ?? '', localDay, 'progress');
   const recoveryGlance = todayWellnessGlance({status:'unavailable'}, user?.id ?? '', localDay, 'recovery');
+  // Kitchen scheduling is not connected; reminders must not appear until
+  // canonical Meal Prep/Cook Now ownership confirms a due item.
+  const dueKitchen = todayKitchenDue({status:'unavailable'}, user?.id ?? '', localDay);
 
   async function handleSignOut() {
     if (!signOutGuard.current.tryEnter()) return;
@@ -162,6 +166,17 @@ function HomeOwnerScreen() {
           {foodLog.additionalCount > 0 ? <Text style={styles.help}>+{foodLog.additionalCount} more entries in Fuel</Text> : null}
           <Text style={styles.help}>{foodLog.detail}</Text>
         </View>
+
+        {dueKitchen.length > 0 ? (
+          <View style={styles.card}>
+            {dueKitchen.map(item => (
+              <View key={item.id}>
+                <Text style={styles.sectionLabel}>{item.label}</Text>
+                <Text style={styles.help}>{item.title}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Progress</Text>
