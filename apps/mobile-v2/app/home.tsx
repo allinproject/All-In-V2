@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Link, Redirect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { Link, Redirect, useFocusEffect } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -26,8 +26,11 @@ function HomeOwnerScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const signOutGuard = useRef(createV2AuthActionGuard());
-  // Explicit date-only context for the existing Train Calendar, never a shadow workout record.
-  const trainingDestination = todayTrainingDestination(deviceLocalToday()) ?? '/train';
+  // Re-evaluate the date on focus after backgrounding or crossing local midnight.
+  // This is device-local until the athlete's preferred timezone is available.
+  const [localDay, setLocalDay] = useState(deviceLocalToday);
+  useFocusEffect(useCallback(() => { setLocalDay(deviceLocalToday()); }, []));
+  const trainingDestination = todayTrainingDestination(localDay) ?? '/train';
 
   async function handleSignOut() {
     if (!signOutGuard.current.tryEnter()) return;
