@@ -27,7 +27,8 @@ const markerSymbols: Record<CalendarWorkoutMarker['kind'], string> = {
   running: 'Run', walking: 'Walk', cycling: 'Bike', swimming: 'Swim',
   strength: 'Lift', hiking: 'Hike', rucking: 'Ruck', rowing: 'Row',
   elliptical: 'Ellip', stair: 'Stair', yoga: 'Yoga', mobility: 'Move', other: 'Other',
-  rest: 'Rest', recovery: 'Recover',
+  rest: 'Rest', recovery: 'Recover', unavailable: 'Unavailable',
+  race: 'Race', review_required: 'Review',
 };
 
 /**
