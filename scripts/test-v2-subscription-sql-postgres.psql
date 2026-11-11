@@ -85,6 +85,10 @@ BEGIN
        'allin_private.v2_confirm_pending_subscription_checkout(uuid,uuid,text,text,text,text)',
        'EXECUTE') OR
        has_function_privilege(r,
+       'public.v2_billing_find_native_purchase_owner(text,text,text)','EXECUTE') OR
+       has_function_privilege(r,
+       'public.v2_billing_commit_verified_native(uuid,text,text,text,text,text,timestamptz)','EXECUTE') OR
+       has_function_privilege(r,
        'allin_private.v2_bind_verified_native_subscription(uuid,text,text,text,text,text,timestamptz)',
        'EXECUTE') OR
        has_function_privilege(r,
@@ -134,6 +138,10 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_register_pending_subscription_checkou
   uuid,uuid,uuid,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_confirm_pending_subscription_checkout(
   uuid,uuid,text,text,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.v2_billing_find_native_purchase_owner(
+ text,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.v2_billing_commit_verified_native(
+ uuid,text,text,text,text,text,timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_bind_verified_native_subscription(
  uuid,text,text,text,text,text,timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_bind_confirmed_subscription_purchase(uuid) TO service_role;
@@ -675,6 +683,16 @@ BEGIN
     'app_store','sandbox','123456789000014','apple_txn_14',
     'trial','2027-01-01 UTC') INTO r;
   IF r <> 'committed' THEN RAISE EXCEPTION 'Apple bind: %',r; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.v2_billing_find_native_purchase_owner(
+      'app_store','sandbox','123456789000014')
+    WHERE owner_id='00000000-0000-0000-0000-000000000014'
+  ) THEN RAISE EXCEPTION 'Native service lookup lost owner'; END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.v2_billing_find_native_purchase_owner(
+      'app_store','production','123456789000014')
+  ) THEN RAISE EXCEPTION 'Sandbox Apple ownership leaked production'; END IF;
+
   SELECT allin_private.v2_bind_verified_native_subscription(
     '00000000-0000-0000-0000-000000000014',
     'app_store','sandbox','123456789000014','apple_txn_14',
@@ -693,6 +711,11 @@ BEGIN
     'google_play','sandbox','sha256:google_token_14','google_event_14',
     'paid','2027-01-01 UTC') INTO r;
   IF r <> 'committed' THEN RAISE EXCEPTION 'Google bind: %',r; END IF;
+  SELECT public.v2_billing_commit_verified_native(
+    '00000000-0000-0000-0000-000000000014',
+    'google_play','sandbox','sha256:google_token_14','google_event_14',
+    'paid','2027-01-01 UTC') INTO r;
+  IF r <> 'duplicate' THEN RAISE EXCEPTION 'Native public bridge replay: %',r; END IF;
   IF (SELECT count(*) FROM allin_private.v2_subscription_purchases
        WHERE owner_id='00000000-0000-0000-0000-000000000014') <> 2 THEN
     RAISE EXCEPTION 'Native independent purchase count changed';
