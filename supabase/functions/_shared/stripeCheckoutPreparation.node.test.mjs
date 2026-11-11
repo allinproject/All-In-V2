@@ -52,7 +52,6 @@ test('wrong owner, ineligible repeat trial or non-UUID ID cannot create checkout
   let creations=0;
   for(const patch of [
     {expectedOwnerId:'00000000-0000-0000-0000-000000000002'},
-    {trialEligible:false},
     {trialEligible:undefined},
     {attemptId:'attempt_client'},
     {authenticatedOwnerId:'owner_claimed'},
@@ -136,4 +135,15 @@ test('durable reservation must precede Stripe; any failed reservation cannot cre
   }
   assert.equal((await check({reserveCheckoutAttempt:async()=> 'already_reserved'})).status,
     'pending_checkout_ready');
+});
+
+test('returning subscriber can purchase same monthly SKU without a second trial',async()=>{
+  let request=null;
+  const result=await check({trialEligible:false,
+    createCheckoutSession:async params=>{request=params;return session;}});
+  assert.equal(result.status,'pending_checkout_ready');
+  assert.equal('subscription_data' in request,false);
+  assert.deepEqual(request.line_items,[{
+    price:'price_1UaDovRBJdOnJBog5swb8zpS',quantity:1
+  }]);
 });
