@@ -1,0 +1,30 @@
+\set ON_ERROR_STOP on
+DO $qa$
+DECLARE
+ v_winner uuid;
+ v_done integer;
+ v_stale integer;
+ v_outbox integer;
+ v_receipts integer;
+ v_events integer;
+ v_final text;
+BEGIN
+ SELECT session_id INTO v_winner FROM public.v2_qa_training_start_race_results
+ WHERE outcome='created';
+ SELECT count(*) FILTER(WHERE outcome='finished'),count(*) FILTER(WHERE outcome='stale')
+ INTO v_done,v_stale FROM public.v2_qa_training_finish_race_results;
+ SELECT count(*) INTO v_outbox FROM allin_private.v2_training_completion_outbox
+ WHERE session_instance_id=v_winner;
+ SELECT count(*) INTO v_receipts FROM allin_private.v2_training_action_receipts
+ WHERE session_id=v_winner;
+ SELECT count(*) INTO v_events FROM public.v2_training_execution_events
+ WHERE session_instance_id=v_winner;
+ SELECT status INTO v_final FROM public.v2_training_session_instances
+ WHERE id=v_winner;
+ IF v_done<>1 OR v_stale<>1 OR v_outbox<>1 OR v_receipts<>2
+ OR v_events<>2 OR v_final<>'completed' THEN
+ RAISE EXCEPTION 'Two-connection finish race invalid: finished %, stale %, outbox %, receipts %, events %, status %',
+ v_done,v_stale,v_outbox,v_receipts,v_events,v_final;
+ END IF;
+ RAISE NOTICE 'PASS ALL-243/246: two concurrent finishes -> one completed session, one outbox and stale loser';
+END $qa$;
