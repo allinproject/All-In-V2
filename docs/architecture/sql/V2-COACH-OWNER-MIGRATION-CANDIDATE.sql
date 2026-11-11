@@ -231,6 +231,58 @@ revoke all on function public.v2_coach_read_messages(uuid,uuid,timestamptz,uuid,
 grant execute on function public.v2_coach_read_messages(uuid,uuid,timestamptz,uuid,integer)
   to authenticated;
 
+-- Exact canonical verification for a single exchange. Unlike a paginated
+-- history read, this cannot miss the requested pair due to a newer page.
+-- Return zero rows unless there are exactly two correctly correlated roles.
+-- Client receives the actual owner and request fields, never guessed labels.
+create function public.v2_coach_read_exchange(
+  p_expected_user_id uuid,
+  p_thread_id uuid,
+  p_client_request_id uuid,
+  p_user_message_id uuid,
+  p_assistant_message_id uuid
+) returns table(
+  message_id uuid,user_id uuid,thread_id uuid,client_request_id uuid,
+  role text,content text,created_at timestamptz
+) language plpgsql stable security invoker set search_path=''
+as $function$
+declare v_user uuid := auth.uid(); v_count integer;
+begin
+  if v_user is null or p_expected_user_id is distinct from v_user then
+    raise exception 'Expected V2 owner required' using errcode='42501';
+  end if;
+  if p_thread_id is null or p_client_request_id is null or
+     p_user_message_id is null or p_assistant_message_id is null or
+     p_user_message_id=p_assistant_message_id then
+    raise exception 'Distinct exact Coach exchange identities required' using errcode='22023';
+  end if;
+  if not exists(
+    select 1 from public.v2_coach_threads t
+    where t.id=p_thread_id and t.user_id=v_user
+  ) then
+    raise exception 'Coach thread not owned by account' using errcode='42501';
+  end if;
+  select count(*) into v_count from public.v2_coach_messages m
+    where m.user_id=v_user and m.thread_id=p_thread_id
+      and m.client_request_id=p_client_request_id
+      and ((m.id=p_user_message_id and m.role='user')
+        or (m.id=p_assistant_message_id and m.role='assistant'));
+  if v_count<>2 then return; end if;
+  return query select m.id,m.user_id,m.thread_id,m.client_request_id,
+      m.role,m.content,m.created_at
+    from public.v2_coach_messages m
+    where m.user_id=v_user and m.thread_id=p_thread_id
+      and m.client_request_id=p_client_request_id
+      and (m.id=p_user_message_id or m.id=p_assistant_message_id)
+    order by m.created_at desc,m.id desc;
+end;
+$function$;
+
+revoke all on function public.v2_coach_read_exchange(uuid,uuid,uuid,uuid,uuid)
+  from public,anon,authenticated,service_role;
+grant execute on function public.v2_coach_read_exchange(uuid,uuid,uuid,uuid,uuid)
+  to authenticated;
+
 comment on table public.v2_coach_threads is 'V2 owner-scoped Coach conversation identity; no business-domain facts.';
 comment on table public.v2_coach_messages is 'Immutable owner-thread Coach transcript; paired writes only through canonical owner RPC.';
 notify pgrst, 'reload schema';
