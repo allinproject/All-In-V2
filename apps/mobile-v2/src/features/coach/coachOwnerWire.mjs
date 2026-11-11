@@ -40,11 +40,11 @@ export function decodeCoachExchangeRows(rawRows,request) {
   const mapped=rawRows.map(row=>{
     if(!owns(row,request.ownerId,request.threadId) ||
       row.client_request_id!==request.clientRequestId ||
-      !valid(row.id) || !["user","assistant"].includes(row.role) ||
+      !valid(row.message_id) || !["user","assistant"].includes(row.role) ||
       typeof row.content!=="string" || !valid(row.content)) return null;
     return {ownerId:row.user_id,threadId:row.thread_id,
       clientRequestId:row.client_request_id,
-      id:row.id,role:row.role,content:row.content};
+      id:row.message_id,role:row.role,content:row.content};
   });
   if(mapped.some(x=>!x) ||
       mapped.filter(x=>x.role==="user" && x.id===request.userMessageId).length!==1 ||
