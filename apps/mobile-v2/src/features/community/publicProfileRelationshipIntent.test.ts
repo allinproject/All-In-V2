@@ -46,13 +46,13 @@ test('intent requires valid owner, expected version, stable action ID and allowe
 test('only the canonical server-confirmed same-action advancing revision is accepted',()=>{
  const intent=prepareRelationshipMutation(snap(),'request_follow','request-123');
  assert.equal(verifyRelationshipMutationReceipt(intent,{
-  actorId:'athlete-A',targetOwnerId:'athlete-B',actionId:'request-123',version:6,accepted:true,
+  actorId:'athlete-A',targetOwnerId:'athlete-B',actionId:'request-123',action:'request_follow',version:6,accepted:true,
  }),true);
  for(const difference of [{actorId:'other'},{targetOwnerId:'other'},
-  {actionId:'other'},{version:5},{accepted:false}]){
+  {actionId:'other'},{action:'block' as const},{version:5},{accepted:false}]){
   assert.throws(()=>verifyRelationshipMutationReceipt(intent,{
    actorId:'athlete-A',targetOwnerId:'athlete-B',actionId:'request-123',
-   version:6,accepted:true,...difference,
+   action:'request_follow' as const,version:6,accepted:true,...difference,
   }),/Unverified/);
  }
 });
