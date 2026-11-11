@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Redirect } from 'expo-router';
+import { Link, Redirect } from 'expo-router';
 import { useAuth } from '../src/auth/AuthProvider';
 import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
@@ -114,6 +114,17 @@ p_founder_beta_terms_version: founderBetaVersion,
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: !canAccept, busy: submitting }} disabled={!canAccept} onPress={() => void acceptDocuments()} style={[styles.button, !canAccept && styles.disabled]}>
           {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Accept reviewed documents</Text>}
         </Pressable>
+        <Text style={styles.body}>You can manage your account data without accepting new terms.</Text>
+        <Link href="/profile/account-export" asChild>
+          <Pressable accessibilityRole="button" style={styles.privacyAction}>
+            <Text style={styles.privacyActionText}>Export my data</Text>
+          </Pressable>
+        </Link>
+        <Link href="/profile/account-deletion" asChild>
+          <Pressable accessibilityRole="button" style={styles.privacyAction}>
+            <Text style={styles.privacyActionText}>Delete account</Text>
+          </Pressable>
+        </Link>
       </ScrollView>
     </SafeAreaView>
   );
@@ -136,5 +147,7 @@ const styles = StyleSheet.create({
   button: { minHeight: 52, borderRadius: radius.control, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.45 },
   buttonText: { color: colors.background, fontSize: 15, fontWeight: '800' },
+  privacyAction: { minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: radius.control, alignItems: 'center', justifyContent: 'center' },
+  privacyActionText: { color: colors.warmWhite, fontWeight: '700' },
   error: { color: colors.danger, fontSize: 14, lineHeight: 20 }
 });
