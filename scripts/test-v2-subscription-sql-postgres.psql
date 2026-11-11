@@ -1,0 +1,149 @@
+\set ON_ERROR_STOP on
+-- ALL-252 isolated PostgreSQL 17 replay. DISPOSABLE CI DB ONLY.
+-- This intentionally executes the review-only candidate in a fresh database.
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE authenticated NOLOGIN;
+CREATE ROLE service_role NOLOGIN BYPASSRLS;
+CREATE SCHEMA auth;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+CREATE TABLE public.v2_profiles(user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE);
+CREATE SCHEMA allin_private;
+
+\ir ../docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql
+
+DO $catalog$
+DECLARE r text;
+BEGIN
+  IF (SELECT count(*) FROM pg_tables WHERE schemaname='allin_private'
+      AND tablename LIKE 'v2_subscription_%') <> 2 THEN
+    RAISE EXCEPTION 'Expected exactly two private subscription tables';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public'
+             AND tablename LIKE 'v2_subscription_%') THEN
+    RAISE EXCEPTION 'Subscription created an exposed public table';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='allin_private.v2_subscription_purchases'::regclass
+                 AND relrowsecurity) OR
+     NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='allin_private.v2_subscription_verified_events'::regclass
+                 AND relrowsecurity) THEN
+    RAISE EXCEPTION 'Subscription RLS not enabled';
+  END IF;
+  FOREACH r IN ARRAY ARRAY['anon','authenticated'] LOOP
+    IF has_table_privilege(r,'allin_private.v2_subscription_purchases','SELECT') OR
+       has_table_privilege(r,'allin_private.v2_subscription_verified_events','SELECT') OR
+       has_table_privilege(r,'allin_private.v2_subscription_purchases','INSERT') OR
+       has_table_privilege(r,'allin_private.v2_subscription_verified_events','INSERT') OR
+       has_function_privilege(r,
+       'allin_private.v2_apply_verified_subscription_event(uuid,text,text,text,text,bigint,text,timestamptz)',
+       'EXECUTE') THEN
+      RAISE EXCEPTION 'Client role % has direct subscription privilege',r;
+    END IF;
+  END LOOP;
+END
+$catalog$;
+
+INSERT INTO auth.users VALUES
+  ('00000000-0000-0000-0000-000000000001'),
+  ('00000000-0000-0000-0000-000000000002');
+INSERT INTO public.v2_profiles VALUES
+  ('00000000-0000-0000-0000-000000000001'),
+  ('00000000-0000-0000-0000-000000000002');
+
+-- CI-only explicit service grants needed to exercise security-invoker.
+-- Production grants are still separate reviewed release decisions.
+GRANT USAGE ON SCHEMA allin_private TO service_role;
+GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_purchases TO service_role;
+GRANT SELECT,INSERT ON allin_private.v2_subscription_verified_events TO service_role;
+GRANT USAGE,SELECT ON SEQUENCE allin_private.v2_subscription_verified_events_id_seq TO service_role;
+GRANT EXECUTE ON FUNCTION allin_private.v2_apply_verified_subscription_event(
+  uuid,text,text,text,text,bigint,text,timestamptz) TO service_role;
+
+SET ROLE service_role;
+DO $no_prebind$
+BEGIN
+  BEGIN
+    PERFORM allin_private.v2_apply_verified_subscription_event(
+      '00000000-0000-0000-0000-000000000001','stripe_web','sandbox',
+      'sub_1','evt_1',1,'trial','2026-12-01 UTC');
+    RAISE EXCEPTION 'Unbound webhook unexpectedly created an owner';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END
+$no_prebind$;
+RESET ROLE;
+
+-- Simulate a distinct approved checkout/restore prebinding transaction;
+-- no webhook is permitted to perform this initial INSERT itself.
+INSERT INTO allin_private.v2_subscription_purchases
+  (owner_id,provider,environment,provider_subscription_id)
+VALUES
+  ('00000000-0000-0000-0000-000000000001','stripe_web','sandbox','sub_1'),
+  ('00000000-0000-0000-0000-000000000002','stripe_web','sandbox','sub_2');
+
+SET ROLE service_role;
+DO $updates$
+DECLARE r text;
+BEGIN
+  SELECT allin_private.v2_apply_verified_subscription_event(
+    '00000000-0000-0000-0000-000000000001','stripe_web','sandbox',
+    'sub_1','evt_1',1,'trial','2026-12-01 UTC') INTO r;
+  IF r <> 'applied' THEN RAISE EXCEPTION 'First trial update: %',r; END IF;
+  SELECT allin_private.v2_apply_verified_subscription_event(
+    '00000000-0000-0000-0000-000000000001','stripe_web','sandbox',
+    'sub_1','evt_1',1,'trial','2026-12-01 UTC') INTO r;
+  IF r <> 'duplicate' THEN RAISE EXCEPTION 'Replay: %',r; END IF;
+  SELECT allin_private.v2_apply_verified_subscription_event(
+    '00000000-0000-0000-0000-000000000001','stripe_web','sandbox',
+    'sub_1','evt_old',0,'paid','2026-12-20 UTC') INTO r;
+  IF r <> 'stale' THEN RAISE EXCEPTION 'Stale: %',r; END IF;
+
+  BEGIN
+    PERFORM allin_private.v2_apply_verified_subscription_event(
+      '00000000-0000-0000-0000-000000000002','stripe_web','sandbox',
+      'sub_1','evt_wrong',2,'paid','2026-12-20 UTC');
+    RAISE EXCEPTION 'Cross-account theft unexpectedly succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM allin_private.v2_apply_verified_subscription_event(
+      '00000000-0000-0000-0000-000000000002','stripe_web','sandbox',
+      'sub_2','evt_1',2,'paid','2026-12-20 UTC');
+    RAISE EXCEPTION 'Provider event collision unexpectedly succeeded';
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
+
+  SELECT allin_private.v2_apply_verified_subscription_event(
+    '00000000-0000-0000-0000-000000000001','stripe_web','sandbox',
+    'sub_1','evt_refund',3,'refunded',NULL) INTO r;
+  IF r <> 'applied' THEN RAISE EXCEPTION 'Refund: %',r; END IF;
+  IF EXISTS (SELECT 1 FROM allin_private.v2_subscription_purchases
+             WHERE provider_subscription_id='sub_1'
+               AND (phase <> 'refunded' OR access_until IS NOT NULL OR revision<>3)) THEN
+    RAISE EXCEPTION 'Refund did not clear paid access';
+  END IF;
+  IF (SELECT count(*) FROM allin_private.v2_subscription_verified_events
+      WHERE provider_event_id IN ('evt_1','evt_refund')) <> 2 THEN
+    RAISE EXCEPTION 'Expected exactly two durable events';
+  END IF;
+END
+$updates$;
+RESET ROLE;
+
+DELETE FROM auth.users WHERE id='00000000-0000-0000-0000-000000000001';
+DO $cascade$
+BEGIN
+  IF EXISTS (SELECT 1 FROM allin_private.v2_subscription_purchases
+             WHERE provider_subscription_id='sub_1') OR
+     EXISTS (SELECT 1 FROM allin_private.v2_subscription_verified_events e
+             JOIN allin_private.v2_subscription_purchases p ON p.id=e.purchase_id
+             WHERE p.provider_subscription_id='sub_1') THEN
+    RAISE EXCEPTION 'Account deletion left subscription data behind';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM allin_private.v2_subscription_purchases
+                 WHERE provider_subscription_id='sub_2') THEN
+    RAISE EXCEPTION 'Other account purchase was lost';
+  END IF;
+END
+$cascade$;
+SELECT 'PASS ALL-252 isolated PostgreSQL SQL candidate replay' AS outcome;
