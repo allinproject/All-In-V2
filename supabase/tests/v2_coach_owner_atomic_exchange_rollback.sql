@@ -78,6 +78,26 @@ $b$;
 
 -- The trusted Edge host only: client never gets the service-role credential.
 set local role service_role;
+-- Default-OFF production gate must deny pre-provider claims until explicitly
+-- enabled on this disposable, transaction-rolled-back test database.
+do $policy$
+declare v_result jsonb;
+begin
+ v_result:=public.v2_coach_claim_turn(
+  'aa11aa11-1111-4111-8111-111111111111',
+  'cc33cc33-3333-4333-8333-333333333333',
+  '90909090-9090-4090-8090-909090909090',
+  '91919191-9191-4191-8191-919191919191',
+  '92929292-9292-4292-8292-929292929292',repeat('e',64));
+ if v_result->>'action'<>'rate_unavailable' then
+  raise exception 'Coach model spending was enabled by default';
+ end if;
+end;
+$policy$;
+-- Only the isolated fixture temporarily enables the provisional admission
+-- policy. This change is inside the enclosing ROLLBACK transaction.
+update allin_private.v2_coach_request_policy set enabled=true
+ where singleton=true;
 -- Trusted host obtains the canonical claim BEFORE invoking any provider.
 select public.v2_coach_claim_turn(
  'aa11aa11-1111-4111-8111-111111111111',
