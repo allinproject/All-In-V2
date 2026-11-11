@@ -167,7 +167,7 @@ function OwnedHealthConditions(){
         <Text style={styles.saveText}>{saving?'Saving…':'Save Health Information'}</Text>
       </Pressable>
       {notice?<Text accessibilityRole="text" style={styles.gold}>{notice}</Text>:null}
-      </>
+      </>:null}
       <Text style={styles.footer}>This is sensitive account information, not Community content. Coach offers fitness guidance, not medical diagnosis or treatment. Food allergies belong in Nutrition settings.</Text>
     </ScrollView>
   </SafeAreaView>;
