@@ -123,3 +123,27 @@ test('mock adapter composes with pending checkout helper without producing real 
   assert.equal(result.status,'pending_checkout_ready');
   assert.equal(calls.length,2);
 });
+
+test('provider failures and malformed HTTP replies never create checkout',async()=>{
+  for(const request of [
+    async()=>{throw Error('offline');},
+    async()=>({ok:false,json:async()=>({error:{message:'secret'}})}),
+    async()=>({ok:true,json:async()=>{throw Error('non JSON')}}),
+    async()=>({ok:true,json:async()=>null}),
+  ]){
+    const adapter=createStripeSandboxSecretAdapter({
+      secretKey:'sk_test_mock_not_a_real_key_0123456789',
+      expectedMerchantAccountId:account,approvedPriceId:price,request,
+    });
+    await assert.rejects(()=>adapter.createCheckoutSession(requestShape));
+    await assert.rejects(()=>adapter.retrieveSubscription('sub_test_123'));
+  }
+});
+
+test('no cross-account header or customer metadata are sent by checkout adapter',async()=>{
+  const {adapter,calls}=setup();
+  await adapter.createCheckoutSession(requestShape);
+  assert.equal(calls[1].init.headers['Stripe-Account'],undefined);
+  assert.equal(new URLSearchParams(calls[1].init.body).get('metadata[ownerId]'),null);
+  assert.equal(calls[1].init.headers.Authorization.startsWith('Bearer sk_test_'),true);
+});
