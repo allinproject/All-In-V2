@@ -11,12 +11,13 @@
  * This module does not implement or bypass that protected database writer.
  */
 import {verifyStripeSandboxWebhook} from './stripeWebhookVerification.mjs';
+import {projectStripeSandboxSubscription} from './stripeSubscriptionProjection.mjs';
 const id=(x,p)=>typeof x==='string'&&x.startsWith(p)&&x.length<=256&&
   /^[a-zA-Z0-9_]+$/.test(x);
 export async function reconcileStripeSandboxWebhook({
   rawBody,signatureHeader,webhookSecrets,nowSeconds,
   retrieveSubscription,retrieveCheckoutSession,
-  commitAuthoritativeReconciliation,
+  commitAuthoritativeReconciliation,approvedPriceId,approvedProductId,
 }={}){
   const signature=await verifyStripeSandboxWebhook({
     rawBody,signatureHeader,webhookSecrets,nowSeconds,
@@ -55,6 +56,12 @@ export async function reconcileStripeSandboxWebhook({
      typeof current.status!=='string')
     return {status:503,code:'provider_unavailable'};
 
+  const projection=projectStripeSandboxSubscription({
+    subscription:current,approvedPriceId,approvedProductId,nowSeconds,
+  });
+  if(projection.status!=='verified_state')
+    return {status:503,code:'unverified_provider_state'};
+
   let result;
   try {
     result=await commitAuthoritativeReconciliation({
@@ -63,6 +70,7 @@ export async function reconcileStripeSandboxWebhook({
       eventType:signature.eventType,
       providerSubscriptionId:subscriptionId,
       currentProviderSubscription:current,
+      verifiedProjection:projection,
     });
   }catch{return {status:503,code:'persistence_unavailable'}}
   if(result==='committed'||result==='duplicate')
