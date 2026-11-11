@@ -12,6 +12,7 @@ CREATE TABLE auth.users(id uuid PRIMARY KEY);
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-IMMUTABLE-REVISION-GUARD-CANDIDATE.sql
 DO $qa$
 DECLARE
  u uuid:='11111111-1111-4111-8111-111111111111';
@@ -38,12 +39,29 @@ BEGIN
       outsider,p,r1,act,1);
    RAISE EXCEPTION 'Cross-owner candidate accepted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- A candidate draft can still be edited before athlete acceptance.
+ UPDATE public.v2_training_revision_days SET day_state='recovery'
+  WHERE plan_revision_id=r1;
+ UPDATE public.v2_training_revision_days SET day_state='planned'
+  WHERE plan_revision_id=r1;
  res:=allin_private.v2_training_accept_plan_revision_candidate(u,p,r1,act,1);
  IF res->>'version'<>'2' OR res->>'replayed'<>'false' THEN
    RAISE EXCEPTION 'First acceptance failed'; END IF;
  IF (SELECT active_revision_id FROM public.v2_training_plans WHERE id=p)<>r1
  OR (SELECT status FROM public.v2_training_plan_revisions WHERE id=r1)<>'accepted'
  THEN RAISE EXCEPTION 'Accepted revision not current'; END IF;
+ BEGIN
+  UPDATE public.v2_training_revision_days SET day_state='rest'
+   WHERE plan_revision_id=r1;
+  RAISE EXCEPTION 'Accepted day content was mutable';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_training_revision_days
+    (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
+  VALUES('14141414-1414-4414-8414-141414141414',
+    r1,p,u,'2026-11-17','America/Chicago','planned',1);
+  RAISE EXCEPTION 'Accepted revision accepted new date';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  res:=allin_private.v2_training_accept_plan_revision_candidate(u,p,r1,act,1);
  IF res->>'replayed'<>'true' THEN RAISE EXCEPTION 'Exact acceptance retry duplicated'; END IF;
  BEGIN
@@ -63,6 +81,16 @@ BEGIN
    OR (SELECT count(*) FROM public.v2_training_plan_revisions
       WHERE plan_id=p AND status='accepted')<>1
  THEN RAISE EXCEPTION 'Old historical revision not preserved'; END IF;
+ BEGIN
+  UPDATE public.v2_training_revision_days SET day_state='unavailable'
+    WHERE plan_revision_id=r1;
+  RAISE EXCEPTION 'Superseded revision day was mutable';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  UPDATE public.v2_training_plan_revisions SET source_kind='controlled_system'
+    WHERE id=r2;
+  RAISE EXCEPTION 'Accepted revision metadata was mutable';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN
   PERFORM allin_private.v2_training_accept_plan_revision_candidate(
    u,p,r1,'ffffffff-ffff-4fff-8fff-ffffffffffff',3);
