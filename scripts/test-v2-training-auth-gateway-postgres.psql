@@ -62,6 +62,13 @@ BEGIN
  result:=public.v2_training_session_action_candidate(u,sess,action,'start',
     0,repeat('a',64),'2026-11-11','America/Chicago','2026-11-11 12:00+00');
  IF result->>'replayed'<>'true' THEN RAISE EXCEPTION 'Exact retry was not idempotent'; END IF;
+ -- The same client action ID with a changed time is a different request.
+ -- A caller-supplied duplicate fingerprint must NOT be trusted for replay.
+ BEGIN
+   PERFORM public.v2_training_session_action_candidate(u,sess,action,'start',
+      0,repeat('a',64),'2026-11-11','America/Chicago','2026-11-11 12:01+00');
+   RAISE EXCEPTION 'Changed request payload replayed as a success';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
  PERFORM pg_catalog.set_config('request.jwt.claim.session_id',
     'ffffffff-ffff-4fff-8fff-ffffffffffff',true);
  BEGIN
