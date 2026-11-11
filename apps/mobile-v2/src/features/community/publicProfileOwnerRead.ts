@@ -59,6 +59,10 @@ export function certifyPublicProfileSnapshot(
    throw new Error('Community reader exposed blocked athlete data.');
   return {status:'blocked',displayName:null,profile:view,posts:[],races:[],revision:snapshot.revision};
  }
+ // Private general-area text must never be shipped as a hidden client field.
+ // If sharing isn't permitted, the Community reader must send null.
+ if(view.visibleGeneralArea===null&&snapshot.profile.sharedArea!==null)
+  throw new Error('Community reader exposed unshared athlete location.');
  if(snapshot.displayName!==null&&
   (typeof snapshot.displayName!=='string'||snapshot.displayName.length>80))
   throw new Error('Invalid public profile display name.');
