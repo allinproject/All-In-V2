@@ -18,7 +18,7 @@ export async function stageTrainingPrivateStorageExport({
   requestId, services, maxFiles = TRAINING_EXPORT_MAX_FILES,
   maxBytes = TRAINING_EXPORT_MAX_BYTES,
 }) {
-  if (typeof requestId !== 'string' || !/^[0-9a-f-]{36}$/i.test(requestId)
+  if (typeof requestId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)
       || !services || typeof services.authorizeExport !== 'function'
       || typeof services.listEvidence !== 'function'
       || typeof services.downloadPrivateObject !== 'function'
@@ -86,10 +86,16 @@ export async function stageTrainingPrivateStorageExport({
     throw new Error('Private export authorization expired');
   }
   const later = await services.listEvidence(ownerId, requestId);
-  const fingerprint = value => JSON.stringify([...value.series, ...value.routes]
-      .map(x => [x.id, x.user_id, x.activity_id, x.source_id,
-        x.object_path, x.checksum_sha256, x.state, x.privacy_state])
-      .sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
+  // Include the complete security-relevant object identity and evidence
+  // state, including source quality, redaction, format, and collection kind.
+  // A source becoming untrusted during retrieval must revoke this snapshot.
+  const fingerprint = value => JSON.stringify([
+    ...value.series.map(x=>['series',x]),
+    ...value.routes.map(x=>['route',x]),
+  ].map(([kind,x])=>[kind,x.id,x.user_id,x.activity_id,x.source_id,
+    x.object_path,x.checksum_sha256,x.state,x.quality,x.privacy_state,
+    x.format,x.encoding,x.sample_count,x.point_count,x.starts_at,x.ends_at])
+   .sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
   if (!later || later.ownerId !== ownerId
       || !Array.isArray(later.series) || !Array.isArray(later.routes)
       || fingerprint(later) !== fingerprint(snapshot)) {
