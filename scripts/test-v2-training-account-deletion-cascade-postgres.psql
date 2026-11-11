@@ -35,14 +35,47 @@ BEGIN
     OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%'
         OR c.relname='v2_account_export_requests_candidate')
   AND NOT EXISTS(
-    SELECT 1 FROM pg_catalog.pg_constraint fk WHERE fk.conrelid=c.oid
-      AND fk.confrelid='auth.users'::regclass AND fk.contype='f'
-      AND fk.confdeltype='c'
+    SELECT 1 FROM pg_catalog.pg_constraint fk
+    WHERE fk.conrelid=c.oid
+      AND fk.confrelid='auth.users'::regclass
+      AND fk.contype='f' AND fk.confdeltype='c'
+      AND fk.conkey=ARRAY[a.attnum]::smallint[]
   );
  IF missing IS NOT NULL THEN
    RAISE EXCEPTION 'ALL-251 deletion preflight: missing direct Auth cascade: %',missing;
  END IF;
 END $coverage$;
+-- Negative probe: a cascading FK on a *different* Auth column must
+-- never satisfy the required ownership cascade of user_id.
+CREATE TABLE public.v2_activity_owner_fk_negative_probe (
+ user_id uuid NOT NULL,
+ created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
+);
+DO $wrong_fk$
+DECLARE
+ v_detected boolean;
+BEGIN
+ SELECT EXISTS(
+   SELECT 1 FROM pg_catalog.pg_class c
+   JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+   JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+      AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
+   WHERE n.nspname='public'
+     AND c.relname='v2_activity_owner_fk_negative_probe'
+     AND NOT EXISTS(
+       SELECT 1 FROM pg_catalog.pg_constraint fk
+       WHERE fk.conrelid=c.oid
+         AND fk.confrelid='auth.users'::regclass
+         AND fk.contype='f' AND fk.confdeltype='c'
+         AND fk.conkey=ARRAY[a.attnum]::smallint[]
+     )
+ ) INTO v_detected;
+ IF NOT v_detected THEN
+   RAISE EXCEPTION 'Different-column Auth cascade incorrectly counted as owner cascade';
+ END IF;
+END $wrong_fk$;
+DROP TABLE public.v2_activity_owner_fk_negative_probe;
+
 -- The integrated fixture uses a minimal v2_profiles mock with NO cascade.
 -- Profile deletion is covered by ALL-251 separately; remove mock profile
 -- so this test isolates Training/Activity cascade paths.
