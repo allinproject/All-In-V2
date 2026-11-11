@@ -43,6 +43,8 @@ on:
       - 'scripts/test-v2-training-account-deletion-cascade-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql'
+      - 'scripts/test-v2-training-account-export-fragment-postgres.psql'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -233,6 +235,15 @@ jobs:
           cat /tmp/finish-a.log /tmp/finish-b.log
           test "$status" -eq 0
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_complete_integration -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-two-connection-finish-assert-postgres.psql
+      - name: Verify private Training Activity owner export fragment in disposable PostgreSQL
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker cp docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql"
+          docker cp scripts/test-v2-training-account-export-fragment-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-account-export-fragment-postgres.psql"
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_complete_integration training_account_export
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_export -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-account-export-fragment-postgres.psql
       - name: Verify complete account deletion cascade in separate populated candidate database
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
