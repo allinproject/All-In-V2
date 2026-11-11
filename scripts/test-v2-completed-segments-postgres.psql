@@ -73,6 +73,50 @@ BEGIN
   200,'source_measured','trusted',repeat('a',64)),
  ('00000000-0000-4000-8000-000000000005',act,a,child,src,'power_w',1,
   220,'source_measured','trusted',repeat('a',64));
+ -- Writer uses canonical owner/source/leg identity and exact idempotency;
+ -- it can also persist a different sport-specific metric in a multisport leg.
+ INSERT INTO public.v2_activity_metric_definitions(
+   metric_code,definition_version,display_name,canonical_unit,value_kind,
+   sport_scope,measurement_kinds,display_group,privacy_class,status)
+ VALUES('leg_cadence_rpm',1,'Leg cadence','rpm','numeric',ARRAY['cycling'],
+   ARRAY['source_measured'],'cadence','private','published');
+ metric_read:=allin_private.v2_activity_append_segment_scalar_candidate(
+   a,act,child,src,'00000000-0000-4000-8000-000000000008',
+   'leg_cadence_rpm',1,'source_measured',88,NULL,NULL,repeat('a',64));
+ IF metric_read->>'replayed'<>'false' THEN
+   RAISE EXCEPTION 'Segment metric writer did not append'; END IF;
+ metric_read:=allin_private.v2_activity_append_segment_scalar_candidate(
+   a,act,child,src,'00000000-0000-4000-8000-000000000008',
+   'leg_cadence_rpm',1,'source_measured',88,NULL,NULL,repeat('a',64));
+ IF metric_read->>'replayed'<>'true' THEN
+   RAISE EXCEPTION 'Exact segment metric replay was not idempotent'; END IF;
+ BEGIN
+   PERFORM allin_private.v2_activity_append_segment_scalar_candidate(
+     a,act,child,src,'00000000-0000-4000-8000-000000000008',
+     'leg_cadence_rpm',1,'source_measured',99,NULL,NULL,repeat('a',64));
+   RAISE EXCEPTION 'Segment metric conflicting retry changed facts';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+   PERFORM allin_private.v2_activity_append_segment_scalar_candidate(
+     b,act,child,src,'00000000-0000-4000-8000-000000000009',
+     'leg_cadence_rpm',1,'source_measured',88,NULL,NULL,repeat('a',64));
+   RAISE EXCEPTION 'Cross-owner segment metric append succeeded';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+   PERFORM allin_private.v2_activity_append_segment_scalar_candidate(
+     a,act,child,src,'00000000-0000-4000-8000-000000000010',
+     'leg_cadence_rpm',1,'source_measured',88,NULL,NULL,repeat('b',64));
+   RAISE EXCEPTION 'Wrong source fingerprint accepted for segment';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+   PERFORM allin_private.v2_activity_append_segment_scalar_candidate(
+     a,act,child,src,'00000000-0000-4000-8000-000000000011',
+     'leg_cadence_rpm',1,'source_measured',NULL,NULL,NULL,repeat('a',64));
+   RAISE EXCEPTION 'Segment missing value interpreted as zero';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ IF has_function_privilege('authenticated',
+ 'allin_private.v2_activity_append_segment_scalar_candidate(uuid,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text)',
+ 'EXECUTE') THEN RAISE EXCEPTION 'Client can append private segment metrics'; END IF;
  -- Distinct intervals/legs are independent observations, never conflicting
  -- power values merely because they share one metric name.
  metric_read:=allin_private.v2_activity_segment_scalar_projection_candidate(a,act,root);
@@ -81,7 +125,10 @@ BEGIN
  OR pg_catalog.jsonb_array_length(metric_read->'unresolvedMetrics')<>0
  THEN RAISE EXCEPTION 'Root leg metric incorrectly mixed with child interval: %',metric_read; END IF;
  metric_read:=allin_private.v2_activity_segment_scalar_projection_candidate(a,act,child);
- IF metric_read#>>'{metrics,0,valueNumeric}'<>'220'
+ IF pg_catalog.jsonb_array_length(metric_read->'metrics')<>2
+ OR NOT EXISTS(
+   SELECT 1 FROM pg_catalog.jsonb_array_elements(metric_read->'metrics') v
+   WHERE v->>'metricCode'='power_w' AND v->>'valueNumeric'='220')
  OR pg_catalog.jsonb_array_length(metric_read->'unresolvedMetrics')<>0
  THEN RAISE EXCEPTION 'Child interval metric incorrectly mixed with parent leg: %',metric_read; END IF;
  -- A standalone cycling activity cannot use an unrelated running
@@ -139,7 +186,7 @@ BEGIN
      OR has_table_privilege('authenticated',c.oid,'INSERT'))) THEN
   RAISE EXCEPTION 'Segment row security or grants were unsafe'; END IF;
  IF (SELECT count(*) FROM public.v2_activity_segments WHERE activity_id=act)<>3
- OR (SELECT count(*) FROM public.v2_activity_metric_values WHERE activity_id=act)<>3 THEN
+ OR (SELECT count(*) FROM public.v2_activity_metric_values WHERE activity_id=act)<>4 THEN
   RAISE EXCEPTION 'Unexpected duplicate or lost records'; END IF;
  RAISE NOTICE 'PASS ALL-243 typed segments: owner scope, nested order, metric/segment identity and RLS';
 END $qa$;
