@@ -27,6 +27,22 @@
 4. [Rolled-back coverage guard test](../../supabase/tests/all251_claim_coverage_guards_rollback.sql): adding a synthetic Storage bucket blocks the claim; adding a synthetic uncascaded owner table blocks the claim. Both tests passed; all fixtures were rolled back.
 5. Rechecked live project afterward: gate OFF, 0 accounts, 0 requests, 0 buckets, no test-only table.
 
+## 2026-11-11 — Staged worker source and durable execution receipts
+
+**The worker implementation exists in source but is NOT DEPLOYED. Execution remains OFF.** Source: [v2-account-deletion-worker](../../supabase/functions/v2-account-deletion-worker/index.ts). No Edge Function is deployed in V2 and no scheduler is connected. The worker demands all of:
+
+- POST with only exact lowercase canonical `user_id` and `request_id` UUIDs.
+- A separately configured worker-token secret (min 32 chars) in `x-allin-worker-token`; no browser CORS flow and no client credentials.
+- `ALLIN_DELETION_WORKER_ARMED=true` (absent/unset is disabled).
+- The existing **privileged, private** V2 database processing gate `execution_enabled=true` (currently false). The claim still checks storage/owner data coverage and exact non-cancelled request.
+- Exact service-only claim RPC, then `auth.admin.deleteUser` (hard deletion, never soft-delete), independent Auth absence check, and service-only completion receipt. Any uncertainty is written to a generic, non-PII failure status and requires manual review; no automatic destructive retry.
+
+**New durable audit schema:** `20261111124645_v2_deletion_durable_minimal_execution_audit_and_receipts.sql`. `allin_private.v2_account_deletion_execution_audit` contains only request UUID, temporary user UUID while unfinished, status, generic failure code and timestamps. It has RLS and no direct user/service-role table grants. The exact-request claim inserts an audit row atomically with the `requested → processing` transition. The service-only completion RPC verifies that Auth user and deletion request are absent before marking completion and scrubbing user UUID; failure RPC records constrained generic codes. This record survives the Auth foreign-key cascade; legal retention/expiry and notification policy still need approval. The existing claim's conservative user-data coverage preflight deliberately excludes the audit table itself.
+
+**Executed tests:** rollback-only SQL confirms default-off claim denial, audit creation on claim, premature completion rejection while Auth user exists, Auth request cascade, and durable redacted completion after synthetic Auth deletion. Separate rollback-only failure test confirms constrained failure statuses and rejects free-form failure messages. [Success-path regression](../../supabase/tests/all251_execution_audit_rollback.sql), [failure-path regression](../../supabase/tests/all251_execution_failure_audit_rollback.sql). The worker policy tests [policy.test.mjs](../../supabase/functions/v2-account-deletion-worker/policy.test.mjs) pass 3/3 under Node 22.16 with `--experimental-strip-types`; exposed as V2 mobile `test:deletion-worker`. No function has been deployed or invoked with a real Auth Admin credential, and **no real account/data was deleted**.
+
+**Critical review still needed before deployment:** verified caller auth model/secrets and isolated deployment environment, end-to-end Auth Admin result contract, actual worker exception handling and retry strategy, true concurrent request/cancel/claim test, signed-in 2-account app tests, Storage/provider cleanup expansion as V2 gains these domains, audit retention and privacy notices, sign-out/session behavior, legal/founder approval and external iPhone/TestFlight acceptance. Do not consider an undeployed function production-accepted merely because pure policy and SQL tests pass.
+
 ## The actual deletion processor must still do all of the following
 
 1. Trusted server-side authentication and authorization; never expose service key/admin deletion to mobile clients. No silent scheduled claims or broad user enumerations.
