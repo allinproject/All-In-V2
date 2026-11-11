@@ -11,7 +11,7 @@ export type CanonicalPlanDay={
 };
 export function projectCanonicalPlanDayMarkers(input:{
  expectedOwnerId:string;activePlanRevisionId:string;complete:boolean;
- raceDate:string|null;days:readonly CanonicalPlanDay[];
+ raceDate:string|null;raceDates?:readonly string[];days:readonly CanonicalPlanDay[];
 }):CalendarWorkoutMarker[]{
  const {expectedOwnerId,activePlanRevisionId,complete,raceDate,days,raceDates}=input;
  if(!complete||!expectedOwnerId.trim()||!activePlanRevisionId.trim()||days.length>2000)
