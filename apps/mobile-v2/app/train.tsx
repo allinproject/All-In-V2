@@ -6,6 +6,7 @@ import { useAuth } from '../src/auth/AuthProvider';
 import { v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
+import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
 import {
   formatCalendarDay, formatCalendarMonth, firstOfMonth, monthCalendarWeeks,
   shiftCalendarDate, shiftCalendarMonth, weekDaysForDate, visibleCalendarReadRange,
@@ -198,6 +199,7 @@ function TrainingCalendarOwnerScreen() {
         )}
         <Text style={styles.note}>Dates currently follow this device's local timezone. Athlete-profile timezone and real workout records remain pending.</Text>
       </ScrollView>
+      <V2BottomNavigation />
     </SafeAreaView>
   );
 }
