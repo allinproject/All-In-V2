@@ -64,3 +64,18 @@ test("readback failure leaves save unverified",async()=>{
  const a=adapter();a.readExchange=async()=>{throw Error("reader unavailable")};
  assert.equal((await persistVerifiedCoachExchange(request(),a)).status,"not_saved");
 });
+
+test("trimmed canonical content verifies without changing caller input",async()=>{
+ const req={...request(),userContent:"  How should I run?  ",assistantContent:"  Let's review your accepted plan.  "};
+ const expected={...req,userContent:"How should I run?",assistantContent:"Let's review your accepted plan."};
+ const a=adapter(expected);
+ let sent=null;
+ const append=a.appendExchange;
+ a.appendExchange=async(value)=>{sent=value;return append(value);};
+ const result=await persistVerifiedCoachExchange(req,a);
+ assert.equal(result.status,"saved_verified");
+ assert.equal(sent.userContent,expected.userContent);
+ assert.equal(sent.assistantContent,expected.assistantContent);
+ assert.equal(req.userContent,"  How should I run?  ");
+ assert.equal(req.assistantContent,"  Let's review your accepted plan.  ");
+});
