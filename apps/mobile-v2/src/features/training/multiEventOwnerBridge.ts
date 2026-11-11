@@ -5,7 +5,8 @@
 import {certifyCalendarOwnerRead,type OwnerCalendarWindowSnapshot} from './calendarOwnerReadCertification.ts';
 import {buildMultiEventSeasonPlan,type SeasonEvent,type SeasonPlanDraft} from './multiEventSeasonPlan.ts';
 import type {PlannedCalendarItem} from './trainingCalendarReadModel.ts';
-import type {CanonicalPlanDay} from './canonicalPlanDayMarkers.ts';
+import {projectCanonicalPlanDayMarkers,type CanonicalPlanDay} from './canonicalPlanDayMarkers.ts';
+import type {CalendarWorkoutMarker} from './calendarDayView.ts';
 
 export type SeasonOwnerBinding={
  eventId:string;sessionId:string;planRevisionId:string;ownerId:string;
@@ -96,4 +97,26 @@ export function proposeSeasonFromVerifiedTraining(input:{
   return unavailable('unclassified_or_missing_season_day');
  return {status:proposal.status,reason:null,proposal,
   planRevisionId:input.activePlanRevisionId,snapshotVersion:input.plannedSnapshot.snapshotVersion};
+}
+
+/**
+ * ALL-231 -> ALL-246: existing Training calendar projection consumes dates
+ * from the certified season, not a Coach-authored list of race days.
+ * This never changes a canonical plan/day state.
+ */
+export function projectVerifiedMultiEventDayMarkers(input:Parameters<typeof proposeSeasonFromVerifiedTraining>[0]):
+ {status:'unavailable';reason:string;markers:null}|
+ {status:'ready';planRevisionId:string;snapshotVersion:string;markers:CalendarWorkoutMarker[]}{
+ const season=proposeSeasonFromVerifiedTraining(input);
+ if(season.status==='unavailable')return{status:'unavailable',reason:season.reason,markers:null};
+ if(season.status==='blocked')return{status:'unavailable',reason:'conflicting_event_dates',markers:null};
+ if(!input.daySnapshot)return{status:'unavailable',reason:'missing_canonical_day_snapshot',markers:null};
+ try{
+  const markers=projectCanonicalPlanDayMarkers({
+   expectedOwnerId:input.expectedOwnerId,activePlanRevisionId:season.planRevisionId,
+   complete:true,raceDate:null,raceDates:season.proposal.events.map(e=>e.date),
+   days:input.daySnapshot.records
+  });
+  return{status:'ready',planRevisionId:season.planRevisionId,snapshotVersion:season.snapshotVersion,markers};
+ }catch{return{status:'unavailable',reason:'uncertified_event_day_marker',markers:null};}
 }
