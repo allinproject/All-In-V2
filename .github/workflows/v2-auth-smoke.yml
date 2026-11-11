@@ -7,6 +7,7 @@ on:
     paths:
       - 'apps/mobile-v2/app/**'
       - 'apps/mobile-v2/src/auth/**'
+      - 'apps/mobile-v2/src/features/coach/**'
       - 'apps/mobile-v2/src/features/cookbook/**'
       - 'apps/mobile-v2/src/features/community/**'
       - 'apps/mobile-v2/src/features/tutorials/**'
@@ -34,6 +35,7 @@ on:
     paths:
       - 'apps/mobile-v2/app/**'
       - 'apps/mobile-v2/src/auth/**'
+      - 'apps/mobile-v2/src/features/coach/**'
       - 'apps/mobile-v2/src/features/cookbook/**'
       - 'apps/mobile-v2/src/features/community/**'
       - 'apps/mobile-v2/src/features/tutorials/**'
@@ -97,6 +99,8 @@ jobs:
         run: node --test ../../scripts/verify-v2-usda-foundation-manifest.test.mjs
       - name: Run Auth tests
         run: npm run test:auth
+      - name: Run Coach quality contract and scenario tests
+        run: npm run test:coach-quality
       - name: Run Cookbook calculator tests
         run: npm run test:calculator
       - name: Run Community and Live Props contract tests
