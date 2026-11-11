@@ -80,6 +80,30 @@ BEGIN
    (id,activity_id,user_id,provider,source_kind,source_record_id,quality)
  VALUES ('11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',c,a,'apple_watch',
          'workout_record','watch-123','trusted');
+ -- Reject blank/whitespace-distorted identities before any provider can
+ -- accidentally turn two IDs for one workout into two canonical sources.
+ BEGIN
+  INSERT INTO public.v2_activity_sources
+   (id,activity_id,user_id,provider,source_kind,source_record_id,quality)
+  VALUES ('19191919-1919-4919-8919-191919191919',c,a,'apple_watch',
+          'workout_record',' ','trusted');
+  RAISE EXCEPTION 'Blank external provider record ID accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_sources
+   (id,activity_id,user_id,provider,source_kind,source_record_id,quality)
+  VALUES ('20202020-2020-4020-8020-202020202020',c,a,'apple_watch',
+          'workout_record',' watch-123 ','trusted');
+  RAISE EXCEPTION 'Whitespace-ambiguous external record ID accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_sources
+   (id,activity_id,user_id,provider,source_kind,source_record_id,quality,
+    source_revision,source_device_ref)
+  VALUES ('21212121-2121-4121-8121-212121212121',c,a,'apple_watch',
+          'workout_record','invalid-revision','trusted',' ', 'watch-42');
+  RAISE EXCEPTION 'Blank provider revision accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
  -- Provider replay must not create second source or completed activity credit.
  BEGIN
   INSERT INTO public.v2_activity_sources
