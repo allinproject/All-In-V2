@@ -112,6 +112,26 @@ BEGIN
     u,sess,action_retry,'finish',4,fp,NULL,NULL,'2026-11-11 10:21+00');
   RAISE EXCEPTION 'double finish accepted';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ -- After finishing a session, a new canonical session can begin and cancel
+ -- without generating a Completed Activity outbox.
+ result:=allin_private.v2_training_apply_session_candidate(
+   u,second,'00000000-0000-4000-8000-000000000006','start',0,fp,
+   '2026-11-11','America/Chicago','2026-11-11 10:25+00');
+ IF result->>'status'<>'active' THEN RAISE EXCEPTION 'new session after finish failed'; END IF;
+ result:=allin_private.v2_training_apply_session_candidate(
+   u,second,'00000000-0000-4000-8000-000000000007','cancel',1,fp,
+   NULL,NULL,'2026-11-11 10:27+00');
+ IF result->>'status'<>'cancelled' THEN RAISE EXCEPTION 'cancel transition failed'; END IF;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_training_completion_outbox
+           WHERE session_instance_id=second)
+ THEN RAISE EXCEPTION 'cancel fabricated a finished workout'; END IF;
+ -- A cancelled session remains terminal and may not resume or finish later.
+ BEGIN
+  PERFORM allin_private.v2_training_apply_session_candidate(
+    u,second,'00000000-0000-4000-8000-000000000008','resume',2,fp,
+    NULL,NULL,'2026-11-11 10:28+00');
+  RAISE EXCEPTION 'cancelled session was resumed';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  IF has_function_privilege('authenticated',
    'allin_private.v2_training_apply_session_candidate(uuid,uuid,uuid,text,bigint,text,date,text,timestamptz)',
    'EXECUTE')
