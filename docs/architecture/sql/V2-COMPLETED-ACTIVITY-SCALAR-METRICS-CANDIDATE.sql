@@ -50,7 +50,7 @@ CREATE TABLE public.v2_activity_metric_values (
  FOREIGN KEY(metric_code,definition_version)
    REFERENCES public.v2_activity_metric_definitions(metric_code,definition_version),
  -- Cross-owner/source joins must prove the source belongs to the SAME activity.
- UNIQUE(activity_id,user_id,source_id,metric_code,definition_version)
+ CONSTRAINT v2_activity_metric_global_source_unique UNIQUE(activity_id,user_id,source_id,metric_code,definition_version)
 );
 ALTER TABLE public.v2_activity_sources
  ADD CONSTRAINT v2_activity_source_metric_owner_key
