@@ -9,14 +9,14 @@ const initial=():RelationshipSnapshot=>({
  viewerBlockedTarget:false,version:3,
 });
 const receipt=(action:string,version=4)=>({
- actorId:'owner-A',targetOwnerId:'owner-B',actionId:'stable-key',
+ actorId:'owner-A',targetOwnerId:'owner-B',actionId:'11111111-1111-4111-8111-111111111111',
  action:action as 'request_follow',version,accepted:true,
 });
 const run=(overrides:Record<string,unknown>={})=>{
  const state={...initial()};
  const args={
   expectedActorId:'owner-A',targetId:'owner-B',
-  action:'request_follow' as const,stableActionId:'stable-key',
+  action:'request_follow' as const,stableActionId:'11111111-1111-4111-8111-111111111111',
   active:async()=>({id:'owner-A',generation:2}),
   reader:async()=>({...state}),
   writer:async()=>{state.relationship='follow_requested' as const;state.version=4;return receipt('request_follow');},
