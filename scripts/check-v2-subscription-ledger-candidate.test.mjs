@@ -160,3 +160,16 @@ test('server-only entitlement is bounded, private and environment separated',()=
   assert.match(body,/p\.access_until>pg_catalog\.now\(\)/);
   assert.match(body,/p\.phase in \('trial','paid','grace','canceling'\)/);
 });
+
+test('native Apple and Google purchases use one atomic owner-bound service writer',()=>{
+  const start=sql.indexOf('create or replace function allin_private.v2_bind_verified_native_subscription(');
+  assert.ok(start>=0);
+  const end=sql.indexOf('revoke all on function allin_private.v2_bind_verified_native_subscription(',start);
+  const fn=sql.slice(start,end);
+  assert.match(fn,/current_user <> 'service_role'/);
+  assert.match(fn,/p_provider not in \('app_store','google_play'\)/);
+  assert.match(fn,/native purchase belongs to another owner/);
+  assert.match(fn,/v2_apply_verified_subscription_event/);
+  assert.match(fn,/pg_advisory_xact_lock/);
+  assert.match(fn,/return 'duplicate'/);
+});
