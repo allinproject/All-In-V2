@@ -50,12 +50,17 @@ test('unavailable current entitlement never implies paid status',async()=>{
   {data:{entitled:true},error:{message:'backend error'}},
   {data:{code:'entitlement_disabled'},error:null},
   {data:{entitled:'yes'},error:null},
+  {data:{entitled:true},error:null},
+  {data:{entitled:true,accessUntil:'not-a-timestamp'},error:null},
+  {data:{entitled:false,accessUntil:'2026-12-01T12:00:00Z'},error:null},
  ]){
   const h=base(()=>response);
   await assert.rejects(()=>h.billing.readOwnerEntitlement(owner));
  }
  const h=base(()=>({data:{entitled:false},error:null}));
  assert.deepEqual(await h.billing.readOwnerEntitlement(owner),{entitled:false});
+ const entitled=base(()=>({data:{entitled:true,accessUntil:'2026-12-01T12:00:00Z'},error:null}));
+ assert.deepEqual(await entitled.billing.readOwnerEntitlement(owner),{entitled:true});
 });
 test('fraudulent context and denied pending receipt fail closed',async()=>{
  const bad=base(()=>({data:{...mockContext,
@@ -65,4 +70,11 @@ test('fraudulent context and denied pending receipt fail closed',async()=>{
  assert.equal(await h.billing.submitEvidence({ownerId:owner,
   evidence:{platform:'android',productId:'monthly_v2',purchaseToken:'pending-token'}}),
   'pending');
+});
+
+test('a transport error never reports acknowledgement pending',async()=>{
+ const h=base(()=>({data:{code:'acknowledgement_required'},error:{message:'service failed'}}));
+ assert.equal(await h.billing.submitEvidence({ownerId:owner,
+  evidence:{platform:'android',productId:'monthly_v2',purchaseToken:'pending-token'}}),
+  'rejected');
 });
