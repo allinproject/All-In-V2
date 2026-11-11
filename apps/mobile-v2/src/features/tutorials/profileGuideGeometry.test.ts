@@ -7,10 +7,10 @@ test('nested target requires both parent and child measurements regardless of ev
   assert.equal(guideTargetOffset(r,'kitchen'),null);
   r.children.kitchen=195;
   assert.equal(guideTargetOffset(r,'kitchen'),null);
-  r.sections.personalize=320;
+  r.sections.nutrition=320;
   assert.equal(guideTargetOffset(r,'kitchen'),499);
   const reversed=emptyGuideLayoutRegistry();
-  reversed.sections.personalize=320;
+  reversed.sections.nutrition=320;
   assert.equal(guideTargetOffset(reversed,'kitchen'),null);
   reversed.children.kitchen=195;
   assert.equal(guideTargetOffset(reversed,'kitchen'),499);
@@ -36,4 +36,13 @@ test('invalid coordinates never scroll to an accidental fallback',()=>{
   assert.equal(guideTargetOffset(r,'coach'),null);
   r.children.coach=0;
   assert.equal(guideTargetOffset(r,'coach',Infinity),100);
+});
+
+test('Kitchen lives under Nutrition while Sports and Coach remain under Training',()=>{
+ const r=emptyGuideLayoutRegistry();
+ r.sections.personalize=200;r.sections.nutrition=700;
+ r.children.sports=50;r.children.coach=300;r.children.kitchen=100;
+ assert.equal(guideTargetOffset(r,'sports'),234);
+ assert.equal(guideTargetOffset(r,'coach'),484);
+ assert.equal(guideTargetOffset(r,'kitchen'),784);
 });
