@@ -273,10 +273,7 @@ begin
   if exists (
     select 1 from allin_private.v2_subscription_checkout_attempts a
      where a.owner_id=p_owner_id and a.attempt_id <> p_attempt_id
-       and a.state in ('reserved','pending','server_confirmed')
-  ) or exists (
-    select 1 from allin_private.v2_subscription_purchases p
-     where p.owner_id=p_owner_id
+       and a.state in ('reserved','pending')
   ) then
     raise exception 'trial attempt already exists or was consumed'
       using errcode='42501';
@@ -286,10 +283,20 @@ begin
    where attempt_id=p_attempt_id for update;
   if found then
     if v_attempt.owner_id <> p_owner_id or v_attempt.provider <> p_provider or
-       v_attempt.environment <> p_environment then
+       v_attempt.environment <> p_environment or
+       v_attempt.state not in ('reserved','pending') then
       raise exception 'checkout reservation identity collision' using errcode='42501';
     end if;
     return 'already_reserved';
+  end if;
+  -- A new trial reservation for a returning account is forbidden. Paid
+  -- reactivation must come from the separate owner-locked paid claim.
+  if exists (
+    select 1 from allin_private.v2_subscription_purchases p
+     where p.owner_id=p_owner_id
+  ) then
+    raise exception 'new direct trial reservation forbidden for prior subscriber'
+      using errcode='42501';
   end if;
   insert into allin_private.v2_subscription_checkout_attempts
    (attempt_id,owner_id,provider,environment,provider_checkout_id,
