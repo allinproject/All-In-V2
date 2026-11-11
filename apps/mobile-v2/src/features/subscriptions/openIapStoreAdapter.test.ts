@@ -96,3 +96,55 @@ test('owner mismatches do not accept a forged native context',async()=>{
   assert.equal(receipt.platform,'ios');
   assert.equal(h.finished(),0);
 });
+
+test('owner switch while subscription catalog loads cannot open a native purchase',async()=>{
+ let currentOwner=owner;
+ let releaseProducts;
+ let launches=0;
+ const api={
+  initConnection:async()=>true,
+  fetchProducts:async()=>new Promise(resolve=>{releaseProducts=resolve;}),
+  purchaseUpdatedListener:()=>({remove(){}}),
+  purchaseErrorListener:()=>({remove(){}}),
+  requestPurchase:async()=>{launches++},
+  getAvailablePurchases:async()=>[],
+  finishTransaction:async()=>{},
+ };
+ const store=createOpenIapStoreAdapter({
+  platform:'ios',productId,api,getOwner:()=>currentOwner,
+  getAccountContext:async()=>({ownerId:owner,
+   ios:{productId,appAccountToken:owner}}),
+ });
+ const task=store.purchase(productId);
+ while(!releaseProducts)await Promise.resolve();
+ currentOwner='00000000-0000-0000-0000-000000000002';
+ releaseProducts([{id:productId}]);
+ await assert.rejects(task,/owner_changed/);
+ assert.equal(launches,0);
+});
+
+test('native purchase callback after owner switch cannot produce signed evidence',async()=>{
+ let currentOwner=owner;
+ let sendPurchase;
+ let launches=0;
+ const api={
+  initConnection:async()=>true,
+  fetchProducts:async()=>[{id:productId}],
+  purchaseUpdatedListener:fn=>{sendPurchase=fn;return {remove(){}}},
+  purchaseErrorListener:()=>({remove(){}}),
+  requestPurchase:async()=>{launches++},
+  getAvailablePurchases:async()=>[],
+  finishTransaction:async()=>{},
+ };
+ const store=createOpenIapStoreAdapter({
+  platform:'ios',productId,api,getOwner:()=>currentOwner,timeoutMs:500,
+  getAccountContext:async()=>({ownerId:owner,
+   ios:{productId,appAccountToken:owner}}),
+ });
+ const task=store.purchase(productId);
+ while(!sendPurchase)await Promise.resolve();
+ currentOwner='00000000-0000-0000-0000-000000000002';
+ sendPurchase({store:'apple',productId,purchaseToken:signed});
+ await assert.rejects(task,/owner_changed/);
+ assert.equal(launches,1);
+});
