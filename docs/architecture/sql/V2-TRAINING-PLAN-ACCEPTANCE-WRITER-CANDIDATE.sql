@@ -60,6 +60,15 @@ BEGIN
  IF NOT FOUND OR v_revision.status<>'candidate' THEN
     RAISE EXCEPTION 'Only same-owner candidate revision can be accepted'
      USING ERRCODE='22023'; END IF;
+ -- The date window is athlete-approved revision intent, NOT inferred from
+ -- submitted child days or from an optional Goal deadline. Candidates can be
+ -- incomplete while editing; accepted revisions require explicit bounds.
+ IF v_revision.calendar_start_date IS NULL
+    OR v_revision.calendar_end_date IS NULL
+    OR v_revision.calendar_timezone IS NULL THEN
+   RAISE EXCEPTION 'Accepted calendar requires explicit start/end/timezone'
+     USING ERRCODE='22023';
+ END IF;
  -- A calendar revision may consist of explicitly planned rest/unavailable days,
  -- but it cannot be an empty AI-generated shell.
  IF NOT EXISTS(SELECT 1 FROM public.v2_training_revision_days
@@ -77,9 +86,19 @@ BEGIN
  FROM public.v2_training_revision_days
  WHERE plan_revision_id=p_revision_id AND plan_id=p_plan_id
    AND user_id=p_user_id;
- IF v_first_day IS NULL OR v_last_day IS NULL
-    OR v_day_count<>(v_last_day-v_first_day+1)::bigint THEN
-   RAISE EXCEPTION 'Candidate calendar has missing dates between explicit plan days'
+ IF v_first_day IS DISTINCT FROM v_revision.calendar_start_date
+    OR v_last_day IS DISTINCT FROM v_revision.calendar_end_date
+    OR v_day_count<>(v_revision.calendar_end_date-v_revision.calendar_start_date+1)::bigint
+ THEN
+   RAISE EXCEPTION 'Candidate calendar has missing coverage or wrong approved boundaries'
+     USING ERRCODE='22023';
+ END IF;
+ IF EXISTS(
+   SELECT 1 FROM public.v2_training_revision_days d
+   WHERE d.plan_revision_id=p_revision_id AND d.user_id=p_user_id
+     AND d.timezone IS DISTINCT FROM v_revision.calendar_timezone
+ ) THEN
+   RAISE EXCEPTION 'Calendar day timezone differs from reviewed revision'
      USING ERRCODE='22023';
  END IF;
  -- A candidate calendar cannot schedule a workout on a declared rest or
