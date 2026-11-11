@@ -26,6 +26,8 @@ BEGIN
 END $post_permissions$;
 
 -- Owner 2 is private. User 1 has no approved follow at this point.
+UPDATE allin_private.v2_community_visibility SET profile_visibility='private'
+WHERE user_id='00000000-0000-0000-0000-000000000002';
 INSERT INTO allin_private.v2_community_posts
  (id,owner_id,kind,audience,title,source_id,body,published_at)
 VALUES
