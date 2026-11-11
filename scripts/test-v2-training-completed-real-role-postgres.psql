@@ -1,0 +1,102 @@
+\set ON_ERROR_STOP on
+-- ALL-222 / ALL-243 / ALL-246: actual PostgreSQL role boundary replay.
+-- Must run AFTER integrated candidate graph in same disposable PostgreSQL 17
+-- database. Never issue these test-only GRANTs on hosted Supabase.
+-- Existing fixture has owner data, one live session and a pending challenge.
+DO $assert$
+BEGIN
+ IF (SELECT count(*) FROM public.v2_completed_activities)=0
+ OR (SELECT count(*) FROM public.v2_training_session_instances)=0
+ THEN RAISE EXCEPTION 'Prerequisite full-stack fixture is absent'; END IF;
+END $assert$;
+
+SET ROLE anon;
+DO $anonymous$
+BEGIN
+ BEGIN
+  PERFORM 1 FROM public.v2_completed_activities LIMIT 1;
+  RAISE EXCEPTION 'Anonymous role read Completed Activity table';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM 1 FROM public.v2_training_plans LIMIT 1;
+  RAISE EXCEPTION 'Anonymous role read Training plan';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM 1 FROM public.v2_indoor_weekly_leaderboard LIMIT 1;
+  RAISE EXCEPTION 'Anonymous role read competition';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_training_apply_session_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   '66666666-6666-4666-8666-666666666666',
+   '00000000-0000-4000-8000-000000000001',
+   'pause',1,repeat('a',64),NULL,NULL,'2026-11-11T13:01:00Z');
+  RAISE EXCEPTION 'Anonymous role invoked private Training writer';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $anonymous$;
+RESET ROLE;
+
+SET ROLE authenticated;
+DO $authenticated$
+BEGIN
+ BEGIN
+  PERFORM 1 FROM public.v2_completed_activities LIMIT 1;
+  RAISE EXCEPTION 'Authenticated role read unapproved activity';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_training_plans(id,user_id,plan_kind)
+  VALUES('00000000-0000-4000-8000-000000000002',
+         '11111111-1111-4111-8111-111111111111','general');
+  RAISE EXCEPTION 'Authenticated role wrote canonical plan directly';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  UPDATE public.v2_activity_metric_values SET value_numeric=999;
+  RAISE EXCEPTION 'Authenticated role rewrote source measurement';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_training_session_action_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   '66666666-6666-4666-8666-666666666666',
+   '00000000-0000-4000-8000-000000000003',
+   'pause',1,repeat('a',64),NULL,NULL,'2026-11-11T13:01:00Z');
+  RAISE EXCEPTION 'Authenticated role invoked unapproved public gateway';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_activity_append_scalar_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   '77777777-7777-4777-8777-777777777777',
+   '88888888-8888-4888-8888-888888888888',
+   '00000000-0000-4000-8000-000000000004',
+   'avg_power_w',1,'source_measured',999,NULL,NULL,repeat('a',64));
+  RAISE EXCEPTION 'Authenticated role invoked private Activity writer';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $authenticated$;
+RESET ROLE;
+
+-- Model accidental SELECT grants and confirm deny-by-default RLS is a
+-- second independent boundary; transaction rollback restores deny-by-default.
+BEGIN;
+GRANT SELECT ON public.v2_completed_activities TO authenticated;
+GRANT SELECT ON public.v2_training_plans TO authenticated;
+GRANT SELECT ON public.v2_indoor_weekly_leaderboard TO authenticated;
+SET LOCAL ROLE authenticated;
+DO $rls$
+DECLARE
+ n bigint;
+BEGIN
+ SELECT count(*) INTO n FROM public.v2_completed_activities;
+ IF n<>0 THEN RAISE EXCEPTION 'Owner data leaked with accidental SELECT grant'; END IF;
+ SELECT count(*) INTO n FROM public.v2_training_plans;
+ IF n<>0 THEN RAISE EXCEPTION 'Plan data leaked with accidental SELECT grant'; END IF;
+ SELECT count(*) INTO n FROM public.v2_indoor_weekly_leaderboard;
+ IF n<>0 THEN RAISE EXCEPTION 'Competition data leaked with accidental SELECT grant'; END IF;
+END $rls$;
+ROLLBACK;
+
+-- Prove test-only grants above were rolled back; this is the release gate.
+DO $post$
+BEGIN
+ IF has_table_privilege('authenticated','public.v2_completed_activities','SELECT')
+ THEN RAISE EXCEPTION 'Test-only SELECT grant survived rollback'; END IF;
+ RAISE NOTICE 'PASS ALL-222/243/246: anon/authenticated SQL denied, RLS still denies after accidental SELECT grants';
+END $post$;
