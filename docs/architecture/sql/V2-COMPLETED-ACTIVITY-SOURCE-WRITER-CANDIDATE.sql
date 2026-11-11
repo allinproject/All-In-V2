@@ -34,6 +34,7 @@ BEGIN
    IF v_source.activity_id<>p_activity_id OR v_source.id<>p_source_id
       OR v_source.source_payload_hash IS DISTINCT FROM p_source_hash
       OR v_source.quality<>p_quality
+      OR v_source.captured_at IS DISTINCT FROM p_captured_at
    THEN RAISE EXCEPTION 'Conflicting provider source identity or revision'
       USING ERRCODE='23505'; END IF;
    RETURN pg_catalog.jsonb_build_object('activityId',p_activity_id,
