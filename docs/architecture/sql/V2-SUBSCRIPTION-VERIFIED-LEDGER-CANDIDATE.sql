@@ -187,6 +187,19 @@ begin
      p_environment not in ('sandbox','production') then
     raise exception 'invalid checkout reservation' using errcode='22023';
   end if;
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('trial:' || p_owner_id::text,0));
+  if exists (
+    select 1 from allin_private.v2_subscription_checkout_attempts a
+     where a.owner_id=p_owner_id and a.attempt_id <> p_attempt_id
+       and a.state in ('reserved','pending','server_confirmed')
+  ) or exists (
+    select 1 from allin_private.v2_subscription_purchases p
+     where p.owner_id=p_owner_id
+  ) then
+    raise exception 'trial attempt already exists or was consumed'
+      using errcode='42501';
+  end if;
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_attempt_id::text,0));
   select * into v_attempt from allin_private.v2_subscription_checkout_attempts
    where attempt_id=p_attempt_id for update;
