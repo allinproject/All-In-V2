@@ -136,6 +136,18 @@ function OwnedProfileScreen() {
                   <Text style={styles.primaryText}>Edit Profile</Text>
                 </Pressable>
               </Link>
+              <Text style={styles.section}>Account</Text>
+              <Link href="/profile/legal-documents" asChild>
+                <Pressable accessibilityRole="button" accessibilityHint="Review the current legal documents" style={styles.button}>
+                  <Text style={styles.buttonText}>Legal documents</Text>
+                </Pressable>
+              </Link>
+              <Link href="/profile/account-deletion" asChild>
+                <Pressable accessibilityRole="button" accessibilityHint="View account deletion status and information" style={styles.button}>
+                  <Text style={styles.buttonText}>Delete account</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.muted}>Deletion is not available yet while the secure V2 workflow is being built.</Text>
             </View>
             <View onLayout={onGuideAnchorLayout("personalize")} style={styles.card}>
               <Text style={styles.section}>Personalize ALL IN</Text>
@@ -182,11 +194,6 @@ function OwnedProfileScreen() {
             <View onLayout={onGuideAnchorLayout("legal")} style={[styles.card, highlightedTarget==="legal" && styles.guideTarget]}>
               <Text style={styles.section}>Legal acceptance</Text>
               <Text style={styles.muted}>Accepted versions for this account</Text>
-              <Link href="/profile/legal-documents" asChild>
-                <Pressable accessibilityRole="button" accessibilityHint="Read the exact currently published Terms, Privacy Policy, and Founder Beta Terms" style={styles.button}>
-                  <Text style={styles.buttonText}>View current legal documents</Text>
-                </Pressable>
-              </Link>
               <Text style={styles.white}>Terms: {snapshot.latest_legal_acceptance?.terms_version ?? 'Not available'}</Text>
               <Text style={styles.white}>Privacy: {snapshot.latest_legal_acceptance?.privacy_version ?? 'Not available'}</Text>
               <Text style={styles.white}>Founder Beta: {snapshot.latest_legal_acceptance?.founder_beta_terms_version ?? 'Not available'}</Text>
