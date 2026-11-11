@@ -63,6 +63,22 @@ BEGIN
     WHERE plan_revision_id=p_revision_id AND plan_id=p_plan_id AND user_id=p_user_id)
  THEN RAISE EXCEPTION 'Cannot accept a revision without explicit day state'
      USING ERRCODE='22023'; END IF;
+ -- A candidate calendar cannot schedule a workout on a declared rest or
+ -- unavailable day. Also reject timezone drift between the canonical day and
+ -- its session; otherwise Today and activity date projections can disagree.
+ IF EXISTS (
+   SELECT 1 FROM public.v2_training_revision_sessions s
+   JOIN public.v2_training_revision_days d
+     ON d.plan_revision_id=s.plan_revision_id
+       AND d.athlete_local_date=s.athlete_local_date
+   WHERE s.plan_revision_id=p_revision_id
+     AND s.plan_id=p_plan_id AND s.user_id=p_user_id
+     AND (d.day_state IN ('rest','unavailable')
+          OR d.timezone IS DISTINCT FROM s.timezone)
+ ) THEN
+   RAISE EXCEPTION 'Candidate calendar contradicts scheduled workout day'
+     USING ERRCODE='22023';
+ END IF;
  -- Existing active prescription is preserved, only status becomes superseded.
  UPDATE public.v2_training_plan_revisions
   SET status='superseded'
