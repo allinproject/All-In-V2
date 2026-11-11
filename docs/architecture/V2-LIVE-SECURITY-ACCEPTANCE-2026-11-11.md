@@ -21,6 +21,44 @@ Seven `allin_private` tables all have RLS ON, **zero policies**, and no direct S
 
 **Not deployed:** Billing purchase/verified-event/attempt ledger, Training, Completed Activity and Community candidates. Existing read-only candidate SQL is NOT part of migration history. No live native/web billing endpoints or activated payment flags were verified by this audit.
 
+## Physical extension of the eight-table foundation — newly deployed private tables
+
+The original foundation ERD predates these four private aggregates. Current
+database catalog/foreign-key inspection confirmed the following. These tables
+are **already deployed** (not part of a new proposed migration).
+
+```mermaid
+erDiagram
+    auth_users ||--o| v2_health_considerations : "user_id FK"
+    auth_users ||--o| v2_account_deletion_requests : "user_id FK"
+    v2_account_deletion_processor_config {
+       boolean singleton PK
+       boolean execution_enabled
+       timestamptz changed_at
+       text change_reason
+    }
+    v2_account_deletion_execution_audit {
+       uuid request_id PK
+       uuid user_id "nullable audit reference"
+       text status
+       timestamptz started_at
+       timestamptz updated_at
+       timestamptz completed_at
+       text failure_code
+    }
+```
+
+| Private table | PK | Key physical fields and checks | FK |
+|---|---|---|---|
+| `v2_health_considerations` | `user_id uuid` | `conditions jsonb` and `limitations jsonb` each constrained to arrays; `coach_opt_in boolean DEFAULT false`; `version bigint >= 1`; `updated_at timestamptz` | `user_id → auth.users.id` |
+| `v2_account_deletion_requests` | `user_id uuid` | Unique `request_id uuid`; `status` in requested/processing/completed/rejected/cancelled; `requested_at`, `updated_at`, nullable `resolved_at` | `user_id → auth.users.id` |
+| `v2_account_deletion_processor_config` | `singleton boolean CHECK singleton` | `execution_enabled boolean DEFAULT false`; `changed_at`; `change_reason` | none |
+| `v2_account_deletion_execution_audit` | `request_id uuid` | `user_id uuid nullable` (not an FK, preserves minimal audit after deletion); `status` in processing/failed/completed; timestamps; failure code constrained to auth_delete_failed/auth_verify_failed/completion_failed | none |
+
+This physical extension is an inventory of observed table contracts, **not** a
+claim that the account deletion processor has been turned on or end-to-end
+deletion has been signed off. Existing worker/default-OFF constraints remain.
+
 ## Live V2 function privilege and owner-review matrix
 
 Read-only `pg_proc`, `pg_namespace`, `has_function_privilege`, `pg_get_functiondef` inspection found:
