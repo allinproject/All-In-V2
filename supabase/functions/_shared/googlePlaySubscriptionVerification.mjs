@@ -14,7 +14,7 @@ const expiry=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))?
   Date.parse(v):null;
 export async function verifyGooglePlaySubscription({
   packageName,purchaseToken,expectedPackageName,approvedProductId,approvedBasePlanId,
-  fetchSubscription,nowMs,
+  expectedObfuscatedAccountId,fetchSubscription,nowMs,
 }={}){
   if(!appId(expectedPackageName)||packageName!==expectedPackageName||
      !token(purchaseToken)||!id(approvedProductId)||!id(approvedBasePlanId)||
@@ -29,6 +29,11 @@ export async function verifyGooglePlaySubscription({
   if(!result||result.kind!=='androidpublisher#subscriptionPurchaseV2'||
      !Array.isArray(result.lineItems)||result.lineItems.length!==1)
     return {status:'unverified_provider_state'};
+  if(typeof expectedObfuscatedAccountId!=='string' ||
+     !/^[a-f0-9]{64}$/.test(expectedObfuscatedAccountId) ||
+     result.externalAccountIdentifiers?.obfuscatedExternalAccountId!==
+       expectedObfuscatedAccountId)
+    return {status:'owner_binding_unverified'};
   const line=result.lineItems[0];
   if(line?.productId!==approvedProductId||
      line.offerDetails?.basePlanId!==approvedBasePlanId||
