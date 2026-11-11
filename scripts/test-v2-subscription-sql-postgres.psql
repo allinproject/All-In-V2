@@ -385,6 +385,19 @@ BEGIN
       v_owner <> '00000000-0000-0000-0000-000000000008' OR NOT v_eligible THEN
     RAISE EXCEPTION 'Owner trial claim did not generate reserved identity';
   END IF;
+  -- Direct privileged writes are still constrained by the unique
+  -- account-active-checkout index, independent of RPC locks.
+  BEGIN
+    INSERT INTO allin_private.v2_subscription_checkout_attempts(
+      attempt_id,owner_id,provider,environment,provider_checkout_id,
+      provider_subscription_id,state,verified_at
+    ) VALUES (
+      '10000000-0000-0000-0000-000000000010',
+      '00000000-0000-0000-0000-000000000008',
+      'google_play','sandbox',null,null,'reserved',null);
+    RAISE EXCEPTION 'Privileged direct insert bypassed one-active-checkout index';
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
   SELECT status,attempt_id INTO v_status,v_retry
     FROM allin_private.v2_claim_trial_checkout_attempt(
        '00000000-0000-0000-0000-000000000008',
