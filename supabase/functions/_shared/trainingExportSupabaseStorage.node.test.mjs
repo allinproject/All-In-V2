@@ -88,8 +88,10 @@ test('queries only source owner in exact tables and downloads a fixed private bu
   const got=await adapter.downloadPrivateObject({ownerId:owner,requestId,path,kind:'series'});
   assert.deepEqual(Buffer.from(got),bytes);
   assert.equal(f.calls.find(x=>x[0]==='fromBucket')[1],TRAINING_PRIVATE_EVIDENCE_BUCKET);
-  assert.equal(f.calls.filter(x=>x[0]==='eq').length,2);
-  assert(f.calls.filter(x=>x[0]==='eq').every(x=>x[1]==='user_id'&&x[2]===owner));
+  const filters=f.calls.filter(x=>x[0]==='eq');
+  assert.equal(filters.filter(x=>x[1]==='user_id'&&x[2]===owner).length,3);
+  assert.equal(filters.filter(x=>x[1]==='object_path'&&x[2]===path).length,1);
+  assert.equal(filters.length,4);
   const selects=f.calls.filter(x=>x[0]==='select');
   assert.equal(selects[0][1],'v2_activity_series');
   assert.equal(selects[1][1],'v2_activity_route_objects');
