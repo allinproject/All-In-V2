@@ -12,6 +12,22 @@ insert into allin_private.v2_account_deletion_requests(user_id,request_id)
 values
  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','cccccccc-cccc-4ccc-8ccc-cccccccc0251'),
  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbb251','dddddddd-dddd-4ddd-8ddd-dddddddd0251');
+-- Verify the production default-OFF gate rejects even the privileged claim.
+do $gate_test$
+declare denied boolean := false;
+begin
+ begin
+   perform public.v2_claim_account_deletion_for_processing(
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251',
+    'cccccccc-cccc-4ccc-8ccc-cccccccc0251');
+ exception when insufficient_privilege then denied := true;
+ end;
+ if not denied then raise exception 'FAIL default OFF gate'; end if;
+end $gate_test$;
+-- Test-only override inside this transaction; the ROLLBACK below restores OFF.
+update allin_private.v2_account_deletion_processor_config
+  set execution_enabled=true,changed_at=now(),change_reason='ALL-251 rollback-only ordering test'
+  where singleton=true and execution_enabled=false;
 do $test$
 declare receipt jsonb;
 begin
