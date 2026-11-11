@@ -53,8 +53,9 @@ test('webhook writer can never claim an unbound provider purchase', () => {
 
 test('confirmed checkout provenance is mandatory for each purchase identity', () => {
   assert.match(sql,/create table allin_private\.v2_subscription_checkout_attempts/);
-  assert.match(sql,/state text not null\s+check \(state in \('pending','server_confirmed'\)\)/);
+  assert.match(sql,/state text not null\s+check \(state in \('reserved','pending','server_confirmed'\)\)/);
   assert.match(sql,/v2_checkout_state_provenance check/);
+  assert.match(sql,/state = 'reserved' and provider_checkout_id is null/);
   assert.match(sql,/state = 'pending' and provider_subscription_id is null and verified_at is null/);
   assert.doesNotMatch(sql,/state text not null default/);
   assert.match(sql,/checkout_attempt_id uuid not null unique/);
@@ -81,4 +82,11 @@ test('pending and confirmation service transitions are identity locked and priva
   assert.match(sql,/v_attempt\.provider_checkout_id <> p_provider_checkout_id/);
   assert.match(sql,/revoke all on function allin_private\.v2_register_pending_subscription_checkout/);
   assert.match(sql,/revoke all on function allin_private\.v2_confirm_pending_subscription_checkout/);
+});
+
+test('durable reservation precedes pending provider checkout',()=>{
+  assert.match(sql,/create or replace function allin_private\.v2_reserve_subscription_checkout\(/);
+  assert.match(sql,/checkout must be reserved before provider session is created/);
+  assert.match(sql,/revoke all on function allin_private\.v2_reserve_subscription_checkout/);
+  assert.match(sql,/checkout reservation identity collision/);
 });
