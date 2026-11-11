@@ -132,3 +132,19 @@ test('event updates and checkout finalization take owner lock before purchase mu
   assert.ok(event.includes(marker));
   assert.ok(finalizer.includes(marker));
 });
+
+test('public billing RPC bridge is invoker-only and denies all client roles',()=>{
+  const names=[
+    'v2_billing_claim_trial_checkout','v2_billing_claim_paid_checkout',
+    'v2_billing_register_pending_checkout','v2_billing_finalize_checkout',
+    'v2_billing_lookup_checkout','v2_billing_apply_current_subscription_event',
+  ];
+  for(const name of names){
+    const start=sql.indexOf('create or replace function public.'+name+'(');
+    assert.ok(start>=0,name+' missing');
+    const body=sql.slice(start,sql.indexOf('revoke all on function public.'+name,start));
+    assert.match(body,/security invoker/);
+    assert.match(body,/current_user <> 'service_role'/);
+    assert.match(sql.slice(start),new RegExp('revoke all on function public\\.'+name+'\\('));
+  }
+});
