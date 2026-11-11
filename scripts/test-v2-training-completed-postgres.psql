@@ -51,6 +51,21 @@ BEGIN
    (id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,status)
  VALUES (d,b,'running','free_activity','2026-11-11','America/Chicago','provider_import','needs_review');
 
+ -- V1-locked activity families must not be rejected by V2 source storage:
+ -- walking, HIIT and one-parent multisport are not generic 'other' sessions.
+ INSERT INTO public.v2_completed_activities
+   (id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,status)
+ VALUES
+ ('45454545-4545-4545-8545-454545454545',a,'walking','free_activity',
+  '2026-11-11','America/Chicago','manual_only','needs_review'),
+ ('46464646-4646-4646-8646-464646464646',a,'hiit','workout',
+  '2026-11-11','America/Chicago','user_reported','needs_review'),
+ ('47474747-4747-4747-8747-474747474747',a,'multisport','workout',
+  '2026-11-11','America/Chicago','provider_import','needs_review');
+ IF (SELECT count(*) FROM public.v2_completed_activities
+     WHERE user_id=a AND sport IN ('walking','hiit','multisport'))<>3
+ THEN RAISE EXCEPTION 'Approved V1 activity types lost in canonical V2 schema'; END IF;
+
  -- Exactly one canonical completed row for a proven Training session.
  BEGIN
   INSERT INTO public.v2_completed_activities
