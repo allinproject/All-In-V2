@@ -3,7 +3,7 @@
  * It deliberately does not name or call an unapproved Supabase RPC or introduce
  * a second activity store. The backend must enforce RLS/expected-owner checks.
  */
-import {v1SportBaseline} from './v1CompletedActivityBaseline.ts';
+import {resolveActivityPresentationSport} from './completedActivitySportAdapter.ts';
 import type {CompletedActivityScreenInput} from './completedActivityScreenModel.ts';
 import type {MetricEvidence,StructuredEvidence,StructuredKind} from './completedActivityDetailProjection.ts';
 
@@ -26,7 +26,7 @@ export type CanonicalActivitySection={
  key:string;kind:StructuredKind;title:string;sourceId:string;count:number;
 };
 export type CanonicalCompletedActivityRead={
- id:string;ownerId:string;version:number;sport:string;title:string;
+ id:string;ownerId:string;version:number;sport:string;sportSubtype?:string|null;title:string;
  completedAt:string;primarySourceId:string;
  sources:readonly CanonicalActivitySource[];
  definitions:readonly CanonicalMetricDefinition[];
@@ -56,7 +56,8 @@ function evidenceKind(kind:CanonicalActivityMetric['measurementKind']):MetricEvi
 export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRead,expectedOwner:string,activityId:string):CompletedActivityScreenInput{
  if(raw.ownerId!==expectedOwner||raw.id!==activityId||!Number.isSafeInteger(raw.version)||raw.version<1)
   throw new Error('Canonical activity identity could not be verified.');
- if(!v1SportBaseline(raw.sport)||!text(raw.title)||!text(raw.completedAt,100))
+ const display=resolveActivityPresentationSport(raw.sport,raw.sportSubtype);
+ if(!text(raw.title)||!text(raw.completedAt,100))
   throw new Error('Canonical activity type or summary is invalid.');
  if(raw.sources.length>50||raw.definitions.length>1200||raw.metrics.length>1000||(raw.sections?.length??0)>300)
   throw new Error('Canonical activity evidence exceeds read limits.');
@@ -84,7 +85,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    !text(m.sourceId)||!sources.has(m.sourceId))
    throw new Error('Unverifiable metric source or definition.');
   const definition=definitions.get(m.code+':'+m.definitionVersion);
-  if(!definition||!(definition.sportScope.includes(raw.sport)||definition.sportScope.includes('all'))||
+  if(!definition||!(definition.sportScope.includes(raw.sport)||definition.sportScope.includes(display.sport)||definition.sportScope.includes('all'))||
    !definition.measurementKinds.includes(m.measurementKind))
    throw new Error('Metric definition does not allow this activity and evidence.');
   if(seenCodes.has(m.code))throw new Error('Conflicting canonical values require upstream reconciliation.');
@@ -109,7 +110,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    throw new Error('Structured activity evidence is not verifiable.');
   sections.push({key:section.key,kind:section.kind,title:section.title,source:source.provider,count:section.count});
  }
- return {id:raw.id,sport:raw.sport,title:raw.title,completedAt:raw.completedAt,
+ return {id:raw.id,sport:display.sport,title:raw.title,completedAt:raw.completedAt,
   sourceLabel:primary.provider,metrics,sections};
 }
 /** Guards both ends of asynchronous read, including account switches during the request. */
