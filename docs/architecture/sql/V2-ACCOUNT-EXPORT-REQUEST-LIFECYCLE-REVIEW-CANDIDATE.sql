@@ -17,6 +17,9 @@ BEGIN
     OR v_session_claim !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
  THEN RAISE EXCEPTION 'Active export owner and session required' USING ERRCODE='42501'; END IF;
  v_session:=v_session_claim::uuid;
+ -- Serialize with the EXISTING ALL-251 deletion request owner lock.
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('v2-delete-request:'||v_owner::text,0));
  PERFORM allin_private.v2_account_export_authorize_session_candidate(v_owner,v_session);
  PERFORM pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('v2-export-request:'||v_owner::text,0));
@@ -51,6 +54,10 @@ AS $approve$
 DECLARE
  v_request allin_private.v2_account_export_requests_candidate%ROWTYPE;
 BEGIN
+ -- Lock in the same order as owner initiation to prevent concurrent
+ -- account-deletion requests from racing into an export approval.
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('v2-delete-request:'||p_user_id::text,0));
  PERFORM allin_private.v2_account_export_authorize_session_candidate(
   p_user_id,p_session_id);
  PERFORM pg_catalog.pg_advisory_xact_lock(
