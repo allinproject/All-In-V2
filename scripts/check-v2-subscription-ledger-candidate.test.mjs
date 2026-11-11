@@ -138,6 +138,8 @@ test('public billing RPC bridge is invoker-only and denies all client roles',()=
     'v2_billing_claim_trial_checkout','v2_billing_claim_paid_checkout',
     'v2_billing_register_pending_checkout','v2_billing_finalize_checkout',
     'v2_billing_lookup_checkout','v2_billing_apply_current_subscription_event',
+    'v2_billing_verify_checkout_reservation','v2_billing_lookup_purchase',
+    'v2_billing_read_owner_access',
   ];
   for(const name of names){
     const start=sql.indexOf('create or replace function public.'+name+'(');
@@ -147,4 +149,14 @@ test('public billing RPC bridge is invoker-only and denies all client roles',()=
     assert.match(body,/current_user <> 'service_role'/);
     assert.match(sql.slice(start),new RegExp('revoke all on function public\\.'+name+'\\('));
   }
+});
+
+test('server-only entitlement is bounded, private and environment separated',()=>{
+  const start=sql.indexOf('create or replace function public.v2_billing_read_owner_access(');
+  assert.ok(start>0);
+  const body=sql.slice(start,sql.indexOf('revoke all on function public.v2_billing_read_owner_access(',start));
+  assert.match(body,/p\.owner_id=p_owner_id and p\.environment=p_environment/);
+  assert.match(body,/p\.revision>0/);
+  assert.match(body,/p\.access_until>pg_catalog\.now\(\)/);
+  assert.match(body,/p\.phase in \('trial','paid','grace','canceling'\)/);
 });
