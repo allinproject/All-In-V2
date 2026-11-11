@@ -5,12 +5,15 @@ const now=1794410000000;
 const packageName='com.allin365.app';
 const item={productId:'allin365_monthly',expiryTime:new Date(now+86400000).toISOString(),
  autoRenewingPlan:{autoRenewEnabled:true},offerDetails:{basePlanId:'monthly'}};
+const accountHash='a'.repeat(64);
 const provider={kind:'androidpublisher#subscriptionPurchaseV2',
  subscriptionState:'SUBSCRIPTION_STATE_ACTIVE',
+ externalAccountIdentifiers:{obfuscatedExternalAccountId:accountHash},
  acknowledgementState:'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED',
  lineItems:[item]};
 const base=()=>({packageName,expectedPackageName:packageName,
- purchaseToken:'tok_abc123456789',approvedProductId:'allin365_monthly',
+ purchaseToken:'tok_abc123456789',expectedObfuscatedAccountId:accountHash,
+ approvedProductId:'allin365_monthly',
  approvedBasePlanId:'monthly',fetchSubscription:async()=>provider,nowMs:now});
 const run=patch=>verify({...base(),...patch});
 test('Google-current, acknowledged monthly state yields only owner-binding candidate',async()=>{
@@ -61,4 +64,12 @@ test('grace and canceled access are bounded by provider expiry',async()=>{
  const expired=await run({fetchSubscription:async()=>({...provider,
   lineItems:[{...item,expiryTime:new Date(now-1).toISOString()}]})});
  assert.equal(expired.accessUntil,null);
+});
+
+test('Google Play account binding must match server-owned obfuscation',async()=>{
+ const wrong=await run({expectedObfuscatedAccountId:'b'.repeat(64)});
+ assert.equal(wrong.status,'owner_binding_unverified');
+ const missing=await run({fetchSubscription:async()=>({...provider,
+  externalAccountIdentifiers:null})});
+ assert.equal(missing.status,'owner_binding_unverified');
 });
