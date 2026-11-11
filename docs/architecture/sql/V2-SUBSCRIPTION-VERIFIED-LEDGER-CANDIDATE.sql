@@ -92,6 +92,77 @@ revoke all on sequence allin_private.v2_subscription_verified_events_id_seq
   from public, anon, authenticated;
 
 
+-- Claim a single durable trial checkout per owner. Service caller must
+-- independently authenticate the current session and pass that owner here.
+-- Cross-provider completed attempts and purchases disqualify repeat trials.
+-- If an unfinished attempt exists, reuse its UUID for safe Stripe idempotency.
+create or replace function allin_private.v2_claim_trial_checkout_attempt(
+  p_owner_id uuid, p_authenticated_owner_id uuid,
+  p_provider text, p_environment text
+)
+returns table(status text, attempt_id uuid, owner_id uuid, trial_eligible boolean)
+language plpgsql
+security invoker
+set search_path = ''
+as $
+declare
+  v_attempt uuid;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'trial checkout claim requires service role' using errcode='42501';
+  end if;
+  if p_owner_id is null or p_authenticated_owner_id is distinct from p_owner_id or
+     p_provider not in ('app_store','google_play','stripe_web') or
+     p_environment not in ('sandbox','production') then
+    raise exception 'invalid authenticated trial claim' using errcode='22023';
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('trial:' || p_owner_id::text,0));
+  if exists (
+    select 1 from allin_private.v2_subscription_checkout_attempts a
+     where a.owner_id=p_owner_id and a.state='server_confirmed'
+  ) or exists (
+    select 1 from allin_private.v2_subscription_purchases p
+     where p.owner_id=p_owner_id
+  ) then
+    return query select 'trial_ineligible'::text,null::uuid,p_owner_id,false;
+    return;
+  end if;
+
+  -- A pending or reserved checkout in another store/environment must be
+  -- resolved explicitly; do not silently create a second trial candidate.
+  if exists (
+    select 1 from allin_private.v2_subscription_checkout_attempts a
+     where a.owner_id=p_owner_id and a.state in ('reserved','pending')
+       and (a.provider <> p_provider or a.environment <> p_environment)
+  ) then
+    return query select 'trial_unavailable'::text,null::uuid,p_owner_id,false;
+    return;
+  end if;
+  select a.attempt_id into v_attempt
+    from allin_private.v2_subscription_checkout_attempts a
+   where a.owner_id=p_owner_id and a.provider=p_provider
+     and a.environment=p_environment and a.state in ('reserved','pending')
+   order by a.attempt_id for update limit 1;
+  if found then
+    return query select 'eligible_reserved'::text,v_attempt,p_owner_id,true;
+    return;
+  end if;
+
+  v_attempt := pg_catalog.gen_random_uuid();
+  insert into allin_private.v2_subscription_checkout_attempts (
+    attempt_id,owner_id,provider,environment,provider_checkout_id,
+    provider_subscription_id,state,verified_at
+  ) values (
+    v_attempt,p_owner_id,p_provider,p_environment,null,null,'reserved',null
+  );
+  return query select 'eligible_reserved'::text,v_attempt,p_owner_id,true;
+end;
+$;
+revoke all on function allin_private.v2_claim_trial_checkout_attempt(
+  uuid,uuid,text,text
+) from public,anon,authenticated;
+
 -- Reserve a durable server-owned UUID before making any call to Stripe.
 -- If Stripe succeeds but attaching its session fails, the same attempt and
 -- idempotency key can be recovered without a new Checkout Session.
