@@ -19,9 +19,14 @@ trap cleanup EXIT
 docker exec -i "$cid" psql -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 <<'SQL'
 INSERT INTO auth.users (id) VALUES ('00000000-0000-0000-0000-000000000003');
 INSERT INTO public.v2_profiles (user_id) VALUES ('00000000-0000-0000-0000-000000000003');
+INSERT INTO allin_private.v2_subscription_checkout_attempts
+ (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id)
+VALUES ('10000000-0000-0000-0000-000000000003',
+ '00000000-0000-0000-0000-000000000003','stripe_web','sandbox','cs_race','sub_race');
 INSERT INTO allin_private.v2_subscription_purchases
- (owner_id,provider,environment,provider_subscription_id)
-VALUES ('00000000-0000-0000-0000-000000000003','stripe_web','sandbox','sub_race');
+ (owner_id,provider,environment,provider_subscription_id,checkout_attempt_id)
+VALUES ('00000000-0000-0000-0000-000000000003','stripe_web','sandbox','sub_race',
+ '10000000-0000-0000-0000-000000000003');
 SQL
 
 docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_a" 2>&1 <<'SQL' &
@@ -91,6 +96,13 @@ INSERT INTO auth.users (id) VALUES ('00000000-0000-0000-0000-000000000004'),
  ('00000000-0000-0000-0000-000000000005');
 INSERT INTO public.v2_profiles (user_id) VALUES ('00000000-0000-0000-0000-000000000004'),
  ('00000000-0000-0000-0000-000000000005');
+INSERT INTO allin_private.v2_subscription_checkout_attempts
+ (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id)
+VALUES
+ ('10000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000004',
+  'stripe_web','sandbox','cs_bind_4','sub_bind_race'),
+ ('10000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000005',
+  'stripe_web','sandbox','cs_bind_5','sub_bind_race');
 SQL
 
 : >"$log_a"
@@ -98,8 +110,9 @@ SQL
 docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_a" 2>&1 <<'SQL' &
 BEGIN;
 INSERT INTO allin_private.v2_subscription_purchases
- (owner_id,provider,environment,provider_subscription_id)
-VALUES ('00000000-0000-0000-0000-000000000004','stripe_web','sandbox','sub_bind_race');
+ (owner_id,provider,environment,provider_subscription_id,checkout_attempt_id)
+VALUES ('00000000-0000-0000-0000-000000000004','stripe_web','sandbox','sub_bind_race',
+'10000000-0000-0000-0000-000000000004');
 \echo FIRST_BIND_HELD
 SELECT pg_sleep(3);
 COMMIT;
@@ -120,8 +133,9 @@ fi
 if docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_b" 2>&1 <<'SQL'
 SET lock_timeout = '7s';
 INSERT INTO allin_private.v2_subscription_purchases
- (owner_id,provider,environment,provider_subscription_id)
-VALUES ('00000000-0000-0000-0000-000000000005','stripe_web','sandbox','sub_bind_race');
+ (owner_id,provider,environment,provider_subscription_id,checkout_attempt_id)
+VALUES ('00000000-0000-0000-0000-000000000005','stripe_web','sandbox','sub_bind_race',
+'10000000-0000-0000-0000-000000000005');
 SQL
 then
   echo "CRITICAL: second owner claimed same provider purchase" >&2
