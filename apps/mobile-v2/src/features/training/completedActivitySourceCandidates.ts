@@ -32,6 +32,12 @@ export function reconcileCertifiedActivitySource(
  if(snapshot.scope!=='source_identity_and_relevant_overlap'||
   !Number.isSafeInteger(snapshot.readVersion)||snapshot.readVersion<1)
   throw new Error('Unverified source candidate coverage contract.');
+ // A foreign-owner row is a privacy violation even if this incoming provider
+ // is unsupported or pagination is unfinished. Never short-circuit past it.
+ if(!Array.isArray(snapshot.candidates)||
+    snapshot.candidates.some(c=>!c||!c.identity||
+      c.identity.ownerId!==incoming.ownerId))
+  throw new Error('Cross-account candidate included in owner-scoped source read.');
  // Must match the currently modeled SQL provider + record-kind vocabulary.
  // This is NOT certification that any provider actually supplied genuine
  // identity; an unregistered Garmin/COROS/alias feed remains review-only.
@@ -43,7 +49,5 @@ export function reconcileCertifiedActivitySource(
   return {decision:'needs_review',activityId:null,reason:'unsupported_provider_namespace'};
  if(!snapshot.complete||snapshot.nextCursor!==null)
   return {decision:'needs_review',activityId:null,reason:'incomplete_candidate_coverage'};
- if(snapshot.candidates.some(c=>c.identity.ownerId!==incoming.ownerId))
-  throw new Error('Cross-account candidate included in owner-scoped source read.');
  return reconcileActivitySource(incoming,snapshot.candidates);
 }
