@@ -59,6 +59,44 @@ REVOKE ALL ON public.v2_activity_segments FROM PUBLIC,anon,authenticated;
 COMMIT;
 
 
+-- ALL-243: reject cyclic parent links before source/segment projections read them.
+-- Serialize graph edits for this activity to prevent concurrent opposite-edge
+-- updates from independently passing a stale parent-chain read.
+CREATE FUNCTION allin_private.v2_activity_segment_acyclic_guard_candidate()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=''
+AS $segment_guard$
+DECLARE
+ v_cursor uuid;
+ v_next uuid;
+ v_depth integer:=0;
+BEGIN
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+   pg_catalog.hashtextextended('v2-segment-graph:'||NEW.activity_id::text,0));
+ v_cursor:=NEW.parent_segment_id;
+ WHILE v_cursor IS NOT NULL LOOP
+   IF v_cursor=NEW.id THEN
+     RAISE EXCEPTION 'Activity segment parent cycle prohibited'
+       USING ERRCODE='23514'; END IF;
+   v_depth:=v_depth+1;
+   IF v_depth>32 THEN
+     RAISE EXCEPTION 'Activity segment ancestry exceeds supported depth'
+       USING ERRCODE='23514'; END IF;
+   SELECT parent_segment_id INTO v_next
+   FROM public.v2_activity_segments
+   WHERE id=v_cursor AND activity_id=NEW.activity_id AND user_id=NEW.user_id;
+   -- Missing or cross-owner parent is rejected by the same-owner FK.
+   IF NOT FOUND THEN EXIT; END IF;
+   v_cursor:=v_next;
+ END LOOP;
+ RETURN NEW;
+END;
+$segment_guard$;
+CREATE TRIGGER v2_guard_activity_segment_acyclic
+ BEFORE INSERT OR UPDATE OF parent_segment_id ON public.v2_activity_segments
+ FOR EACH ROW EXECUTE FUNCTION allin_private.v2_activity_segment_acyclic_guard_candidate();
+REVOKE ALL ON FUNCTION allin_private.v2_activity_segment_acyclic_guard_candidate()
+ FROM PUBLIC,anon,authenticated,service_role;
+
 -- ALL-243: trusted, source-bound SEGMENT scalar writer for the same canonical
 -- metric_values table as global observations. No new activity/metric store.
 -- PRIVATE CANDIDATE ONLY: never grant a mobile/Coach client EXECUTE.
