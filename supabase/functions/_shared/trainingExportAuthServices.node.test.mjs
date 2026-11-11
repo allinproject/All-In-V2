@@ -33,8 +33,8 @@ function fixture(opts={}) {
    bearerToken:opts.token??token,authClient,serverClient,storageAdapter,archiveSink,
    authorizeDurableRequest:async request=>{
      requests++;
-     return opts.request??{requestId,ownerId:owner,status:'approved',
-       expiresAt:future(),cancelled:false};
+     return (Object.prototype.hasOwnProperty.call(opts,'request')?opts.request:{requestId,ownerId:owner,status:'approved',
+       expiresAt:future(),cancelled:false});
    },
  });
  return {services,get counts(){return {authReads,dbReads,requests}}};
