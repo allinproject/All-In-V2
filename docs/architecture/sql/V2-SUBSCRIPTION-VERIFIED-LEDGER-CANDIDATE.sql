@@ -19,11 +19,17 @@ create table allin_private.v2_subscription_checkout_attempts (
   environment text not null check (environment in ('sandbox','production')),
   provider_checkout_id text not null
     check (length(provider_checkout_id) between 1 and 256),
-  provider_subscription_id text not null
-    check (length(provider_subscription_id) between 1 and 256),
+  -- The subscription ID does not exist until Stripe confirms checkout.
+  provider_subscription_id text
+    check (provider_subscription_id is null or length(provider_subscription_id) between 1 and 256),
   state text not null
-    check (state = 'server_confirmed'),
-  verified_at timestamptz not null,
+    check (state in ('pending','server_confirmed')),
+  verified_at timestamptz,
+  constraint v2_checkout_state_provenance check (
+    (state = 'pending' and provider_subscription_id is null and verified_at is null)
+    or
+    (state = 'server_confirmed' and provider_subscription_id is not null and verified_at is not null)
+  ),
   unique (provider,environment,provider_checkout_id),
   unique (attempt_id,owner_id,provider,environment,provider_subscription_id)
 );
@@ -79,6 +85,126 @@ revoke all on allin_private.v2_subscription_purchases from public, anon, authent
 revoke all on allin_private.v2_subscription_verified_events from public, anon, authenticated;
 revoke all on sequence allin_private.v2_subscription_verified_events_id_seq
   from public, anon, authenticated;
+
+
+-- Source-only candidate: trusted checkout worker creates the pending record
+-- after authenticating the session owner and creating a Stripe Checkout Session.
+-- The original account is captured and cannot be rewritten by a webhook.
+create or replace function allin_private.v2_register_pending_subscription_checkout(
+  p_attempt_id uuid, p_owner_id uuid, p_authenticated_owner_id uuid,
+  p_provider text, p_environment text, p_provider_checkout_id text
+)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $
+declare
+  v_attempt allin_private.v2_subscription_checkout_attempts%rowtype;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'pending checkout requires service role' using errcode='42501';
+  end if;
+  if p_attempt_id is null or p_owner_id is null or
+     p_authenticated_owner_id is distinct from p_owner_id or
+     p_provider not in ('app_store','google_play','stripe_web') or
+     p_environment not in ('sandbox','production') or
+     p_provider_checkout_id is null or
+     length(p_provider_checkout_id) not between 1 and 256
+  then
+    raise exception 'invalid authenticated pending checkout' using errcode='22023';
+  end if;
+
+  -- Serialize repeat requests with the same server-owned attempt ID.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    p_attempt_id::text, 0));
+  select * into v_attempt
+    from allin_private.v2_subscription_checkout_attempts
+   where attempt_id = p_attempt_id for update;
+  if found then
+    if v_attempt.owner_id <> p_owner_id or
+       v_attempt.provider <> p_provider or
+       v_attempt.environment <> p_environment or
+       v_attempt.provider_checkout_id <> p_provider_checkout_id then
+      raise exception 'pending checkout ownership or identity collision'
+        using errcode='42501';
+    end if;
+    return case when v_attempt.state = 'pending'
+                then 'already_pending' else 'already_confirmed' end;
+  end if;
+  insert into allin_private.v2_subscription_checkout_attempts(
+    attempt_id,owner_id,provider,environment,provider_checkout_id,
+    provider_subscription_id,state,verified_at
+  ) values (
+    p_attempt_id,p_owner_id,p_provider,p_environment,p_provider_checkout_id,
+    null,'pending',null
+  );
+  return 'pending';
+end;
+$;
+revoke all on function allin_private.v2_register_pending_subscription_checkout(
+  uuid,uuid,uuid,text,text,text
+) from public, anon, authenticated;
+
+-- The worker must independently retrieve the completed checkout and current
+-- subscription from the intended provider/merchant before calling this.
+-- It passes the authenticated owner captured by the pending attempt, not a
+-- user ID or metadata taken from a customer-supplied webhook.
+create or replace function allin_private.v2_confirm_pending_subscription_checkout(
+  p_attempt_id uuid, p_owner_id uuid, p_provider text, p_environment text,
+  p_provider_checkout_id text, p_provider_subscription_id text
+)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $
+declare
+  v_attempt allin_private.v2_subscription_checkout_attempts%rowtype;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'checkout confirmation requires service role' using errcode='42501';
+  end if;
+  if p_attempt_id is null or p_owner_id is null or
+     p_provider not in ('app_store','google_play','stripe_web') or
+     p_environment not in ('sandbox','production') or
+     p_provider_checkout_id is null or
+     length(p_provider_checkout_id) not between 1 and 256 or
+     p_provider_subscription_id is null or
+     length(p_provider_subscription_id) not between 1 and 256
+  then
+    raise exception 'invalid verified checkout confirmation' using errcode='22023';
+  end if;
+  select * into v_attempt
+    from allin_private.v2_subscription_checkout_attempts
+   where attempt_id=p_attempt_id for update;
+  if not found then
+    raise exception 'checkout was not created by our trusted server'
+      using errcode='42501';
+  end if;
+  if v_attempt.owner_id <> p_owner_id or v_attempt.provider <> p_provider or
+     v_attempt.environment <> p_environment or
+     v_attempt.provider_checkout_id <> p_provider_checkout_id then
+    raise exception 'verified checkout does not match original owner or session'
+      using errcode='42501';
+  end if;
+  if v_attempt.state = 'server_confirmed' then
+    if v_attempt.provider_subscription_id <> p_provider_subscription_id then
+      raise exception 'confirmed subscription identity cannot change'
+        using errcode='42501';
+    end if;
+    return 'already_confirmed';
+  end if;
+  update allin_private.v2_subscription_checkout_attempts
+     set provider_subscription_id=p_provider_subscription_id,
+         state='server_confirmed',verified_at=now()
+   where attempt_id=p_attempt_id and state='pending';
+  return 'confirmed';
+end;
+$;
+revoke all on function allin_private.v2_confirm_pending_subscription_checkout(
+  uuid,uuid,text,text,text,text
+) from public, anon, authenticated;
 
 -- Service-only binding: the checked-out provider identity and V2 owner must
 -- already be independently verified and stored in the private attempt row.
