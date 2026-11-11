@@ -145,6 +145,11 @@ function OwnedProfileScreen() {
                   <Text style={styles.primaryText}>Edit Profile</Text>
                 </Pressable>
               </Link>
+              <Link href="/profile/subscription-billing" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}>
+                  <Text style={styles.buttonText}>Subscription & Billing</Text>
+                </Pressable>
+              </Link>
             </View>
             <View onLayout={onGuideAnchorLayout("personalize")} style={styles.card}>
               <Text style={styles.section}>Training</Text>
