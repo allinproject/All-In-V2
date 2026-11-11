@@ -106,13 +106,14 @@ BEGIN
  IF NOT FOUND THEN
    RAISE EXCEPTION 'Segment does not belong to activity and owner'
      USING ERRCODE='42501'; END IF;
- -- A segment-specific source must refer to this source when explicitly bound.
- IF v_segment.source_id IS NOT NULL AND v_segment.source_id<>p_source_id THEN
-   RAISE EXCEPTION 'Metric source differs from segment evidence'
-     USING ERRCODE='42501'; END IF;
+ -- A segment's source_id records its primary provenance; other
+ -- independently verified same-owner sources can legitimately contribute
+ -- evidence. Their disagreements must survive as separate sourced rows.
+ -- The source FK, source fingerprint and segment FK are checked above.
+ -- Trusted ingestion still must certify that this source observed this leg.
  -- Parent multisport uses the nearest explicit leg/ancestor sport, not the
- -- synthetic parent label. Cycles are rejected by the 32-hop cap; schema's
- -- same-owner FK alone does not prove a noncyclic hierarchy.
+ -- synthetic parent label. The depth cap bounds traversal; cyclic hierarchy
+ -- mutation remains prohibited by a separate owner/trigger acceptance gate.
  WITH RECURSIVE lineage AS (
    SELECT seg.id,seg.parent_segment_id,seg.sport,0 AS depth,
           ARRAY[seg.id]::uuid[] AS visited
