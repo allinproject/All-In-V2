@@ -67,6 +67,16 @@ The adapter verifies expected owner and activity identity, screens the caller's 
 
 Tests cover valid owner-bound reads, account switching during a request, foreign/wrong activity identities, cancelled views, invalid/missing definitions/sources, duplicate/conflicting metrics, low-quality or rejected inputs, and present-but-zero vs absent. GitHub Actions smoke run `43026872609` passed. **No actual backend RPC, deployed tables, signed-in mobile read or device verification was completed** by this slice.
 
+## Canonical sport/subtype compatibility gate — 2026-11-11
+
+The canonical ALL-243 proposal uses sport identities such as `running`, `cycling`, `swimming`, `rucking`, `stair`. The imported V1 presentation baseline uses display categories such as `outdoor_run`, `outdoor_ride`, `pool_swim`, `open_water_swim`, `stairs`. Without an explicit adapter, the owner-read boundary would reject valid canonical activities.
+
+`completedActivitySportAdapter.ts` now supplies a **reviewable, tested mapping** from canonical sport + explicit subtype to the correct V1 display policy; `completedActivityOwnerRead.ts` uses that mapping while validating metric definition applicability to the actual canonical sport. Road/trail remains **editable post-workout metadata**, not a pre-workout prompt or a different workout identity. Trail runs use the outdoor run statistic policy with recorded terrain preserved for the screen; indoor trainer/treadmill and pool/open water use separate appropriate policies. Unknown or incompatible subtypes are refused instead of silently reclassified.
+
+**Rowing remains a coverage gap:** the canonical V2 sport list includes rowing but V1's 17 display categories do not have a rowing-specific policy. The mapping explicitly falls back to `other` without claiming rowing-specific stats are implemented; resolve this with a sport-appropriate metric registry and approved presentation. For outdoor/indoor rowing, capture actual stroke rate, distance/split, watts and machine telemetry only where sourced.
+
+Tested the mapping and amended owner-read/screen-model assertions (including retained Road/Trail) in GitHub smoke `43027684119` (success). **This is not a deployed schema, workout query or permission to invent a rowing screen.**
+
 ## Current evidence / outstanding gaps
 
 - [x] Exact 17-sport **V1 native scalar** Overview/Details baseline is in V2 and unit-test guarded.
