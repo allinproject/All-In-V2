@@ -46,6 +46,14 @@ BEGIN
   RAISE EXCEPTION 'Unregistered user-data table incorrectly accepted by export';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  DROP TABLE public.v2_unregistered_owner_export_probe;
+ -- Private owner data is also in the canonical export coverage boundary.
+ -- An unregistered allin_private table must fail closed, not be omitted.
+ CREATE TABLE allin_private.v2_unregistered_private_owner_export_probe(user_id uuid);
+ BEGIN
+  PERFORM public.v2_export_my_account_snapshot(v_owner);
+  RAISE EXCEPTION 'Unregistered private owner-data table incorrectly accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ DROP TABLE allin_private.v2_unregistered_private_owner_export_probe;
  -- The allowlisted schema must recover after the incompatible table goes away.
  v:=public.v2_export_my_account_snapshot(v_owner);
  IF v#>>'{training_activity,ownerId}'<>v_owner::text
