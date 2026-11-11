@@ -11,7 +11,7 @@ import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
 /**
  * Today is the one existing /home entry point.
  * No placeholder metric or workout is presented as a verified athlete fact.
- * Canonical Training, Nutrition and Kitchen readers will populate these sections
+ * Canonical Training, Nutrition, Progress and Recovery readers populate these sections
  * through their respective domain owners; this screen must not create shadow state.
  */
 export default function HomeScreen() {
@@ -104,8 +104,13 @@ function HomeOwnerScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Kitchen reminders</Text>
-          <Text style={styles.help}>Meal Prep and Cook Now reminders will appear here from your actual plan and preferences. No reminders are scheduled by this placeholder.</Text>
+          <Text style={styles.sectionTitle}>Progress</Text>
+          <Text style={styles.help}>Your sport- and goal-specific progress summary is not connected yet. No performance statistics are being inferred.</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Recovery</Text>
+          <Text style={styles.help}>Your current Recovery assessment is not connected yet. No recovery recommendation is being inferred.</Text>
         </View>
 
         <Text style={styles.account}>Signed in as {user.email ?? 'your V2 account'}</Text>
