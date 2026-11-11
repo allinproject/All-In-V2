@@ -51,6 +51,80 @@ create table public.v2_profiles (
 );
 -- Include the canonical candidate, then run the real two-owner SQL fixture.
 \ir ../docs/architecture/sql/V2-COACH-OWNER-MIGRATION-CANDIDATE.sql
+-- ALL-222 exact privileged API surface. Detect new unapproved Coach RPCs
+-- and overloads; Auth thread/read functions are intentionally authenticated,
+-- but all claim/append/finalize model-spend writers are service-only.
+do $coach_acl_inventory$
+declare
+  f record;
+  t record;
+  signature text;
+  auth_allowed text[]:=array[
+    'public.v2_coach_create_thread(uuid,uuid)',
+    'public.v2_coach_read_messages(uuid,uuid,timestamp with time zone,uuid,integer)',
+    'public.v2_coach_read_exchange(uuid,uuid,uuid,uuid,uuid)'
+  ];
+  service_allowed text[]:=array[
+    'public.v2_coach_claim_turn(uuid,uuid,uuid,uuid,uuid,text)',
+    'public.v2_coach_append_exchange(uuid,uuid,uuid,uuid,uuid,bigint,text,text)',
+    'public.v2_coach_finish_turn(uuid,uuid,uuid,uuid,bigint)'
+  ];
+  function_count integer:=0;
+  table_count integer:=0;
+begin
+  for f in
+    select p.oid,p.proconfig,n.nspname,p.proname
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname in ('public','allin_private')
+      and p.proname like 'v2_coach_%'
+  loop
+    function_count:=function_count+1;
+    signature:=f.oid::regprocedure::text;
+    if not ('search_path=""'=any(f.proconfig)) then
+      raise exception 'Coach RPC % lacks pinned empty search_path',signature;
+    end if;
+    if has_function_privilege('anon',f.oid,'EXECUTE') or
+       has_function_privilege('authenticated',f.oid,'EXECUTE')
+         is distinct from (signature=any(auth_allowed)) or
+       has_function_privilege('service_role',f.oid,'EXECUTE')
+         is distinct from (signature=any(service_allowed)) then
+      raise exception 'Unapproved Coach RPC grants: %',signature;
+    end if;
+  end loop;
+  if function_count<>6 then
+    raise exception 'Unexpected Coach RPC count: %',function_count;
+  end if;
+  for t in
+    select c.oid,c.relrowsecurity,n.nspname,c.relname
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace
+     where n.nspname in ('public','allin_private')
+       and c.relkind in ('r','p')
+       and c.relname like 'v2_coach_%'
+  loop
+    table_count:=table_count+1;
+    if not t.relrowsecurity then
+      raise exception 'Coach %.% has no RLS',t.nspname,t.relname;
+    end if;
+    if has_table_privilege('anon',t.oid,'SELECT') or
+       has_table_privilege('authenticated',t.oid,'INSERT') or
+       has_table_privilege('authenticated',t.oid,'UPDATE') or
+       has_table_privilege('authenticated',t.oid,'DELETE') or
+       has_table_privilege('authenticated',t.oid,'TRUNCATE') or
+       has_table_privilege('authenticated',t.oid,'REFERENCES') or
+       has_table_privilege('authenticated',t.oid,'TRIGGER') or
+       has_table_privilege('authenticated',t.oid,'SELECT')
+         is distinct from (t.nspname='public' and
+           t.relname in ('v2_coach_threads','v2_coach_messages')) then
+       raise exception 'Coach %.% client table grants drift',t.nspname,t.relname;
+    end if;
+  end loop;
+  if table_count<>4 then
+    raise exception 'Unexpected Coach owner table count: %',table_count;
+  end if;
+  raise notice 'PASS ALL-222 Coach exact RPC/table grants and RLS';
+end;
+$coach_acl_inventory$;
+
 \ir ../supabase/tests/v2_coach_owner_atomic_exchange_rollback.sql
 
 -- The included fixture must have rolled back both bootstrap and draft schema.
