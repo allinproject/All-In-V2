@@ -8,6 +8,7 @@ import { assertV2SessionOwner, readV2OwnedProfileState } from '../../src/auth/ac
 import { v2AuthenticatedScreenKey } from '../../src/auth/authRoute';
 import { normalizeV2DisplayName, profileOwnerMatches } from '../../src/auth/profileEditor';
 import { profileAvatarInitials } from '../../src/features/profile/profileIdentityPresentation';
+import { PublicProfilePreview } from '../../src/features/profile/PublicProfilePreview';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
 
@@ -118,6 +119,7 @@ function OwnedEditProfile() {
               <Text style={styles.label}>Location (optional)</Text>
               <View style={styles.unavailable}><Text style={styles.muted}>General location is not stored or shared by this screen yet.</Text></View>
             </View>
+            <PublicProfilePreview draftDisplayName={displayName} />
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Community Visibility</Text>
               <SettingRow title="Private Account" detail="Follower and shared-content privacy controls are not connected yet." />
