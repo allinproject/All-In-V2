@@ -7,6 +7,7 @@ import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { readV2OwnedProfileState } from '../src/auth/accessGateClient';
 import { v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { profileOwnerMatches } from '../src/auth/profileEditor';
+import { profileAvatarInitials, profileIdentityDisplay } from '../src/features/profile/profileIdentityPresentation';
 import { supabase } from '../src/lib/supabase';
 import { colors } from '../src/theme/tokens';
 import { GuidedTourPanel } from '../src/features/tutorials/GuidedTourPanel';
@@ -128,8 +129,15 @@ function OwnedProfileScreen() {
           <>
             <View onLayout={onGuideAnchorLayout("account")} style={[styles.card, highlightedTarget==="account" && styles.guideTarget]}>
               <Text style={styles.section}>About Me</Text>
-              <Text style={styles.label}>DISPLAY NAME</Text>
-              <Text style={styles.white}>{snapshot.profile?.display_name || 'Not set'}</Text>
+              <View style={styles.identityRow}>
+                <View style={styles.identityAvatar} accessibilityLabel="Profile photo placeholder">
+                  <Text style={styles.identityInitials}>{profileAvatarInitials(snapshot.profile?.display_name)}</Text>
+                </View>
+                <View style={styles.identityDetails}>
+                  <Text style={styles.identityName}>{profileIdentityDisplay(snapshot.profile?.display_name)}</Text>
+                  <Text style={styles.muted}>Private account settings</Text>
+                </View>
+              </View>
               <Text style={styles.label}>ACCOUNT EMAIL</Text>
               <Text style={styles.white}>{user.email ?? 'Email unavailable'}</Text>
               <Link href="/profile/edit" asChild>
@@ -220,6 +228,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, fontWeight: '800', color: colors.warmWhite },
   card: { padding: 18, gap: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   guideTarget: { borderColor: colors.gold, borderWidth: 2 },
+  identityRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  identityAvatar: { width: 66, height: 66, borderRadius: 33, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
+  identityInitials: { color: colors.goldSoft, fontSize: 22, fontWeight: '800' },
+  identityDetails: { flex: 1, gap: 5 },
+  identityName: { color: colors.warmWhite, fontSize: 20, fontWeight: '800' },
   section: { fontSize: 19, fontWeight: '800', color: colors.warmWhite },
   label: { color: colors.mutedText, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   white: { color: colors.warmWhite, fontSize: 14 },
