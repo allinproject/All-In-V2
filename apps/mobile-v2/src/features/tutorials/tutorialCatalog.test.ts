@@ -13,8 +13,8 @@ test('catalog has stable, unique tutorial ids and ordered categories',()=>{
 });
 test('the V2 catalog does not claim placeholder workspaces have usable tutorials',()=>{
   assert.deepEqual(publishedTutorials(),[]);
-  assert.deepEqual(V2_TUTORIAL_CATALOG.filter(canStartTutorial).map(t=>t.id),['profile-settings']);
-  assert.ok(V2_TUTORIAL_CATALOG.filter(t=>t.id!=='profile-settings').every(t=>!canStartTutorial(t)));
+  assert.deepEqual(V2_TUTORIAL_CATALOG.filter(canStartTutorial).map(t=>t.id),['profile-settings','sports-interests']);
+  assert.ok(V2_TUTORIAL_CATALOG.filter(t=>!['profile-settings','sports-interests'].includes(t.id)).every(t=>!canStartTutorial(t)));
 });
 test('tutorial readiness gates are not equivalent to working screen links',()=>{
   const entry: TutorialEntry={id:'example',title:'Example',category:'Training',summary:'Sample',
