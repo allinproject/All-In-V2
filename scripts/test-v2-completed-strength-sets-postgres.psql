@@ -56,7 +56,7 @@ BEGIN
   VALUES('00000000-0000-4000-8000-000000000002',other,b,exercise,source_id,2,
    'bodyweight',8,'bodyweight','unverified',repeat('a',64));
   RAISE EXCEPTION 'Foreign account reused exercise/source';
- EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ EXCEPTION WHEN invalid_parameter_value OR foreign_key_violation THEN NULL; END;
  BEGIN
   INSERT INTO public.v2_activity_strength_sets(
    id,activity_id,user_id,exercise_segment_id,source_id,set_index,set_kind,reps,
