@@ -104,6 +104,14 @@ The [true two-session race harness](../../supabase/tests/all251_true_two_session
 
 **Release gate unchanged:** worker not deployed or scheduled; V2 deletion processing OFF, external signup/legal publication closed. Remaining real Auth Admin, true independent PostgreSQL concurrency, end-to-end multi-device/JWT, iPhone/build, retention/notice/legal acceptance.
 
+## 2026-11-11 — Owner-scoped data export foundation
+
+ALL-251 also owns **data export**. Applied [`20261111134456_v2_owner_bound_current_data_export_snapshot.sql`](../../supabase/migrations/20261111134456_v2_owner_bound_current_data_export_snapshot.sql), adding `public.v2_export_my_account_snapshot(p_expected_user_id uuid)` as an owner-verified, authenticated-only current-schema JSON snapshot. It independently verifies the active Auth user exists and matches the exact expected owner. It includes available V2 Auth account basics (not secret hashes/tokens), profile, settings, onboarding, legal acceptances, opt-in health considerations, owner action logs, deletion request and unfinished deletion audit. It **refuses** to run if any future `user_id`-owned V2 table is not part of the explicitly reviewed export coverage, if a Storage bucket exists, or if the inline response exceeds 5 MB. Those failures demand an export-capable workflow rather than silently omitting data.
+
+The saved [rollback owner-isolation and future-table coverage test](../../supabase/tests/all251_account_export_owner_coverage_rollback.sql) executed successfully on V2: Account A's snapshot contained its own profile/email and not Account B's details; A could not request B's export; a stale JWT after deleting A's Auth user was denied; and an extra uncovered user-owned table prevented export. All synthetic changes rolled back. The corresponding RPC is declared in `apps/mobile-v2/src/types/database.types.ts`.
+
+**NOT YET USER-DELIVERABLE:** no FileSystem/Sharing dependency currently exists in `mobile-v2`, and this change did **not** add a Profile export button, write sensitive snapshots to device storage, or claim downloadable file support. Before a real user-facing export, implement secure file delivery with device-owner/session checks, size/streaming handling, protected temporary files and cleanup, media/third-party and indirect-owner coverage, safe screen UX/confirmation, iPhone acceptance and privacy approval. The function deliberately returns an error as V2 grows until those domains are reviewed.
+
 ## The actual deletion processor must still do all of the following
 
 1. Trusted server-side authentication and authorization; never expose service key/admin deletion to mobile clients. No silent scheduled claims or broad user enumerations.
