@@ -10,10 +10,10 @@ type Result=Readonly<{data?:unknown;error?:unknown;response?:{status?:number}}>;
 export type BillingFunctionsClient=Readonly<{
   invoke:(name:string,options:{method:'GET'|'POST';body?:unknown})=>Promise<Result>;
 }>;
-const uuid=s=>typeof s==='string'&&
+const uuid=(s:unknown):s is string=>typeof s==='string'&&
   /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(s);
-const product=s=>typeof s==='string'&&/^[A-Za-z0-9_.-]{3,180}$/.test(s);
-const hash=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
+const product=(s:unknown)=>typeof s==='string'&&/^[A-Za-z0-9_.-]{3,180}$/.test(s);
+const hash=(s:unknown)=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
 export function createNativeBillingServerClient({
   client,getOwner,
 }:{
@@ -25,21 +25,32 @@ export function createNativeBillingServerClient({
   android:{productId:string;basePlanId:string;obfuscatedAccountId:string};
 }>}{
   const owner=()=>{const id=getOwner();if(!id||!uuid(id))throw Error('billing_owner_unavailable');return id};
-  const changed=id=>getOwner()!==id;
+  const changed=(id:string)=>getOwner()!==id;
   return Object.freeze({
     async getAccountContext(){
       const id=owner();
       const {data,error}=await client.invoke('v2-native-subscription-verify',{
         method:'GET',
       });
-      if(error||changed(id)||!data||data.code!=='native_billing_context'||
-         data.ios?.appAccountToken?.toLowerCase()!==id.toLowerCase()||
-         !product(data.ios?.productId)||
-         !product(data.android?.productId)||
-         !product(data.android?.basePlanId)||
-         !hash(data.android?.obfuscatedAccountId))
+      const payload=data as null|{
+        code?:string;
+        ios?:{productId?:string;appAccountToken?:string};
+        android?:{productId?:string;basePlanId?:string;obfuscatedAccountId?:string};
+      };
+      if(error||changed(id)||payload?.code!=='native_billing_context'||
+         payload.ios?.appAccountToken?.toLowerCase()!==id.toLowerCase()||
+         !product(payload.ios?.productId)||
+         !product(payload.android?.productId)||
+         !product(payload.android?.basePlanId)||
+         !hash(payload.android?.obfuscatedAccountId))
         throw Error('billing_context_unavailable');
-      return {ownerId:id,ios:{...data.ios},android:{...data.android}};
+      return {ownerId:id,ios:{
+        productId:payload.ios!.productId!,appAccountToken:payload.ios!.appAccountToken!,
+      },android:{
+        productId:payload.android!.productId!,
+        basePlanId:payload.android!.basePlanId!,
+        obfuscatedAccountId:payload.android!.obfuscatedAccountId!,
+      }};
     },
     async submitEvidence({ownerId,evidence}:{
       ownerId:string;evidence:NativePurchaseEvidence;
@@ -55,8 +66,9 @@ export function createNativeBillingServerClient({
         method:'POST',body,
       });
       if(changed(id))return 'rejected';
-      if(!error&&data?.code==='verified')return 'verified';
-      if(data?.code==='acknowledgement_required')return 'pending';
+      const payload=data as null|{code?:string};
+      if(!error&&payload?.code==='verified')return 'verified';
+      if(payload?.code==='acknowledgement_required')return 'pending';
       return 'rejected';
     },
     async readOwnerEntitlement(ownerId:string){
@@ -65,9 +77,10 @@ export function createNativeBillingServerClient({
       const {data,error}=await client.invoke('v2-billing-entitlement',{
         method:'GET',
       });
-      if(error||changed(id)||typeof data?.entitled!=='boolean')
+      const payload=data as null|{entitled?:boolean};
+      if(error||changed(id)||typeof payload?.entitled!=='boolean')
         throw Error('entitlement_unavailable');
-      return {entitled:data.entitled};
+      return {entitled:payload.entitled};
     },
   });
 }
