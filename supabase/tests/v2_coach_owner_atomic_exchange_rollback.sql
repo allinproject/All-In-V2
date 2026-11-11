@@ -94,10 +94,13 @@ begin
  end if;
 end;
 $policy$;
--- Only the isolated fixture temporarily enables the provisional admission
--- policy. This change is inside the enclosing ROLLBACK transaction.
+-- Only the disposable database administrator can enable the provisional
+-- admission policy. Never grant a client or regular service caller UPDATE
+-- permission on the policy singleton. Everything rolls back.
+reset role;
 update allin_private.v2_coach_request_policy set enabled=true
  where singleton=true;
+set local role service_role;
 -- Trusted host obtains the canonical claim BEFORE invoking any provider.
 select public.v2_coach_claim_turn(
  'aa11aa11-1111-4111-8111-111111111111',
