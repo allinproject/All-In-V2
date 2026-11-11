@@ -20,9 +20,9 @@ docker exec -i "$cid" psql -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 <<'SQL
 INSERT INTO auth.users (id) VALUES ('00000000-0000-0000-0000-000000000003');
 INSERT INTO public.v2_profiles (user_id) VALUES ('00000000-0000-0000-0000-000000000003');
 INSERT INTO allin_private.v2_subscription_checkout_attempts
- (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id)
+ (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id,state,verified_at)
 VALUES ('10000000-0000-0000-0000-000000000003',
- '00000000-0000-0000-0000-000000000003','stripe_web','sandbox','cs_race','sub_race');
+ '00000000-0000-0000-0000-000000000003','stripe_web','sandbox','cs_race','sub_race','server_confirmed',now());
 SET ROLE service_role;
 SELECT allin_private.v2_bind_confirmed_subscription_purchase(
  '10000000-0000-0000-0000-000000000003');
@@ -96,12 +96,12 @@ INSERT INTO auth.users (id) VALUES ('00000000-0000-0000-0000-000000000004'),
 INSERT INTO public.v2_profiles (user_id) VALUES ('00000000-0000-0000-0000-000000000004'),
  ('00000000-0000-0000-0000-000000000005');
 INSERT INTO allin_private.v2_subscription_checkout_attempts
- (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id)
+ (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id,state,verified_at)
 VALUES
  ('10000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000004',
-  'stripe_web','sandbox','cs_bind_4','sub_bind_race'),
+  'stripe_web','sandbox','cs_bind_4','sub_bind_race','server_confirmed',now()),
  ('10000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000005',
-  'stripe_web','sandbox','cs_bind_5','sub_bind_race');
+  'stripe_web','sandbox','cs_bind_5','sub_bind_race','server_confirmed',now());
 SQL
 
 : >"$log_a"
