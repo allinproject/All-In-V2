@@ -1,11 +1,13 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { File, Paths } from 'expo-file-system';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { v2AuthenticatedScreenKey } from '../../src/auth/authRoute';
 import { assertV2SessionOwner } from '../../src/auth/accessGateClient';
 import { prepareV2AccountExport } from '../../src/features/profile/accountExport';
+import { previewV2AccountExport, removeV2ExportFile } from '../../src/features/profile/accountExportFile';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
 
@@ -19,9 +21,25 @@ function OwnedAccountExport() {
   const owner = user?.id ?? null;
   const mounted = useRef(false);
   const busy = useRef(false);
+  const cachedFile = useRef<File | null>(null);
+  const [fileReady, setFileReady] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // A prior crash may leave a temporary plaintext export in the cache.
+  // Delete it on screen mount and again when this account/session screen unmounts.
+  // Do not delete immediately after preview(): the native viewer may still read it.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const file = new File(Paths.cache, 'allin365-account-export.json');
+    cachedFile.current = file;
+    try { removeV2ExportFile(file); } catch { /* File cleanup can be retried manually. */ }
+    return () => {
+      try { removeV2ExportFile(file); } catch { /* Cache remains OS-managed. */ }
+      cachedFile.current = null;
+    };
+  }, []);
 
   useFocusEffect(useCallback(() => {
     mounted.current = true;
@@ -33,7 +51,7 @@ function OwnedAccountExport() {
   async function shareSnapshot() {
     if (!owner || !mounted.current || busy.current || sharing || !confirming) return;
     if (Platform.OS === 'web') {
-      setError('Native sharing is available in the mobile app. Secure file download is not available yet.');
+      setError('Account JSON file export is available in the iOS and Android app.');
       return;
     }
     busy.current = true;
@@ -46,16 +64,24 @@ function OwnedAccountExport() {
       });
       if (rpcError) throw rpcError;
       const json = prepareV2AccountExport(data, owner);
-      // The account may have changed during the request; never release old-owner data.
+      // Reverify the account after the RPC and before writing any private bytes.
       await assertV2SessionOwner(supabase, owner);
-      if (!mounted.current) return;
-      await Share.share({
-        title: 'ALL IN 365 account data (JSON)',
-        message: json,
+      if (!mounted.current || !cachedFile.current) return;
+      const file = cachedFile.current;
+      setFileReady(false);
+      await previewV2AccountExport(json, file, async () => {
+        await assertV2SessionOwner(supabase, owner);
+        return mounted.current && cachedFile.current === file;
       });
-      if (mounted.current) setConfirming(false);
+      if (mounted.current) {
+        setFileReady(true);
+        setConfirming(false);
+      }
     } catch (cause) {
-      if (mounted.current) setError(cause instanceof Error ? cause.message : 'Could not prepare the account export.');
+      if (mounted.current) {
+        setFileReady(false);
+        setError(cause instanceof Error ? cause.message : 'Could not prepare the account export.');
+      }
     } finally {
       busy.current = false;
       if (mounted.current) setSharing(false);
@@ -76,9 +102,9 @@ function OwnedAccountExport() {
         <Text accessibilityRole="header" style={styles.title}>Export my data</Text>
         <View style={styles.card}>
           <Text style={styles.heading}>Your ALL IN 365 data</Text>
-          <Text style={styles.body}>You can share a JSON text snapshot of the account information currently stored in V2, including your profile, settings, onboarding, legal acceptance, and any health considerations you entered.</Text>
-          <Text style={styles.body}>This is not a downloadable file or a complete long-term archive. It does not yet include future activity, media, or connected-service data. If more data types are added without export support, the export will refuse to proceed instead of silently leaving them out.</Text>
-          <Text style={styles.body}>Your export may contain sensitive personal information. Only share it with an app or person you trust. ALL IN 365 does not save a local export file with this action.</Text>
+          <Text style={styles.body}>Create a JSON file containing the account information currently available in V2, including profile, settings, onboarding, legal acceptance and health considerations you entered.</Text>
+          <Text style={styles.body}>Your device opens the JSON file. You can save or share it using the viewer's available options. It is not yet a complete long-term archive of activities, media, or connected services. Future unsupported data types block export rather than being silently omitted.</Text>
+          <Text style={styles.body}>The file may contain sensitive personal data. A temporary, unencrypted copy is created in app cache and removed when you leave this screen or choose Remove temporary file. Only save or share with a location you trust.</Text>
         </View>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
         <View style={styles.card}>
@@ -88,11 +114,11 @@ function OwnedAccountExport() {
             </Pressable>
           ) : (
             <>
-              <Text style={styles.heading}>Share private account data?</Text>
-              <Text style={styles.body}>This will fetch your current account data and open your device's share sheet with the JSON text. You choose where it goes. Nothing is exported automatically.</Text>
+              <Text style={styles.heading}>Create and open private JSON file?</Text>
+              <Text style={styles.body}>This will request your latest account data, create a temporary JSON file, and open your device's file preview. Nothing is sent to another app unless you explicitly choose to save or share it.</Text>
               <Pressable accessibilityRole="button" accessibilityState={{disabled:sharing,busy:sharing}}
                 disabled={sharing} style={styles.button} onPress={() => void shareSnapshot()}>
-                {sharing ? <ActivityIndicator color={colors.gold} /> : <Text style={styles.buttonText}>Share JSON account data</Text>}
+                {sharing ? <ActivityIndicator color={colors.gold} /> : <Text style={styles.buttonText}>Create and open JSON file</Text>}
               </Pressable>
               <Pressable accessibilityRole="button" disabled={sharing} style={styles.button}
                 onPress={() => setConfirming(false)}>
@@ -101,6 +127,22 @@ function OwnedAccountExport() {
             </>
           )}
         </View>
+        {fileReady ? (
+          <View style={styles.card}>
+            <Text style={styles.body}>A temporary account export file is in the app cache. Remove it after saving to a trusted location.</Text>
+            <Pressable accessibilityRole="button" disabled={sharing} style={styles.button}
+              onPress={() => {
+                try {
+                  removeV2ExportFile(cachedFile.current);
+                  setFileReady(false);
+                } catch {
+                  setError('Could not remove the temporary export file. Close and reopen the screen to retry.');
+                }
+              }}>
+              <Text style={styles.buttonText}>Remove temporary export file</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
