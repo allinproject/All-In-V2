@@ -25,10 +25,10 @@ function fixture(){
  accessGateReady:true,activePlanRevisionId:revision,startDate,events:[...events],
  eventBindings:[...bindings],
  plannedSnapshot:{ownerId:owner,authSessionGeneration:generation,fromDate:startDate,
-  throughDate:'2027-06-05',snapshotVersion:'snapshot-9',complete:true,nextCursor:null,
+  throughDate:'2027-06-05',snapshotVersion:'snapshot-9',complete:true,nextCursor:null as string|null,
   records:[...plannedRows]},
  daySnapshot:{ownerId:owner,authSessionGeneration:generation,fromDate:startDate,
-  throughDate:'2027-06-05',snapshotVersion:'snapshot-9',complete:true,nextCursor:null,
+  throughDate:'2027-06-05',snapshotVersion:'snapshot-9',complete:true,nextCursor:null as string|null,
   records:[...dayRows]}}
 }
 test('certified current-revision owner calendar builds one season with exact A and B events',()=>{
