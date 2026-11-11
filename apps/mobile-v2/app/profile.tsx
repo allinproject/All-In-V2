@@ -53,7 +53,7 @@ function OwnedProfileScreen() {
     setHighlightedTarget(target);
     scrollToGuideTarget();
   }, [scrollToGuideTarget]);
-  const onGuideAnchorLayout = useCallback((target: 'account' | 'help' | 'legal' | 'personalize') => (event: LayoutChangeEvent) => {
+  const onGuideAnchorLayout = useCallback((target: 'account' | 'help' | 'legal' | 'personalize' | 'nutrition') => (event: LayoutChangeEvent) => {
     guideLayouts.current.sections[target] = event.nativeEvent.layout.y;
     scrollToGuideTarget();
   }, [scrollToGuideTarget]);
@@ -127,88 +127,78 @@ function OwnedProfileScreen() {
         {!loading && snapshot ? (
           <>
             <View onLayout={onGuideAnchorLayout("account")} style={[styles.card, highlightedTarget==="account" && styles.guideTarget]}>
-              <Text style={styles.label}>ACCOUNT EMAIL</Text>
-              <Text style={styles.white}>{user.email ?? 'Email unavailable'}</Text>
+              <Text style={styles.section}>About Me</Text>
               <Text style={styles.label}>DISPLAY NAME</Text>
               <Text style={styles.white}>{snapshot.profile?.display_name || 'Not set'}</Text>
+              <Text style={styles.label}>ACCOUNT EMAIL</Text>
+              <Text style={styles.white}>{user.email ?? 'Email unavailable'}</Text>
               <Link href="/profile/edit" asChild>
                 <Pressable accessibilityRole="button" style={styles.primaryButton}>
                   <Text style={styles.primaryText}>Edit Profile</Text>
                 </Pressable>
               </Link>
-              <Text style={styles.section}>Account</Text>
-              <Link href="/profile/legal-documents" asChild>
-                <Pressable accessibilityRole="button" accessibilityHint="Review the current legal documents" style={styles.button}>
-                  <Text style={styles.buttonText}>Legal documents</Text>
-                </Pressable>
-              </Link>
-              <Link href="/profile/account-export" asChild>
-                <Pressable accessibilityRole="button" accessibilityHint="Review and share your current V2 account data as JSON text" style={styles.button}>
-                  <Text style={styles.buttonText}>Export my data</Text>
-                </Pressable>
-              </Link>
-              <Text style={styles.muted}>Share a current V2 account snapshot as JSON text. Secure file download is coming later.</Text>
-              <Link href="/profile/account-deletion" asChild>
-                <Pressable accessibilityRole="button" accessibilityHint="View account deletion status and information" style={styles.button}>
-                  <Text style={styles.buttonText}>Delete account</Text>
-                </Pressable>
-              </Link>
-              <Text style={styles.muted}>Deletion is not available yet while the secure V2 workflow is being built.</Text>
             </View>
             <View onLayout={onGuideAnchorLayout("personalize")} style={styles.card}>
-              <Text style={styles.section}>Personalize ALL IN</Text>
+              <Text style={styles.section}>Training</Text>
               <Link href="/profile/sports" asChild>
-                <Pressable onLayout={onPersonalizeChildLayout("sports")} accessibilityRole="button" accessibilityHint="Open your training focus and active activities" style={[styles.button, highlightedTarget==="sports" && styles.guideTarget]}>
-                  <Text style={styles.buttonText}>Sports & Interests</Text>
+                <Pressable onLayout={onPersonalizeChildLayout("sports")} accessibilityRole="button" style={[styles.button, highlightedTarget==="sports" && styles.guideTarget]}>
+                  <Text style={styles.buttonText}>Sports & Training Focus</Text>
                 </Pressable>
               </Link>
-              <Text style={styles.muted}>Training Focus and Active Activities</Text>
               <Link href="/profile/equipment-gear" asChild>
-                <Pressable accessibilityRole="button" style={styles.button}>
-                  <Text style={styles.buttonText}>Equipment & Gear</Text>
-                </Pressable>
+                <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Equipment & Gear</Text></Pressable>
               </Link>
-              <Text style={styles.muted}>Training locations, confirmed gym equipment, and personal gear</Text>
+              <Text style={styles.muted}>Shoes, bikes, training locations and equipment</Text>
               <Link href="/profile/weekly-routine" asChild>
-                <Pressable accessibilityRole="button" style={styles.button}>
-                  <Text style={styles.buttonText}>Weekly Routine</Text>
-                </Pressable>
+                <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Weekly Routine</Text></Pressable>
               </Link>
-              <Text style={styles.muted}>Usual training times, grocery shopping and meal-prep days</Text>
-              <Link href="/profile/kitchen" asChild>
-                <Pressable onLayout={onPersonalizeChildLayout("kitchen")} accessibilityRole="button" accessibilityHint="Edit your cooking equipment and reheating setup" style={[styles.button, highlightedTarget==="kitchen" && styles.guideTarget]}>
-                  <Text style={styles.buttonText}>Kitchen</Text>
-                </Pressable>
-              </Link>
-              <Text style={styles.muted}>Home equipment, work reheating, and meal-prep constraints</Text>
               <Link href="/profile/coach-preferences" asChild>
-                <Pressable onLayout={onPersonalizeChildLayout("coach")} accessibilityRole="button" accessibilityHint="Choose how Coach communicates and proposes plan changes" style={[styles.button, highlightedTarget==="coach" && styles.guideTarget]}>
+                <Pressable onLayout={onPersonalizeChildLayout("coach")} accessibilityRole="button" style={[styles.button, highlightedTarget==="coach" && styles.guideTarget]}>
                   <Text style={styles.buttonText}>Coach Preferences</Text>
                 </Pressable>
               </Link>
-              <Text style={styles.muted}>Guidance, explanations, plan-change reviews, and tone</Text>
               <Link href="/profile/health-conditions" asChild>
-                <Pressable accessibilityRole="button" style={styles.button}>
-                  <Text style={styles.buttonText}>Health Conditions</Text>
+                <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Health Considerations</Text></Pressable>
+              </Link>
+              <Text style={styles.muted}>Optional health preferences; availability depends on secure integration</Text>
+            </View>
+            <View onLayout={onGuideAnchorLayout("nutrition")} style={styles.card}>
+              <Text style={styles.section}>Nutrition</Text>
+              <Link href="/profile/kitchen" asChild>
+                <Pressable onLayout={onPersonalizeChildLayout("kitchen")} accessibilityRole="button" style={[styles.button, highlightedTarget==="kitchen" && styles.guideTarget]}>
+                  <Text style={styles.buttonText}>Kitchen & Meal Prep Setup</Text>
                 </Pressable>
               </Link>
-              <Text style={styles.muted}>Optional health considerations; secure saving is not connected yet</Text>
+              <Text style={styles.muted}>Cooking equipment, work reheating and meal-prep constraints</Text>
+              <Text style={styles.muted}>Food-specific preferences will appear here when their canonical settings screens are connected.</Text>
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.section}>Progress</Text>
+              <Text style={styles.muted}>Personal records, milestones, badges and customizable progress are being integrated. No incomplete progress screen is linked here yet.</Text>
+            </View>
+            <View onLayout={onGuideAnchorLayout("legal")} style={[styles.card,highlightedTarget==="legal"&&styles.guideTarget]}>
+              <Text style={styles.section}>Data & Privacy</Text>
+              <Link href="/profile/legal-documents" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Legal Documents</Text></Pressable>
+              </Link>
+              <Link href="/profile/account-export" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Export My Data</Text></Pressable>
+              </Link>
+              <Text style={styles.muted}>Current account snapshot available as JSON text; downloadable files are not ready.</Text>
+              <Link href="/profile/account-deletion" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Account Deletion & Status</Text></Pressable>
+              </Link>
+              <Text style={styles.muted}>Deletion execution is gated until the secure workflow is validated.</Text>
+              <Text style={styles.label}>ACCEPTED LEGAL VERSIONS</Text>
+              <Text style={styles.white}>Terms: {snapshot.latest_legal_acceptance?.terms_version ?? 'Not available'}</Text>
+              <Text style={styles.white}>Privacy: {snapshot.latest_legal_acceptance?.privacy_version ?? 'Not available'}</Text>
+              <Text style={styles.white}>Founder Beta: {snapshot.latest_legal_acceptance?.founder_beta_terms_version ?? 'Not available'}</Text>
             </View>
             <View onLayout={onGuideAnchorLayout("help")} style={[styles.card, highlightedTarget==="help" && styles.guideTarget]}>
               <Text style={styles.section}>Help</Text>
               <Link href="/profile/tutorials" asChild>
-                <Pressable accessibilityRole="button" style={styles.button}>
-                  <Text style={styles.buttonText}>Help & Tutorials</Text>
-                </Pressable>
+                <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Help & Tutorials</Text></Pressable>
               </Link>
-              <Text style={styles.muted}>Explore existing screens and see which V2 guides are being rebuilt</Text>
-            </View>
-            <View onLayout={onGuideAnchorLayout("legal")} style={[styles.card, highlightedTarget==="legal" && styles.guideTarget]}>
-              <Text style={styles.section}>Legal acceptance</Text>
-              <Text style={styles.muted}>Accepted versions for this account</Text>
-              <Text style={styles.white}>Terms: {snapshot.latest_legal_acceptance?.terms_version ?? 'Not available'}</Text>
-              <Text style={styles.white}>Privacy: {snapshot.latest_legal_acceptance?.privacy_version ?? 'Not available'}</Text>
-              <Text style={styles.white}>Founder Beta: {snapshot.latest_legal_acceptance?.founder_beta_terms_version ?? 'Not available'}</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: signingOut, busy: signingOut }}
               disabled={signingOut} style={styles.button} onPress={() => void handleSignOut()}>
