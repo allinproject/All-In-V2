@@ -10,6 +10,73 @@ BEGIN
  THEN RAISE EXCEPTION 'Prerequisite full-stack fixture is absent'; END IF;
 END $assert$;
 
+
+-- Catalog-wide ALL-222 owner boundary. Catch newly added Training, Activity
+-- and Competition objects, not just the few handpicked access probes below.
+-- These are review-only candidates: no direct client access is approved yet.
+DO $candidate_catalog$
+DECLARE
+  tbl record;
+  fn record;
+  api_role text;
+  checked_tables integer:=0;
+  checked_functions integer:=0;
+BEGIN
+  FOR tbl IN
+    SELECT c.oid,c.relname,c.relrowsecurity,n.nspname
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE c.relkind IN ('r','p')
+      AND n.nspname IN ('public','allin_private')
+      AND (c.relname LIKE 'v2_training%' OR
+           c.relname LIKE 'v2_completed%' OR
+           c.relname LIKE 'v2_activity_%' OR
+           c.relname LIKE 'v2_indoor_weekly%')
+  LOOP
+    checked_tables:=checked_tables+1;
+    IF NOT tbl.relrowsecurity THEN
+      RAISE EXCEPTION 'Review-only %.% has RLS disabled',tbl.nspname,tbl.relname;
+    END IF;
+    FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF has_table_privilege(api_role,tbl.oid,'SELECT') OR
+         has_table_privilege(api_role,tbl.oid,'INSERT') OR
+         has_table_privilege(api_role,tbl.oid,'UPDATE') OR
+         has_table_privilege(api_role,tbl.oid,'DELETE') OR
+         has_table_privilege(api_role,tbl.oid,'TRUNCATE') OR
+         has_table_privilege(api_role,tbl.oid,'REFERENCES') OR
+         has_table_privilege(api_role,tbl.oid,'TRIGGER') THEN
+        RAISE EXCEPTION 'Review-only %.% grants table rights to %',
+          tbl.nspname,tbl.relname,api_role;
+      END IF;
+    END LOOP;
+  END LOOP;
+  IF checked_tables<3 THEN
+    RAISE EXCEPTION 'No complete Training and Activity candidate graph to audit';
+  END IF;
+  FOR fn IN
+    SELECT p.oid,p.proname,n.nspname
+    FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname IN ('public','allin_private')
+      AND (p.proname LIKE 'v2_training%' OR
+           p.proname LIKE 'v2_activity_%' OR
+           p.proname LIKE 'v2_completed%' OR
+           p.proname LIKE 'v2_indoor_weekly%')
+  LOOP
+    checked_functions:=checked_functions+1;
+    FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF has_function_privilege(api_role,fn.oid,'EXECUTE') THEN
+        RAISE EXCEPTION 'Unapproved %.% function callable by %',
+          fn.nspname,fn.proname,api_role;
+      END IF;
+    END LOOP;
+  END LOOP;
+  IF checked_functions=0 THEN
+    RAISE EXCEPTION 'No canonical Training and Activity writer RPCs to audit';
+  END IF;
+  RAISE NOTICE 'ALL-222 catalog checked % private/public tables and % RPCs',
+    checked_tables,checked_functions;
+END
+$candidate_catalog$;
+
 SET ROLE anon;
 DO $anonymous$
 BEGIN
