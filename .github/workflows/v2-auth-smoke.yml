@@ -14,6 +14,7 @@ on:
       - 'apps/mobile-v2/src/features/profile/**'
       - 'apps/mobile-v2/src/features/training/**'
       - 'apps/mobile-v2/src/features/strength/**'
+      - 'apps/mobile-v2/src/features/subscriptions/**'
       - 'apps/mobile-v2/src/monitoring/**'
       - 'apps/mobile-v2/package.json'
       - 'apps/mobile-v2/src/types/database.types.ts'
@@ -43,6 +44,7 @@ on:
       - 'apps/mobile-v2/src/features/profile/**'
       - 'apps/mobile-v2/src/features/training/**'
       - 'apps/mobile-v2/src/features/strength/**'
+      - 'apps/mobile-v2/src/features/subscriptions/**'
       - 'apps/mobile-v2/src/monitoring/**'
       - 'apps/mobile-v2/package.json'
       - 'apps/mobile-v2/src/types/database.types.ts'
@@ -113,6 +115,8 @@ jobs:
         run: npm run test:strength
       - name: Run Strength exercise suitability tests
         run: node --experimental-strip-types --test src/features/strength/exerciseSuitability.test.ts
+      - name: Run subscription entitlement contract tests
+        run: npm run test:subscriptions
       - name: Run Sentry crash privacy tests
         run: npm run test:monitoring
       - name: Run provider cache helper tests
