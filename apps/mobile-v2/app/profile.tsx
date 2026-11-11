@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, Redirect, useFocusEffect } from 'expo-router';
+import { Link, Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -9,6 +9,8 @@ import { v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { profileOwnerMatches } from '../src/auth/profileEditor';
 import { supabase } from '../src/lib/supabase';
 import { colors } from '../src/theme/tokens';
+import { GuidedTourPanel } from '../src/features/tutorials/GuidedTourPanel';
+import { PROFILE_GUIDE_STEPS } from '../src/features/tutorials/profileGuide';
 
 type ProfileSnapshot = {
   profile?: { user_id?: string; display_name?: string | null } | null;
@@ -24,6 +26,8 @@ export default function ProfileScreen() {
 
 function OwnedProfileScreen() {
   const { user, loading: authLoading, signOut } = useAuth();
+  const router = useRouter();
+  const { tutorial } = useLocalSearchParams<{ tutorial?: string }>();
   const gate = useAccessGate();
   const ownerId = user?.id ?? null;
   const [snapshot, setSnapshot] = useState<ProfileSnapshot | null>(null);
@@ -94,6 +98,8 @@ function OwnedProfileScreen() {
         ) : null}
         {!loading && snapshot ? (
           <>
+            {tutorial === 'profile-settings' ? <GuidedTourPanel key={ownerId} title="Profile guide"
+              steps={PROFILE_GUIDE_STEPS} onExit={() => router.replace('/profile')} /> : null}
             <View style={styles.card}>
               <Text style={styles.label}>ACCOUNT EMAIL</Text>
               <Text style={styles.white}>{user.email ?? 'Email unavailable'}</Text>
