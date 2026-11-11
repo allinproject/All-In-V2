@@ -1,0 +1,85 @@
+\set ON_ERROR_STOP on
+-- Runs after test-v2-community-visibility-postgres.psql in the same
+-- disposable database. No roles, user accounts or schema are duplicated.
+\ir ../docs/architecture/sql/V2-COMMUNITY-PUBLIC-IDENTITY-READER-CANDIDATE.sql
+
+DO $acl$
+BEGIN
+ IF has_function_privilege('anon',
+    'public.v2_community_public_identity_read(uuid)','EXECUTE')
+ OR has_function_privilege('authenticated',
+    'public.v2_community_public_identity_read(uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'Review-only Public Profile identity reader exposed to API roles';
+ END IF;
+END $acl$;
+
+UPDATE public.v2_profiles SET display_name='Trail Runner'
+WHERE user_id='00000000-0000-0000-0000-000000000002';
+SELECT set_config('request.jwt.claim.sub',
+ '00000000-0000-0000-0000-000000000001',false);
+
+DO $identity$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_public_identity_read(
+    '00000000-0000-0000-0000-000000000002');
+ IF r->>'viewerId'<>'00000000-0000-0000-0000-000000000001'
+    OR r->>'ownerId'<>'00000000-0000-0000-0000-000000000002'
+    OR r->>'displayName'<>'Trail Runner'
+    OR r->>'profileVisibility'<>'public'
+    OR r->>'relationship'<>'not_following'
+    OR r->>'relationshipVersion'<>'5'
+    OR r->>'contentReady'<>'false'
+    OR r->>'shareGeneralArea'<>'false'
+    OR r->>'blocked'<>'false'
+    OR r->>'sharedArea' IS NOT NULL
+    OR r->>'avatarPath' IS NOT NULL
+    OR r ? 'posts' OR r ? 'races' OR r ? 'eventName' THEN
+  RAISE EXCEPTION 'Incomplete or over-sharing Public Profile identity read: %',r;
+ END IF;
+
+ BEGIN
+   PERFORM public.v2_community_public_identity_read(
+     '00000000-0000-0000-0000-000000000001');
+   RAISE EXCEPTION 'Self-target public identity call accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $identity$;
+
+-- Blocked by target: name and any private-location/identity content MUST
+-- be absent in the backend's actual response, not hidden by the client.
+INSERT INTO allin_private.v2_community_blocks(blocker_id,blocked_id)
+VALUES(
+ '00000000-0000-0000-0000-000000000002',
+ '00000000-0000-0000-0000-000000000001'
+);
+DO $blocked$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_public_identity_read(
+  '00000000-0000-0000-0000-000000000002');
+ IF r->>'relationship'<>'blocked_either_way'
+    OR r->>'blocked'<>'true'
+    OR r->>'profileVisibility'<>'private'
+    OR r->>'contentReady'<>'false'
+    OR r->>'displayName' IS NOT NULL
+    OR r->>'avatarPath' IS NOT NULL
+    OR r->>'sharedArea' IS NOT NULL
+ THEN RAISE EXCEPTION 'Blocked target identity was over-shared: %',r; END IF;
+END $blocked$;
+DELETE FROM allin_private.v2_community_blocks
+WHERE blocker_id='00000000-0000-0000-0000-000000000002'
+ AND blocked_id='00000000-0000-0000-0000-000000000001';
+
+SELECT set_config('request.jwt.claim.sub','',false);
+DO $anon$
+BEGIN
+ BEGIN
+  PERFORM public.v2_community_public_identity_read(
+    '00000000-0000-0000-0000-000000000002');
+  RAISE EXCEPTION 'Anonymous identity reader succeeded';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $anon$;
+
+\echo PASS: Public Profile canonical identity-only read never over-fetches blocked names, location, posts or events.
