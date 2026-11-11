@@ -30,3 +30,16 @@ test('rejects version drift and invalid response shape', () => {
 test('refuses oversized temporary file export', () => {
   assert.throws(() => prepareV2AccountExport({...valid(), account:{id:owner, email:'x'.repeat(V2_EXPORT_MAX_CHARS)}},owner), /too large/);
 });
+
+test('rejects a foreign-owned nested profile, even with a matching account ID', () => {
+  const value = { ...valid(), profile: { user_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbb251' } };
+  assert.throws(() => prepareV2AccountExport(value, owner), /other-account/);
+});
+test('rejects foreign-owned action rows', () => {
+  const value = { ...valid(), onboarding_actions: [{user_id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbb251'}] };
+  assert.throws(() => prepareV2AccountExport(value, owner), /other-account/);
+});
+test('requires arrays for collection sections', () => {
+  const value = { ...valid(), legal_acceptances: null };
+  assert.throws(() => prepareV2AccountExport(value, owner), /invalid/);
+});
