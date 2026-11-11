@@ -1,0 +1,54 @@
+name: V2 Community PostgreSQL contract (no deploy)
+
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql'
+      - 'scripts/test-v2-community-sql-postgres.psql'
+      - 'scripts/test-v2-community-writer-postgres.psql'
+      - '.github/workflows/v2-community-postgres.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-community-postgres-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  isolated-postgres:
+    name: Review-only Community candidate PostgreSQL 17 replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: community_contract
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d community_contract"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGUSER: postgres
+      PGDATABASE: community_contract
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute review-only DDL and relationship writer tests
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" mkdir -p /tmp/allin/scripts /tmp/allin/docs/architecture/sql
+          docker cp scripts/test-v2-community-sql-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-community-sql-postgres.psql"
+          docker cp scripts/test-v2-community-writer-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-community-writer-postgres.psql"
+          docker cp docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql"
+          docker cp docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-writer-postgres.psql
