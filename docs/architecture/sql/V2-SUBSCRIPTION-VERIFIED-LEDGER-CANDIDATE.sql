@@ -80,6 +80,67 @@ revoke all on allin_private.v2_subscription_verified_events from public, anon, a
 revoke all on sequence allin_private.v2_subscription_verified_events_id_seq
   from public, anon, authenticated;
 
+-- Service-only binding: the checked-out provider identity and V2 owner must
+-- already be independently verified and stored in the private attempt row.
+-- This function is NOT a provider verifier, checkout initializer, or restore
+-- authorization mechanism. Never expose as an authenticated client RPC.
+create or replace function allin_private.v2_bind_confirmed_subscription_purchase(
+  p_attempt_id uuid
+)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $
+declare
+  v_attempt allin_private.v2_subscription_checkout_attempts%rowtype;
+  v_purchase allin_private.v2_subscription_purchases%rowtype;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'purchase binding requires service role' using errcode='42501';
+  end if;
+  if p_attempt_id is null then
+    raise exception 'missing verified checkout attempt' using errcode='22023';
+  end if;
+  select * into v_attempt
+    from allin_private.v2_subscription_checkout_attempts
+    where attempt_id=p_attempt_id and state='server_confirmed'
+    for update;
+  if not found then
+    raise exception 'checkout attempt is not provider-confirmed'
+      using errcode='42501';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    v_attempt.provider || ':' || v_attempt.environment || ':' ||
+    v_attempt.provider_subscription_id, 0));
+
+  select * into v_purchase
+    from allin_private.v2_subscription_purchases
+   where provider=v_attempt.provider and environment=v_attempt.environment
+     and provider_subscription_id=v_attempt.provider_subscription_id
+   for update;
+  if found then
+    if v_purchase.owner_id <> v_attempt.owner_id or
+       v_purchase.checkout_attempt_id <> v_attempt.attempt_id then
+      raise exception 'existing purchase has different verified owner or checkout'
+        using errcode='42501';
+    end if;
+    return 'already_bound';
+  end if;
+
+  insert into allin_private.v2_subscription_purchases(
+    owner_id,checkout_attempt_id,provider,environment,provider_subscription_id
+  ) values (
+    v_attempt.owner_id,v_attempt.attempt_id,v_attempt.provider,
+    v_attempt.environment,v_attempt.provider_subscription_id
+  );
+  return 'bound';
+end;
+$;
+revoke all on function allin_private.v2_bind_confirmed_subscription_purchase(uuid)
+  from public, anon, authenticated;
+
 -- Privileged service-only transaction. Strictly store verified facts only:
 -- no client grants and no exposed RPC. New purchase binding requires a trusted
 -- checkout/restore authorization and immutable prebinding provenance recorded\n-- as v2_subscription_checkout_attempts BEFORE this function can apply an event.
