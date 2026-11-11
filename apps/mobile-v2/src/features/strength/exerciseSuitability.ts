@@ -138,9 +138,9 @@ function ownerSnapshotIsValid(context: ExerciseSuitabilityOwnerSnapshots): boole
         Boolean(goal) && nonEmpty(goal.goalId) &&
         ['primary','secondary','maintenance'].includes(goal.role) &&
         Array.isArray(goal.sports) && goal.sports.length > 0 &&
-        goal.sports.every((sport) => (SPORT_VALUES as readonly string[]).includes(sport)) &&
+        goal.sports.every((sport: ExerciseSport) => (SPORT_VALUES as readonly string[]).includes(sport)) &&
         Array.isArray(goal.exerciseGoals) && goal.exerciseGoals.length > 0 &&
-        goal.exerciseGoals.every((goalType) => (GOAL_VALUES as readonly string[]).includes(goalType))
+        goal.exerciseGoals.every((goalType: ExerciseGoal) => (GOAL_VALUES as readonly string[]).includes(goalType))
       )) return false;
   if (!Array.isArray(context.restrictions.active) ||
       !context.restrictions.active.every((restriction) =>

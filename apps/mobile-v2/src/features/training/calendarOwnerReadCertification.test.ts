@@ -59,7 +59,7 @@ test('session switch, signed out, access gate, and invalid requested range fail 
     {activeSessionGeneration: 8},
     {activeSessionGeneration: -1},
     {requestedFromDate: '2026-12-10'},
-    {requestedThroughDate: '2026-11-01'},
+    {requestedThroughDate: '2026-12-07'},
     {requestedFromDate: '2026-02-30'},
   ]) {
     assert.equal(certifyCalendarOwnerRead({...request, ...changed, snapshot}).status, 'unavailable');

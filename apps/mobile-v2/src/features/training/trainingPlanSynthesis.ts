@@ -94,7 +94,10 @@ export function synthesizeTrainingWeek(context:TrainingAthletePlanContext,propos
  const issues:TrainingPlanIssue[]=[];
  const ids=new Set<string>(),accepted=new Set(context.existingAcceptedSessionIds??[]);
  const maxPerDay=Math.max(1,Math.min(3,Math.floor(context.maxSessionsPerDay??2)));
- const priorityValue=(s:unknown)=>PRIORITY[(s as TrainingSessionIntent|null)?.priority]??-1;
+ const priorityValue=(s:unknown)=>{
+  const priority=(s as TrainingSessionIntent|null)?.priority;
+  return priority === undefined ? -1 : PRIORITY[priority] ?? -1;
+};
  const safeHard=(s:unknown)=>{const v=s as TrainingSessionIntent|null;return Boolean(v&&(v.intensity==='hard'||v.demand?.aerobic==='high'||v.demand?.localMuscular==='high'||v.demand?.mechanicalImpact==='high'))};
  const ordered=[...proposed].sort((a,b)=>priorityValue(b)-priorityValue(a)||Number(safeHard(b))-Number(safeHard(a)));
  for(const s of ordered){

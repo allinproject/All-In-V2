@@ -4,7 +4,7 @@ const targets=[['mile',1609.344],['5k',5000],['10k',10000],['half_marathon',2109
 const good=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n)&&n>0;
 export function predictRunningPerformances(rows:RunningEvidence[],now=new Date()):RunningPrediction[]{
  const evidence=rows.filter(r=>good(r.distanceMeters)&&r.distanceMeters>=800&&r.distanceMeters<=42195&&good(r.durationSeconds)&&Boolean(r.evidenceId)&&['race','pr','workout','manual'].includes(r.source)&&(!r.observedAt||(Number.isFinite(Date.parse(r.observedAt))&&Date.parse(r.observedAt)<=now.getTime())));
- return targets.map(([key,distanceMeters])=>{
+return targets.map(([key,distanceMeters]): RunningPrediction | null =>{
   if(!evidence.length)return null;
   const sorted=[...evidence].sort((a,b)=>score(b,distanceMeters,now)-score(a,distanceMeters,now)),best=sorted[0];
   const ratio=Math.max(best.distanceMeters,distanceMeters)/Math.min(best.distanceMeters,distanceMeters),exponent=ratio>=20?1.09:ratio>=8?1.075:1.06;

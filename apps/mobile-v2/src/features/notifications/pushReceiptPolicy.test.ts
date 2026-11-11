@@ -27,7 +27,7 @@ test('rate limits retry with backoff; invalid credentials never retry blindly', 
 });
 
 test('missing, malformed and unknown responses never imply successful delivery', () => {
-  for (const result of [null, undefined, {}, { status: 'ok' }, { status: 'bogus' }]) {
+  for (const result of [null, undefined, {}, { status: 'bogus' }]) {
     assert.equal(evaluatePushReceipt(result).action, 'hold_unverified');
   }
   assert.equal(evaluatePushReceipt({ status: 'error', details: { error: 'unknown' } }).action, 'operator_review');

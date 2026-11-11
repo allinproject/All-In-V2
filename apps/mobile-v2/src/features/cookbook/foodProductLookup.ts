@@ -105,7 +105,7 @@ export function parseBrandedFoodNutritionCandidate(
     calcium_mg: numeric(row.calcium_mg),
     iron_mg: numeric(row.iron_mg),
     image_url: clean(row.image_url) || null,
-    source_quality: quality,
+    source_quality: source === 'usda_fdc' ? 'reference_unverified' : 'community_unverified',
     source_license: expectedLicense,
     retrieved_at: retrievedAt,
     review_required: true,

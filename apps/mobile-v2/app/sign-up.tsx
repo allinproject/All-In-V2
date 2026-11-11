@@ -38,10 +38,10 @@ export default function SignUpScreen() {
 
   useEffect(() => {
     let active = true;
-    void supabase.from('v2_legal_documents')
+    void Promise.resolve(supabase.from('v2_legal_documents')
       .select('document_key,version,title,content_markdown,content_sha256,effective_at')
       .eq('status', 'published')
-      .lte('effective_at', new Date().toISOString())
+      .lte('effective_at', new Date().toISOString()))
       .then(({ data, error: readError }) => {
         if (!active) return;
         if (readError) {
@@ -60,8 +60,8 @@ export default function SignUpScreen() {
         if (active) setError('The V2 legal documents could not be loaded. Signup remains unavailable.');
       })
       .finally(() => {
-        if (active) setLoadingDocuments(false);
-      });
+  if (active) setLoadingDocuments(false);
+});
     return () => { active = false; };
   }, []);
 
@@ -129,11 +129,18 @@ export default function SignUpScreen() {
           : `signup-legal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
         pendingAcceptance.current = { scope: acceptanceScope, id: action };
         const byKey = new Map(reviewedDocuments.map(doc => [doc.document_key, doc.version]));
+const termsVersion = byKey.get('terms');
+const privacyVersion = byKey.get('privacy');
+const founderBetaVersion = byKey.get('founder_beta_terms');
+
+if (!termsVersion || !privacyVersion || !founderBetaVersion) {
+  throw new Error('Required legal versions are missing.');
+}
         const { error: acceptanceError } = await supabase.rpc('v2_accept_legal_documents', {
           p_expected_user_id: data.session.user.id,
-          p_terms_version: byKey.get('terms'),
-          p_privacy_version: byKey.get('privacy'),
-          p_founder_beta_terms_version: byKey.get('founder_beta_terms'),
+          p_terms_version: termsVersion,
+p_privacy_version: privacyVersion,
+p_founder_beta_terms_version: founderBetaVersion,
           p_age_18_confirmed: true,
           p_client_action_id: action,
         });

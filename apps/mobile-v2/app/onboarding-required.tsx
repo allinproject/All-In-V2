@@ -521,7 +521,7 @@ function OnboardingOwnerFlow() {
     );
   }
 
-  if (authLoading || loadingState || finishing || !activeStep || gate.status === 'loading') {
+ if (authLoading || loadingState || finishing || !activeStep) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.loading}>
@@ -572,6 +572,7 @@ function OnboardingOwnerFlow() {
 }
 
 const styles = StyleSheet.create({
+footer: { color: colors.mutedText, fontSize: 12, textAlign: 'center', marginTop: spacing.md },
   safe: { flex: 1, backgroundColor: colors.background },
   scrollContent: { flexGrow: 1 },
   content: { flex: 1, padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md },

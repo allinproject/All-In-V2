@@ -251,7 +251,7 @@ export function validateExerciseScienceProfile(
     }
     muscleGroupIds.add(muscle.muscleGroupId);
     if (muscle.role === 'primary') hasPrimaryMuscle = true;
-    if (!stringList(muscle.sourceIds,1) || muscle.sourceIds.some((id) => !sourceIds.has(id))) {
+    if (!stringList(muscle.sourceIds,1) || muscle.sourceIds.some((id: string) => !sourceIds.has(id))) {
       errors.push('Each muscle-group role must link to registered sources.');
     }
   }
@@ -266,7 +266,7 @@ export function validateExerciseScienceProfile(
       !oneOf(demand.plane,PLANES) || !oneOf(demand.rangeOfMotion,ROM_RANGES) || !oneOf(demand.relativeDemand,RELATIVE_DEMANDS)) {
       errors.push('Each joint demand needs a joint, action, plane and demand level.');
     }
-    if (!stringList(demand.sourceIds, 1) || demand.sourceIds.some((id) => !sourceIds.has(id))) {
+    if (!stringList(demand.sourceIds, 1) || demand.sourceIds.some((id: string) => !sourceIds.has(id))) {
       errors.push('Each joint demand must link to registered sources.');
     }
   }
@@ -279,7 +279,7 @@ export function validateExerciseScienceProfile(
       continue;
     }
     cautionIds.add(caution.flagId);
-    if (!stringList(caution.sourceIds, 1) || caution.sourceIds.some((id) => !sourceIds.has(id))) {
+    if (!stringList(caution.sourceIds, 1) || caution.sourceIds.some((id: string) => !sourceIds.has(id))) {
       errors.push('Each caution flag must link to registered sources.');
     }
   }
@@ -308,10 +308,10 @@ export function validateExerciseScienceProfile(
     claimIds.add(claim.id);
     if (!nonEmpty(claim.statement) || !nonEmpty(claim.population) || !nonEmpty(claim.limitations)) errors.push('Each claim needs a bounded statement, population and limitations.');
     if (!oneOf(claim.claimType,CLAIM_TYPES)) errors.push('Claim type is invalid.');
-    if (!Array.isArray(claim.targetSports) || !claim.targetSports.every((sport) => SPORTS.includes(sport)) || !unique(claim.targetSports)) errors.push('Claim target sports must be valid and unique.');
-    if (!Array.isArray(claim.targetGoals) || !claim.targetGoals.every((goal) => GOALS.includes(goal)) || !unique(claim.targetGoals)) errors.push('Claim target goals must be valid and unique.');
+    if (!Array.isArray(claim.targetSports) || !claim.targetSports.every((sport: ExerciseSport) => SPORTS.includes(sport)) || !unique(claim.targetSports)) errors.push('Claim target sports must be valid and unique.');
+    if (!Array.isArray(claim.targetGoals) || !claim.targetGoals.every((goal: ExerciseGoal) => GOALS.includes(goal)) || !unique(claim.targetGoals)) errors.push('Claim target goals must be valid and unique.');
     if (!oneOf(claim.directness,DIRECTNESS) || !oneOf(claim.evidenceTier,EVIDENCE_TIERS) || !oneOf(claim.confidence,CONFIDENCE)) errors.push('Claim directness, evidence tier and confidence are invalid.');
-    if (!stringList(claim.sourceIds, 1) || claim.sourceIds.some((id) => !sourceIds.has(id))) errors.push('Each claim must link to registered source records.');
+    if (!stringList(claim.sourceIds, 1) || claim.sourceIds.some((id: string) => !sourceIds.has(id))) errors.push('Each claim must link to registered source records.');
     if (claim.directness === 'direct_sport_outcome' && Array.isArray(claim.targetSports) && claim.targetSports.length === 0) errors.push('Direct sport-outcome claims must name the studied sport.');
     if (claim.directness === 'mechanistic_rationale' && !['biomechanical_study','expert_consensus'].includes(claim.evidenceTier)) errors.push('Mechanistic rationale cannot be presented as direct outcome evidence.');
   }

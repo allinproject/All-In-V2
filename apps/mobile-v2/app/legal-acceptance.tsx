@@ -58,15 +58,21 @@ function LegalAcceptanceOwnerScreen() {
       }
       await assertV2SessionOwner(supabase, user.id);
       const versions = new Map(documents.map(doc => [doc.document_key, doc.version]));
+const termsVersion = versions.get('terms');
+const privacyVersion = versions.get('privacy');
+const founderBetaVersion = versions.get('founder_beta_terms');
+if (!termsVersion || !privacyVersion || !founderBetaVersion) {
+  throw new Error('Required legal versions are missing.');
+}
       const id = pendingAcceptance.current?.reviewSet === reviewSet
         ? pendingAcceptance.current.id
         : `accept-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
       pendingAcceptance.current = { reviewSet, id };
       const { error } = await supabase.rpc('v2_accept_legal_documents', {
         p_expected_user_id: user.id,
-        p_terms_version: versions.get('terms'),
-        p_privacy_version: versions.get('privacy'),
-        p_founder_beta_terms_version: versions.get('founder_beta_terms'),
+       p_terms_version: termsVersion,
+p_privacy_version: privacyVersion,
+p_founder_beta_terms_version: founderBetaVersion,
         p_age_18_confirmed: true,
         p_client_action_id: id,
       });
