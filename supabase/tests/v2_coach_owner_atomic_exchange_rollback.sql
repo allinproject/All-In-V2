@@ -191,6 +191,114 @@ begin
 end;
 $s$;
 
+-- Deterministic lease takeover: an expired execution version 1 must not
+-- write after version 2 has claimed the same immutable request identity.
+set local role service_role;
+do $fence$
+declare
+  v_first jsonb;
+  v_reclaimed jsonb;
+  v_wait jsonb;
+  v_completion jsonb;
+begin
+  v_first:=public.v2_coach_claim_turn(
+    'aa11aa11-1111-4111-8111-111111111111',
+    'cc33cc33-3333-4333-8333-333333333333',
+    '56565656-5656-4565-8565-565656565656',
+    '57575757-5757-4575-8575-575757575757',
+    '58585858-5858-4585-8585-585858585858',
+    repeat('c',64));
+  if v_first->>'action'<>'claimed' or (v_first->>'execution_version')::int<>1 then
+    raise exception 'First Coach claim not version 1';
+  end if;
+  begin
+    perform public.v2_coach_claim_turn(
+      'aa11aa11-1111-4111-8111-111111111111',
+      'cc33cc33-3333-4333-8333-333333333333',
+      '56565656-5656-4565-8565-565656565656',
+      '57575757-5757-4575-8575-575757575757',
+      '58585858-5858-4585-8585-585858585858',
+      repeat('d',64));
+    raise exception 'Fingerprint change accepted';
+  exception when sqlstate '22000' then null;
+  end;
+  v_wait:=public.v2_coach_claim_turn(
+    'aa11aa11-1111-4111-8111-111111111111',
+    'cc33cc33-3333-4333-8333-333333333333',
+    '56565656-5656-4565-8565-565656565656',
+    '57575757-5757-4575-8575-575757575757',
+    '58585858-5858-4585-8585-585858585858',
+    repeat('c',64));
+  if v_wait->>'action'<>'wait' then
+    raise exception 'Active Coach lease was stolen';
+  end if;
+  update allin_private.v2_coach_turn_claims
+  set lease_expires_at=pg_catalog.clock_timestamp()-interval '1 second'
+  where user_id='aa11aa11-1111-4111-8111-111111111111'
+    and client_request_id='56565656-5656-4565-8565-565656565656';
+  v_reclaimed:=public.v2_coach_claim_turn(
+    'aa11aa11-1111-4111-8111-111111111111',
+    'cc33cc33-3333-4333-8333-333333333333',
+    '56565656-5656-4565-8565-565656565656',
+    '57575757-5757-4575-8575-575757575757',
+    '58585858-5858-4585-8585-585858585858',
+    repeat('c',64));
+  if v_reclaimed->>'action'<>'claimed' or
+    (v_reclaimed->>'execution_version')::int<>2 then
+    raise exception 'Expired Coach lease did not advance fence';
+  end if;
+  begin
+    perform public.v2_coach_append_exchange(
+      'aa11aa11-1111-4111-8111-111111111111',
+      'cc33cc33-3333-4333-8333-333333333333',
+      '56565656-5656-4565-8565-565656565656',
+      '57575757-5757-4575-8575-575757575757',
+      '58585858-5858-4585-8585-585858585858',
+      1,'stale provider input','stale assistant output');
+    raise exception 'Stale provider appended after lease takeover';
+  exception when sqlstate '40001' then null;
+  end;
+  if exists(select 1 from public.v2_coach_messages
+     where client_request_id='56565656-5656-4565-8565-565656565656') then
+    raise exception 'Stale provider created canonical message rows';
+  end if;
+  perform public.v2_coach_append_exchange(
+    'aa11aa11-1111-4111-8111-111111111111',
+    'cc33cc33-3333-4333-8333-333333333333',
+    '56565656-5656-4565-8565-565656565656',
+    '57575757-5757-4575-8575-575757575757',
+    '58585858-5858-4585-8585-585858585858',
+    2,'current provider input','current assistant output');
+  begin
+    perform public.v2_coach_finish_turn(
+      'aa11aa11-1111-4111-8111-111111111111',
+      'cc33cc33-3333-4333-8333-333333333333',
+      '56565656-5656-4565-8565-565656565656',
+      '58585858-5858-4585-8585-585858585858',1);
+    raise exception 'Stale execution finalized newer Coach reply';
+  exception when sqlstate '40001' then null;
+  end;
+  v_completion:=public.v2_coach_finish_turn(
+    'aa11aa11-1111-4111-8111-111111111111',
+    'cc33cc33-3333-4333-8333-333333333333',
+    '56565656-5656-4565-8565-565656565656',
+    '58585858-5858-4585-8585-585858585858',2);
+  if (v_completion->>'completed')::boolean is distinct from true then
+    raise exception 'Fenced Coach completion not confirmed';
+  end if;
+  v_completion:=public.v2_coach_claim_turn(
+    'aa11aa11-1111-4111-8111-111111111111',
+    'cc33cc33-3333-4333-8333-333333333333',
+    '56565656-5656-4565-8565-565656565656',
+    '57575757-5757-4575-8575-575757575757',
+    '58585858-5858-4585-8585-585858585858',
+    repeat('c',64));
+  if v_completion->>'action'<>'completed' then
+    raise exception 'Completed request triggered new provider claim';
+  end if;
+end;
+$fence$;
+
 -- Return to A and verify the bounded owner-only transcript reader.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','aa11aa11-1111-4111-8111-111111111111',true);
