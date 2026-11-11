@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {proposeSeasonFromVerifiedTraining} from './multiEventOwnerBridge.ts';
+import {proposeSeasonFromVerifiedTraining,projectVerifiedMultiEventDayMarkers} from './multiEventOwnerBridge.ts';
 import type {SeasonEvent} from './multiEventSeasonPlan.ts';
 const owner='owner-a',revision='revision-7',generation=12;
 const events:SeasonEvent[]=[
@@ -92,4 +92,18 @@ test('competition classification must be certified by the same Training owner sn
  assert.equal(proposeSeasonFromVerifiedTraining(foreign).status,'unavailable');
  const partial=fixture();partial.competitionSnapshot.nextCursor='page-two';
  assert.equal(proposeSeasonFromVerifiedTraining(partial).status,'unavailable');
+});
+
+test('certified two-event season projects both race markers into the existing Training calendar',()=>{
+ const result=projectVerifiedMultiEventDayMarkers(fixture());
+ assert.equal(result.status,'ready');
+ if(result.status!=='ready')throw Error(result.reason);
+ assert.deepEqual(result.markers.filter(m=>m.status==='race').map(m=>m.athleteLocalDate),['2027-04-10','2027-06-05']);
+ assert.equal(result.planRevisionId,revision);
+});
+test('race marker projection cannot bypass owner, revision or certified race state',()=>{
+ const swapped=fixture();swapped.authenticatedOwnerId='owner-b';
+ assert.equal(projectVerifiedMultiEventDayMarkers(swapped).status,'unavailable');
+ const date=fixture();date.daySnapshot.records=date.daySnapshot.records.map(d=>d.athleteLocalDate==='2027-04-10'?{...d,dayState:'rest' as const}:d);
+ assert.equal(projectVerifiedMultiEventDayMarkers(date).status,'unavailable');
 });
