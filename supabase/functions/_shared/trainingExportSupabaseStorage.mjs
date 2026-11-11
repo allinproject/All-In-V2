@@ -76,7 +76,7 @@ export function createTrainingSupabaseEvidenceAdapter({ supabase }) {
       }
       return {ownerId,series,routes};
     },
-    async downloadPrivateObject({ownerId,requestId,path}) {
+    async downloadPrivateObject({ownerId,requestId,path,kind}) {
       checkOwner(ownerId);
       if (!UUID.test(requestId ?? '') || typeof path !== 'string'
         || !path.startsWith(ownerId+'/') || path.length < 80 || path.length > 500
@@ -84,9 +84,20 @@ export function createTrainingSupabaseEvidenceAdapter({ supabase }) {
         || /[?#%]/.test(path)) {
         throw new Error('Unsafe private object request');
       }
+      if (!['series','route'].includes(kind)) {
+        throw new Error('Explicit evidence kind required');
+      }
+      // Re-read the exact canonical owner+path row immediately before using
+      // elevated Storage rights. The adapter cannot be used to download an
+      // arbitrary owner-prefixed private object, even by its internal caller.
+      const table = kind === 'series' ? 'v2_activity_series' : 'v2_activity_route_objects';
+      const proof = await supabase.from(table).select(COLUMNS[kind])
+        .eq('user_id',ownerId).eq('object_path',path).maybeSingle();
+      if (proof?.error || !validRow(proof?.data,ownerId,kind)
+          || proof.data.object_path !== path) {
+        throw new Error('Private object is not approved canonical evidence');
+      }
       await assertPrivateBucket();
-      // The caller must have obtained this exact path from listEvidence and
-      // verified current authorization. This method alone is NOT an API.
       const {data,error}=await supabase.storage
         .from(TRAINING_PRIVATE_EVIDENCE_BUCKET).download(path);
       if (error || !data || typeof data.arrayBuffer !== 'function') {
