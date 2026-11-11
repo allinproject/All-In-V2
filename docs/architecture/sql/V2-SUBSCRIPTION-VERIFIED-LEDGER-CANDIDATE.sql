@@ -774,3 +774,31 @@ revoke all on function public.v2_billing_apply_current_subscription_event(
 
 -- Do not grant service_role EXECUTE until ALL-222 approves the complete
 -- private ledger, public bridge, and provider-verified Edge handler together.
+
+
+-- Resolve a previously durable owner-bound attempt; no new trial may be
+-- created by the Edge handler outside the authoritative claim transaction.
+create or replace function public.v2_billing_verify_checkout_reservation(
+ p_attempt_id uuid,p_owner_id uuid
+)
+returns text
+language plpgsql security invoker set search_path = ''
+as $$
+declare v_state text;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'billing service only' using errcode='42501';
+  end if;
+  select a.state into v_state
+    from allin_private.v2_subscription_checkout_attempts a
+   where a.attempt_id=p_attempt_id and a.owner_id=p_owner_id
+     and a.provider='stripe_web' and a.environment='sandbox'
+     and a.state in ('reserved','pending') for update;
+  if not found then
+    raise exception 'unknown owner-bound checkout reservation' using errcode='42501';
+  end if;
+  return 'already_reserved';
+end;
+$$;
+revoke all on function public.v2_billing_verify_checkout_reservation(uuid,uuid)
+ from public,anon,authenticated;
