@@ -39,6 +39,7 @@ function OwnedProfileScreen() {
   const busy = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
   const guideAnchors = useRef<Partial<Record<ProfileGuideTarget, number>>>({});
+  const personalizeTop = useRef(0);
   const [highlightedTarget, setHighlightedTarget] = useState<ProfileGuideTarget | null>(null);
 
   const onGuidePositionChange = useCallback((position: GuidePosition) => {
@@ -51,6 +52,9 @@ function OwnedProfileScreen() {
   }, []);
   const onGuideAnchorLayout = useCallback((target: ProfileGuideTarget) => (event: LayoutChangeEvent) => {
     guideAnchors.current[target] = event.nativeEvent.layout.y;
+  }, []);
+  const onPersonalizeChildLayout = useCallback((target: 'sports' | 'kitchen' | 'coach') => (event: LayoutChangeEvent) => {
+    guideAnchors.current[target] = personalizeTop.current + event.nativeEvent.layout.y;
   }, []);
   const guiding = tutorial === 'profile-settings' && !loading && Boolean(snapshot);
 
@@ -129,26 +133,23 @@ function OwnedProfileScreen() {
               </Link>
             </View>
             <View onLayout={event => {
-              const y=event.nativeEvent.layout.y;
-              guideAnchors.current.sports=y;
-              guideAnchors.current.kitchen=y;
-              guideAnchors.current.coach=y;
+              personalizeTop.current=event.nativeEvent.layout.y;
             }} style={styles.card}>
               <Text style={styles.section}>Personalize ALL IN</Text>
               <Link href="/profile/sports" asChild>
-                <Pressable accessibilityRole="button" accessibilityHint="Open your training focus and active activities" style={[styles.button, highlightedTarget==="sports" && styles.guideTarget]}>
+                <Pressable onLayout={onPersonalizeChildLayout("sports")} accessibilityRole="button" accessibilityHint="Open your training focus and active activities" style={[styles.button, highlightedTarget==="sports" && styles.guideTarget]}>
                   <Text style={styles.buttonText}>Sports & Interests</Text>
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Training Focus and Active Activities</Text>
               <Link href="/profile/kitchen" asChild>
-                <Pressable accessibilityRole="button" accessibilityHint="Edit your cooking equipment and reheating setup" style={[styles.button, highlightedTarget==="kitchen" && styles.guideTarget]}>
+                <Pressable onLayout={onPersonalizeChildLayout("kitchen")} accessibilityRole="button" accessibilityHint="Edit your cooking equipment and reheating setup" style={[styles.button, highlightedTarget==="kitchen" && styles.guideTarget]}>
                   <Text style={styles.buttonText}>Kitchen</Text>
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Home equipment, work reheating, and meal-prep constraints</Text>
               <Link href="/profile/coach-preferences" asChild>
-                <Pressable accessibilityRole="button" accessibilityHint="Choose how Coach communicates and proposes plan changes" style={[styles.button, highlightedTarget==="coach" && styles.guideTarget]}>
+                <Pressable onLayout={onPersonalizeChildLayout("coach")} accessibilityRole="button" accessibilityHint="Choose how Coach communicates and proposes plan changes" style={[styles.button, highlightedTarget==="coach" && styles.guideTarget]}>
                   <Text style={styles.buttonText}>Coach Preferences</Text>
                 </Pressable>
               </Link>
