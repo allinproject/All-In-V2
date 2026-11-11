@@ -81,7 +81,7 @@ export function setKitchenCount(value: KitchenState, key: KitchenCount, input: s
 }
 export function setKitchenNotes(value: KitchenState, notes: string): KitchenState {
   if (notes.length > 500) throw new Error('Kitchen notes cannot exceed 500 characters.');
-  return { ...value, constraints: { ...value.constraints, notes: notes.trim() || null } };
+  return { ...value, constraints: { ...value.constraints, notes: notes || null } };
 }
 /** One atomic profile-settings patch; food safety and preferences remain untouched. */
 export function kitchenSettingsPatch(value: KitchenState) {
