@@ -99,6 +99,18 @@ test("SQL candidate contains exactly one physical owner and writer",()=>{
  "create function public.v2_coach_read_exchange"
  ]) assert.equal(candidate.split(name).length,2,"Duplicate or missing "+name);
 });
+test("Coach request budget defaults OFF and rate admission precedes new claims",()=>{
+ assert.match(candidate,/create table allin_private\.v2_coach_request_policy/);
+ assert.match(candidate,/enabled boolean not null default false/);
+ assert.match(candidate,/values\(true,false\)/);
+ assert.match(candidate,/v_policy\.enabled is distinct from true/);
+ assert.match(candidate,/pg_advisory_xact_lock\(pg_catalog\.hashtextextended\([\s\S]*?'v2-coach-rate:'/);
+ assert.match(candidate,/v_minute>=v_policy\.requests_per_minute/);
+ assert.match(candidate,/v_hour>=v_policy\.requests_per_hour/);
+ assert.match(candidate,/v_month>=v_policy\.requests_per_month/);
+ assert.match(replay,/Coach model spending was enabled by default/);
+ assert.match(replay,/update allin_private\.v2_coach_request_policy set enabled=true/);
+});
 test("rollback replay addresses two accounts, direct client write denial and atomic rollback",()=>{
  assert.match(replay,/coach-v2-a@example\.invalid/);
  assert.match(replay,/coach-v2-b@example\.invalid/);
