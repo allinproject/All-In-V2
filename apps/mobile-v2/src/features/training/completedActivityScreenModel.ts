@@ -13,13 +13,13 @@ export type CompletedActivityCoachEvidence={
  source:'coach'|'verified_rule';
 };
 export type CompletedActivityScreenInput={
- id:string;sport:string;title:string;completedAt:string;
+ id:string;sport:string;terrain?:'road'|'trail'|null;title:string;completedAt:string;
  sourceLabel:string;metrics:readonly MetricEvidence[];sections?:readonly StructuredEvidence[];
  overviewLayout?:MetricLayout;detailsLayout?:MetricLayout;
  coach?:CompletedActivityCoachEvidence|null;
 };
 export type CompletedActivityScreenModel={
- id:string;sport:string;sportLabel:string;title:string;completedAt:string;sourceLabel:string;
+ id:string;sport:string;terrain:'road'|'trail'|null;sportLabel:string;title:string;completedAt:string;sourceLabel:string;
  tabs:readonly CompletedActivityTab[];
  stats:DetailProjection;
  /** No measurements in this metadata; interactive controls must never silently edit source facts. */
@@ -47,7 +47,7 @@ export function buildCompletedActivityScreenModel(input:CompletedActivityScreenI
  const coach=input.coach&&text(input.coach.summary)&&
  (input.coach.source==='coach'||input.coach.source==='verified_rule')?
  {summary:input.coach.summary,reasons:input.coach.reasons.filter(text).slice(0,8),source:input.coach.source}:null;
- return {id:input.id,sport:input.sport,sportLabel:sport.label,title:input.title,completedAt:input.completedAt,
+ return {id:input.id,sport:input.sport,terrain:input.terrain??null,sportLabel:sport.label,title:input.title,completedAt:input.completedAt,
   sourceLabel:input.sourceLabel,tabs:['Overview','Details','Coach'],stats,
   customization:{overview:eligibleOverview,details:all},coach};
 }
