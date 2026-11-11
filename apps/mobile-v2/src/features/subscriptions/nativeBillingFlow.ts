@@ -88,10 +88,11 @@ export function createNativeBillingFlow(input:{
         if(!products.some(p=>p.id===input.productId))return 'needs_setup';
         if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
         const evidence=await input.store!.purchase(input.productId!);
-        if(!evidence)return 'canceled';
         if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
+        if(!evidence)return 'canceled';
         return await reconcile(owner,evidence);
-      }catch{return 'verification_unavailable'}
+      }catch{return input.getAuthenticatedOwner()===owner?
+        'verification_unavailable':'wrong_account'}
       finally{busy=false}
     },
     async restore():Promise<NativeBillingOutcome>{
@@ -115,7 +116,8 @@ export function createNativeBillingFlow(input:{
           if(outcome==='server_entitled'||outcome==='wrong_account')return outcome;
         }
         return 'verification_unavailable';
-      }catch{return 'verification_unavailable'}
+      }catch{return input.getAuthenticatedOwner()===owner?
+        'verification_unavailable':'wrong_account'}
       finally{busy=false}
     },
   });
