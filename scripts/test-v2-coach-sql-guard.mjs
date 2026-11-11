@@ -36,6 +36,12 @@ test("atomic exchange has duplicate guards and exact two-message canonical readb
  assert.match(candidate,/client_request_id,role/i);
  assert.match(candidate,/raise exception 'Coach request IDs were reused with different content or identity'/);
 });
+test("SQL reader exposes canonical identity needed for strict exchange readback",()=>{
+ assert.match(candidate,/message_id uuid,user_id uuid,thread_id uuid,client_request_id uuid/);
+ assert.match(candidate,/return query select m\.id,m\.user_id,m\.thread_id,m\.client_request_id/);
+ assert.match(candidate,/unique \(user_id,client_request_id,role\)/);
+ assert.match(candidate,/if v_existing=2 then/);
+});
 test("read window requires owner authentication and bounded cursor pagination",()=>{
  assert.match(candidate,/create function public\.v2_coach_read_messages/i);
  assert.match(candidate,/security invoker/i);
