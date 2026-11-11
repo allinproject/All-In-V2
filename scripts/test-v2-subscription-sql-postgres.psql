@@ -52,6 +52,9 @@ BEGIN
        has_table_privilege(r,'allin_private.v2_subscription_purchases','INSERT') OR
        has_table_privilege(r,'allin_private.v2_subscription_verified_events','INSERT') OR
        has_function_privilege(r,
+       'allin_private.v2_claim_paid_checkout_attempt(uuid,uuid,text,text)',
+       'EXECUTE') OR
+       has_function_privilege(r,
        'allin_private.v2_claim_trial_checkout_attempt(uuid,uuid,text,text)',
        'EXECUTE') OR
        has_function_privilege(r,
@@ -91,6 +94,8 @@ GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_checkout_attempts TO
 GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_purchases TO service_role;
 GRANT SELECT,INSERT ON allin_private.v2_subscription_verified_events TO service_role;
 GRANT USAGE,SELECT ON SEQUENCE allin_private.v2_subscription_verified_events_id_seq TO service_role;
+GRANT EXECUTE ON FUNCTION allin_private.v2_claim_paid_checkout_attempt(
+  uuid,uuid,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_claim_trial_checkout_attempt(
   uuid,uuid,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_reserve_subscription_checkout(
@@ -439,6 +444,74 @@ BEGIN
   END IF;
 END
 $trialclaim$;
+RESET ROLE;
+
+-- A previously refunded subscriber may start a new paid-only checkout,
+-- not repeat their trial. An unreconciled new purchase blocks further checkout.
+INSERT INTO auth.users VALUES ('00000000-0000-0000-0000-000000000007');
+INSERT INTO public.v2_profiles VALUES ('00000000-0000-0000-0000-000000000007');
+SET ROLE service_role;
+DO $paid_reactivation$
+DECLARE v_paid uuid;
+  v_retry uuid;
+  v_status text;
+  v_owner uuid;
+  v_trial boolean;
+  v_result text;
+BEGIN
+  SELECT status INTO v_status FROM allin_private.v2_claim_paid_checkout_attempt(
+    '00000000-0000-0000-0000-000000000007',
+    '00000000-0000-0000-0000-000000000007','stripe_web','sandbox');
+  IF v_status <> 'not_returning_customer' THEN
+    RAISE EXCEPTION 'First-time customer bypassed trial policy through paid flow';
+  END IF;
+  SELECT status,attempt_id,owner_id,trial_eligible
+    INTO v_status,v_paid,v_owner,v_trial
+    FROM allin_private.v2_claim_paid_checkout_attempt(
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001','stripe_web','sandbox');
+  IF v_status <> 'eligible_reserved' OR v_paid IS NULL OR v_trial OR
+     v_owner <> '00000000-0000-0000-0000-000000000001' THEN
+    RAISE EXCEPTION 'Former subscriber was not offered paid-only checkout';
+  END IF;
+  SELECT status,attempt_id INTO v_status,v_retry
+    FROM allin_private.v2_claim_paid_checkout_attempt(
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001','stripe_web','sandbox');
+  IF v_status <> 'eligible_reserved' OR v_retry <> v_paid THEN
+    RAISE EXCEPTION 'Returning paid checkout retry used a new UUID';
+  END IF;
+  SELECT allin_private.v2_reserve_subscription_checkout(
+    v_paid,'00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'stripe_web','sandbox') INTO v_result;
+  IF v_result <> 'already_reserved' THEN
+    RAISE EXCEPTION 'Paid checkout reservation was not reusable';
+  END IF;
+  SELECT allin_private.v2_register_pending_subscription_checkout(
+    v_paid,'00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'stripe_web','sandbox','cs_paid_1') INTO v_result;
+  IF v_result <> 'pending' THEN RAISE EXCEPTION 'Paid pending: %',v_result; END IF;
+  SELECT allin_private.v2_finalize_verified_subscription_checkout(
+    v_paid,'00000000-0000-0000-0000-000000000001',
+    'stripe_web','sandbox','cs_paid_1','sub_paid_1') INTO v_result;
+  IF v_result <> 'finalized' THEN RAISE EXCEPTION 'Paid finalization: %',v_result; END IF;
+  IF NOT EXISTS (
+     SELECT 1 FROM allin_private.v2_subscription_checkout_attempts
+     WHERE attempt_id=v_paid AND offer_kind='paid'
+       AND state='server_confirmed') THEN
+    RAISE EXCEPTION 'Paid checkout was not preserved as no-trial';
+  END IF;
+  SELECT status INTO v_status
+    FROM allin_private.v2_claim_paid_checkout_attempt(
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001','stripe_web','sandbox');
+  IF v_status <> 'subscription_unresolved' THEN
+    RAISE EXCEPTION 'Second active/unreconciled subscription checkout allowed';
+  END IF;
+END
+$paid_reactivation$;
 RESET ROLE;
 
 DELETE FROM auth.users WHERE id='00000000-0000-0000-0000-000000000001';
