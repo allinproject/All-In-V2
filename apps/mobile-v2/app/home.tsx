@@ -6,6 +6,7 @@ import { useAuth } from '../src/auth/AuthProvider';
 import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
+import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
 
 export default function HomeScreen() {
   const { user, sessionGeneration } = useAuth();
@@ -54,6 +55,7 @@ function HomeOwnerScreen() {
           <Text style={styles.buttonText}>Sign out</Text>
         </Pressable>
       </View>
+      <V2BottomNavigation />
     </SafeAreaView>
   );
 }
