@@ -52,6 +52,8 @@ BEGIN
        has_table_privilege(r,'allin_private.v2_subscription_purchases','INSERT') OR
        has_table_privilege(r,'allin_private.v2_subscription_verified_events','INSERT') OR
        has_function_privilege(r,
+       'allin_private.v2_bind_confirmed_subscription_purchase(uuid)', 'EXECUTE') OR
+       has_function_privilege(r,
        'allin_private.v2_apply_verified_subscription_event(uuid,text,text,text,text,bigint,text,timestamptz)',
        'EXECUTE') THEN
       RAISE EXCEPTION 'Client role % has direct subscription privilege',r;
@@ -74,6 +76,7 @@ GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_checkout_attempts TO
 GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_purchases TO service_role;
 GRANT SELECT,INSERT ON allin_private.v2_subscription_verified_events TO service_role;
 GRANT USAGE,SELECT ON SEQUENCE allin_private.v2_subscription_verified_events_id_seq TO service_role;
+GRANT EXECUTE ON FUNCTION allin_private.v2_bind_confirmed_subscription_purchase(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_apply_verified_subscription_event(
   uuid,text,text,text,text,bigint,text,timestamptz) TO service_role;
 
@@ -114,13 +117,29 @@ BEGIN
 END
 $unverified_purchase$;
 
-INSERT INTO allin_private.v2_subscription_purchases
-  (owner_id,provider,environment,provider_subscription_id,checkout_attempt_id)
-VALUES
-  ('00000000-0000-0000-0000-000000000001','stripe_web','sandbox','sub_1',
-   '10000000-0000-0000-0000-000000000001'),
-  ('00000000-0000-0000-0000-000000000002','stripe_web','sandbox','sub_2',
-   '10000000-0000-0000-0000-000000000002');
+-- Binding occurs through the only reviewed service-only function.
+SET ROLE service_role;
+DO $binding$
+DECLARE r text;
+BEGIN
+  SELECT allin_private.v2_bind_confirmed_subscription_purchase(
+    '10000000-0000-0000-0000-000000000001') INTO r;
+  IF r <> 'bound' THEN RAISE EXCEPTION 'First binding: %',r; END IF;
+  SELECT allin_private.v2_bind_confirmed_subscription_purchase(
+    '10000000-0000-0000-0000-000000000001') INTO r;
+  IF r <> 'already_bound' THEN RAISE EXCEPTION 'Idempotent binding: %',r; END IF;
+  SELECT allin_private.v2_bind_confirmed_subscription_purchase(
+    '10000000-0000-0000-0000-000000000002') INTO r;
+  IF r <> 'bound' THEN RAISE EXCEPTION 'Second binding: %',r; END IF;
+  BEGIN
+    PERFORM allin_private.v2_bind_confirmed_subscription_purchase(
+      '10000000-0000-0000-0000-000000000099');
+    RAISE EXCEPTION 'Unknown checkout attempt was accepted';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END
+$binding$;
+RESET ROLE;
 
 SET ROLE service_role;
 DO $updates$
