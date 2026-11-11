@@ -1,0 +1,101 @@
+\set ON_ERROR_STOP on
+-- ALL-243 disposable PostgreSQL 17 semantic segment ownership replay.
+DO $roles$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+END $roles$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql
+DO $qa$
+DECLARE
+ a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ act uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ foreign_act uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ src uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ root uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ child uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ other_root uuid:='ffffffff-ffff-4fff-8fff-ffffffffffff';
+BEGIN
+ INSERT INTO auth.users VALUES (a),(b);
+ INSERT INTO public.v2_completed_activities(
+ id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,status)
+ VALUES(act,a,'cycling','workout','2026-11-11','America/Chicago','device_measured','needs_review'),
+ (foreign_act,b,'strength','workout','2026-11-11','America/Chicago','manual_only','needs_review');
+ INSERT INTO public.v2_activity_sources(
+ id,activity_id,user_id,provider,source_kind,source_record_id,quality,source_payload_hash)
+ VALUES(src,act,a,'supported_equipment','device_session','bike-1','trusted',repeat('a',64));
+ INSERT INTO public.v2_activity_segments(
+ id,activity_id,user_id,segment_kind,sequence_number,sport,source_id)
+ VALUES(root,act,a,'multisport_leg',1,'cycling',src),
+       (other_root,act,a,'transition',2,NULL,src);
+ INSERT INTO public.v2_activity_segments(
+ id,activity_id,user_id,parent_segment_id,segment_kind,sequence_number,sport,source_id)
+ VALUES(child,act,a,root,'interval',1,'cycling',src);
+ -- Root 1 cannot be duplicated despite both having NULL parent.
+ BEGIN
+  INSERT INTO public.v2_activity_segments(
+   id,activity_id,user_id,segment_kind,sequence_number)
+  VALUES('00000000-0000-4000-8000-000000000001',act,a,'lap',1);
+  RAISE EXCEPTION 'Duplicate root sequence accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ -- Child must belong to same activity and account as parent.
+ BEGIN
+  INSERT INTO public.v2_activity_segments(
+   id,activity_id,user_id,parent_segment_id,segment_kind,sequence_number)
+  VALUES('00000000-0000-4000-8000-000000000002',foreign_act,b,root,'strength_block',1);
+  RAISE EXCEPTION 'Cross-athlete segment parent accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ -- Segment source must belong to this same activity.
+ BEGIN
+  INSERT INTO public.v2_activity_segments(
+   id,activity_id,user_id,segment_kind,sequence_number,source_id)
+  VALUES('00000000-0000-4000-8000-000000000003',foreign_act,b,'strength_block',1,src);
+  RAISE EXCEPTION 'Cross-owner sensor source accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ INSERT INTO public.v2_activity_metric_definitions(
+  metric_code,definition_version,display_name,canonical_unit,value_kind,
+  sport_scope,measurement_kinds,display_group,privacy_class,status)
+ VALUES('power_w',1,'Power','W','numeric',ARRAY['cycling'],ARRAY['source_measured'],
+  'power','private','published');
+ INSERT INTO public.v2_activity_metric_values(
+  id,activity_id,user_id,segment_id,source_id,metric_code,definition_version,
+  value_numeric,measurement_kind,quality,source_payload_hash)
+ VALUES('00000000-0000-4000-8000-000000000004',act,a,root,src,'power_w',1,
+  200,'source_measured','trusted',repeat('a',64)),
+ ('00000000-0000-4000-8000-000000000005',act,a,child,src,'power_w',1,
+  220,'source_measured','trusted',repeat('a',64));
+ -- A segment metric cannot be assigned to another athlete's activity.
+ BEGIN
+  INSERT INTO public.v2_activity_metric_values(
+   id,activity_id,user_id,segment_id,source_id,metric_code,definition_version,
+   value_numeric,measurement_kind,quality,source_payload_hash)
+  VALUES('00000000-0000-4000-8000-000000000006',foreign_act,b,root,src,'power_w',1,
+   220,'source_measured','trusted',repeat('a',64));
+  RAISE EXCEPTION 'Cross-owner segment power fact accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ -- Identical source/metric in the same segment is not a second fact.
+ BEGIN
+  INSERT INTO public.v2_activity_metric_values(
+   id,activity_id,user_id,segment_id,source_id,metric_code,definition_version,
+   value_numeric,measurement_kind,quality,source_payload_hash)
+  VALUES('00000000-0000-4000-8000-000000000007',act,a,child,src,'power_w',1,
+   221,'source_measured','trusted',repeat('a',64));
+  RAISE EXCEPTION 'Duplicate segment metric accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='public' AND c.relname='v2_activity_segments'
+   AND (NOT c.relrowsecurity OR has_table_privilege('anon',c.oid,'SELECT')
+     OR has_table_privilege('authenticated',c.oid,'INSERT'))) THEN
+  RAISE EXCEPTION 'Segment row security or grants were unsafe'; END IF;
+ IF (SELECT count(*) FROM public.v2_activity_segments WHERE activity_id=act)<>3
+ OR (SELECT count(*) FROM public.v2_activity_metric_values WHERE activity_id=act)<>2 THEN
+  RAISE EXCEPTION 'Unexpected duplicate or lost records'; END IF;
+ RAISE NOTICE 'PASS ALL-243 typed segments: owner scope, nested order, metric/segment identity and RLS';
+END $qa$;
