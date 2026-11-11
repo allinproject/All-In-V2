@@ -15,6 +15,30 @@ export function createGooglePlayDeveloperTransport({
      typeof getAccessToken!=='function'||typeof request!=='function')
     return null;
   return Object.freeze({
+    async acknowledgeSubscription({packageName,purchaseToken}={}){
+      if(packageName!==expectedPackageName||!validToken(purchaseToken))
+        throw Error('invalid_google_purchase');
+      let accessToken;
+      try{
+        accessToken=await getAccessToken('https://www.googleapis.com/auth/androidpublisher');
+      }catch{throw Error('google_auth_unavailable')}
+      if(typeof accessToken!=='string'||accessToken.length<10)
+        throw Error('google_auth_unavailable');
+      // Google recommends omitting subscriptionId for the v3 subscription
+      // acknowledgement route (particularly for add-on subscriptions).
+      const url='https://androidpublisher.googleapis.com/androidpublisher/v3/applications/'+
+        encodeURIComponent(expectedPackageName)+'/purchases/subscriptions/tokens/'+
+        encodeURIComponent(purchaseToken)+':acknowledge';
+      let response;
+      try{
+        response=await request(url,{method:'POST',headers:{
+          authorization:'Bearer '+accessToken,
+          'content-type':'application/json',
+        },body:'{}'});
+      }catch{throw Error('google_acknowledge_unavailable')}
+      if(!response?.ok)throw Error('google_acknowledge_unavailable');
+      return 'acknowledged';
+    },
     async fetchSubscription({packageName,purchaseToken}={}){
       if(packageName!==expectedPackageName||!validToken(purchaseToken))
         throw Error('invalid_google_purchase');
