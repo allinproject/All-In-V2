@@ -184,7 +184,7 @@ function OwnedProfileScreen() {
               <Link href="/profile/account-export" asChild>
                 <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Export My Data</Text></Pressable>
               </Link>
-              <Text style={styles.muted}>Current account snapshot available as JSON text; downloadable files are not ready.</Text>
+              <Text style={styles.muted}>Create a temporary JSON file, preview it, and save or share it through your device.</Text>
               <Link href="/profile/account-deletion" asChild>
                 <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Account Deletion & Status</Text></Pressable>
               </Link>
