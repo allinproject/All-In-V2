@@ -61,3 +61,12 @@ test('source and source-level sport applicability validated before display',()=>
  assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],sourceId:'another'}]},'owner-A','activity-1'),/source/);
  assert.throws(()=>canonicalActivityToScreenInput({...a,definitions:[a.definitions[0],a.definitions[0]]},'owner-A','activity-1'),/Duplicate metric/);
 });
+
+test('untrusted runtime enums and ambiguous numeric placeholders fail closed',()=>{
+ const a=base();
+ assert.throws(()=>canonicalActivityToScreenInput({...a,sources:[{...a.sources[0],quality:'invented' as 'trusted'}]},'owner-A','activity-1'),/Invalid or duplicate canonical source/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],measurementKind:'unknown' as 'source_measured'}]},'owner-A','activity-1'),/source or definition/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],displayValue:'NaN'}]},'owner-A','activity-1'),/Invalid source-backed/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,sections:[{...a.sections![0],kind:'unknown' as 'splits'}]},'owner-A','activity-1'),/Structured activity evidence/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,definitions:[{...a.definitions[0],measurementKinds:['unknown' as 'source_measured']}]},'owner-A','activity-1'),/Invalid metric registry/);
+});
