@@ -26,6 +26,8 @@ const validSubtypes:Record<string,readonly string[]>={
  stair:['','indoor','machine','stepper'],
  yoga:['','home','studio'],
  mobility:['','home','studio'],
+ hiit:['','indoor','outdoor','gym','home'],
+ multisport:['','triathlon','duathlon','brick','hybrid'],
  other:[''],
 };
 export function resolveActivityPresentationSport(canonicalSport:string,subtype?:string|null):ActivityPresentationSport{
@@ -41,6 +43,8 @@ export function resolveActivityPresentationSport(canonicalSport:string,subtype?:
   case 'cycling':view=['indoor','trainer','stationary'].includes(kind)?'indoor_trainer':'outdoor_ride';break;
   case 'swimming':view=kind==='pool'||kind==='indoor'?'pool_swim':
    ['open_water','openwater','outdoor'].includes(kind)?'open_water_swim':'swim';break;
+  case 'hiit':view='hiit';break;
+  case 'multisport':view='hybrid';break;
   case 'strength':view='strength';break;
   case 'elliptical':view='elliptical';break;
   case 'stair':view='stairs';break;
