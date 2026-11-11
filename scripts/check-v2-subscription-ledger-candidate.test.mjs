@@ -123,3 +123,12 @@ test('returning-customer paid claim is isolated from first-trial eligibility',()
   assert.match(sql,/a\.offer_kind='paid'/);
   assert.match(sql,/revoke all on function allin_private\.v2_claim_paid_checkout_attempt/);
 });
+
+test('event updates and checkout finalization take owner lock before purchase mutations',()=>{
+  const marker="hashtextextended('trial:' || p_owner_id::text,0)";
+  const event=sql.slice(sql.indexOf('create or replace function allin_private.v2_apply_verified_subscription_event('));
+  const finalizer=sql.slice(sql.indexOf('create or replace function allin_private.v2_finalize_verified_subscription_checkout('),
+    sql.indexOf('revoke all on function allin_private.v2_finalize_verified_subscription_checkout('));
+  assert.ok(event.includes(marker));
+  assert.ok(finalizer.includes(marker));
+});
