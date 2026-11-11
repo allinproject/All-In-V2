@@ -70,6 +70,16 @@ DECLARE
  v_next uuid;
  v_depth integer:=0;
 BEGIN
+ -- Identity movement would relabel already persisted, source-backed facts.
+ -- A new physical segment must get a new identity, not be reassigned.
+ IF TG_OP='UPDATE' AND (
+    NEW.id IS DISTINCT FROM OLD.id OR
+    NEW.activity_id IS DISTINCT FROM OLD.activity_id OR
+    NEW.user_id IS DISTINCT FROM OLD.user_id
+ ) THEN
+   RAISE EXCEPTION 'Activity segment identity and owner cannot change'
+     USING ERRCODE='23514';
+ END IF;
  PERFORM pg_catalog.pg_advisory_xact_lock(
    pg_catalog.hashtextextended('v2-segment-graph:'||NEW.activity_id::text,0));
  v_cursor:=NEW.parent_segment_id;
@@ -92,7 +102,8 @@ BEGIN
 END;
 $segment_guard$;
 CREATE TRIGGER v2_guard_activity_segment_acyclic
- BEFORE INSERT OR UPDATE OF parent_segment_id ON public.v2_activity_segments
+ BEFORE INSERT OR UPDATE OF parent_segment_id, activity_id, user_id, id
+ ON public.v2_activity_segments
  FOR EACH ROW EXECUTE FUNCTION allin_private.v2_activity_segment_acyclic_guard_candidate();
 REVOKE ALL ON FUNCTION allin_private.v2_activity_segment_acyclic_guard_candidate()
  FROM PUBLIC,anon,authenticated,service_role;
