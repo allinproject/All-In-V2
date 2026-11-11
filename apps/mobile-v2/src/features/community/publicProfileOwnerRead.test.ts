@@ -77,3 +77,10 @@ test('the server must omit optional general area when not explicitly shareable',
   shareGeneralArea:true,sharedArea:'General area'}};
  assert.equal(certifyPublicProfileSnapshot(shared,'athlete-A','athlete-B',4).profile.visibleGeneralArea,'General area');
 });
+
+test('malformed location consent and overlong location are rejected instead of coerced',()=>{
+ const b=base();
+ assert.throws(()=>certifyPublicProfileSnapshot({...b,profile:{...b.profile,shareGeneralArea:'false' as unknown as boolean}},'athlete-A','athlete-B',4),/Incomplete/);
+ assert.throws(()=>certifyPublicProfileSnapshot({...b,profile:{...b.profile,sharedArea:123 as unknown as string}},'athlete-A','athlete-B',4),/Incomplete/);
+ assert.throws(()=>certifyPublicProfileSnapshot({...b,profile:{...b.profile,sharedArea:'X'.repeat(81)}},'athlete-A','athlete-B',4),/Incomplete/);
+});
