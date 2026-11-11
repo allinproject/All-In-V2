@@ -68,7 +68,7 @@ export function createNativeBillingServerClient({
       if(changed(id))return 'rejected';
       const payload=data as null|{code?:string};
       if(!error&&payload?.code==='verified')return 'verified';
-      if(payload?.code==='acknowledgement_required')return 'pending';
+      if(!error&&payload?.code==='acknowledgement_required')return 'pending';
       return 'rejected';
     },
     async readOwnerEntitlement(ownerId:string){
@@ -77,8 +77,15 @@ export function createNativeBillingServerClient({
       const {data,error}=await client.invoke('v2-billing-entitlement',{
         method:'GET',
       });
-      const payload=data as null|{entitled?:boolean};
-      if(error||changed(id)||typeof payload?.entitled!=='boolean')
+      const payload=data as null|{entitled?:boolean;accessUntil?:string|null};
+      // A positive projection must include its server-owned expiry. Never
+      // interpret an incomplete positive response as unbounded access.
+      const validExpiry=typeof payload?.accessUntil==='string'&&
+        /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$/.test(payload.accessUntil)&&
+        Number.isFinite(Date.parse(payload.accessUntil));
+      if(error||changed(id)||typeof payload?.entitled!=='boolean'||
+         (payload.entitled&&!validExpiry)||
+         (!payload.entitled&&payload.accessUntil!=null))
         throw Error('entitlement_unavailable');
       return {entitled:payload.entitled};
     },
