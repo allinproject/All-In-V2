@@ -196,7 +196,8 @@ create function public.v2_coach_read_messages(
   p_before_message_id uuid default null,
   p_limit integer default 40
 ) returns table(
-  message_id uuid,thread_id uuid,role text,content text,created_at timestamptz
+  message_id uuid,user_id uuid,thread_id uuid,client_request_id uuid,
+  role text,content text,created_at timestamptz
 ) language plpgsql stable security invoker set search_path=''
 as $function$
 declare v_user uuid := auth.uid();
@@ -214,7 +215,8 @@ begin
   ) then
     raise exception 'Coach thread not owned by account' using errcode='42501';
   end if;
-  return query select m.id,m.thread_id,m.role,m.content,m.created_at
+  return query select m.id,m.user_id,m.thread_id,m.client_request_id,
+    m.role,m.content,m.created_at
   from public.v2_coach_messages m
   where m.user_id=v_user and m.thread_id=p_thread_id
     and (p_before_created_at is null or
