@@ -13,3 +13,9 @@ verify_jwt = true
 # No Edge Function deployed or processing gate enabled by this setting.
 [functions.v2-account-deletion-worker]
 verify_jwt = true
+
+# ALL-252: source-only, DEFAULT-OFF web sandbox billing entrypoint.
+# verify_jwt never disabled; additionally verifies user via Auth.getUser.
+# ALLIN_BILLING_SANDBOX_ARMED is unset/false until private SQL & security review.
+[functions.v2-stripe-sandbox-checkout]
+verify_jwt = true
