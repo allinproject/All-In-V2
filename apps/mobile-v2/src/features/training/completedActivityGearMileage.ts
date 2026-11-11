@@ -4,7 +4,7 @@
  * Existing profile PersonalGear.distanceKm is the manually entered pre-sync
  * baseline until a reviewed versioned migration offers a separate baseline.
  */
-import type {PersonalGear,GearItem} from './personalGear.ts';
+import {changeGearDistance,type PersonalGear,type GearItem} from './personalGear.ts';
 
 export type CanonicalGearAssignment={
  ownerId:string;activityId:string;activityVersion:number;
@@ -67,4 +67,22 @@ export function deriveGearMileage(
   return {gearId:g.id,manualBaselineKm:g.distanceKm,completedDistanceKm:roundKm(recorded.distance),
    totalDistanceKm:roundKm(g.distanceKm+recorded.distance),activityCount:recorded.count,status:g.status};
  });
+}
+
+/** Interpret the user's edited DISPLAYED total as total, not as an additional
+ * baseline. Applies only after a complete verified owner activity snapshot.
+ * This is a profile draft transformation; caller persists using the existing
+ * owner-checked versioned Profile writer, never a second mileage table.
+ */
+export function correctDisplayedGearMileage(
+ ownerId:string,state:PersonalGear,assignments:readonly CanonicalGearAssignment[],
+ gearId:string,desiredTotalKm:number,completeHistory:boolean,
+):PersonalGear{
+ if(!Number.isFinite(desiredTotalKm)||desiredTotalKm<0||desiredTotalKm>10000000)
+  throw new Error('Invalid corrected gear mileage.');
+ const row=deriveGearMileage(ownerId,state,assignments,completeHistory).find(x=>x.gearId===gearId);
+ if(!row)throw new Error('Gear not found in the verified mileage snapshot.');
+ const baseline=roundKm(desiredTotalKm-row.completedDistanceKm);
+ if(baseline<0)throw new Error('Correct the linked workout distance instead of reducing the manually entered baseline below zero.');
+ return changeGearDistance(state,gearId,baseline);
 }
