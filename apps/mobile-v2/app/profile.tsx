@@ -157,6 +157,12 @@ function OwnedProfileScreen() {
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Training Focus and Active Activities</Text>
+              <Link href="/profile/equipment-gear" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}>
+                  <Text style={styles.buttonText}>Equipment & Gear</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.muted}>Training locations, confirmed gym equipment, and personal gear</Text>
               <Link href="/profile/weekly-routine" asChild>
                 <Pressable accessibilityRole="button" style={styles.button}>
                   <Text style={styles.buttonText}>Weekly Routine</Text>
