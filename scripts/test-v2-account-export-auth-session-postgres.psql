@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS allin_private.v2_account_deletion_requests(
  status text NOT NULL CHECK(status IN ('requested','processing','completed','rejected','cancelled'))
 );
 DO $qa$
+<<qa>>
 DECLARE
  owner_id uuid:='11111111-1111-4111-8111-111111111111';
  other_id uuid:='22222222-2222-4222-8222-222222222222';
@@ -90,8 +91,8 @@ BEGIN
    PERFORM allin_private.v2_account_export_authorize_session_candidate(owner_id,session_id);
    RAISE EXCEPTION 'Revoked Auth session authorized archive export';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
- IF EXISTS(SELECT 1 FROM allin_private.v2_account_export_requests_candidate
-   WHERE user_id=owner_id AND session_id=session_id)
+ IF EXISTS(SELECT 1 FROM allin_private.v2_account_export_requests_candidate e
+   WHERE e.user_id=qa.owner_id AND e.session_id=qa.session_id)
  THEN RAISE EXCEPTION 'Revoked Auth session left a durable export request'; END IF;
  IF pg_catalog.has_function_privilege('anon',
     'public.v2_account_export_worker_authorize_candidate(uuid,uuid,uuid)','EXECUTE')
