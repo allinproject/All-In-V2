@@ -42,8 +42,8 @@ CREATE TABLE public.v2_completed_activities (
   id uuid PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   sport text NOT NULL CHECK (
-    sport IN ('running','cycling','swimming','strength','hiking','rucking',
-              'rowing','elliptical','stair','yoga','mobility','other')
+    sport IN ('running','walking','cycling','swimming','strength','hiking','rucking',
+              'rowing','elliptical','stair','yoga','mobility','hiit','multisport','other')
   ),
   sport_subtype text CHECK (sport_subtype IS NULL OR length(btrim(sport_subtype)) BETWEEN 1 AND 100),
   activity_kind text NOT NULL CHECK (
