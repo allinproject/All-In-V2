@@ -118,7 +118,12 @@ export async function stageTrainingPrivateStorageExport({
       });
       if (!result || result.encrypted !== true
           || result.ownerId !== ownerId || result.requestId !== requestId
-          || typeof result.archiveId !== 'string' || !result.archiveId) {
+          || typeof result.archiveId !== 'string' || !result.archiveId
+          || result.private !== true
+          || typeof result.expiresAt !== 'string'
+          || !Number.isFinite(Date.parse(result.expiresAt))
+          || Date.parse(result.expiresAt) <= Date.now()
+          || Date.parse(result.expiresAt) > Date.now()+24*60*60*1000) {
         throw new Error('Encrypted archive receipt not confirmed');
       }
       archiveReceipt = result;
