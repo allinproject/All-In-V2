@@ -51,7 +51,7 @@ export function summarizeTodayTraining(
       status,
       title: plannedCount === 1 ? '1 workout scheduled' : `${plannedCount} workouts scheduled`,
       detail: completedKnown
-        ? (completedCount ? `${completedCount} completed activity${completedCount === 1 ? '' : 'ies'} also recorded today.` : 'Open today’s calendar to review your scheduled training.')
+        ? (completedCount ? `${completedCount} completed ${completedCount === 1 ? 'activity' : 'activities'} also recorded today.` : 'Open today’s calendar to review your scheduled training.')
         : 'Planned training is verified. Completed activity data is currently unavailable.',
       actionLabel: 'Open Training Calendar',
     };
