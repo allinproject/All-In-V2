@@ -69,3 +69,11 @@ test('account switches or generation refresh during network read invalidate the 
   async()=>{read=true;return base();},()=>false),/no longer active/);
  assert.equal(read,false);
 });
+
+test('the server must omit optional general area when not explicitly shareable',()=>{
+ const b=base();
+ assert.throws(()=>certifyPublicProfileSnapshot({...b,profile:{...b.profile,sharedArea:'Private address'}},'athlete-A','athlete-B',4),/unshared athlete location/);
+ const shared={...b,profile:{...b.profile,profileVisibility:'public' as const,
+  shareGeneralArea:true,sharedArea:'General area'}};
+ assert.equal(certifyPublicProfileSnapshot(shared,'athlete-A','athlete-B',4).profile.visibleGeneralArea,'General area');
+});
