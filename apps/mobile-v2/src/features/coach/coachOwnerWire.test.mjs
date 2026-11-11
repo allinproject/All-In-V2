@@ -4,8 +4,8 @@ import {decodeCoachAppendReceipt,decodeCoachExchangeRows,decodeCoachTranscriptPa
 const req={ownerId:"owner-a",threadId:"thread-a",clientRequestId:"request-a",userMessageId:"msg-u",assistantMessageId:"msg-a"};
 const receipt={ok:true,thread_id:"thread-a",client_request_id:"request-a",user_message_id:"msg-u",assistant_message_id:"msg-a"};
 const rows=[
-{id:"msg-u",user_id:"owner-a",thread_id:"thread-a",client_request_id:"request-a",role:"user",content:"Hello"},
-{id:"msg-a",user_id:"owner-a",thread_id:"thread-a",client_request_id:"request-a",role:"assistant",content:"Hi"}
+{message_id:"msg-u",user_id:"owner-a",thread_id:"thread-a",client_request_id:"request-a",role:"user",content:"Hello"},
+{message_id:"msg-a",user_id:"owner-a",thread_id:"thread-a",client_request_id:"request-a",role:"assistant",content:"Hi"}
 ];
 test("SQL append receipt needs exact IDs before mapping",()=>{
  assert.equal(decodeCoachAppendReceipt(receipt,req).ok,true);
