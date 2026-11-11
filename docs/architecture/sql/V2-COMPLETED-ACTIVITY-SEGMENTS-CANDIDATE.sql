@@ -57,3 +57,124 @@ REVOKE ALL ON public.v2_activity_segments FROM PUBLIC,anon,authenticated;
 -- Raw client inserts, activity metric ingestion grants, or generic workout
 -- reassignment must remain disabled until source-authenticated writer review.
 COMMIT;
+
+
+-- ALL-243: trusted, source-bound SEGMENT scalar writer for the same canonical
+-- metric_values table as global observations. No new activity/metric store.
+-- PRIVATE CANDIDATE ONLY: never grant a mobile/Coach client EXECUTE.
+-- Provider verification, segment certification and publication remain external
+-- trusted-service responsibilities; this cannot self-certify measurements.
+CREATE FUNCTION allin_private.v2_activity_append_segment_scalar_candidate(
+ p_user_id uuid,p_activity_id uuid,p_segment_id uuid,p_source_id uuid,
+ p_value_id uuid,p_metric_code text,p_definition_version integer,
+ p_measurement_kind text,p_value_numeric numeric,p_value_text text,
+ p_value_boolean boolean,p_source_payload_hash text
+) RETURNS jsonb
+LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=''
+AS $segment_writer$
+DECLARE
+ v_activity public.v2_completed_activities%ROWTYPE;
+ v_source public.v2_activity_sources%ROWTYPE;
+ v_segment public.v2_activity_segments%ROWTYPE;
+ v_definition public.v2_activity_metric_definitions%ROWTYPE;
+ v_existing public.v2_activity_metric_values%ROWTYPE;
+ v_sport text;
+ v_quality text;
+BEGIN
+ IF p_user_id IS NULL OR p_activity_id IS NULL OR p_segment_id IS NULL
+    OR p_source_id IS NULL OR p_value_id IS NULL OR p_metric_code IS NULL
+    OR p_definition_version IS NULL OR p_measurement_kind IS NULL
+    OR p_source_payload_hash IS NULL
+    OR p_source_payload_hash !~ '^[0-9a-f]{64}$'
+ THEN RAISE EXCEPTION 'Invalid segment metric evidence' USING ERRCODE='22023'; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+   pg_catalog.hashtextextended('v2-metric:'||p_user_id::text,0));
+ SELECT * INTO v_activity FROM public.v2_completed_activities
+ WHERE id=p_activity_id AND user_id=p_user_id FOR UPDATE;
+ IF NOT FOUND OR v_activity.status='invalidated' THEN
+   RAISE EXCEPTION 'Segment activity absent or owner mismatch'
+     USING ERRCODE='42501'; END IF;
+ SELECT * INTO v_source FROM public.v2_activity_sources
+ WHERE id=p_source_id AND activity_id=p_activity_id AND user_id=p_user_id FOR SHARE;
+ IF NOT FOUND OR v_source.quality='rejected' THEN
+   RAISE EXCEPTION 'Segment source absent or owner mismatch'
+     USING ERRCODE='42501'; END IF;
+ IF v_source.source_payload_hash IS DISTINCT FROM p_source_payload_hash THEN
+   RAISE EXCEPTION 'Segment source fingerprint changed' USING ERRCODE='23505'; END IF;
+ SELECT * INTO v_segment FROM public.v2_activity_segments
+ WHERE id=p_segment_id AND activity_id=p_activity_id AND user_id=p_user_id FOR SHARE;
+ IF NOT FOUND THEN
+   RAISE EXCEPTION 'Segment does not belong to activity and owner'
+     USING ERRCODE='42501'; END IF;
+ -- A segment-specific source must refer to this source when explicitly bound.
+ IF v_segment.source_id IS NOT NULL AND v_segment.source_id<>p_source_id THEN
+   RAISE EXCEPTION 'Metric source differs from segment evidence'
+     USING ERRCODE='42501'; END IF;
+ -- Parent multisport uses the nearest explicit leg/ancestor sport, not the
+ -- synthetic parent label. Cycles are rejected by the 32-hop cap; schema's
+ -- same-owner FK alone does not prove a noncyclic hierarchy.
+ WITH RECURSIVE lineage AS (
+   SELECT seg.id,seg.parent_segment_id,seg.sport,0 AS depth,
+          ARRAY[seg.id]::uuid[] AS visited
+   FROM public.v2_activity_segments seg
+   WHERE seg.id=p_segment_id AND seg.activity_id=p_activity_id AND seg.user_id=p_user_id
+   UNION ALL
+   SELECT parent.id,parent.parent_segment_id,parent.sport,child.depth+1,
+          child.visited||parent.id
+   FROM public.v2_activity_segments parent
+   JOIN lineage child ON parent.id=child.parent_segment_id
+   WHERE parent.activity_id=p_activity_id AND parent.user_id=p_user_id
+     AND child.depth<32 AND NOT parent.id=ANY(child.visited)
+ )
+ SELECT coalesce((SELECT l.sport FROM lineage l
+    WHERE l.sport IS NOT NULL ORDER BY l.depth LIMIT 1),v_activity.sport)
+ INTO v_sport;
+ IF v_activity.sport<>'multisport' AND v_sport<>v_activity.sport THEN
+   RAISE EXCEPTION 'Segment sport contradicts completed activity'
+     USING ERRCODE='22023'; END IF;
+ SELECT * INTO v_definition FROM public.v2_activity_metric_definitions
+ WHERE metric_code=p_metric_code AND definition_version=p_definition_version
+   AND status='published';
+ IF NOT FOUND OR NOT v_sport=ANY(v_definition.sport_scope)
+    OR NOT p_measurement_kind=ANY(v_definition.measurement_kinds) THEN
+   RAISE EXCEPTION 'Metric incompatible with certified segment sport'
+     USING ERRCODE='22023'; END IF;
+ IF (v_definition.value_kind='numeric' AND
+    (p_value_numeric IS NULL OR p_value_text IS NOT NULL OR p_value_boolean IS NOT NULL))
+ OR (v_definition.value_kind='text' AND
+    (p_value_text IS NULL OR p_value_numeric IS NOT NULL OR p_value_boolean IS NOT NULL))
+ OR (v_definition.value_kind='boolean' AND
+    (p_value_boolean IS NULL OR p_value_numeric IS NOT NULL OR p_value_text IS NOT NULL))
+ THEN RAISE EXCEPTION 'Segment scalar type mismatch' USING ERRCODE='22023'; END IF;
+ v_quality:=v_source.quality;
+ SELECT * INTO v_existing FROM public.v2_activity_metric_values
+ WHERE activity_id=p_activity_id AND user_id=p_user_id
+   AND segment_id=p_segment_id AND source_id=p_source_id
+   AND metric_code=p_metric_code AND definition_version=p_definition_version
+ FOR UPDATE;
+ IF FOUND THEN
+   IF v_existing.id<>p_value_id OR
+      v_existing.measurement_kind<>p_measurement_kind OR
+      v_existing.value_numeric IS DISTINCT FROM p_value_numeric OR
+      v_existing.value_text IS DISTINCT FROM p_value_text OR
+      v_existing.value_boolean IS DISTINCT FROM p_value_boolean OR
+      v_existing.source_payload_hash IS DISTINCT FROM p_source_payload_hash THEN
+     RAISE EXCEPTION 'Conflicting same-segment source metric retry'
+       USING ERRCODE='23505'; END IF;
+   RETURN pg_catalog.jsonb_build_object('metricId',v_existing.id,
+       'segmentId',p_segment_id,'replayed',true);
+ END IF;
+ INSERT INTO public.v2_activity_metric_values(
+   id,activity_id,user_id,segment_id,source_id,metric_code,definition_version,
+   value_numeric,value_text,value_boolean,measurement_kind,quality,source_payload_hash
+ ) VALUES(
+   p_value_id,p_activity_id,p_user_id,p_segment_id,p_source_id,p_metric_code,
+   p_definition_version,p_value_numeric,p_value_text,p_value_boolean,
+   p_measurement_kind,v_quality,p_source_payload_hash);
+ RETURN pg_catalog.jsonb_build_object('metricId',p_value_id,
+    'segmentId',p_segment_id,'replayed',false);
+END;
+$segment_writer$;
+REVOKE ALL ON FUNCTION allin_private.v2_activity_append_segment_scalar_candidate(
+ uuid,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text)
+ FROM PUBLIC,anon,authenticated,service_role;
