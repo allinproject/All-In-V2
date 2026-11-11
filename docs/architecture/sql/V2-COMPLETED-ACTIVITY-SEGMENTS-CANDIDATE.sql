@@ -46,7 +46,7 @@ ALTER TABLE public.v2_activity_metric_values
 -- a metric from one source and one segment is unique, but other segments
 -- may legitimately report the same metric key and definition.
 ALTER TABLE public.v2_activity_metric_values
- DROP CONSTRAINT v2_activity_metric_values_activity_id_user_id_source_id_metric_code_definition_version_key;
+ DROP CONSTRAINT v2_activity_metric_global_source_unique;
 ALTER TABLE public.v2_activity_metric_values
  ADD CONSTRAINT v2_activity_metric_segment_source_unique
  UNIQUE NULLS NOT DISTINCT (
