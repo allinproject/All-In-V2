@@ -1,0 +1,110 @@
+\set ON_ERROR_STOP on
+-- ALL-243 review-only source-backed scalar metric registry, disposable PG17.
+DO $roles$
+BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+END $roles$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql
+DO $qa$
+DECLARE
+ a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ ride uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ run uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ src uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ run_src uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ value_id uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ result jsonb;
+BEGIN
+ INSERT INTO auth.users VALUES(a),(b);
+ INSERT INTO public.v2_completed_activities(
+ id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,status)
+ VALUES(ride,a,'cycling','workout','2026-11-11','America/Chicago','device_measured','needs_review'),
+ (run,b,'running','workout','2026-11-11','America/Chicago','provider_import','needs_review');
+ INSERT INTO public.v2_activity_sources(
+ id,activity_id,user_id,provider,source_kind,source_record_id,quality,source_payload_hash)
+ VALUES(src,ride,a,'supported_equipment','device_session','trainer-42','trusted',repeat('a',64)),
+ (run_src,run,b,'apple_watch','workout_record','watch-run','partial',repeat('b',64));
+ INSERT INTO public.v2_activity_metric_definitions(
+ metric_code,definition_version,display_name,canonical_unit,value_kind,
+ sport_scope,measurement_kinds,display_group,privacy_class,status)
+ VALUES
+ ('avg_power_w',1,'Average power','W','numeric',ARRAY['cycling'],
+  ARRAY['source_measured'],'power','private','published'),
+ ('cadence_rpm',1,'Cadence','rpm','numeric',ARRAY['cycling'],
+  ARRAY['source_measured'],'cadence','private','published'),
+ ('run_distance_m',1,'Run distance','m','numeric',ARRAY['running'],
+  ARRAY['source_measured'],'distance','private','published'),
+ ('session_note',1,'Session note','text','text',ARRAY['running','cycling'],
+  ARRAY['user_reported'],'notes','private','published');
+ -- Recorded zero remains an actual 0 metric, distinct from missing value.
+ result:=allin_private.v2_activity_append_scalar_candidate(a,ride,src,value_id,
+ 'avg_power_w',1,'source_measured',0,NULL,NULL,repeat('a',64));
+ IF result->>'replayed'<>'false' OR
+    (SELECT value_numeric FROM public.v2_activity_metric_values
+     WHERE id=value_id)<>0 THEN RAISE EXCEPTION 'Known zero was lost'; END IF;
+ result:=allin_private.v2_activity_append_scalar_candidate(a,ride,src,value_id,
+ 'avg_power_w',1,'source_measured',0,NULL,NULL,repeat('a',64));
+ IF result->>'replayed'<>'true' THEN RAISE EXCEPTION 'Exact metric replay was not idempotent'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_activity_append_scalar_candidate(a,ride,src,value_id,
+   'avg_power_w',1,'source_measured',200,NULL,NULL,repeat('a',64));
+  RAISE EXCEPTION 'Changed watts overwritten as the same source sample';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_activity_append_scalar_candidate(a,ride,src,
+   'ffffffff-ffff-4fff-8fff-ffffffffffff',
+   'avg_power_w',1,'source_measured',0,NULL,NULL,repeat('a',64));
+  RAISE EXCEPTION 'Duplicate metric source created a second fact';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_activity_append_scalar_candidate(a,ride,src,
+   '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'run_distance_m',1,'source_measured',1000,NULL,NULL,repeat('a',64));
+  RAISE EXCEPTION 'Running metric published as cycling distance';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_activity_append_scalar_candidate(a,ride,run_src,
+   '11111111-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+   'avg_power_w',1,'source_measured',100,NULL,NULL,repeat('b',64));
+  RAISE EXCEPTION 'Another athlete source used for watt measurement';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_activity_append_scalar_candidate(a,ride,src,
+   '11111111-cccc-4ccc-8ccc-cccccccccccc',
+   'avg_power_w',1,'source_measured',100,NULL,NULL,repeat('b',64));
+  RAISE EXCEPTION 'Mismatched source hash accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_activity_append_scalar_candidate(a,ride,src,
+   '11111111-dddd-4ddd-8ddd-dddddddddddd',
+   'cadence_rpm',1,'source_measured',NULL,NULL,NULL,repeat('a',64));
+  RAISE EXCEPTION 'Missing numeric value was filled or accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_activity_append_scalar_candidate(a,ride,src,
+   '11111111-eeee-4eee-8eee-eeeeeeeeeeee',
+   'cadence_rpm',1,'source_measured',NULL,'100',NULL,repeat('a',64));
+  RAISE EXCEPTION 'Metric type mismatch accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_activity_append_scalar_candidate(a,ride,src,
+   '11111111-ffff-4fff-8fff-ffffffffffff',
+   'avg_power_w',2,'source_measured',100,NULL,NULL,repeat('a',64));
+  RAISE EXCEPTION 'Unpublished metric version accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ IF (SELECT count(*) FROM public.v2_activity_metric_values WHERE activity_id=ride)<>1
+ THEN RAISE EXCEPTION 'Unsupported metric created extra evidence'; END IF;
+ IF has_table_privilege('authenticated','public.v2_activity_metric_values','SELECT')
+ OR has_table_privilege('authenticated','public.v2_activity_metric_definitions','INSERT')
+ OR has_function_privilege('authenticated',
+   'allin_private.v2_activity_append_scalar_candidate(uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Metric ingestion exposed to untrusted client'; END IF;
+ RAISE NOTICE 'PASS ALL-243 scalar registry/source evidence, known zero, owner, exact replay, and private grants';
+END $qa$;
