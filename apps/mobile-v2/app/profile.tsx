@@ -11,6 +11,7 @@ import { supabase } from '../src/lib/supabase';
 import { colors } from '../src/theme/tokens';
 import { GuidedTourPanel } from '../src/features/tutorials/GuidedTourPanel';
 import { PROFILE_GUIDE_STEPS, profileGuideTarget, type ProfileGuideTarget, type GuidePosition } from '../src/features/tutorials/profileGuide';
+import { emptyGuideLayoutRegistry, guideTargetOffset } from '../src/features/tutorials/profileGuideGeometry';
 
 type ProfileSnapshot = {
   profile?: { user_id?: string; display_name?: string | null } | null;
@@ -38,24 +39,28 @@ function OwnedProfileScreen() {
   const mounted = useRef(true);
   const busy = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
-  const guideAnchors = useRef<Partial<Record<ProfileGuideTarget, number>>>({});
-  const personalizeTop = useRef(0);
+  const guideLayouts = useRef(emptyGuideLayoutRegistry());
+  const activeGuideTarget = useRef<ProfileGuideTarget | null>(null);
   const [highlightedTarget, setHighlightedTarget] = useState<ProfileGuideTarget | null>(null);
 
+  const scrollToGuideTarget = useCallback(() => {
+    const y = guideTargetOffset(guideLayouts.current, activeGuideTarget.current);
+    if (y !== null) scrollRef.current?.scrollTo({ y, animated: true });
+  }, []);
   const onGuidePositionChange = useCallback((position: GuidePosition) => {
     const target = profileGuideTarget(position);
+    activeGuideTarget.current = target;
     setHighlightedTarget(target);
-    if (target) {
-      const y = guideAnchors.current[target];
-      if (y !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
-    }
-  }, []);
-  const onGuideAnchorLayout = useCallback((target: ProfileGuideTarget) => (event: LayoutChangeEvent) => {
-    guideAnchors.current[target] = event.nativeEvent.layout.y;
-  }, []);
+    scrollToGuideTarget();
+  }, [scrollToGuideTarget]);
+  const onGuideAnchorLayout = useCallback((target: 'account' | 'help' | 'legal' | 'personalize') => (event: LayoutChangeEvent) => {
+    guideLayouts.current.sections[target] = event.nativeEvent.layout.y;
+    scrollToGuideTarget();
+  }, [scrollToGuideTarget]);
   const onPersonalizeChildLayout = useCallback((target: 'sports' | 'kitchen' | 'coach') => (event: LayoutChangeEvent) => {
-    guideAnchors.current[target] = personalizeTop.current + event.nativeEvent.layout.y;
-  }, []);
+    guideLayouts.current.children[target] = event.nativeEvent.layout.y;
+    scrollToGuideTarget();
+  }, [scrollToGuideTarget]);
   const guiding = tutorial === 'profile-settings' && !loading && Boolean(snapshot);
 
   useEffect(() => {
@@ -132,9 +137,7 @@ function OwnedProfileScreen() {
                 </Pressable>
               </Link>
             </View>
-            <View onLayout={event => {
-              personalizeTop.current=event.nativeEvent.layout.y;
-            }} style={styles.card}>
+            <View onLayout={onGuideAnchorLayout("personalize")} style={styles.card}>
               <Text style={styles.section}>Personalize ALL IN</Text>
               <Link href="/profile/sports" asChild>
                 <Pressable onLayout={onPersonalizeChildLayout("sports")} accessibilityRole="button" accessibilityHint="Open your training focus and active activities" style={[styles.button, highlightedTarget==="sports" && styles.guideTarget]}>
