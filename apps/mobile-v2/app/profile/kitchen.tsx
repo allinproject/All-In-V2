@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Link, Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { useAccessGate } from '../../src/auth/AccessGateProvider';
@@ -13,6 +13,9 @@ import {
 } from '../../src/features/cookbook/kitchenPreferences';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
+import { GuidedTourPanel } from '../../src/features/tutorials/GuidedTourPanel';
+import { KITCHEN_GUIDE_STEPS, kitchenGuideTarget, type KitchenGuideTarget } from '../../src/features/tutorials/kitchenGuide';
+import type { GuidePosition } from '../../src/features/tutorials/profileGuide';
 
 type VersionedSettings = { version?: number; settings?: unknown };
 const options: readonly { value: Availability; label: string }[] = [
@@ -33,6 +36,8 @@ export default function KitchenRoute() {
 function OwnedKitchen() {
   const { user, loading: authLoading } = useAuth();
   const gate = useAccessGate();
+  const router=useRouter();
+  const {tutorial}=useLocalSearchParams<{tutorial?:string}>();
   const owner = user?.id ?? null;
   const [draft,setDraft] = useState<KitchenState>(emptyKitchen);
   const [expanded,setExpanded] = useState<string | null>('Cooking appliances');
@@ -43,6 +48,22 @@ function OwnedKitchen() {
   const [notice,setNotice] = useState<string | null>(null);
   const [reload,setReload] = useState(0);
   const guard = useRef(false);
+  const scrollRef=useRef<ScrollView>(null);
+  const anchors=useRef<Partial<Record<KitchenGuideTarget,number>>>({});
+  const activeTarget=useRef<KitchenGuideTarget|null>(null);
+  const [highlight,setHighlight]=useState<KitchenGuideTarget|null>(null);
+  const scrollToTarget=useCallback(()=>{
+    const target=activeTarget.current;
+    if(target){const y=anchors.current[target];if(y!==undefined)scrollRef.current?.scrollTo({y:Math.max(0,y-16),animated:true});}
+  },[]);
+  const onGuidePosition=useCallback((position:GuidePosition)=>{
+    const target=kitchenGuideTarget(position);
+    activeTarget.current=target;setHighlight(target);scrollToTarget();
+  },[scrollToTarget]);
+  const onGuideLayout=useCallback((target:KitchenGuideTarget)=>(event:LayoutChangeEvent)=>{
+    anchors.current[target]=event.nativeEvent.layout.y;
+    if(activeTarget.current===target)scrollToTarget();
+  },[scrollToTarget]);
   const pending = useRef<{version:number;serialized:string;id:string}|null>(null);
 
   const refresh = useCallback(async (current:()=>boolean,preserve:boolean) => {
@@ -119,7 +140,9 @@ function OwnedKitchen() {
   if(authLoading||gate.status!=='ready'||!owner)return <Redirect href="/"/>;
 
   return <SafeAreaView style={styles.safe}>
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    {tutorial==='kitchen' && !loading && version!==null ? <GuidedTourPanel key={owner} title="Kitchen guide"
+      steps={KITCHEN_GUIDE_STEPS} onExit={()=>router.replace('/profile/tutorials')} onPositionChange={onGuidePosition} /> : null}
+    <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Link href="/profile" asChild><Pressable accessibilityRole="button" style={styles.back}><Text style={styles.gold}>‹ Profile</Text></Pressable></Link>
       <Text accessibilityRole="header" style={styles.title}>Kitchen</Text>
       <Text style={styles.helper}>Tell Coach what equipment you have. Unknown means we have not confirmed it, not that you don't own it.</Text>
@@ -127,7 +150,7 @@ function OwnedKitchen() {
       {error?<Text accessibilityRole="alert" style={styles.error}>{error}</Text>:null}
       {!loading&&version===null?<Pressable accessibilityRole="button" style={styles.save} onPress={()=>setReload(n=>n+1)}><Text style={styles.saveText}>Retry loading</Text></Pressable>:null}
       {!loading&&version!==null?<>
-        <View style={styles.card}>
+        <View onLayout={onGuideLayout('home')} style={[styles.card,highlight==='home'&&styles.guideTarget]}>
           <Text style={styles.heading}>Home Kitchen</Text>
           <Text style={styles.helper}>Appliances, equipment and cookware available where you cook.</Text>
           {HOME_KITCHEN_GROUPS.map(group=><View key={group.title} style={styles.group}>
@@ -142,14 +165,14 @@ function OwnedKitchen() {
               onChange={next=>edit(old=>setEquipmentAvailability(old,'home',id,next))}/>):null}
           </View>)}
         </View>
-        <View style={styles.card}>
+        <View onLayout={onGuideLayout('work')} style={[styles.card,highlight==='work'&&styles.guideTarget]}>
           <Text style={styles.heading}>Work Reheating</Text>
           <Text style={styles.helper}>Work equipment is separate so reheating plans never assume your home appliances are available.</Text>
           {WORK_REHEAT_ITEMS.map(([id,label])=><AvailabilityRow key={id} label={label}
             value={draft.work[id]??'unknown'} disabled={saving}
             onChange={next=>edit(old=>setEquipmentAvailability(old,'work',id,next))}/>)}
         </View>
-        <View style={styles.card}>
+        <View onLayout={onGuideLayout('constraints')} style={[styles.card,highlight==='constraints'&&styles.guideTarget]}>
           <Text style={styles.heading}>Kitchen Constraints</Text>
           <Text style={styles.helper}>Optional counts help Coach plan feasible meal prep. Leave blank if unknown.</Text>
           <View style={styles.countGrid}>
@@ -170,8 +193,8 @@ function OwnedKitchen() {
             value={draft.constraints.notes??''} onChangeText={text=>edit(old=>setKitchenNotes(old,text))}/>
         </View>
         {notice?<Text style={styles.gold} accessibilityRole="text">{notice}</Text>:null}
-        <Pressable accessibilityRole="button" accessibilityState={{disabled:saving,busy:saving}}
-          disabled={saving} onPress={()=>void save()} style={[styles.save,saving&&styles.dim]}>
+        <Pressable onLayout={onGuideLayout('save')} accessibilityRole="button" accessibilityState={{disabled:saving,busy:saving}}
+          disabled={saving} onPress={()=>void save()} style={[styles.save,saving&&styles.dim,highlight==='save'&&styles.guideTarget]}>
           <Text style={styles.saveText}>{saving?'Saving…':'Save Kitchen Profile'}</Text>
         </Pressable>
       </>:null}
@@ -202,6 +225,7 @@ const styles=StyleSheet.create({
   gold:{color:colors.goldSoft,fontWeight:'700'},
   error:{color:colors.danger,fontSize:14},
   card:{borderColor:colors.border,borderWidth:1,borderRadius:18,backgroundColor:colors.surface,padding:16,gap:13},
+  guideTarget:{borderColor:colors.goldSoft,borderWidth:2},
   heading:{color:colors.warmWhite,fontSize:19,fontWeight:'800'},
   group:{borderColor:colors.border,borderBottomWidth:1,paddingBottom:8,gap:10},
   groupHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:44},
