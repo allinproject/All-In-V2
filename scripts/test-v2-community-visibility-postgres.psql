@@ -1,0 +1,95 @@
+\set ON_ERROR_STOP on
+\ir test-v2-community-reader-postgres.psql
+\ir ../docs/architecture/sql/V2-COMMUNITY-VISIBILITY-OWNER-CANDIDATE.sql
+
+DO $deny$
+BEGIN
+ IF has_function_privilege('anon',
+   'public.v2_community_my_visibility_read()','EXECUTE')
+ OR has_function_privilege('authenticated',
+   'public.v2_community_my_visibility_read()','EXECUTE')
+ OR has_function_privilege('anon',
+   'public.v2_community_set_my_visibility(uuid,text,bigint)','EXECUTE')
+ OR has_function_privilege('authenticated',
+   'public.v2_community_set_my_visibility(uuid,text,bigint)','EXECUTE')
+ THEN RAISE EXCEPTION 'Unapproved Community visibility API grants'; END IF;
+END $deny$;
+
+SELECT set_config('request.jwt.claim.sub',
+ '00000000-0000-0000-0000-000000000002', false);
+
+DO $transition$
+DECLARE v jsonb;
+BEGIN
+ v := public.v2_community_my_visibility_read();
+ IF v->>'ownerId'<>'00000000-0000-0000-0000-000000000002'
+ OR v->>'visibility'<>'public' OR v->>'version'<>'1' THEN
+  RAISE EXCEPTION 'Wrong own visibility state %', v;
+ END IF;
+
+ v := public.v2_community_set_my_visibility(
+   '00000000-0000-0000-0000-000000000002','private',1);
+ IF v->>'version'<>'2' OR v->>'changed'<>'true' THEN
+  RAISE EXCEPTION 'Privacy update failed %',v;
+ END IF;
+ v := public.v2_community_set_my_visibility(
+   '00000000-0000-0000-0000-000000000002','private',2);
+ IF v->>'changed'<>'false' OR v->>'version'<>'2' THEN
+  RAISE EXCEPTION 'Visibility no-op incorrectly advanced CAS %',v;
+ END IF;
+
+ BEGIN
+  PERFORM public.v2_community_set_my_visibility(
+   '00000000-0000-0000-0000-000000000001','public',2);
+  RAISE EXCEPTION 'Cross-owner visibility write accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+
+ BEGIN
+  PERFORM public.v2_community_set_my_visibility(
+   '00000000-0000-0000-0000-000000000002','public',1);
+  RAISE EXCEPTION 'Stale visibility CAS accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL;
+ END;
+
+ BEGIN
+  PERFORM public.v2_community_set_my_visibility(
+   '00000000-0000-0000-0000-000000000002','followers',2);
+  RAISE EXCEPTION 'Invalid visibility value accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL;
+ END;
+
+ v := public.v2_community_set_my_visibility(
+   '00000000-0000-0000-0000-000000000002','public',2);
+ IF v->>'version'<>'3' OR v->>'changed'<>'true' THEN
+  RAISE EXCEPTION 'Final visibility restore failed %',v;
+ END IF;
+END $transition$;
+
+-- A publicly visible profile may accept a direct follow only while the
+-- target visibility is public. True concurrency is tested in the shell.
+DO $check$
+BEGIN
+ IF (SELECT profile_visibility FROM allin_private.v2_community_visibility
+     WHERE user_id='00000000-0000-0000-0000-000000000002') <> 'public'
+ OR (SELECT version FROM allin_private.v2_community_visibility
+     WHERE user_id='00000000-0000-0000-0000-000000000002') <> 3
+ THEN RAISE EXCEPTION 'Incorrect race fixture'; END IF;
+END $check$;
+
+SELECT set_config('request.jwt.claim.sub','',false);
+DO $anonymous$
+BEGIN
+ BEGIN
+  PERFORM public.v2_community_my_visibility_read();
+  RAISE EXCEPTION 'Anonymous visibility read succeeded';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ BEGIN
+  PERFORM public.v2_community_set_my_visibility(
+   '00000000-0000-0000-0000-000000000002','private',3);
+  RAISE EXCEPTION 'Anonymous visibility write succeeded';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $anonymous$;
+\echo PASS: Community visibility owner, private/public CAS, no-op, stale and cross-owner access rejected.
