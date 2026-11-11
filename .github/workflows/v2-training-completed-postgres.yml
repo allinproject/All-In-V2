@@ -61,6 +61,8 @@ on:
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-WORKER-RPC-REVIEW-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-LIFECYCLE-REVIEW-CANDIDATE.sql'
+      - 'scripts/test-v2-account-export-request-lifecycle-postgres.psql'
       - 'scripts/test-v2-account-export-auth-session-postgres.psql'
       - 'supabase/functions/_shared/trainingExportAuthServices.mjs'
       - 'supabase/functions/_shared/trainingExportAuthServices.node.test.mjs'
@@ -302,3 +304,12 @@ jobs:
           docker cp docs/architecture/sql/V2-ACCOUNT-EXPORT-WORKER-RPC-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-WORKER-RPC-REVIEW-CANDIDATE.sql"
           docker cp scripts/test-v2-account-export-auth-session-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-account-export-auth-session-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_auth -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-auth-session-postgres.psql
+      - name: Verify owner request initiation and worker approval remain default-off
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_complete_integration training_export_request_lifecycle
+          docker cp docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-LIFECYCLE-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-LIFECYCLE-REVIEW-CANDIDATE.sql"
+          docker cp scripts/test-v2-account-export-request-lifecycle-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-account-export-request-lifecycle-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_request_lifecycle -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-request-lifecycle-postgres.psql
