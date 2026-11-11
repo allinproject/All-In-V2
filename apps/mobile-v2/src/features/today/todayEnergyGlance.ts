@@ -31,9 +31,9 @@ const missing: TodayEnergyGlance = {
   detail: 'Nutrition totals are unavailable until verified Fuel and activity data are connected.',
   sourceRevision: null,
 };
-function validEnergy(value: number | null): boolean {
+function validEnergy(value: number | null, allowNegative = false): boolean {
   return value === null || (Number.isFinite(value) && Number.isSafeInteger(value) &&
-    value >= -100000 && value <= 100000);
+    value >= (allowNegative ? -100000 : 0) && value <= 100000);
 }
 function display(value: number | null): string {
   return value === null ? UNKNOWN : value.toLocaleString('en-US');
@@ -51,7 +51,7 @@ export function todayEnergyGlance(
   if (!s || s.ownerId !== ownerId || s.athleteLocalDate !== athleteLocalDate
     || typeof s.sourceRevision !== 'string' || !s.sourceRevision.trim()
     || !validEnergy(s.burnedCalories) || !validEnergy(s.eatenCalories)
-    || !validEnergy(s.remainingCalories)) return missing;
+    || !validEnergy(s.remainingCalories, true)) return missing;
   const timestamp = Date.parse(s.calculatedAt);
   if (!Number.isFinite(timestamp) || !Number.isFinite(now.getTime())
     || timestamp > now.getTime() + 5 * 60_000) return missing;
