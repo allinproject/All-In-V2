@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { useAccessGate } from '../../src/auth/AccessGateProvider';
 import {
-  V2_TUTORIAL_CATALOG, tutorialCatalogCategories, canStartTutorial,
+  V2_TUTORIAL_CATALOG, tutorialCatalogCategories, canStartTutorial, tutorialLaunchRoute,
 } from '../../src/features/tutorials/tutorialCatalog';
 import { colors } from '../../src/theme/tokens';
 
@@ -39,24 +39,9 @@ export default function TutorialsRoute() {
           <Text style={styles.itemTitle}>{t.title}</Text>
           <Text style={styles.description}>{t.summary}</Text>
           <Text style={styles.status}>{canStartTutorial(t) ? 'Early walkthrough · device testing pending' : 'Tutorial coming later'}</Text>
-          {t.id==='profile-settings' && canStartTutorial(t) ? <Link href="/profile?tutorial=profile-settings" asChild>
-            <Pressable accessibilityRole="button" style={styles.primary}>
-              <Text style={styles.primaryLabel}>Start Profile walkthrough</Text>
-            </Pressable>
-          </Link> : null}
-          {t.id==='sports-interests' && canStartTutorial(t) ? <Link href="/profile/sports?tutorial=sports" asChild>
-            <Pressable accessibilityRole="button" style={styles.primary}>
-              <Text style={styles.primaryLabel}>Start Sports walkthrough</Text>
-            </Pressable>
-          </Link> : null}
-          {t.id==='kitchen' && canStartTutorial(t) ? <Link href="/profile/kitchen?tutorial=kitchen" asChild>
-            <Pressable accessibilityRole="button" style={styles.primary}>
-              <Text style={styles.primaryLabel}>Start Kitchen walkthrough</Text>
-            </Pressable>
-          </Link> : null}
-          {t.id==='coach-preferences' && canStartTutorial(t) ? <Link href="/profile/coach-preferences?tutorial=coach-preferences" asChild>
-            <Pressable accessibilityRole="button" style={styles.primary}>
-              <Text style={styles.primaryLabel}>Start Coach Preferences walkthrough</Text>
+          {tutorialLaunchRoute(t) ? <Link href={tutorialLaunchRoute(t)!} asChild>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Start ${t.title} walkthrough`} style={styles.primary}>
+              <Text style={styles.primaryLabel}>Start walkthrough</Text>
             </Pressable>
           </Link> : null}
           {t.exploreRoute ? <Link href={t.exploreRoute} asChild>
