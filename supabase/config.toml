@@ -25,3 +25,8 @@ verify_jwt = true
 # ALLIN_STRIPE_SANDBOX_WEBHOOK_ARMED must remain unset until review/deploy.
 [functions.v2-stripe-sandbox-webhook]
 verify_jwt = false
+
+# ALL-252: sandbox-only, default OFF until reviewed owner/private DB schema.
+# JWT remains required; backend also verifies current Auth.getUser.
+[functions.v2-billing-entitlement]
+verify_jwt = true
