@@ -1,0 +1,53 @@
+\set ON_ERROR_STOP on
+-- ALL-251 disposable owner-snapshot candidate acceptance.
+-- Same populated schema as full Training/Activity integration. No hosted data.
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql
+DO $qa$
+DECLARE
+ v_owner uuid:='11111111-1111-4111-8111-111111111111';
+ v_out jsonb;
+ v_others jsonb;
+BEGIN
+ v_out:=allin_private.v2_training_account_export_fragment_candidate(v_owner);
+ IF v_out->>'schema_version'<>'v2-training-account-fragment-candidate-v1'
+ OR v_out->>'ownerId'<>v_owner::text
+ OR (v_out->>'recordCount')::integer<10
+ OR v_out->>'completeUserExport'<>'false'
+ OR v_out->>'privateObjectBytesIncluded'<>'false'
+ THEN RAISE EXCEPTION 'Training export fragment falsely claims completion or omits owner records: %',v_out; END IF;
+ IF pg_catalog.jsonb_array_length(v_out#>'{records,public.v2_completed_activities}')<>1
+ OR pg_catalog.jsonb_array_length(v_out#>'{records,public.v2_training_session_instances}')<>1
+ OR pg_catalog.jsonb_array_length(v_out#>'{records,public.v2_activity_sources}')<>1
+ OR pg_catalog.jsonb_array_length(v_out#>'{records,public.v2_activity_metric_values}')<>1
+ OR pg_catalog.jsonb_array_length(v_out#>'{records,public.v2_indoor_weekly_attempts}')<>1
+ THEN RAISE EXCEPTION 'Canonical workout/metric/competition owner records missing: %',v_out; END IF;
+ IF v_out::text LIKE '%22222222-2222-4222-8222-222222222222%'
+ THEN RAISE EXCEPTION 'Foreign owner identity leaked'; END IF;
+ -- Existing second synthetic Auth user must see only its own (empty) graph.
+ INSERT INTO auth.users(id) VALUES('22222222-2222-4222-8222-222222222222');
+ v_others:=allin_private.v2_training_account_export_fragment_candidate(
+    '22222222-2222-4222-8222-222222222222');
+ IF v_others->>'recordCount'<>'0' THEN
+    RAISE EXCEPTION 'Cross-owner export included foreign records'; END IF;
+ BEGIN
+   PERFORM allin_private.v2_training_account_export_fragment_candidate(
+      '33333333-3333-4333-8333-333333333333');
+   RAISE EXCEPTION 'Missing account permitted export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF pg_catalog.has_function_privilege('authenticated',
+   'allin_private.v2_training_account_export_fragment_candidate(uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Private export fragment directly callable by client'; END IF;
+ RAISE NOTICE 'PASS ALL-251: all known owner data scoped, foreign account empty, no public API, not falsely complete';
+END $qa$;
+-- If owner-owned schema expands, export must fail rather than silently omit.
+CREATE TABLE public.v2_activity_owner_export_qa_unhandled (user_id uuid NOT NULL);
+DO $qa$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_training_account_export_fragment_candidate(
+   '11111111-1111-4111-8111-111111111111');
+  RAISE EXCEPTION 'New owner table silently omitted from export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ RAISE NOTICE 'PASS ALL-251: unseen owner relation fails export closed';
+END $qa$;
+DROP TABLE public.v2_activity_owner_export_qa_unhandled;
