@@ -2,7 +2,7 @@
  * ALL-231: one coordinated multi-event season, preserving the existing
  * Training lifecycle as canonical. This module never writes accepted plans.
  */
-import {buildRacePlanCalendar,type RacePlanDayState,type RacePlanCalendarDay} from './trainingPlanLifecycle.ts';
+import {buildRacePlanCalendar,adaptRemainingPlanAfterMiss,type RacePlanDayState,type RacePlanCalendarDay} from './trainingPlanLifecycle.ts';
 
 export type EventPriority='A'|'B'|'C';
 export type SeasonEvent={id:string;date:string;name:string;sport:string;priority:EventPriority;demand:'endurance'|'strength'|'mixed'|'unknown'};
@@ -51,4 +51,56 @@ export function assertMultiEventSeasonAssigned(plan:SeasonPlanDraft):void{
   const day=plan.days[i],expectedDate=new Date(Date.parse(plan.startDate+'T12:00:00Z')+i*86400000).toISOString().slice(0,10),expected=dated.get(expectedDate)??[];
   if(day.date!==expectedDate||day.state==='review_required'||!['planned','rest','recovery','unavailable','race'].includes(day.state)||day.isRaceDay!==(expected.length>0)||(expected.length>0&&day.state!=='race')||(expected.length===0&&day.state==='race')||day.eventIds.length!==expected.length||!expected.every(id=>day.eventIds.includes(id)))throw Error('Every season date needs the right state and canonical event identity.');
  }
+}
+
+/**
+ * Reflow after a missed workout must preserve EVERY scheduled event, not just
+ * the final race. Bind event identities to canonical Training session IDs.
+ * A preview is returned; neither athlete history nor accepted plan is written.
+ */
+export function reviewMultiEventMissedSession(input:{
+ today:string;missedSessionId:string;
+ reason:import('./trainingPlanLifecycle.ts').MissedSessionReason;
+ events:SeasonEvent[];
+ sessions:import('./trainingPlanLifecycle.ts').DatedTrainingSession[];
+ eventSessionIds:Record<string,string>;
+ newlyUnavailableDates?:string[];
+}):{
+ status:'blocked'|'review_required';
+ issues:Array<{code:'EVENT_BINDING_MISSING'|'EVENT_DATE_CHANGED'|'EVENT_SESSION_MISSED'|'EVENT_UNAVAILABLE';eventIds:string[];message:string}>;
+ proposal:import('./trainingPlanLifecycle.ts').RemainingPlanProposal|null;
+}{
+ const issues:Array<{code:'EVENT_BINDING_MISSING'|'EVENT_DATE_CHANGED'|'EVENT_SESSION_MISSED'|'EVENT_UNAVAILABLE';eventIds:string[];message:string}>=[];
+ if(!Array.isArray(input.events)||!input.events.length||!Array.isArray(input.sessions)||
+   !validDate(input.today)||!input.eventSessionIds||typeof input.eventSessionIds!=='object')
+  throw Error('Canonical event and Training data are required for reflow.');
+ const ids=new Set<string>(),sessionIds=new Set<string>();
+ for(const event of input.events){
+  if(!event?.id?.trim()||!validDate(event.date)||ids.has(event.id))throw Error('Distinct dated event identities required.');
+  ids.add(event.id);
+  const sessionId=input.eventSessionIds[event.id];
+  if(typeof sessionId!=='string'||!sessionId.trim()||sessionIds.has(sessionId)){
+   issues.push({code:'EVENT_BINDING_MISSING',eventIds:[event.id],message:'Missing unique canonical Training session binding for event.'});
+   continue;
+  }
+  sessionIds.add(sessionId);
+  const matches=input.sessions.filter(s=>s.id===sessionId);
+  if(matches.length!==1||matches[0].intent?.priority!=='competition'){
+   issues.push({code:'EVENT_BINDING_MISSING',eventIds:[event.id],message:'Expected exactly one canonical competition session.'});
+  }else if(matches[0].date!==event.date){
+   issues.push({code:'EVENT_DATE_CHANGED',eventIds:[event.id],message:'Competition date differs from saved event date.'});
+  }
+  if(sessionId===input.missedSessionId)
+   issues.push({code:'EVENT_SESSION_MISSED',eventIds:[event.id],message:'A scheduled event cannot be marked missed as an ordinary training session; review the event first.'});
+  if((input.newlyUnavailableDates??[]).includes(event.date))
+   issues.push({code:'EVENT_UNAVAILABLE',eventIds:[event.id],message:'Reported unavailability conflicts with a scheduled event. Require explicit event review.'});
+ }
+ if(issues.length)return{status:'blocked',issues,proposal:null};
+ const last=[...input.events].sort((a,b)=>b.date.localeCompare(a.date))[0];
+ const proposal=adaptRemainingPlanAfterMiss({
+  today:input.today,missedSessionId:input.missedSessionId,
+  reason:input.reason,sessions:input.sessions,raceDate:last.date,
+  newlyUnavailableDates:input.newlyUnavailableDates
+ });
+ return{status:proposal.status,issues,proposal};
 }
