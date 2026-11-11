@@ -156,7 +156,8 @@ BEGIN
   '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa','power_w',1,
   250,'source_measured','trusted',repeat('b',64));
  metric_read:=allin_private.v2_activity_segment_scalar_projection_candidate(a,act,child);
- IF pg_catalog.jsonb_array_length(metric_read->'metrics')<>0
+ IF pg_catalog.jsonb_array_length(metric_read->'metrics')<>1
+ OR metric_read#>>'{metrics,0,metricCode}'<>'leg_cadence_rpm'
  OR metric_read#>>'{unresolvedMetrics,0,reason}'<>'conflicting_sources'
  THEN RAISE EXCEPTION 'Disagreement within same interval not quarantined: %',metric_read; END IF;
  metric_read:=allin_private.v2_activity_segment_scalar_projection_candidate(a,act,root);
