@@ -15,7 +15,7 @@ export async function prepareStripeSandboxCheckout({
   reserveCheckoutAttempt, registerPendingCheckout, successUrl, cancelUrl, approvedReturnOrigin,
 } = {}) {
   if (!uuid(authenticatedOwnerId) || expectedOwnerId !== authenticatedOwnerId ||
-      !uuid(attemptId) || trialEligible !== true ||
+      !uuid(attemptId) || typeof trialEligible !== 'boolean' ||
       !stripeId(priceId,'price_') || !stripeId(expectedMerchantAccountId,'acct_') ||
       typeof createCheckoutSession !== 'function' ||
       typeof reserveCheckoutAttempt !== 'function' ||
@@ -63,7 +63,7 @@ export async function prepareStripeSandboxCheckout({
       merchantAccountId: expectedMerchantAccountId,
       mode:'subscription',
       line_items:[{price:priceId,quantity:1}],
-      subscription_data:{trial_period_days:7},
+      ...(trialEligible?{subscription_data:{trial_period_days:7}}:{}),
       client_reference_id:attemptId,
       success_url:successUrl,
       cancel_url:cancelUrl,
