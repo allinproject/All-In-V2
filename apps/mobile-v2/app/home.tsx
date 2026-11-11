@@ -7,6 +7,7 @@ import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/a
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
+import { deviceLocalToday, todayTrainingDestination } from '../src/features/today/todayEntry';
 
 /**
  * Today is the one existing /home entry point.
@@ -25,6 +26,8 @@ function HomeOwnerScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const signOutGuard = useRef(createV2AuthActionGuard());
+  // Explicit date-only context for the existing Train Calendar, never a shadow workout record.
+  const trainingDestination = todayTrainingDestination(deviceLocalToday()) ?? '/train';
 
   async function handleSignOut() {
     if (!signOutGuard.current.tryEnter()) return;
@@ -67,7 +70,7 @@ function HomeOwnerScreen() {
           <Text style={styles.sectionLabel}>TODAY'S TRAINING</Text>
           <Text style={styles.heroTitle}>Training plan not connected yet</Text>
           <Text style={styles.help}>Your accepted workout will appear here when the canonical Training reader is connected. Nothing is being marked as a rest day.</Text>
-          <Link href="/train" asChild>
+          <Link href={trainingDestination} asChild>
             <Pressable accessibilityRole="button" style={styles.primaryAction}>
               <Text style={styles.primaryActionText}>Open Training Calendar</Text>
             </Pressable>
