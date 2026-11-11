@@ -50,6 +50,7 @@ Deno.serve(async (req: Request) => {
     deleteAuthUser: async userId => await client.auth.admin.deleteUser(userId),
     inspectAuthUser: async userId => await client.auth.admin.getUserById(userId),
     complete: async () => await client.rpc('v2_record_account_deletion_completion', args),
+    verifyCompletion: async () => await client.rpc('v2_verify_account_deletion_completion', { p_expected_request_id: request.request_id }),
     recordFailure: async (_request, reason) => await client.rpc('v2_record_account_deletion_failure', {
       ...args, p_failure_code: reason,
     }),
