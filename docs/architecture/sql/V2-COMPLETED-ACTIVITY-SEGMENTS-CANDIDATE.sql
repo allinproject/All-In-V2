@@ -12,8 +12,8 @@ CREATE TABLE public.v2_activity_segments (
    'transition','strength_block','strength_exercise','recovery_block')),
  sequence_number integer NOT NULL CHECK(sequence_number>=1),
  sport text CHECK(sport IS NULL OR sport IN (
-   'running','cycling','swimming','strength','hiking','rucking',
-   'rowing','elliptical','stair','yoga','mobility','other')),
+   'running','walking','cycling','swimming','strength','hiking','rucking',
+   'rowing','elliptical','stair','yoga','mobility','hiit','multisport','other')),
  label text CHECK(label IS NULL OR length(label)<=160),
  started_at timestamptz,
  finished_at timestamptz,
