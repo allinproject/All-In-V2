@@ -27,6 +27,9 @@ begin
  end if;
 end;
 $roles$;
+-- Match Supabase's service role only for this disposable rollback transaction.
+-- The cluster-wide change is undone by the SQL replay's ROLLBACK.
+alter role service_role bypassrls;
 grant usage on schema public,auth to authenticated;
 grant usage on schema public to anon;
 grant usage on schema public,auth,allin_private to service_role;
