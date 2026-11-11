@@ -61,10 +61,15 @@ export function createNativeBillingFlow(input:{
       const read=await input.server.readOwnerEntitlement(owner);
       if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
       if(read?.entitled!==true)return 'not_entitled';
+      if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
       if(input.store?.finishVerifiedPurchase){
         try{await input.store.finishVerifiedPurchase(evidence)}
-        catch{return 'purchase_pending'}
+        catch{return input.getAuthenticatedOwner()===owner?
+          'purchase_pending':'wrong_account'}
       }
+      // Finishing a native transaction is asynchronous. Do not report the
+      // previous owner's entitlement after an intervening account switch.
+      if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
       return 'server_entitled';
     }catch{return 'verification_unavailable'}
   }
