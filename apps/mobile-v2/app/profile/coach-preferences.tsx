@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { useAccessGate } from '../../src/auth/AccessGateProvider';
@@ -13,6 +13,9 @@ import {
 } from '../../src/features/coach/coachPreferences';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
+import { GuidedTourPanel } from '../../src/features/tutorials/GuidedTourPanel';
+import { COACH_PREFERENCES_GUIDE_STEPS, coachPreferencesGuideTarget, type CoachPreferencesGuideTarget } from '../../src/features/tutorials/coachPreferencesGuide';
+import type { GuidePosition } from '../../src/features/tutorials/profileGuide';
 
 type SettingsSnapshot = { version?: number; settings?: unknown };
 function record(value: unknown): Record<string, unknown> {
@@ -31,6 +34,8 @@ export default function CoachPreferencesRoute() {
 function OwnedCoachPreferences() {
   const { user, loading: authLoading } = useAuth();
   const gate = useAccessGate();
+  const router=useRouter();
+  const {tutorial}=useLocalSearchParams<{tutorial?:string}>();
   const owner = user?.id ?? null;
   const [draft,setDraft] = useState<CoachPreferences>({ ...EMPTY_COACH_PREFERENCES });
   const [version,setVersion] = useState<number|null>(null);
@@ -40,6 +45,22 @@ function OwnedCoachPreferences() {
   const [notice,setNotice] = useState<string|null>(null);
   const [reload,setReload] = useState(0);
   const busy=useRef(false);
+  const scrollRef=useRef<ScrollView>(null);
+  const anchors=useRef<Partial<Record<CoachPreferencesGuideTarget,number>>>({});
+  const activeTarget=useRef<CoachPreferencesGuideTarget|null>(null);
+  const [highlight,setHighlight]=useState<CoachPreferencesGuideTarget|null>(null);
+  const scrollToTarget=useCallback(()=>{
+    const target=activeTarget.current;
+    if(target){const y=anchors.current[target];if(y!==undefined)scrollRef.current?.scrollTo({y:Math.max(0,y-16),animated:true});}
+  },[]);
+  const onGuidePosition=useCallback((position:GuidePosition)=>{
+    activeTarget.current=coachPreferencesGuideTarget(position);
+    setHighlight(activeTarget.current);scrollToTarget();
+  },[scrollToTarget]);
+  const onGuideLayout=useCallback((target:CoachPreferencesGuideTarget)=>(event:LayoutChangeEvent)=>{
+    anchors.current[target]=event.nativeEvent.layout.y;
+    if(activeTarget.current===target)scrollToTarget();
+  },[scrollToTarget]);
   const pending=useRef<{version:number;patch:string;id:string}|null>(null);
 
   const refresh=useCallback(async (isCurrent:()=>boolean, preserveDraft:boolean)=>{
@@ -104,7 +125,9 @@ function OwnedCoachPreferences() {
   if(authLoading||gate.status!=='ready'||!owner)return <Redirect href="/"/>;
 
   return <SafeAreaView style={styles.safe}>
-    <ScrollView contentContainerStyle={styles.content}>
+    {tutorial==='coach-preferences' && !loading && version!==null ? <GuidedTourPanel key={owner} title="Coach Preferences guide"
+      steps={COACH_PREFERENCES_GUIDE_STEPS} onExit={()=>router.replace('/profile/tutorials')} onPositionChange={onGuidePosition}/> : null}
+    <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
       <Link href="/profile" asChild><Pressable accessibilityRole="button" style={styles.back}><Text style={styles.gold}>‹ Profile</Text></Pressable></Link>
       <Text accessibilityRole="header" style={styles.title}>Coach Preferences</Text>
       <Text style={styles.helper}>Choose how Coach communicates. Coaching safety and explicit approval for plan changes always remain in place.</Text>
@@ -112,21 +135,21 @@ function OwnedCoachPreferences() {
       {error?<Text accessibilityRole="alert" style={styles.error}>{error}</Text>:null}
       {!loading&&version===null?<Pressable accessibilityRole="button" style={styles.save} onPress={()=>setReload(n=>n+1)}><Text style={styles.saveText}>Retry loading</Text></Pressable>:null}
       {!loading&&version!==null?<>
-        <ChoiceSection title="Guidance Style" description="How often should Coach offer suggestions?" choices={GUIDANCE_OPTIONS}
+        <ChoiceSection onLayout={onGuideLayout('guidance')} highlighted={highlight==='guidance'} title="Guidance Style" description="How often should Coach offer suggestions?" choices={GUIDANCE_OPTIONS}
           selected={draft.guidance_style} disabled={saving} onChoose={value=>edit('guidance_style',value)}/>
-        <ChoiceSection title="Explanation Detail" description="How much explanation would you like?" choices={DETAIL_OPTIONS}
+        <ChoiceSection onLayout={onGuideLayout('detail')} highlighted={highlight==='detail'} title="Explanation Detail" description="How much explanation would you like?" choices={DETAIL_OPTIONS}
           selected={draft.explanation_detail} disabled={saving} onChoose={value=>edit('explanation_detail',value)}/>
-        <ChoiceSection title="Training Plan Changes" description="Coach can propose changes, but never silently rewrites an accepted plan." choices={PLAN_CHANGE_OPTIONS}
+        <ChoiceSection onLayout={onGuideLayout('changes')} highlighted={highlight==='changes'} title="Training Plan Changes" description="Coach can propose changes, but never silently rewrites an accepted plan." choices={PLAN_CHANGE_OPTIONS}
           selected={draft.plan_change_mode} disabled={saving} onChoose={value=>edit('plan_change_mode',value)}/>
-        <ChoiceSection title="Coaching Tone" description="How should Coach communicate with you?" choices={TONE_OPTIONS}
+        <ChoiceSection onLayout={onGuideLayout('tone')} highlighted={highlight==='tone'} title="Coaching Tone" description="How should Coach communicate with you?" choices={TONE_OPTIONS}
           selected={draft.coaching_tone} disabled={saving} onChoose={value=>edit('coaching_tone',value)}/>
         <View style={styles.card}>
           <Text style={styles.heading}>What Coach Knows</Text>
           <Text style={styles.helper}>Review or correct learned knowledge in the dedicated Coach learning screen when available. Kitchen facts remain owned by Profile → Kitchen.</Text>
         </View>
         {notice?<Text style={styles.gold}>{notice}</Text>:null}
-        <Pressable accessibilityRole="button" accessibilityState={{disabled:saving,busy:saving}} disabled={saving}
-          style={[styles.save,saving&&styles.dim]} onPress={()=>void save()}>
+        <Pressable onLayout={onGuideLayout('save')} accessibilityRole="button" accessibilityState={{disabled:saving,busy:saving}} disabled={saving}
+          style={[styles.save,saving&&styles.dim,highlight==='save'&&styles.guideTarget]} onPress={()=>void save()}>
           <Text style={styles.saveText}>{saving?'Saving…':'Save Coach Preferences'}</Text>
         </Pressable>
       </>:null}
@@ -134,11 +157,11 @@ function OwnedCoachPreferences() {
   </SafeAreaView>;
 }
 
-function ChoiceSection<T extends string>({title,description,choices,selected,disabled,onChoose}:{
+function ChoiceSection<T extends string>({title,description,choices,selected,disabled,onChoose,highlighted,onLayout}:{
   title:string;description:string;choices:readonly {value:T;label:string;description?:string}[];
-  selected:T|null;disabled:boolean;onChoose:(value:T)=>void;
+  selected:T|null;disabled:boolean;onChoose:(value:T)=>void;highlighted:boolean;onLayout:(event:LayoutChangeEvent)=>void;
 }){
-  return <View style={styles.card}>
+  return <View onLayout={onLayout} style={[styles.card,highlighted&&styles.guideTarget]}>
     <Text style={styles.heading}>{title}</Text>
     <Text style={styles.helper}>{description}</Text>
     {choices.map(choice=><Pressable key={choice.value} accessibilityRole="radio"
@@ -162,6 +185,7 @@ const styles=StyleSheet.create({
   gold:{color:colors.goldSoft,fontWeight:'700'},
   error:{color:colors.danger,fontSize:14},
   card:{backgroundColor:colors.surface,borderColor:colors.border,borderWidth:1,borderRadius:18,padding:17,gap:12},
+  guideTarget:{borderColor:colors.goldSoft,borderWidth:2},
   heading:{color:colors.warmWhite,fontSize:19,fontWeight:'800'},
   option:{borderColor:colors.border,borderWidth:1,backgroundColor:colors.surfaceRaised,borderRadius:12,minHeight:50,padding:12,flexDirection:'row',alignItems:'center',gap:12},
   optionSelected:{borderColor:colors.gold,backgroundColor:colors.gold},
