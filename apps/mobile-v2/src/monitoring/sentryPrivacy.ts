@@ -26,6 +26,9 @@ export function scrubCrashEvent<T extends {
     const stacktrace = (exception as typeof exception & {
       stacktrace?: { frames?: Array<{
         vars?: unknown;
+        abs_path?: string;
+        filename?: string;
+        module?: string;
         context_line?: string;
         pre_context?: string[];
         post_context?: string[];
@@ -33,6 +36,16 @@ export function scrubCrashEvent<T extends {
     }).stacktrace;
     for (const frame of stacktrace?.frames ?? []) {
       delete frame.vars;
+      // Absolute paths, querystrings and URI-like filenames may contain
+      // usernames, tokens or athlete-generated content.
+      delete frame.abs_path;
+      delete frame.module;
+      if (frame.filename && (frame.filename.includes('?') ||
+          frame.filename.includes('://') ||
+          frame.filename.includes('\\\\') ||
+          /(?:^|\\/)Users\\/|(?:^|\\/)home\\//.test(frame.filename))) {
+        delete frame.filename;
+      }
       delete frame.context_line;
       delete frame.pre_context;
       delete frame.post_context;
