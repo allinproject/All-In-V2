@@ -4,7 +4,7 @@ import {BROOKS_GENERAL_RECOMMENDATION,lookupVerifiedShoeMileage,
  validateShoeMileageRecommendation,replacementMileageStatus} from './shoeMileageRecommendation.ts';
 import {addPersonalGear,emptyPersonalGear,parsePersonalGear,personalGearPatch,
  setShoeMileageRecommendation} from './personalGear.ts';
-import {shoeMileageAlertCandidate} from './shoeMileageNotification.ts';
+import {shoeMileageAlertCandidate,shoeMileageCandidatesFromActivities} from './shoeMileageNotification.ts';
 import {notificationDecisionKey,evaluateNotification,type NotificationPreferences} from '../notifications/notificationPolicy.ts';
 
 test('Adrenaline uses verified Brooks brand guidance, not invented model-specific lifespan',()=>{
@@ -51,4 +51,17 @@ test('one notification key per shoe and selected target, not per subsequent acti
  assert.equal(evaluateNotification(second,prefs,date).reason,'already_delivered');
  assert.equal(shoeMileageAlertCandidate('owner-A',{...shoe,status:'retired'},rec.recommendedAlertKm,date),null);
  assert.equal(replacementMileageStatus(rec.recommendedAlertKm,rec.recommendedAlertKm),'target_reached');
+});
+
+test('canonical activity gear mileage triggers alert once the sourced target is reached',()=>{
+ const rec=lookupVerifiedShoeMileage('Brooks Adrenaline GTS 25')!;
+ const gear=addPersonalGear(emptyPersonalGear(),{id:'shoe',name:'Brooks Adrenaline GTS 25',
+  kind:'shoes',use:'road',status:'active',distanceKm:rec.recommendedAlertKm-10,
+  reminderKm:rec.recommendedAlertKm,recommendation:rec});
+ const now='2026-11-11T17:00:00Z';
+ const assignment={ownerId:'owner-A',activityId:'run-1',activityVersion:1,gearId:'shoe',
+  distanceKm:12,sport:'running' as const,confirmed:true};
+ assert.equal(shoeMileageCandidatesFromActivities('owner-A',gear,[],true,now).length,0);
+ assert.equal(shoeMileageCandidatesFromActivities('owner-A',gear,[assignment,assignment],true,now).length,1);
+ assert.throws(()=>shoeMileageCandidatesFromActivities('owner-A',gear,[assignment],false,now),/Complete owner/);
 });
