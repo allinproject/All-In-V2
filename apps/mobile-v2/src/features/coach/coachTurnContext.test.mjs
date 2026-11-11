@@ -61,3 +61,10 @@ test("invalid conversation collection and malformed restrictions are rejected",(
  const b=fixture();b.history.restrictions[0].subject="";
  assert.equal(prepareCoachTurnContext(b).reason,"restrictions_invalid");
 });
+
+test("impossible calendar dates fail safely instead of throwing",()=>{
+ const a=fixture();a.history.requested.fromDate="2026-13-01";
+ assert.equal(prepareCoachTurnContext(a).reason,"history_invalid");
+ const b=fixture();b.history.coverage[0].throughDate="2026-02-30";
+ assert.equal(prepareCoachTurnContext(b).reason,"coverage_invalid");
+});
