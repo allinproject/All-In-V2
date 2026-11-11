@@ -15,8 +15,11 @@ const VALID_COVERAGE = new Set(["complete", "partial", "none", "unknown"]);
 const MAX_HISTORY_EVENTS = 100;
 const validId = x => typeof x === "string" && x.trim().length > 0;
 const validTime = x => typeof x === "string" && x.trim().length > 0 && Number.isFinite(Date.parse(x));
-const validDate = x => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) &&
-  new Date(x+"T12:00:00Z").toISOString().slice(0,10) === x;
+const validDate = x => {
+  if (typeof x !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(x)) return false;
+  const parsed = new Date(x + "T12:00:00Z");
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0,10) === x;
+};
 
 /**
  * historyCertification must come from the authenticated canonical owner
