@@ -78,11 +78,14 @@ WITH viewer AS (
              (perm.visibility='public' AND p.audience='public')))
    )
 ), sorted AS (
- SELECT * FROM allowed ORDER BY published_at DESC,id DESC LIMIT 100
+ SELECT *,row_number() OVER(ORDER BY published_at DESC,id DESC) AS ordinal
+ FROM allowed ORDER BY published_at DESC,id DESC LIMIT 101
 )
 SELECT jsonb_build_object(
   'ownerId',p_owner_id,'viewerId',perm.uid,
-  'complete',true,'nextCursor',NULL,
+  'complete',(SELECT count(*)<=100 FROM sorted),
+  'nextCursor',CASE WHEN (SELECT count(*)>100 FROM sorted)
+    THEN 'additional-page-required' ELSE NULL END,
   'blocked',perm.blocked,
   'posts',COALESCE((
     SELECT jsonb_agg(
@@ -91,7 +94,7 @@ SELECT jsonb_build_object(
         'kind',s.kind,'audience',s.audience,'body',s.body,
         'publishedAt',s.published_at,'updatedAt',s.updated_at
       ) ORDER BY s.published_at DESC,s.id DESC
-    ) FROM sorted s
+    ) FROM sorted s WHERE s.ordinal<=100
   ),'[]'::jsonb)
 )
 FROM permission perm
@@ -102,7 +105,7 @@ $community_posts_read$;
 REVOKE ALL ON FUNCTION public.v2_community_posts_read(uuid)
   FROM PUBLIC,anon,authenticated,service_role;
 
--- IMPORTANT: A hard LIMIT 100 alone is not a complete feed. This candidate's
--- 'complete' currently assumes <=100 authorized posts, so MUST be corrected
--- to cursor-aware pagination before serving real users. Review-only fixture
--- and no API grant mean it cannot be used as a production profile reader.
+-- Pagination is NOT deployed. A response with more than 100 authorized rows
+-- is explicitly incomplete, and the client must reject it rather than imply
+-- the extra posts do not exist. A reviewed owner-cursor contract is required
+-- before granting API access.
