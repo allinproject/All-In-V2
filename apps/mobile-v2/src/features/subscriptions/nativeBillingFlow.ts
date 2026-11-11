@@ -101,8 +101,8 @@ export function createNativeBillingFlow(input:{
           p.productId===input.productId);
         if(evidence.length===0){
           const read=await input.server.readOwnerEntitlement(owner);
-          return input.getAuthenticatedOwner()===owner&&read?.entitled===true?
-            'server_entitled':'not_entitled';
+          if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
+          return read?.entitled===true?'server_entitled':'not_entitled';
         }
         for(const receipt of evidence){
           const outcome=await reconcile(owner,receipt);
