@@ -12,6 +12,7 @@ CREATE TABLE public.v2_completed_activities(
  UNIQUE (id,user_id)
 );
 \i /tmp/allin/docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql
 
 DO $qa$
 DECLARE
@@ -34,6 +35,16 @@ BEGIN
   '{"segments":[]}'::jsonb,'{"kind":"scored_effort"}'::jsonb,
   '2026-11-09 09:00:00+00','2026-11-16 09:00:00+00'
  );
+ -- Private SQL scoring exactly preserves V1 components and caps.
+ IF allin_private.v2_indoor_weekly_score_breakdown_v1(1,1,1)->>'score' <> '75.000'
+   THEN RAISE EXCEPTION 'V1 scoring 75 point fixture mismatch'; END IF;
+ IF allin_private.v2_indoor_weekly_score_breakdown_v1(1,1,2.5)->>'score' <> '100.000'
+   THEN RAISE EXCEPTION 'V1 scored effort cap mismatch'; END IF;
+ IF allin_private.v2_indoor_weekly_score_breakdown_v1(NULL,NULL,NULL)->>'score' <> '0.000'
+   THEN RAISE EXCEPTION 'V1 missing evidence parity mismatch'; END IF;
+ IF has_function_privilege('anon','allin_private.v2_indoor_weekly_score_breakdown_v1(numeric,numeric,numeric)','EXECUTE')
+    OR has_function_privilege('authenticated','allin_private.v2_indoor_weekly_score_breakdown_v1(numeric,numeric,numeric)','EXECUTE')
+   THEN RAISE EXCEPTION 'Untrusted client can execute private scoring'; END IF;
  -- No second challenge for the same week.
  BEGIN
   INSERT INTO public.v2_indoor_weekly_challenges(
