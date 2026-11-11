@@ -1,0 +1,282 @@
+\set ON_ERROR_STOP on
+
+-- Disposable PostgreSQL bootstrap. This file is run only against a fresh CI
+-- service database; it never connects to the Supabase project.
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE authenticated NOLOGIN;
+CREATE ROLE service_role NOLOGIN;
+CREATE SCHEMA auth;
+CREATE TABLE auth.users (id uuid PRIMARY KEY);
+CREATE TABLE public.v2_profiles (
+  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE
+);
+CREATE SCHEMA allin_private;
+
+-- Execute the same review-only SQL file used for owner review.
+\ir ../docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql
+
+DO $community_catalog$
+DECLARE
+  table_name text;
+  role_name text;
+  privilege_name text;
+  relation_id oid;
+  row_security boolean;
+  community_tables text[] := ARRAY[
+    'v2_community_visibility',
+    'v2_community_pair_revisions',
+    'v2_community_follows',
+    'v2_community_blocks',
+    'v2_community_action_receipts'
+  ];
+  api_roles text[] := ARRAY['anon','authenticated','service_role'];
+  table_privileges text[] := ARRAY[
+    'SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'
+  ];
+BEGIN
+  IF (SELECT count(*) FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'allin_private'
+        AND c.relkind IN ('r','p')
+        AND c.relname LIKE 'v2_community_%') <> 5 THEN
+    RAISE EXCEPTION 'Expected exactly five private Community candidate tables';
+  END IF;
+
+  IF to_regclass('public.v2_profiles') IS NULL THEN
+    RAISE EXCEPTION 'Canonical V2 profile identity table is missing';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname LIKE 'v2_community_%'
+  ) THEN
+    RAISE EXCEPTION 'Community candidate created an exposed public table';
+  END IF;
+
+  FOREACH table_name IN ARRAY community_tables LOOP
+    SELECT c.oid, c.relrowsecurity
+      INTO relation_id, row_security
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'allin_private' AND c.relname = table_name;
+
+    IF relation_id IS NULL THEN
+      RAISE EXCEPTION 'Missing allin_private.%', table_name;
+    END IF;
+    IF NOT row_security THEN
+      RAISE EXCEPTION 'RLS is not enabled on allin_private.%', table_name;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_policy WHERE polrelid = relation_id) THEN
+      RAISE EXCEPTION 'Candidate unexpectedly added a direct RLS policy to %', table_name;
+    END IF;
+
+    FOREACH role_name IN ARRAY api_roles LOOP
+      IF has_schema_privilege(role_name, 'allin_private', 'USAGE') THEN
+        RAISE EXCEPTION 'API role % can use the private schema', role_name;
+      END IF;
+      FOREACH privilege_name IN ARRAY table_privileges LOOP
+        IF has_table_privilege(role_name, relation_id, privilege_name) THEN
+          RAISE EXCEPTION 'API role % has % on allin_private.%', role_name, privilege_name, table_name;
+        END IF;
+      END LOOP;
+    END LOOP;
+
+    IF EXISTS (
+      SELECT 1
+      FROM pg_class c
+      CROSS JOIN LATERAL aclexplode(
+        COALESCE(c.relacl, acldefault('r', c.relowner))
+      ) acl
+      WHERE c.oid = relation_id AND acl.grantee = 0
+    ) THEN
+      RAISE EXCEPTION 'PUBLIC has a direct table privilege on allin_private.%', table_name;
+    END IF;
+  END LOOP;
+END
+$community_catalog$;
+
+-- Basic row and constraint checks using two disposable identities.
+INSERT INTO auth.users (id) VALUES
+  ('00000000-0000-0000-0000-000000000001'),
+  ('00000000-0000-0000-0000-000000000002');
+INSERT INTO public.v2_profiles (user_id) VALUES
+  ('00000000-0000-0000-0000-000000000001'),
+  ('00000000-0000-0000-0000-000000000002');
+
+INSERT INTO allin_private.v2_community_visibility (user_id)
+VALUES ('00000000-0000-0000-0000-000000000001');
+
+DO $community_rows$
+BEGIN
+  IF (SELECT profile_visibility
+      FROM allin_private.v2_community_visibility
+      WHERE user_id = '00000000-0000-0000-0000-000000000001') <> 'private' THEN
+    RAISE EXCEPTION 'Community visibility did not default to private';
+  END IF;
+
+  BEGIN
+    INSERT INTO allin_private.v2_community_visibility (user_id, profile_visibility)
+    VALUES ('00000000-0000-0000-0000-000000000002', 'invalid');
+    RAISE EXCEPTION 'Invalid profile visibility was accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+END
+$community_rows$;
+
+INSERT INTO allin_private.v2_community_pair_revisions
+  (lower_user_id, upper_user_id)
+VALUES
+  ('00000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-000000000002');
+
+DO $community_pair$
+BEGIN
+  BEGIN
+    INSERT INTO allin_private.v2_community_pair_revisions
+      (lower_user_id, upper_user_id)
+    VALUES
+      ('00000000-0000-0000-0000-000000000002',
+       '00000000-0000-0000-0000-000000000001');
+    RAISE EXCEPTION 'Unsorted relationship pair was accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+END
+$community_pair$;
+
+INSERT INTO allin_private.v2_community_follows
+  (follower_id, followed_id, state)
+VALUES
+  ('00000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-000000000002', 'pending');
+INSERT INTO allin_private.v2_community_follows
+  (follower_id, followed_id, state, approved_at)
+VALUES
+  ('00000000-0000-0000-0000-000000000002',
+   '00000000-0000-0000-0000-000000000001', 'approved', now());
+
+DO $community_directional$
+BEGIN
+  BEGIN
+    INSERT INTO allin_private.v2_community_follows
+      (follower_id, followed_id, state)
+    VALUES
+      ('00000000-0000-0000-0000-000000000001',
+       '00000000-0000-0000-0000-000000000001', 'pending');
+    RAISE EXCEPTION 'Self-follow was accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+
+  BEGIN
+    INSERT INTO allin_private.v2_community_follows
+      (follower_id, followed_id, state, approved_at)
+    VALUES
+      ('00000000-0000-0000-0000-000000000001',
+       '00000000-0000-0000-0000-000000000002', 'pending', now());
+    RAISE EXCEPTION 'Pending follow with approval timestamp was accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+END
+$community_directional$;
+
+INSERT INTO allin_private.v2_community_blocks (blocker_id, blocked_id)
+VALUES
+  ('00000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-000000000002'),
+  ('00000000-0000-0000-0000-000000000002',
+   '00000000-0000-0000-0000-000000000001');
+
+DO $community_blocks$
+BEGIN
+  BEGIN
+    INSERT INTO allin_private.v2_community_blocks (blocker_id, blocked_id)
+    VALUES
+      ('00000000-0000-0000-0000-000000000001',
+       '00000000-0000-0000-0000-000000000001');
+    RAISE EXCEPTION 'Self-block was accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+END
+$community_blocks$;
+
+INSERT INTO allin_private.v2_community_action_receipts
+  (actor_id, action_id, target_id, action, expected_version,
+   result_version, payload_sha256)
+VALUES
+  ('00000000-0000-0000-0000-000000000001',
+   '10000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-000000000002',
+   'request_follow', 1, 2,
+   'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+
+DO $community_receipts$
+BEGIN
+  BEGIN
+    INSERT INTO allin_private.v2_community_action_receipts
+      (actor_id, action_id, target_id, action, expected_version,
+       result_version, payload_sha256)
+    VALUES
+      ('00000000-0000-0000-0000-000000000001',
+       '10000000-0000-0000-0000-000000000002',
+       '00000000-0000-0000-0000-000000000002',
+       'request_follow', 2, 2,
+       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    RAISE EXCEPTION 'Non-increasing action receipt version was accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+
+  BEGIN
+    INSERT INTO allin_private.v2_community_action_receipts
+      (actor_id, action_id, target_id, action, expected_version,
+       result_version, payload_sha256)
+    VALUES
+      ('00000000-0000-0000-0000-000000000001',
+       '10000000-0000-0000-0000-000000000003',
+       '00000000-0000-0000-0000-000000000002',
+       'request_follow', 1, 2, 'bad-hash');
+    RAISE EXCEPTION 'Invalid receipt fingerprint was accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+END
+$community_receipts$;
+
+-- Auth deletion must cascade through the owner profile and every dependent
+-- Community relation/receipt, including rows where that athlete is the target.
+DELETE FROM auth.users
+WHERE id = '00000000-0000-0000-0000-000000000001';
+
+DO $community_delete$
+DECLARE
+  table_name text;
+  remaining bigint;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.v2_profiles
+    WHERE user_id = '00000000-0000-0000-0000-000000000001'
+  ) THEN
+    RAISE EXCEPTION 'Deleted Auth identity still has a V2 profile';
+  END IF;
+
+  FOREACH table_name IN ARRAY ARRAY[
+    'v2_community_visibility',
+    'v2_community_pair_revisions',
+    'v2_community_follows',
+    'v2_community_blocks',
+    'v2_community_action_receipts'
+  ] LOOP
+    EXECUTE format('SELECT count(*) FROM allin_private.%I', table_name)
+      INTO remaining;
+    IF remaining <> 0 THEN
+      RAISE EXCEPTION 'Account deletion left % row(s) in %', remaining, table_name;
+    END IF;
+  END LOOP;
+END
+$community_delete$;
+
+\echo PASS: Community privacy candidate executed on PostgreSQL and passed catalog, constraint, directional, and deletion-cascade checks.
