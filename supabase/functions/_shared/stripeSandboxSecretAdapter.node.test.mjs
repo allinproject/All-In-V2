@@ -116,6 +116,7 @@ test('mock adapter composes with pending checkout helper without producing real 
     attemptId:id,trialEligible:true,
     priceId:price,expectedMerchantAccountId:account,
     createCheckoutSession:adapter.createCheckoutSession,
+    reserveCheckoutAttempt:async()=> 'reserved',
     registerPendingCheckout:async()=> 'pending',
     successUrl:requestShape.success_url,cancelUrl:requestShape.cancel_url,
     approvedReturnOrigin:'https://allin365.app',
