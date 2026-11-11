@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { prepareV2AccountExport, V2_ACCOUNT_EXPORT_VERSION, V2_SHARE_MAX_CHARS } from './accountExport.ts';
+import { prepareV2AccountExport, V2_ACCOUNT_EXPORT_VERSION, V2_EXPORT_MAX_CHARS } from './accountExport.ts';
 const owner = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251';
 const valid = () => ({
   schema_version: V2_ACCOUNT_EXPORT_VERSION,
@@ -27,6 +27,6 @@ test('rejects version drift and invalid response shape', () => {
   assert.throws(() => prepareV2AccountExport({...valid(), schema_version:'other'},owner), /not supported/);
   assert.throws(() => prepareV2AccountExport([],owner), /invalid snapshot/);
 });
-test('refuses oversized inline sharing', () => {
-  assert.throws(() => prepareV2AccountExport({...valid(), account:{id:owner, email:'x'.repeat(V2_SHARE_MAX_CHARS)}},owner), /too large/);
+test('refuses oversized temporary file export', () => {
+  assert.throws(() => prepareV2AccountExport({...valid(), account:{id:owner, email:'x'.repeat(V2_EXPORT_MAX_CHARS)}},owner), /too large/);
 });
