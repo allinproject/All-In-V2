@@ -52,6 +52,8 @@ on:
       - 'scripts/v2-training-storage-export-integrity.test.mjs'
       - 'scripts/v2-training-private-storage-stage.mjs'
       - 'scripts/v2-training-private-storage-stage.test.mjs'
+      - 'scripts/v2-training-encrypted-export-envelope.mjs'
+      - 'scripts/v2-training-encrypted-export-envelope.test.mjs'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -86,7 +88,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check review-only private Storage export integrity contract
-        run: node --test scripts/v2-training-storage-export-integrity.test.mjs scripts/v2-training-private-storage-stage.test.mjs
+        run: node --test scripts/v2-training-storage-export-integrity.test.mjs scripts/v2-training-private-storage-stage.test.mjs scripts/v2-training-encrypted-export-envelope.test.mjs
       - name: Replay canonical workout owner proposal and cross-domain FKs
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
