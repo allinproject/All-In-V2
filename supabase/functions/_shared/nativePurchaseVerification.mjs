@@ -43,19 +43,19 @@ export async function verifyNativePurchaseForBinding({
      originalTransactionId:proof.providerSubscriptionId,
      ownerId:authenticatedOwnerId,
    })}catch{return {status:'verification_unavailable'}}
-   // Current status is an independently signed, verified store fact. Its
-   // returned phase and expiry must be bounded by the transaction fact.
+   // Apple's signed CURRENT subscription status can legitimately extend
+   // beyond the signed transaction supplied by the client (renewals, grace).
+   // It must be verified afresh by the server SDK, never trusted from the
+   // client transaction or unsigned JSON.
    const allowed=['trial','paid','grace','canceling'];
-   if(!current||current.originalTransactionId!==proof.providerSubscriptionId||
+   if(!current||current.verificationSource!=='apple_server_signed_current'||
+      current.originalTransactionId!==proof.providerSubscriptionId||
       current.ownerId!==authenticatedOwnerId||
-      ![...allowed,'expired','refunded','revoked'].includes(current.phase)||
+      ![...allowed,'expired','refunded','revoked','billing_retry'].includes(current.phase)||
       (allowed.includes(current.phase)&&
         (!Number.isSafeInteger(current.accessUntil)||
-         proof.accessUntil===null||current.accessUntil>proof.accessUntil||
          current.accessUntil<=nowMs))||
-      (!allowed.includes(current.phase)&&current.accessUntil!==null)||
-      (['revoked','expired'].includes(proof.phase)&&
-         allowed.includes(current.phase)))
+      (!allowed.includes(current.phase)&&current.accessUntil!==null))
      return {status:'verification_unavailable'};
    proof={...proof,phase:current.phase,accessUntil:current.accessUntil};
  }else if(platform==='android'){
