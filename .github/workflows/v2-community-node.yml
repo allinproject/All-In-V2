@@ -1,0 +1,35 @@
+name: V2 Community focused Node tests (no deploy)
+
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - 'apps/mobile-v2/src/features/community/**'
+      - 'apps/mobile-v2/package.json'
+      - 'scripts/test-v2-community-sql-guard.test.mjs'
+      - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
+      - '.github/workflows/v2-community-node.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-community-node-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  community-contracts:
+    name: Community, EventHub and privacy Node regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: apps/mobile-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Run existing Community contract suite without install or deploy
+        run: npm run test:community
