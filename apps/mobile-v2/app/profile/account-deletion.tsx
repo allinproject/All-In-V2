@@ -54,7 +54,9 @@ function OwnedAccountDeletionScreen() {
     const { data, error: readError } = await supabase.rpc('v2_my_account_deletion_request', { p_expected_user_id: owner });
     if (readError) throw readError;
     await assertV2SessionOwner(supabase, owner);
-    if (isCurrent()) setStatus(parseRequest(data));
+    const snapshot = parseRequest(data);
+    if (isCurrent()) setStatus(snapshot);
+    return snapshot;
   }, [owner]);
 
   useFocusEffect(useCallback(() => {
@@ -96,13 +98,21 @@ function OwnedAccountDeletionScreen() {
         setConfirmation('');
       }
     } catch (cause) {
-      // Lost responses can have committed the request; always reread before suggesting retry.
+      // If the write committed but the response was lost, a fresh owner-bound
+      // status read is authoritative. Do not show a false failure or retry.
+      let reconciled = false;
       try {
-        await readCurrent(() => mounted.current);
+        const latest = await readCurrent(() => mounted.current);
+        reconciled = latest.status === 'requested' || latest.status === 'processing';
       } catch {
-        // Keep the error visible; do not issue a second write automatically.
+        // Uncertain outcome stays visible; no automatic write retry.
       }
-      if (mounted.current) setError(cause instanceof Error ? cause.message : 'Could not verify account deletion request. Reload before trying again.');
+      if (mounted.current && reconciled) {
+        setReviewing(false);
+        setConfirmation('');
+      } else if (mounted.current) {
+        setError(cause instanceof Error ? cause.message : 'Could not verify account deletion request. Reload before trying again.');
+      }
     } finally {
       inFlight.current = false;
       if (mounted.current) setSaving(false);
@@ -132,9 +142,17 @@ function OwnedAccountDeletionScreen() {
         setCancelReviewing(false);
       }
     } catch (cause) {
-      // Cancellation might have committed despite a lost response: reconcile first.
-      try { await readCurrent(() => mounted.current); } catch { /* No automatic retry. */ }
-      if (mounted.current) setError(cause instanceof Error ? cause.message : 'Cancellation status uncertain. Reload before retrying.');
+      // A cancelled receipt can be lost; reconcile exact owner and request ID.
+      let reconciled = false;
+      try {
+        const latest = await readCurrent(() => mounted.current);
+        reconciled = latest.status === 'cancelled' && latest.requestId === requestId;
+      } catch { /* No automatic retry. */ }
+      if (mounted.current && reconciled) {
+        setCancelReviewing(false);
+      } else if (mounted.current) {
+        setError(cause instanceof Error ? cause.message : 'Cancellation status uncertain. Reload before retrying.');
+      }
     } finally {
       inFlight.current = false;
       if (mounted.current) setSaving(false);
