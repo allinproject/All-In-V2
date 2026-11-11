@@ -14,6 +14,8 @@ on:
       - 'scripts/test-v2-training-auth-gateway-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-training-plan-calendar-postgres.psql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SOURCE-WRITER-CANDIDATE.sql'
+      - 'scripts/test-v2-completed-source-writer-postgres.psql'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -81,3 +83,11 @@ jobs:
           docker cp docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql"
           docker cp scripts/test-v2-training-plan-calendar-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-plan-calendar-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_plan_calendar -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-plan-calendar-postgres.psql
+      - name: Replay Completed Activity source identity and dedup in disposable DB
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" completed_source_contract
+          docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SOURCE-WRITER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SOURCE-WRITER-CANDIDATE.sql"
+          docker cp scripts/test-v2-completed-source-writer-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-completed-source-writer-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d completed_source_contract -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-completed-source-writer-postgres.psql
