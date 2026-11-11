@@ -25,10 +25,10 @@ test("uncertainty never treats missing evidence as observed", () => {
   }
 });
 test("an omitted phase or duplicate cohort invalidates the scenario matrix", () => {
-  const absent=structuredClone(COACH_QUALITY_JOURNEYS);
+  const absent=JSON.parse(JSON.stringify(COACH_QUALITY_JOURNEYS));
   absent[0].steps.pop();
   assert.equal(validateQualityJourneys(absent).valid,false);
-  const dup=structuredClone(COACH_QUALITY_JOURNEYS);
+  const dup=JSON.parse(JSON.stringify(COACH_QUALITY_JOURNEYS));
   dup[1].cohort=dup[0].cohort;
   assert.ok(validateQualityJourneys(dup).failures.some(x=>x.startsWith("DUPLICATE_COHORT:")));
 });
