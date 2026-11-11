@@ -4,6 +4,7 @@ import {prepareCoachTurnContext} from "./coachTurnContext.mjs";
 
 const fixture=()=>({
  authenticatedUserId:"a",accountId:"a",accessGateReady:true,threadId:"thread-1",
+ currentTime:"2026-11-11T10:11:00Z",
  message:"What should I do with my run today?",restrictionsVerified:true,
  historyCertification:{verified:true,ownerId:"a",sourceRef:"training-read-1",readAt:"2026-11-11T10:10:00Z"},
  history:{
@@ -67,4 +68,13 @@ test("impossible calendar dates fail safely instead of throwing",()=>{
  assert.equal(prepareCoachTurnContext(a).reason,"history_invalid");
  const b=fixture();b.history.coverage[0].throughDate="2026-02-30";
  assert.equal(prepareCoachTurnContext(b).reason,"coverage_invalid");
+});
+
+test("stale, future, or missing clock evidence fails closed",()=>{
+ const a=fixture();a.currentTime="2026-11-11T10:30:01Z";
+ assert.equal(prepareCoachTurnContext(a).reason,"history_stale");
+ const b=fixture();b.currentTime="2026-11-11T10:09:00Z";
+ assert.equal(prepareCoachTurnContext(b).reason,"history_future_read");
+ const c=fixture();delete c.currentTime;
+ assert.equal(prepareCoachTurnContext(c).reason,"history_future_read");
 });
