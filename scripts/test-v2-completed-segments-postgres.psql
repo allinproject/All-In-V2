@@ -117,6 +117,21 @@ BEGIN
  IF has_function_privilege('authenticated',
  'allin_private.v2_activity_append_segment_scalar_candidate(uuid,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text)',
  'EXECUTE') THEN RAISE EXCEPTION 'Client can append private segment metrics'; END IF;
+ -- The same source can have a global power fact and a leg power fact.
+ -- Global replay lookup MUST ignore segment rows rather than accidentally
+ -- treating the first segment's 200 W as the activity-wide value.
+ metric_read:=allin_private.v2_activity_append_scalar_candidate(
+   a,act,src,'00000000-0000-4000-8000-000000000012',
+   'power_w',1,'source_measured',190,NULL,NULL,repeat('a',64));
+ IF metric_read->>'replayed'<>'false' THEN
+   RAISE EXCEPTION 'Global metric collided with existing segment metric'; END IF;
+ metric_read:=allin_private.v2_activity_append_scalar_candidate(
+   a,act,src,'00000000-0000-4000-8000-000000000012',
+   'power_w',1,'source_measured',190,NULL,NULL,repeat('a',64));
+ IF metric_read->>'replayed'<>'true' OR
+   (SELECT count(*) FROM public.v2_activity_metric_values
+    WHERE activity_id=act AND segment_id IS NULL AND metric_code='power_w')<>1
+ THEN RAISE EXCEPTION 'Global metric retry merged into segment history'; END IF;
  -- Distinct intervals/legs are independent observations, never conflicting
  -- power values merely because they share one metric name.
  metric_read:=allin_private.v2_activity_segment_scalar_projection_candidate(a,act,root);
@@ -187,7 +202,7 @@ BEGIN
      OR has_table_privilege('authenticated',c.oid,'INSERT'))) THEN
   RAISE EXCEPTION 'Segment row security or grants were unsafe'; END IF;
  IF (SELECT count(*) FROM public.v2_activity_segments WHERE activity_id=act)<>3
- OR (SELECT count(*) FROM public.v2_activity_metric_values WHERE activity_id=act)<>4 THEN
+ OR (SELECT count(*) FROM public.v2_activity_metric_values WHERE activity_id=act)<>5 THEN
   RAISE EXCEPTION 'Unexpected duplicate or lost records'; END IF;
  RAISE NOTICE 'PASS ALL-243 typed segments: owner scope, nested order, metric/segment identity and RLS';
 END $qa$;
