@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link, Redirect } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/authRoute';
@@ -8,6 +8,12 @@ import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
 
+/**
+ * Today is the one existing /home entry point.
+ * No placeholder metric or workout is presented as a verified athlete fact.
+ * Canonical Training, Nutrition and Kitchen readers will populate these sections
+ * through their respective domain owners; this screen must not create shadow state.
+ */
 export default function HomeScreen() {
   const { user, sessionGeneration } = useAuth();
   return <HomeOwnerScreen key={v2AuthenticatedScreenKey(user?.id ?? null, sessionGeneration)} />;
@@ -33,29 +39,82 @@ function HomeOwnerScreen() {
       setSigningOut(false);
     }
   }
+
   if (!loading && !user) return <Redirect href="/sign-in" />;
   if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
   if (gate.status === 'onboarding_required') return <Redirect href="/onboarding-required" />;
-  if (gate.status !== 'ready') return <Redirect href="/" />;
+  if (gate.status !== 'ready' || !user) return <Redirect href="/" />;
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.content}>
-        <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-        <Link href="/profile" asChild><Pressable accessibilityRole="button" accessibilityLabel="Open profile and account settings" style={styles.button}><Text style={styles.buttonText}>Profile & account</Text></Pressable></Link>
-        <Text accessibilityRole="header" style={styles.title}>V2 foundation</Text>
-        <Text style={styles.body}>Your existing account is connected and its current access and onboarding checks have passed. This is the new app shell; Coach and recipe workflows will be added as the next verified slices.</Text>
-        <Text style={styles.email}>{user?.email ?? 'Loading account…'}</Text>
-        <Link href="/train" asChild>
-          <Pressable accessibilityRole="button" style={styles.button}>
-            <Text style={styles.buttonText}>Training Calendar</Text>
-          </Pressable>
-        </Link>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.topBar}>
+          <View>
+            <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
+            <Text accessibilityRole="header" style={styles.heading}>Today</Text>
+          </View>
+          <View style={styles.topActions}>
+            <Text style={styles.weather}>Weather unavailable</Text>
+            <Link href="/profile" asChild>
+              <Pressable accessibilityRole="button" accessibilityLabel="Profile and settings" style={styles.profile}>
+                <Text style={styles.profileText}>Profile</Text>
+              </Pressable>
+            </Link>
+          </View>
+        </View>
+
+        <View style={styles.hero}>
+          <Text style={styles.sectionLabel}>TODAY'S TRAINING</Text>
+          <Text style={styles.heroTitle}>Training plan not connected yet</Text>
+          <Text style={styles.help}>Your accepted workout will appear here when the canonical Training reader is connected. Nothing is being marked as a rest day.</Text>
+          <Link href="/train" asChild>
+            <Pressable accessibilityRole="button" style={styles.primaryAction}>
+              <Text style={styles.primaryActionText}>Open Training Calendar</Text>
+            </Pressable>
+          </Link>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Daily Extended</Text>
+            <Link href="/fuel" asChild>
+              <Pressable accessibilityRole="button" accessibilityLabel="View daily nutrition details" style={styles.inlineAction}>
+                <Text style={styles.actionText}>View more ›</Text>
+              </Pressable>
+            </Link>
+          </View>
+          <View style={styles.metricRow}>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Burned</Text><Text style={styles.metricUnknown}>—</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Eaten</Text><Text style={styles.metricUnknown}>—</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Left to eat</Text><Text style={styles.metricUnknown}>—</Text></View>
+          </View>
+          <Text style={styles.help}>Nutrition totals are unavailable until your verified food and activity data are connected.</Text>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Food Log</Text>
+            <Link href="/fuel" asChild>
+              <Pressable accessibilityRole="button" style={styles.inlineAction}>
+                <Text style={styles.actionText}>View log ›</Text>
+              </Pressable>
+            </Link>
+          </View>
+          <Text style={styles.help}>Today's food entries have not been loaded. Food photos will remain compact beneath the calorie summary.</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Kitchen reminders</Text>
+          <Text style={styles.help}>Meal Prep and Cook Now reminders will appear here from your actual plan and preferences. No reminders are scheduled by this placeholder.</Text>
+        </View>
+
+        <Text style={styles.account}>Signed in as {user.email ?? 'your V2 account'}</Text>
         {signOutError ? <Text accessibilityRole="alert" style={styles.error}>{signOutError}</Text> : null}
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: signingOut, busy: signingOut }} disabled={signingOut} onPress={() => void handleSignOut()} style={styles.button}>
-          <Text style={styles.buttonText}>Sign out</Text>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: signingOut, busy: signingOut }}
+          disabled={signingOut} onPress={() => void handleSignOut()} style={styles.signOut}>
+          <Text style={styles.signOutText}>{signingOut ? 'Signing out…' : 'Sign out'}</Text>
         </Pressable>
-      </View>
+      </ScrollView>
       <V2BottomNavigation />
     </SafeAreaView>
   );
@@ -63,13 +122,32 @@ function HomeOwnerScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { flex: 1, justifyContent: 'center', padding: 24, gap: 18 },
-  brand: { color: colors.warmWhite, fontSize: 18, fontWeight: '800', letterSpacing: 1.4 },
+  content: { padding: 20, gap: 16, paddingBottom: 40 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  topActions: { alignItems: 'flex-end', gap: 8 },
+  brand: { color: colors.warmWhite, fontSize: 15, fontWeight: '800', letterSpacing: 1.2 },
   gold: { color: colors.gold },
-  title: { color: colors.warmWhite, fontSize: 30, fontWeight: '800' },
-  body: { color: colors.mutedText, fontSize: 15, lineHeight: 22 },
-  email: { color: colors.gold, fontSize: 14 },
-  error: { color: colors.danger, fontSize: 14, lineHeight: 20 },
-  button: { minHeight: 48, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  buttonText: { color: colors.warmWhite, fontWeight: '700' }
+  heading: { color: colors.warmWhite, fontSize: 30, fontWeight: '800', marginTop: 4 },
+  weather: { color: colors.mutedText, fontSize: 11 },
+  profile: { borderColor: colors.border, borderWidth: 1, paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 12 },
+  profileText: { color: colors.warmWhite, fontWeight: '700', fontSize: 12 },
+  hero: { backgroundColor: colors.surfaceRaised, borderColor: colors.gold, borderWidth: 1, borderRadius: 18, padding: 20, gap: 12 },
+  sectionLabel: { fontSize: 12, color: colors.goldSoft, fontWeight: '800', letterSpacing: 1 },
+  heroTitle: { fontSize: 21, color: colors.warmWhite, fontWeight: '800' },
+  help: { color: colors.mutedText, fontSize: 13, lineHeight: 20 },
+  primaryAction: { backgroundColor: colors.gold, borderRadius: 12, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  primaryActionText: { color: colors.background, fontWeight: '800' },
+  card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 18, padding: 16, gap: 12 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { color: colors.warmWhite, fontSize: 17, fontWeight: '800' },
+  inlineAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
+  actionText: { color: colors.goldSoft, fontSize: 13, fontWeight: '700' },
+  metricRow: { flexDirection: 'row', gap: 8 },
+  metric: { flex: 1, minWidth: 0, backgroundColor: colors.surfaceRaised, borderRadius: 12, padding: 10, gap: 5 },
+  metricLabel: { color: colors.mutedText, fontSize: 11 },
+  metricUnknown: { color: colors.warmWhite, fontSize: 22, fontWeight: '800' },
+  account: { color: colors.mutedText, fontSize: 12 },
+  error: { color: colors.danger, fontSize: 13 },
+  signOut: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  signOutText: { color: colors.mutedText, fontWeight: '700' },
 });
