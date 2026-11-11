@@ -12,9 +12,21 @@ $guard$;
 BEGIN;
 create schema auth;
 create schema allin_private;
-create role anon nologin;
-create role authenticated nologin;
-create role service_role nologin bypassrls;
+-- PostgreSQL roles are cluster-wide, even across disposable databases.
+-- Preserve roles created by the Community/Subscription test steps.
+do $roles$
+begin
+ if not exists(select 1 from pg_roles where rolname='anon') then
+  create role anon nologin;
+ end if;
+ if not exists(select 1 from pg_roles where rolname='authenticated') then
+  create role authenticated nologin;
+ end if;
+ if not exists(select 1 from pg_roles where rolname='service_role') then
+  create role service_role nologin bypassrls;
+ end if;
+end;
+$roles$;
 grant usage on schema public,auth to authenticated;
 grant usage on schema public to anon;
 grant usage on schema public,auth,allin_private to service_role;
