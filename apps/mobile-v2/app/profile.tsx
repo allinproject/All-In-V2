@@ -145,6 +145,12 @@ function OwnedProfileScreen() {
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Training Focus and Active Activities</Text>
+              <Link href="/profile/weekly-routine" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}>
+                  <Text style={styles.buttonText}>Weekly Routine</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.muted}>Usual training times, grocery shopping and meal-prep days</Text>
               <Link href="/profile/kitchen" asChild>
                 <Pressable onLayout={onPersonalizeChildLayout("kitchen")} accessibilityRole="button" accessibilityHint="Edit your cooking equipment and reheating setup" style={[styles.button, highlightedTarget==="kitchen" && styles.guideTarget]}>
                   <Text style={styles.buttonText}>Kitchen</Text>
