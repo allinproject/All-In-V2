@@ -51,6 +51,14 @@ It orders the actual supplied scalar labels using the imported V1 17-sport basel
 
 `completedActivityDetailProjection.test.ts` tests preservation of extra Zone 2 metrics, missing-data absence, pin/hide without source mutation, structured data presence, conflicts and sport requirements. **This is neither completed schema nor a live workout screen.** Full per-metric capability/provenance checks and every structured series reader remain explicit ALL-243 acceptance gaps.
 
+## Screen composition slice — 2026-11-11
+
+Added the **reusable** `completedActivityScreenModel.ts` and `CompletedActivityScreenContent.tsx` to the canonical V2 Training feature, using only the supplied canonical-owner evidence. The screen restores V1's **Overview / Details / Coach** tab names, sport-appropriate top metrics, complete source-backed Details, optional Coach interpretation without fake summaries, optional metadata editing (including post-workout gear and road/trail), and optional Customize panel for both data tabs. `completedActivityScreenModel.test.ts` covers no invented measurements, sport isolation, all available metric retention, Coach optionality, and non-hideable provenance. GitHub node smoke run `43026158061` passed.
+
+**Integration boundary:** This component is deliberately **not routed** in the live app. V2 currently lacks an approved deployed ALL-243 canonical completed-activity reader/DB. The eventual parent must read an actual authorized activity, verify session ownership, bind a valid source/metric evidence projection, pass `onSaveLayout` through existing `saveOwnedCompletedActivityLayouts` (versioned owner-guarded and idempotent), and pass an exact-activity-context `onOpenCoach` plus guarded post-completion metadata editor. The screen's structured section descriptors are **not actual time series/map graphs**; real privacy-safe readers and chart rendering remain required. No sample numerical statistics should be inserted as real athlete data.
+
+**Verification limits:** Node-only smoke passed; no full Expo/TypeScript/device acceptance has been evidenced for this component, and no backend/schema work occurred.
+
 ## Current evidence / outstanding gaps
 
 - [x] Exact 17-sport **V1 native scalar** Overview/Details baseline is in V2 and unit-test guarded.
