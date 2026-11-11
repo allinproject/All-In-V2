@@ -42,8 +42,9 @@ export function buildCompletedActivityScreenModel(input:CompletedActivityScreenI
   if(!stats.details.some(x=>x.key===metric.key)&&!stats.hiddenMetricKeys.includes(metric.key))continue;
   seen.add(metric.key);all.push({key:metric.key,label:metric.label,required:metric.required});
  }
- const overviewLabels=new Set<string>(sport.overview);
- const eligibleOverview=all.filter(m=>overviewLabels.has(input.metrics.find(x=>x.key===m.key)?.label??''));
+ // Both tabs allow editing any available source-backed metric; Overview
+ // presents only V1 defaults plus user-pinned additions by default.
+ const eligibleOverview=all;
  const coach=input.coach&&text(input.coach.summary)&&
  (input.coach.source==='coach'||input.coach.source==='verified_rule')?
  {summary:input.coach.summary,reasons:input.coach.reasons.filter(text).slice(0,8),source:input.coach.source}:null;
