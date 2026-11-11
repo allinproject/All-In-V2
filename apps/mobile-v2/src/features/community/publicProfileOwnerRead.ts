@@ -51,8 +51,14 @@ export function certifyPublicProfileSnapshot(
  snapshot.profile.ownerId!==expectedOwnerId||snapshot.profile.viewerId!==viewerId)
   throw new Error('Incomplete, stale or foreign Community profile read.');
  const view=evaluatePublicProfileView(snapshot.profile);
- // Blocked users receive no profile identity, posts or race data.
- if(view.label==='blocked')return{status:'blocked',displayName:null,profile:view,posts:[],races:[],revision:snapshot.revision};
+ // A server returning blocked-user identity or content is a privacy failure.
+ // Do not quietly discard already over-fetched private bytes on the client.
+ if(view.label==='blocked'){
+  if(snapshot.displayName!==null||snapshot.posts.length!==0||snapshot.races.length!==0||
+   snapshot.profile.sharedArea!==null)
+   throw new Error('Community reader exposed blocked athlete data.');
+  return {status:'blocked',displayName:null,profile:view,posts:[],races:[],revision:snapshot.revision};
+ }
  if(snapshot.displayName!==null&&
   (typeof snapshot.displayName!=='string'||snapshot.displayName.length>80))
   throw new Error('Invalid public profile display name.');
@@ -61,17 +67,21 @@ export function certifyPublicProfileSnapshot(
   if(!valid(post.id)||post.ownerId!==expectedOwnerId||!audience(post.audience)||
    !valid(post.title,500)||ids.has('post:'+post.id))
    throw new Error('Invalid Community post evidence.');
+  if(!canViewProfilePost(post.audience,view))
+   throw new Error('Community reader returned an unauthorized post.');
   ids.add('post:'+post.id);
  }
  for(const race of snapshot.races){
   if(!valid(race.id)||race.ownerId!==expectedOwnerId||!audience(race.audience)||
    !valid(race.eventName,250)||ids.has('race:'+race.id))
    throw new Error('Invalid Community event evidence.');
+  if(!canDisplayRaceParticipation(race.audience,view))
+   throw new Error('Community reader returned an unauthorized event.');
   ids.add('race:'+race.id);
  }
  return {status:'ready',displayName:snapshot.displayName,profile:view,
-  posts:snapshot.posts.filter(p=>canViewProfilePost(p.audience,view)),
-  races:snapshot.races.filter(r=>canDisplayRaceParticipation(r.audience,view)),
+  posts:snapshot.posts,
+  races:snapshot.races,
   revision:snapshot.revision};
 }
 /** Check the account generation on both sides of an async load.
