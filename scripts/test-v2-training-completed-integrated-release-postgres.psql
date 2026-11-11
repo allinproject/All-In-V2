@@ -104,7 +104,22 @@ BEGIN
  IF EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
   WHERE n.nspname='public' AND c.relkind IN ('r','p')
     AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%' OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%') AND
-    (NOT c.relrowsecurity OR has_table_privilege('authenticated',c.oid,'INSERT')))
- THEN RAISE EXCEPTION 'Integrated schema exposed unreviewed client writes'; END IF;
+    (NOT c.relrowsecurity
+      OR has_table_privilege('anon',c.oid,'SELECT')
+      OR has_table_privilege('authenticated',c.oid,'SELECT')
+      OR has_table_privilege('authenticated',c.oid,'INSERT')
+      OR has_table_privilege('authenticated',c.oid,'UPDATE')
+      OR has_table_privilege('authenticated',c.oid,'DELETE')))
+ THEN RAISE EXCEPTION 'Integrated schema exposed unreviewed client table rights'; END IF;
+ -- These SQL helpers are service-only candidates, not app APIs. A default
+ -- PostgreSQL PUBLIC EXECUTE or an accidental authenticated GRANT is a
+ -- release-blocking regression even when underlying tables have RLS.
+ IF EXISTS(
+   SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+   WHERE n.nspname IN ('public','allin_private')
+     AND p.proname LIKE 'v2_%'
+     AND (pg_catalog.has_function_privilege('anon',p.oid,'EXECUTE')
+       OR pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE'))
+ ) THEN RAISE EXCEPTION 'Review-only V2 SQL helper exposed to app clients'; END IF;
  RAISE NOTICE 'PASS ALL-222/243/246/253: plan -> accepted session -> completion -> source -> metrics -> unverified challenge';
 END $integration$;
