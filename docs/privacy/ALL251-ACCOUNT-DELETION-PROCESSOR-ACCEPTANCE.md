@@ -92,6 +92,18 @@ The [independent-session race harness](../../supabase/tests/all251_true_two_sess
 
 **Actual race PASS evidence still missing.** Neither this chat environment nor the V2 Supabase tool has a disposable local PostgreSQL instance and independent SQL session execution. Do not connect this harness to live V2 or to a production port-forward; run it only on a reviewed isolated database containing the exact V2 migrations, and record both backend IDs, SQL assertions, cleanup and switch-restoration evidence. This is a staged test artifact, not execution proof.
 
+## 2026-11-11 — Lost completion receipt readback
+
+Added service-only, read-only [`v2_verify_account_deletion_completion`](../../supabase/migrations/20261111133540_v2_deletion_completion_readback_after_ambiguous_receipt.sql), applied to V2. It returns only an exact request UUID and a `completed/not_completed` status from the minimal redacted audit; it cannot delete or edit data, and `anon`/`authenticated` cannot execute it. This lets a worker which **already verified Auth absence** recover from an ambiguous final completion RPC response, rather than incorrectly recording manual failure despite completed erasure. The worker does not retry Auth deletion or completion mutation. An absent, failed, pending or mismatched request ID never proves completion.
+
+The [saved rollback SQL regression](../../supabase/tests/all251_completion_receipt_readback_rollback.sql) executed successfully against live V2: pending and failed records reported `not_completed`; authenticated owner execution was denied; after simulated Auth removal and service-only completion, the redacted audit reported `completed`; an unrelated UUID remained `not_completed`. All synthetic changes rolled back.
+
+The staged [worker execution module](../../supabase/functions/v2-account-deletion-worker/execution.ts) and [handler](../../supabase/functions/v2-account-deletion-worker/index.ts) now use that readback. The current [15 committed test cases](../../supabase/functions/v2-account-deletion-worker/execution.test.mjs) were replayed against the current source's JavaScript execution body in an isolated V8 evaluation with mocked dependencies: **15/15 PASS**. This does not constitute Expo/Node CI, Supabase Edge deployment, or actual Admin API validation. It does validate the source's control flow with the committed cases.
+
+The [true two-session race harness](../../supabase/tests/all251_true_two_session_race.cjs) was additionally hardened to validate its target before loading the optional PostgreSQL `pg` package, and to close already-open connections when connecting a subsequent backend fails. That race test is still **NOT EXECUTED** because no disposable local PostgreSQL engine is available in this environment.
+
+**Release gate unchanged:** worker not deployed or scheduled; V2 deletion processing OFF, external signup/legal publication closed. Remaining real Auth Admin, true independent PostgreSQL concurrency, end-to-end multi-device/JWT, iPhone/build, retention/notice/legal acceptance.
+
 ## The actual deletion processor must still do all of the following
 
 1. Trusted server-side authentication and authorization; never expose service key/admin deletion to mobile clients. No silent scheduled claims or broad user enumerations.
