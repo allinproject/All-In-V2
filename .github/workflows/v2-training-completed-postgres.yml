@@ -262,6 +262,15 @@ jobs:
           cat /tmp/finish-a.log /tmp/finish-b.log
           test "$status" -eq 0
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_complete_integration -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-two-connection-finish-assert-postgres.psql
+      - name: Verify canonical Training day read across two accepted race plans
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" training_day_owner_read
+          docker cp docs/architecture/sql/V2-TRAINING-DAY-OWNER-READER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-DAY-OWNER-READER-CANDIDATE.sql"
+          docker cp scripts/test-v2-training-day-owner-reader-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-day-owner-reader-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_day_owner_read -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-day-owner-reader-postgres.psql
       - name: Verify original ALL-251 export RPC integration against new Training graph
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
@@ -317,12 +326,3 @@ jobs:
           docker cp docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-LIFECYCLE-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-LIFECYCLE-REVIEW-CANDIDATE.sql"
           docker cp scripts/test-v2-account-export-request-lifecycle-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-account-export-request-lifecycle-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_request_lifecycle -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-request-lifecycle-postgres.psql
-      - name: Verify canonical Training day read across two accepted race plans
-        env:
-          PG_CONTAINER: ${{ job.services.postgres.id }}
-        run: |
-          set -euo pipefail
-          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" training_day_owner_read
-          docker cp docs/architecture/sql/V2-TRAINING-DAY-OWNER-READER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-DAY-OWNER-READER-CANDIDATE.sql"
-          docker cp scripts/test-v2-training-day-owner-reader-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-day-owner-reader-postgres.psql"
-          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_day_owner_read -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-day-owner-reader-postgres.psql
