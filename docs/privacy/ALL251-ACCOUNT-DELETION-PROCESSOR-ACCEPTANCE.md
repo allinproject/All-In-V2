@@ -86,6 +86,12 @@ A [rollback-only synthetic orphan record test](../../supabase/tests/all251_compl
 
 The production Supabase connector independently issued two lock checks, but request times were serialized by the connector; that run is **not counted as independent-session race evidence**. A disposable database or approved isolated clone is still required for authoritative concurrency acceptance. Worker remains undeployed with execution OFF.
 
+## 2026-11-11 — True concurrency harness preflight hardened
+
+The [independent-session race harness](../../supabase/tests/all251_true_two_session_race.cjs) remains **NOT RUN**. Its executable source now verifies three distinct PostgreSQL backend process IDs, refuses nonempty disposable databases (any Auth users, deletion requests, execution audit, or Storage buckets), and observes `pg_stat_activity.wait_event_type='Lock'` with `wait_event='advisory'` on the losing backend before releasing the winner. This makes an unverified 175-ms sleep insufficient to report a race PASS. It also retains `localhost/127.0.0.1` and `*_test/*_isolated` target checks, an explicit opt-in, an 8-second statement timeout, and a `finally` path that restores the original processing switch even after fixture-cleanup errors. The saved CommonJS code passed a JavaScript parse check.
+
+**Actual race PASS evidence still missing.** Neither this chat environment nor the V2 Supabase tool has a disposable local PostgreSQL instance and independent SQL session execution. Do not connect this harness to live V2 or to a production port-forward; run it only on a reviewed isolated database containing the exact V2 migrations, and record both backend IDs, SQL assertions, cleanup and switch-restoration evidence. This is a staged test artifact, not execution proof.
+
 ## The actual deletion processor must still do all of the following
 
 1. Trusted server-side authentication and authorization; never expose service key/admin deletion to mobile clients. No silent scheduled claims or broad user enumerations.
