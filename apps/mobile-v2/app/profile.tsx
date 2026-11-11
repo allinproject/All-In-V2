@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, Redirect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, Redirect, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -39,7 +39,7 @@ function OwnedProfileScreen() {
     return () => { mounted.current = false; };
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!ownerId || authLoading || gate.status !== 'ready') return;
     let active = true;
     setLoading(true);
@@ -56,7 +56,7 @@ function OwnedProfileScreen() {
         if (active && mounted.current) setLoading(false);
       });
     return () => { active = false; };
-  }, [ownerId, authLoading, gate.status, retry]);
+  }, [ownerId, authLoading, gate.status, retry]));
 
   async function handleSignOut() {
     if (busy.current) return;
