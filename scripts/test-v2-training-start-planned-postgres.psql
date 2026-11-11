@@ -33,6 +33,10 @@ BEGIN
   (id,plan_id,user_id,revision_number,source_kind)
  VALUES(rev_id,plan_id,u,1,'coach_proposal'),
        (rev_new,plan_id,u,2,'coach_proposal');
+ UPDATE public.v2_training_plan_revisions
+ SET calendar_start_date='2026-11-16',calendar_end_date='2026-11-16',
+     calendar_timezone='America/Chicago'
+ WHERE id IN (rev_id,rev_new);
  INSERT INTO public.v2_training_session_slots(id,plan_id,user_id,slot_key)
  VALUES(slot_id,plan_id,u,'race-quality-ride');
  INSERT INTO public.v2_training_revision_days(
