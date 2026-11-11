@@ -17,18 +17,23 @@ create table allin_private.v2_subscription_checkout_attempts (
   owner_id uuid not null references public.v2_profiles(user_id) on delete cascade,
   provider text not null check (provider in ('app_store','google_play','stripe_web')),
   environment text not null check (environment in ('sandbox','production')),
-  provider_checkout_id text not null
-    check (length(provider_checkout_id) between 1 and 256),
+  provider_checkout_id text
+    check (provider_checkout_id is null or length(provider_checkout_id) between 1 and 256),
   -- The subscription ID does not exist until Stripe confirms checkout.
   provider_subscription_id text
     check (provider_subscription_id is null or length(provider_subscription_id) between 1 and 256),
   state text not null
-    check (state in ('pending','server_confirmed')),
+    check (state in ('reserved','pending','server_confirmed')),
   verified_at timestamptz,
   constraint v2_checkout_state_provenance check (
-    (state = 'pending' and provider_subscription_id is null and verified_at is null)
+    (state = 'reserved' and provider_checkout_id is null and
+      provider_subscription_id is null and verified_at is null)
     or
-    (state = 'server_confirmed' and provider_subscription_id is not null and verified_at is not null)
+    (state = 'pending' and provider_checkout_id is not null and
+      provider_subscription_id is null and verified_at is null)
+    or
+    (state = 'server_confirmed' and provider_checkout_id is not null and
+      provider_subscription_id is not null and verified_at is not null)
   ),
   unique (provider,environment,provider_checkout_id),
   unique (attempt_id,owner_id,provider,environment,provider_subscription_id)
@@ -87,6 +92,51 @@ revoke all on sequence allin_private.v2_subscription_verified_events_id_seq
   from public, anon, authenticated;
 
 
+-- Reserve a durable server-owned UUID before making any call to Stripe.
+-- If Stripe succeeds but attaching its session fails, the same attempt and
+-- idempotency key can be recovered without a new Checkout Session.
+create or replace function allin_private.v2_reserve_subscription_checkout(
+  p_attempt_id uuid, p_owner_id uuid, p_authenticated_owner_id uuid,
+  p_provider text, p_environment text
+)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $
+declare
+  v_attempt allin_private.v2_subscription_checkout_attempts%rowtype;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'checkout reservation requires service role' using errcode='42501';
+  end if;
+  if p_attempt_id is null or p_owner_id is null or
+     p_authenticated_owner_id is distinct from p_owner_id or
+     p_provider not in ('app_store','google_play','stripe_web') or
+     p_environment not in ('sandbox','production') then
+    raise exception 'invalid checkout reservation' using errcode='22023';
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_attempt_id::text,0));
+  select * into v_attempt from allin_private.v2_subscription_checkout_attempts
+   where attempt_id=p_attempt_id for update;
+  if found then
+    if v_attempt.owner_id <> p_owner_id or v_attempt.provider <> p_provider or
+       v_attempt.environment <> p_environment then
+      raise exception 'checkout reservation identity collision' using errcode='42501';
+    end if;
+    return 'already_reserved';
+  end if;
+  insert into allin_private.v2_subscription_checkout_attempts
+   (attempt_id,owner_id,provider,environment,provider_checkout_id,
+    provider_subscription_id,state,verified_at)
+   values (p_attempt_id,p_owner_id,p_provider,p_environment,null,null,'reserved',null);
+  return 'reserved';
+end;
+$;
+revoke all on function allin_private.v2_reserve_subscription_checkout(
+  uuid,uuid,uuid,text,text
+) from public, anon, authenticated;
+
 -- Source-only candidate: trusted checkout worker creates the pending record
 -- after authenticating the session owner and creating a Stripe Checkout Session.
 -- The original account is captured and cannot be rewritten by a webhook.
@@ -121,24 +171,25 @@ begin
   select * into v_attempt
     from allin_private.v2_subscription_checkout_attempts
    where attempt_id = p_attempt_id for update;
-  if found then
-    if v_attempt.owner_id <> p_owner_id or
-       v_attempt.provider <> p_provider or
-       v_attempt.environment <> p_environment or
-       v_attempt.provider_checkout_id <> p_provider_checkout_id then
-      raise exception 'pending checkout ownership or identity collision'
-        using errcode='42501';
-    end if;
+  if not found then
+    raise exception 'checkout must be reserved before provider session is created'
+      using errcode='42501';
+  end if;
+  if v_attempt.owner_id <> p_owner_id or
+     v_attempt.provider <> p_provider or
+     v_attempt.environment <> p_environment or
+     (v_attempt.state <> 'reserved' and
+      v_attempt.provider_checkout_id is distinct from p_provider_checkout_id) then
+    raise exception 'pending checkout ownership or identity collision'
+      using errcode='42501';
+  end if;
+  if v_attempt.state <> 'reserved' then
     return case when v_attempt.state = 'pending'
                 then 'already_pending' else 'already_confirmed' end;
   end if;
-  insert into allin_private.v2_subscription_checkout_attempts(
-    attempt_id,owner_id,provider,environment,provider_checkout_id,
-    provider_subscription_id,state,verified_at
-  ) values (
-    p_attempt_id,p_owner_id,p_provider,p_environment,p_provider_checkout_id,
-    null,'pending',null
-  );
+  update allin_private.v2_subscription_checkout_attempts
+     set provider_checkout_id=p_provider_checkout_id,state='pending'
+   where attempt_id=p_attempt_id and state='reserved';
   return 'pending';
 end;
 $$;
