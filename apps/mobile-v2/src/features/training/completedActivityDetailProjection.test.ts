@@ -58,3 +58,13 @@ test('invalid or unavailable measurements never become a fake recorded zero',()=
  ]});
  assert.deepEqual(p.details.map(x=>x.key),['workload']);
 });
+
+test('user can promote a true non-default Details metric to Overview, without filling Overview with every field',()=>{
+ const metrics=[fact('distance','Distance','8 mi'),fact('zone2','Zone 2 time','40 min'),fact('cadence','Cadence','174 spm')];
+ const normal=projectCompletedActivityDetail({sport:'outdoor_run',metrics});
+ assert.deepEqual(normal.overview.map(x=>x.key),['distance']);
+ const customized=projectCompletedActivityDetail({sport:'outdoor_run',metrics,
+  overviewLayout:{order:['cadence','distance','zone2'],pinned:['zone2'],hidden:[]}});
+ assert.deepEqual(customized.overview.map(x=>x.key),['zone2','distance']);
+ assert.equal(customized.details.length,3);
+});
