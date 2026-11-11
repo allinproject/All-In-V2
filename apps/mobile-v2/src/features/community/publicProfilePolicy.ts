@@ -57,7 +57,9 @@ export function canViewProfilePost(audience:PublicProfileAudience,profile:Public
  if(profile.label==='blocked')return false;
  if(audience==='private')return profile.label==='own_profile';
  if(audience==='followers')return profile.canViewPrivateContent;
- return profile.canViewIdentity;
+ // A private account is not made readable by an individual post marked public.
+ // Followers and the owner can see that post; unapproved viewers cannot.
+ return profile.label==='public_profile'||profile.label==='own_profile';
 }
 /** An event/race participation must be independently permission checked.
  * Never infer race sharing from the athlete's public profile visibility.
