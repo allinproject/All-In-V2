@@ -10,6 +10,17 @@
 
 > This is an ownership and security contract, not a claim that the listed workspaces or tables have already been implemented. Only the explicitly listed foundation tables/functions currently exist. All future schemas require a separate migration, focused tests and domain-owner approval.
 
+## Live security evidence refresh — 2026-11-11 (ALL-222)
+
+The original foundation ERD covered eight tables at its audit date. The V2
+database subsequently gained health-considerations and account-deletion
+infrastructure. The current read-only 18-migration, 12-table, effective
+role-privilege and ten-callable-SECURITY-DEFINER inventory is in
+[Live V2 security acceptance audit](./V2-LIVE-SECURITY-ACCEPTANCE-2026-11-11.md).
+That document distinguishes current object grants and expected-owner
+checks from still-unapproved, review-only domain DDL. **Do not close ALL-222
+or enable ALL-252 billing from a source-only candidate or this inventory.**
+
 ## 1. Binding product and architecture decisions
 
 1. V2 is an independent application and backend. V2 Supabase is canonical from the first V2 account onward. V1 is read-only reference material for approved behavior, product data and lessons.
