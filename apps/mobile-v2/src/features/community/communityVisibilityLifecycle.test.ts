@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {changeCertifiedCommunityVisibility} from './communityVisibilityLifecycle.ts';
 
 function exercise(overrides:Record<string,unknown>={}){
- let state={ownerId:'actor-1',visibility:'private' as const|'public',version:4};
+ let state={ownerId:'actor-1',visibility:'private' as 'private'|'public',version:4};
  let writes=0;
  const args={
   expectedOwnerId:'actor-1',
