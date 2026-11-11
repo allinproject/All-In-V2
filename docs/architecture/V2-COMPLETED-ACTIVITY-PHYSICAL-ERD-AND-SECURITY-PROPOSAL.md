@@ -385,3 +385,17 @@ The first slice must not implement a second Training session engine, generic cro
 12. Whether source payload evidence is retained at all after normalized metric ingestion, and under what licensing/consent/retention limits.
 
 Until these decisions are approved, do not create Completed Activity DDL, seed an unreviewed metric registry, expose metric-write RPCs or claim the Completed Activity database is implemented.
+
+
+## 10. Typed finish-to-Completed Activity handoff — review contract, 2026-11-11
+
+**Implementation status:** The client-side contract module `apps/mobile-v2/src/features/training/completedActivityHandoffContract.ts` and its tests are committed. It is NOT an approved database function, deployed outbox, authenticated consumer or actual finished-workout pipeline.
+
+Training's terminal finish transaction should produce **exactly one** immutable completion event keyed by the stable training session instance plus immutable source reference, while the ALL-243 writer remains the **only** owner that assigns the canonical completed activity ID. `CompletionHandoff` carries owner ID, event ID, Training session instance ID, immutable finish event ID, source kind/record identity, actual canonical sport + subtype, athlete-local date/timezone, source-backed finish timestamp, and exact optional accepted plan revision-session ID. These identities must be checked for consistent same-owner relationships server-side.
+
+**Proposed receipt states:** `pending` means the finish event/outbox exists but the canonical activity writer has not returned an activity ID; `needs_review` means reconciliation is unresolved; `ready` is permitted only with a true canonical ID returned by ALL-243. No pending/review receipt may claim a completed activity ID or navigate as a saved workout. A retry with the same immutable event identity but different payload is a conflict, not an overwrite. Backend must add a uniqueness constraint and idempotent transactional consume/write/acknowledge behavior, with recovery from worker failure and cross-provider deduplication. Two independent source events for the same physical workout still require an **approved** evidence-based merge policy, never inferred from proximity alone.
+
+**No optional equipment prompt belongs in finish.** Athlete-facing finish can complete immediately and show a truthful pending/reconciliation state while any downstream ingestion finishes. On the saved Completed Activity, optional terrain, shoes, bike, effort and notes are editable without duplicate mileage.
+
+**Before migration:** ALL-222/246/243 must choose and approve the durable outbox vs synchronous same-transaction handoff mechanism, sequence/uniqueness constraints and exact source dedupe, cancellation/recovery and delivery retries, least-privilege worker/RLS grants and bounded retention/export/deletion. `CompletionHandoff` is a reviewable typed compatibility target, **not an authorization to deploy DDL**. The mobile client checks are defense in depth, not substitutes for SQL authorization.
+
