@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   metricLabel: { color: colors.mutedText, fontSize: 11 },
   metricUnknown: { color: colors.warmWhite, fontSize: 22, fontWeight: '800' },
   foodPhotoRow: { flexDirection: 'row', gap: 8 },
-  foodTile: { width: '23%', maxWidth: 88, minWidth: 0, gap: 4 },
+  foodTile: { width: '22%', maxWidth: 88, minWidth: 0, gap: 4 },
   foodPhoto: { width: '100%', aspectRatio: 1, borderRadius: 8, backgroundColor: colors.surfaceRaised },
   foodPhotoFallback: {
     width: '100%', aspectRatio: 1, borderRadius: 8,
