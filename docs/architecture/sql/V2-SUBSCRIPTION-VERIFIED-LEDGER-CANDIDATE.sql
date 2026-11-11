@@ -894,10 +894,8 @@ begin
   then
     raise exception 'invalid verified native purchase' using errcode='22023';
   end if;
-  if not exists (select 1 from public.v2_profiles
-                 where user_id=p_owner_id) then
-    raise exception 'native subscription owner does not exist' using errcode='42501';
-  end if;
+  -- The owner foreign keys on checkout attempts and purchases enforce
+  -- profile existence without granting service_role profile SELECT.
   perform pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended('trial:' || p_owner_id::text,0));
   perform pg_catalog.pg_advisory_xact_lock(
