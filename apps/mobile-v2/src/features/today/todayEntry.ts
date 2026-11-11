@@ -37,6 +37,18 @@ export function todayActivitiesForDate<T extends { athleteLocalDate: string }>(
   return evidence.records.filter(record => record.athleteLocalDate === day);
 }
 
+/** Milliseconds until the next *device-local* midnight, plus a small rollover
+ * cushion. Using the local Date constructor accommodates 23/25-hour DST days.
+ * The AppState/focus listeners remain authoritative after suspended timers.
+ */
+export function millisecondsUntilNextLocalDay(now: Date = new Date()): number | null {
+  if (!Number.isFinite(now.getTime())) return null;
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const delay = tomorrow.getTime() - now.getTime() + 50;
+  return Number.isSafeInteger(delay) && delay >= 50 && delay <= 26 * 60 * 60 * 1000
+    ? delay : null;
+}
+
 /** React Native lifecycle: refresh the local calendar day only when the app is active. */
 export function shouldRefreshTodayOnAppState(state: string): boolean {
   return state === 'active';
