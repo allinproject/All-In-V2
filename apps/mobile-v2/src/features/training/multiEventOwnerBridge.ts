@@ -7,7 +7,10 @@ import {buildMultiEventSeasonPlan,type SeasonEvent,type SeasonPlanDraft} from '.
 import type {PlannedCalendarItem} from './trainingCalendarReadModel.ts';
 import type {CanonicalPlanDay} from './canonicalPlanDayMarkers.ts';
 
-export type SeasonOwnerBinding={eventId:string;sessionId:string;planRevisionId:string};
+export type SeasonOwnerBinding={
+ eventId:string;sessionId:string;planRevisionId:string;ownerId:string;
+ athleteLocalDate:string;sport:string;competitionConfirmed:true;
+};
 export type MultiEventOwnerResult=
  | {status:'unavailable';reason:string;proposal:null}
  | {status:'review_required'|'blocked';reason:null;proposal:SeasonPlanDraft;planRevisionId:string;snapshotVersion:string};
@@ -15,15 +18,18 @@ export type MultiEventOwnerResult=
 export function proposeSeasonFromVerifiedTraining(input:{
  expectedOwnerId:string;authenticatedOwnerId:string|null;activeSessionGeneration:number;
  accessGateReady:boolean;activePlanRevisionId:string;startDate:string;
- events:readonly SeasonEvent[];eventBindings:readonly SeasonOwnerBinding[];
+ events:readonly SeasonEvent[];
  plannedSnapshot:OwnerCalendarWindowSnapshot<PlannedCalendarItem>|null;
  daySnapshot:OwnerCalendarWindowSnapshot<CanonicalPlanDay>|null;
+ /** Must be an independent, complete canonical Training owner read, not a UI mapping. */
+ competitionSnapshot:OwnerCalendarWindowSnapshot<SeasonOwnerBinding>|null;
 }):MultiEventOwnerResult {
  const unavailable=(reason:string):MultiEventOwnerResult=>({status:'unavailable',reason,proposal:null});
  const {events}=input;
- if(!Array.isArray(events)||!events.length||!Array.isArray(input.eventBindings)||
+ if(!Array.isArray(events)||!events.length||
    !input.expectedOwnerId?.trim()||!input.activePlanRevisionId?.trim()||
-   !input.plannedSnapshot||!input.daySnapshot)return unavailable('missing_authoritative_training');
+   !input.plannedSnapshot||!input.daySnapshot||!input.competitionSnapshot)
+   return unavailable('missing_authoritative_training');
  const endDate=events.reduce((max,e)=>typeof e?.date==='string'&&e.date>max?e.date:max,'');
  const shared={
   expectedOwnerId:input.expectedOwnerId,authenticatedOwnerId:input.authenticatedOwnerId,
@@ -32,9 +38,11 @@ export function proposeSeasonFromVerifiedTraining(input:{
  };
  const planned=certifyCalendarOwnerRead({...shared,snapshot:input.plannedSnapshot});
  const days=certifyCalendarOwnerRead({...shared,snapshot:input.daySnapshot});
- if(planned.status!=='ready'||days.status!=='ready')
+ const competition=certifyCalendarOwnerRead({...shared,snapshot:input.competitionSnapshot});
+ if(planned.status!=='ready'||days.status!=='ready'||competition.status!=='ready')
   return unavailable('incomplete_or_wrong_owner_read');
- if(input.plannedSnapshot.snapshotVersion!==input.daySnapshot.snapshotVersion)
+ if(input.plannedSnapshot.snapshotVersion!==input.daySnapshot.snapshotVersion||
+    input.plannedSnapshot.snapshotVersion!==input.competitionSnapshot.snapshotVersion)
   return unavailable('snapshot_versions_disagree');
  const planIds=new Set<string>();
  for(const row of planned.records){
@@ -57,24 +65,23 @@ export function proposeSeasonFromVerifiedTraining(input:{
  }
  if(!dateSet.has(input.startDate)||!dateSet.has(endDate))
   return unavailable('missing_season_day_coverage');
- const eventIds=new Set(events.map(e=>e.id));
- if(input.eventBindings.length!==eventIds.size)
+ const eventIds=new Set(events.map(e=>e?.id));
+ if(eventIds.size!==events.length||competition.records.length!==events.length)
   return unavailable('missing_or_extra_event_binding');
  const linkedEvents=new Set<string>(),linkedSessions=new Set<string>();
- for(const binding of input.eventBindings){
+ for(const binding of competition.records){
   if(!binding||!eventIds.has(binding.eventId)||linkedEvents.has(binding.eventId)||
      !binding.sessionId?.trim()||linkedSessions.has(binding.sessionId)||
-     binding.planRevisionId!==input.activePlanRevisionId)
-   return unavailable('invalid_event_binding');
+     binding.planRevisionId!==input.activePlanRevisionId||
+     binding.ownerId!==input.expectedOwnerId||binding.competitionConfirmed!==true)
+   return unavailable('invalid_or_uncertified_event_binding');
   linkedEvents.add(binding.eventId);linkedSessions.add(binding.sessionId);
   const event=events.find(e=>e.id===binding.eventId)!;
   const matches=planned.records.filter(row=>row.id===binding.sessionId);
-  // A calendar PlannedCalendarItem lacks a 'competition' flag; this bridge can
-  // verify the exact identity/date, but NOT assert competition classification.
-  // A separate canonical event-session owner must certify that fact before apply.
   if(matches.length!==1||matches[0].athleteLocalDate!==event.date||
-     matches[0].state==='cancelled'||matches[0].state==='rest'||matches[0].state==='recovery'||
-     matches[0].sport!==event.sport)
+     matches[0].state!=='planned'||
+     matches[0].sport!==event.sport||
+     binding.athleteLocalDate!==event.date||binding.sport!==event.sport)
    return unavailable('event_session_conflicts_with_calendar');
   if(states[event.date]!=='race')
    return unavailable('event_day_not_certified');
