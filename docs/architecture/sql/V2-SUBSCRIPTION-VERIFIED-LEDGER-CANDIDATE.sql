@@ -21,9 +21,9 @@ create table allin_private.v2_subscription_checkout_attempts (
     check (length(provider_checkout_id) between 1 and 256),
   provider_subscription_id text not null
     check (length(provider_subscription_id) between 1 and 256),
-  state text not null default 'server_confirmed'
+  state text not null
     check (state = 'server_confirmed'),
-  verified_at timestamptz not null default now(),
+  verified_at timestamptz not null,
   unique (provider,environment,provider_checkout_id),
   unique (attempt_id,owner_id,provider,environment,provider_subscription_id)
 );
