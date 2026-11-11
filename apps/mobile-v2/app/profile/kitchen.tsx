@@ -72,8 +72,13 @@ function OwnedKitchen() {
     setDraft(fn);setError(null);setNotice(null);
   }
   function setCount(key:KitchenCount,raw:string) {
-    try { edit(previous=>setKitchenCount(previous,key,raw)); }
-    catch(cause){setError(cause instanceof Error?cause.message:'Invalid kitchen count.');}
+    // Validate before scheduling a React state updater; exceptions inside updaters
+    // are asynchronous and cannot be caught by an enclosing try/catch.
+    if (raw.trim() !== '' && !/^\\d{1,2}$/.test(raw.trim())) {
+      setError('Enter a whole number between 0 and 99, or leave blank.');
+      return;
+    }
+    edit(previous=>setKitchenCount(previous,key,raw));
   }
   async function save() {
     if(!owner||version===null||guard.current||loading)return;
