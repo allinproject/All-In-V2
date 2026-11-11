@@ -97,12 +97,12 @@ RESET ROLE;
 -- Simulate a distinct approved checkout/restore prebinding transaction;
 -- no webhook is permitted to perform this initial INSERT itself.
 INSERT INTO allin_private.v2_subscription_checkout_attempts
-  (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id)
+  (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id,state,verified_at)
 VALUES
   ('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001',
-   'stripe_web','sandbox','cs_1','sub_1'),
+   'stripe_web','sandbox','cs_1','sub_1','server_confirmed',now()),
   ('10000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000002',
-   'stripe_web','sandbox','cs_2','sub_2');
+   'stripe_web','sandbox','cs_2','sub_2','server_confirmed',now());
 
 DO $unverified_purchase$
 BEGIN
