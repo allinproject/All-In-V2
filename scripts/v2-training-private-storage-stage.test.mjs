@@ -84,3 +84,77 @@ test('route export requires private or redacted route status',async()=>{
  const bad=fixture({listEvidence:async()=>({ownerId:owner,series:[],routes:[{...route,privacy_state:'public'}]})});
  await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:bad.services}),/Unapproved/);
 });
+
+test('writes only after verified bytes, checks authorization again, returns no secret bytes',async()=>{
+ const f=fixture();
+ let handoff=null;
+ f.services.writeEncryptedArchive=async payload=>{
+   f.calls.push('write');
+   handoff=payload;
+   return {encrypted:true,ownerId:owner,requestId,archiveId:'staged-qa-1',secret:'do-not-return'};
+ };
+ f.services.deleteStagedArchive=async()=>{f.calls.push('cleanup');};
+ const result=await stageTrainingPrivateStorageExport({requestId,services:f.services});
+ assert.deepEqual(f.calls.map(x=>x.split(':')[0]),
+   ['auth','list','download','auth','list','write','auth','list']);
+ assert.equal(handoff.files.length,1);
+ assert.equal(handoff.files[0].bytes.toString(),'synthetic trainer data');
+ assert.equal(result.archiveStaged,true);
+ assert.equal(result.archiveId,'staged-qa-1');
+ assert.equal(result.secret,undefined);
+ assert.equal(result.completeUserExport,false);
+ assert.equal(f.calls.includes('cleanup'),false);
+});
+test('no unverified or mutated private bytes ever reach archive writer',async()=>{
+ const f=fixture({downloadPrivateObject:async()=>Buffer.from('altered')});
+ let called=false;
+ f.services.writeEncryptedArchive=async()=>{called=true;throw new Error('must not execute');};
+ f.services.deleteStagedArchive=async()=>{};
+ await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:f.services}),/checksum/);
+ assert.equal(called,false);
+});
+test('staged archive purged on post-write revocation or metadata change',async()=>{
+ for(const fail of ['auth','metadata']) {
+  let auth=0;
+  let listed=0;
+  const f=fixture();
+  f.services.authorizeExport=async()=>{
+    auth++; f.calls.push('auth');
+    return {ownerId:owner,activeSession:fail==='auth'?auth<3:true,exportPermitted:true};
+  };
+  f.services.listEvidence=async()=>{
+    listed++;f.calls.push('list');
+    return {ownerId:owner,series:[{
+      ...row(),state:fail==='metadata'&&listed>=3?'revoked':'ready',
+    }],routes:[]};
+  };
+  f.services.writeEncryptedArchive=async()=>{
+    f.calls.push('write');
+    return {encrypted:true,ownerId:owner,requestId,archiveId:'qa'};
+  };
+  f.services.deleteStagedArchive=async()=>{f.calls.push('cleanup');};
+  await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:f.services}),/expired|changed/);
+  assert.equal(f.calls.filter(x=>x==='cleanup').length,1);
+ }
+});
+test('ambiguous archive write invokes request-scoped cleanup, never claims delivery',async()=>{
+ const f=fixture();
+ f.services.writeEncryptedArchive=async()=>{throw new Error('lost server response');};
+ let cleanup=0;
+ f.services.deleteStagedArchive=async()=>{cleanup++;};
+ await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:f.services}),/lost server response/);
+ assert.equal(cleanup,1);
+});
+test('failed cleanup produces explicit manual recovery incident instead of success',async()=>{
+ const f=fixture();
+ f.services.writeEncryptedArchive=async()=>{throw new Error('ambiguous write');};
+ f.services.deleteStagedArchive=async()=>{throw new Error('cleanup unavailable');};
+ await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:f.services}),
+  /manual cleanup required/);
+});
+test('archive handoff requires both write and cleanup adapters',async()=>{
+ const f=fixture();
+ f.services.writeEncryptedArchive=async()=>({});
+ await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:f.services}),
+  /writer and cleanup/);
+});
