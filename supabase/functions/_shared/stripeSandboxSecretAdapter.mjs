@@ -25,10 +25,11 @@ function normalizeSubscription(raw){
 }
 
 export function createStripeSandboxSecretAdapter({
-  secretKey, expectedMerchantAccountId, request,
+  secretKey, expectedMerchantAccountId, approvedPriceId, request,
 }={}){
   if(typeof secretKey!=='string'||!secretKey.startsWith('sk_test_')||
      secretKey.length<20||!validId(expectedMerchantAccountId,'acct_')||
+     !validId(approvedPriceId,'price_')||
      typeof request!=='function')return null;
 
   const requestJson=async(method,path,{params,idempotencyKey}={})=>{
@@ -36,8 +37,10 @@ export function createStripeSandboxSecretAdapter({
        !['GET','POST'].includes(method))throw Error('invalid_path');
     const headers={Authorization:'Bearer '+secretKey};
     if(method==='POST'){
-      if(!validId(idempotencyKey,'allin_')&&
-         !validId(idempotencyKey,'allin-v2-checkout-'))throw Error('invalid_idempotency');
+      if(typeof idempotencyKey!=='string'||!uuid(
+        idempotencyKey.replace(/^allin-v2-checkout-/,''))
+         ||!idempotencyKey.startsWith('allin-v2-checkout-'))
+        throw Error('invalid_idempotency');
       headers['Idempotency-Key']=idempotencyKey;
       headers['Content-Type']='application/x-www-form-urlencoded';
     }
@@ -66,11 +69,11 @@ export function createStripeSandboxSecretAdapter({
       if(!input||input.merchantAccountId!==expectedMerchantAccountId||
          input.mode!=='subscription'||!uuid(input.client_reference_id)||
          !Array.isArray(input.line_items)||input.line_items.length!==1||
-         !validId(input.line_items[0]?.price,'price_')||
+         input.line_items[0]?.price!==approvedPriceId||
          input.line_items[0].quantity!==1||
          input.subscription_data?.trial_period_days!==7||
          !safeUrl(input.success_url)||!safeUrl(input.cancel_url)||
-         !validId(input.idempotencyKey,'allin-v2-checkout-'))
+         input.idempotencyKey!=='allin-v2-checkout-'+input.client_reference_id)
         throw Error('invalid_checkout_request');
       await assertMerchant();
       const params={
