@@ -84,10 +84,28 @@ BEGIN
  PERFORM allin_private.v2_training_apply_session_candidate(
    u,training,'dddddddd-dddd-4ddd-8ddd-dddddddddddd','finish',1,
    repeat('a',64),NULL,NULL,'2026-11-11 13:00+00');
+ -- Planned workouts cannot be misclassified by a trusted dispatcher.
+ -- A rejected handoff must not leave behind any activity or source rows.
+ BEGIN
+   PERFORM allin_private.v2_training_create_activity_from_outbox_candidate(
+     u,training,activity,'running','workout','device_measured',source,
+     'supported_equipment','device_session','bike-100','unverified',repeat('a',64));
+   RAISE EXCEPTION 'Planned cycling workout mislabeled as running';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM public.v2_completed_activities WHERE id=activity)
+ OR EXISTS(SELECT 1 FROM public.v2_activity_sources WHERE id=source) THEN
+   RAISE EXCEPTION 'Mismatched planned sport created partial Activity evidence';
+ END IF;
  v:=allin_private.v2_training_create_activity_from_outbox_candidate(
    u,training,activity,'cycling','workout','device_measured',source,
    'supported_equipment','device_session','bike-100','unverified',repeat('a',64));
  IF v->>'status'<>'needs_review' THEN RAISE EXCEPTION 'Unreviewed activity falsely completed'; END IF;
+ BEGIN
+   PERFORM allin_private.v2_training_create_activity_from_outbox_candidate(
+     u,training,activity,'running','workout','device_measured',source,
+     'supported_equipment','device_session','bike-100','unverified',repeat('a',64));
+   RAISE EXCEPTION 'Mismatched sport accepted on completion replay';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  INSERT INTO public.v2_activity_metric_definitions(
  metric_code,definition_version,display_name,canonical_unit,value_kind,sport_scope,
  measurement_kinds,display_group,privacy_class,status)
