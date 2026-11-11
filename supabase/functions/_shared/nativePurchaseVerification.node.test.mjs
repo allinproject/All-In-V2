@@ -20,6 +20,7 @@ const appleArgs=()=>({
  verifyAppleSignedJws:async()=>apple,
  verifyAppleCurrentStatus:async()=>({
   ownerId:owner,originalTransactionId:'1234567890',
+  verificationSource:'apple_server_signed_current',
   phase:'paid',accessUntil:now+86400000,
  }),
  findBoundOwner:async()=>null,
@@ -29,7 +30,7 @@ test('Apple signed and current-status verified, then owner-bound commit',async()
  const result=await verify(appleArgs());
  assert.equal(result.status,'provider_verified_and_persisted');
 });
-test('Apple cannot extend access beyond verified JWS or transfer ownership',async()=>{
+test('Apple rejects unsigned current state and account transfer',async()=>{
  let writes=0;
  const base=appleArgs();
  for(const opts of [
@@ -75,4 +76,15 @@ test('database outage is not a successful native purchase',async()=>{
  ]){
   assert.equal((await verify({...appleArgs(),...opts})).status,'persistence_unavailable');
  }
+});
+
+test('Apple current signed renewal may extend an older valid client receipt',async()=>{
+ const result=await verify({...appleArgs(),
+  verifyAppleCurrentStatus:async()=>({
+   ownerId:owner,originalTransactionId:'1234567890',
+   verificationSource:'apple_server_signed_current',
+   phase:'paid',accessUntil:now+30*86400000,
+  }),
+ });
+ assert.equal(result.status,'provider_verified_and_persisted');
 });
