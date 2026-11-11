@@ -48,7 +48,9 @@ export function certifyPublicProfileSnapshot(
  !snapshot.complete||snapshot.nextCursor!==null||
  !Array.isArray(snapshot.posts)||!Array.isArray(snapshot.races)||
  snapshot.posts.length>1000||snapshot.races.length>1000||
- snapshot.profile.ownerId!==expectedOwnerId||snapshot.profile.viewerId!==viewerId)
+ snapshot.profile.ownerId!==expectedOwnerId||snapshot.profile.viewerId!==viewerId||
+ typeof snapshot.profile.shareGeneralArea!=='boolean'||
+ !(snapshot.profile.sharedArea===null||valid(snapshot.profile.sharedArea,80)))
   throw new Error('Incomplete, stale or foreign Community profile read.');
  const view=evaluatePublicProfileView(snapshot.profile);
  // A server returning blocked-user identity or content is a privacy failure.
