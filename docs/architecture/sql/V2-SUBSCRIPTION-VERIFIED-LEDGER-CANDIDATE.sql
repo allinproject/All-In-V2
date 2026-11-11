@@ -22,6 +22,8 @@ create table allin_private.v2_subscription_checkout_attempts (
   -- The subscription ID does not exist until Stripe confirms checkout.
   provider_subscription_id text
     check (provider_subscription_id is null or length(provider_subscription_id) between 1 and 256),
+  offer_kind text not null default 'trial'
+    check (offer_kind in ('trial','paid')),
   state text not null
     check (state in ('reserved','pending','server_confirmed')),
   verified_at timestamptz,
@@ -166,6 +168,79 @@ begin
 end;
 $$;
 revoke all on function allin_private.v2_claim_trial_checkout_attempt(
+  uuid,uuid,text,text
+) from public,anon,authenticated;
+
+-- Returning customers whose previous purchases are terminal can
+-- start a PAID-only checkout. No second trial is granted. Pending/unreconciled
+-- or active purchases remain blocked until authoritative provider resolution.
+create or replace function allin_private.v2_claim_paid_checkout_attempt(
+  p_owner_id uuid, p_authenticated_owner_id uuid,
+  p_provider text, p_environment text
+)
+returns table(status text, attempt_id uuid, owner_id uuid, trial_eligible boolean)
+language plpgsql
+security invoker
+set search_path = ''
+as $
+declare
+  v_attempt uuid;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'paid checkout claim requires service role' using errcode='42501';
+  end if;
+  if p_owner_id is null or p_authenticated_owner_id is distinct from p_owner_id or
+     p_provider not in ('app_store','google_play','stripe_web') or
+     p_environment not in ('sandbox','production') then
+    raise exception 'invalid authenticated paid claim' using errcode='22023';
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('trial:' || p_owner_id::text,0));
+  if not exists (
+    select 1 from allin_private.v2_subscription_purchases p
+    where p.owner_id=p_owner_id
+  ) then
+    return query select 'not_returning_customer'::text,null::uuid,p_owner_id,false;
+    return;
+  end if;
+  if exists (
+    select 1 from allin_private.v2_subscription_purchases p
+    where p.owner_id=p_owner_id and
+      (p.revision=0 or p.phase not in ('expired','refunded','revoked'))
+  ) then
+    return query select 'subscription_unresolved'::text,null::uuid,p_owner_id,false;
+    return;
+  end if;
+  if exists (
+    select 1 from allin_private.v2_subscription_checkout_attempts a
+    where a.owner_id=p_owner_id and a.state in ('reserved','pending')
+      and (a.offer_kind <> 'paid' or a.provider<>p_provider or
+           a.environment<>p_environment)
+  ) then
+    return query select 'checkout_unresolved'::text,null::uuid,p_owner_id,false;
+    return;
+  end if;
+  select a.attempt_id into v_attempt
+    from allin_private.v2_subscription_checkout_attempts a
+   where a.owner_id=p_owner_id and a.provider=p_provider and
+     a.environment=p_environment and a.state in ('reserved','pending') and
+     a.offer_kind='paid'
+   order by a.attempt_id limit 1 for update;
+  if found then
+    return query select 'eligible_reserved'::text,v_attempt,p_owner_id,false;
+    return;
+  end if;
+  v_attempt:=pg_catalog.gen_random_uuid();
+  insert into allin_private.v2_subscription_checkout_attempts (
+    attempt_id,owner_id,provider,environment,provider_checkout_id,
+    provider_subscription_id,state,verified_at,offer_kind
+  ) values (
+    v_attempt,p_owner_id,p_provider,p_environment,null,null,'reserved',null,'paid'
+  );
+  return query select 'eligible_reserved'::text,v_attempt,p_owner_id,false;
+end;
+$;
+revoke all on function allin_private.v2_claim_paid_checkout_attempt(
   uuid,uuid,text,text
 ) from public,anon,authenticated;
 
