@@ -36,6 +36,13 @@ BEGIN
     'workout_record','record-1','trusted',repeat('b',64),'2026-11-11 12:00+00');
    RAISE EXCEPTION 'same source ID accepted changed hash';
  EXCEPTION WHEN unique_violation THEN NULL; END;
+ -- Same external source/revision with different captured event time is
+ -- NOT an exact replay, even if the payload fingerprint was reused.
+ BEGIN
+   PERFORM allin_private.v2_activity_attach_source_candidate(a,act,src,'apple_watch',
+    'workout_record','record-1','trusted',repeat('a',64),'2026-11-11 12:01+00');
+   RAISE EXCEPTION 'Source replay accepted a changed capture timestamp';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
  BEGIN
    PERFORM allin_private.v2_activity_attach_source_candidate(a,act,
     'dddddddd-dddd-4ddd-8ddd-dddddddddddd','apple_watch','workout_record',
