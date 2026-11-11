@@ -15,6 +15,7 @@ import { todayFoodLog } from '../src/features/today/todayFoodLog';
 import { todayWellnessGlance } from '../src/features/today/todayWellnessGlances';
 import { todayKitchenDue } from '../src/features/today/todayKitchenDue';
 import { todayFuelDestination } from '../src/features/today/todayFuelNavigation';
+import { todayWeatherGlance } from '../src/features/today/todayWeatherGlance';
 
 /**
  * Today is the one existing /home entry point.
@@ -91,6 +92,8 @@ function HomeOwnerScreen() {
   // Kitchen scheduling is not connected; reminders must not appear until
   // canonical Meal Prep/Cook Now ownership confirms a due item.
   const dueKitchen = todayKitchenDue({status:'unavailable'}, user?.id ?? '', localDay);
+  // Weather provider and explicit location consent are not connected in V2.
+  const weatherGlance = todayWeatherGlance({status:'unavailable'}, user?.id ?? '', localDay);
 
   async function handleSignOut() {
     if (!signOutGuard.current.tryEnter()) return;
@@ -120,7 +123,7 @@ function HomeOwnerScreen() {
             <Text accessibilityRole="header" style={styles.heading}>Today</Text>
           </View>
           <View style={styles.topActions}>
-            <Text style={styles.weather}>Weather unavailable</Text>
+            <Text style={styles.weather}>{weatherGlance.label}</Text>
             <Link href="/profile" asChild>
               <Pressable accessibilityRole="button" accessibilityLabel="Profile and settings" style={styles.profile}>
                 <Text style={styles.profileText}>Profile</Text>
