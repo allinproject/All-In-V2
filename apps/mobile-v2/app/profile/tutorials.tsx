@@ -30,8 +30,8 @@ export default function TutorialsRoute() {
       </Link>
       <Text accessibilityRole="header" style={styles.title}>Help & Tutorials</Text>
       <Text style={styles.description}>
-        Guides are being rebuilt for the new ALL IN 365. The Profile guide is available for early testing;
-        it has not been validated on a device. Other guides are still in development.
+        Guides are being rebuilt for the new ALL IN 365. Profile and Sports & Interests walkthroughs
+        are available for early testing. Neither has been validated on a device.
       </Text>
       {tutorialCatalogCategories().map(category => <View style={styles.section} key={category}>
         <Text style={styles.heading}>{category}</Text>
@@ -44,6 +44,11 @@ export default function TutorialsRoute() {
               <Text style={styles.primaryLabel}>Start Profile walkthrough</Text>
             </Pressable>
           </Link> : null}
+          {t.id==='sports-interests' && canStartTutorial(t) ? <Link href="/profile/sports?tutorial=sports" asChild>
+            <Pressable accessibilityRole="button" style={styles.primary}>
+              <Text style={styles.primaryLabel}>Start Sports walkthrough</Text>
+            </Pressable>
+          </Link> : null}
           {t.exploreRoute ? <Link href={t.exploreRoute} asChild>
             <Pressable accessibilityRole="button" style={styles.explore}>
               <Text style={styles.exploreLabel}>Explore current screen</Text>
@@ -51,7 +56,7 @@ export default function TutorialsRoute() {
           </Link> : null}
         </View>)}
       </View>)}
-      <Text style={styles.note}>The early Profile walkthrough explains existing controls without changing data. It is not device-validated yet. Exploring another screen is not the same as completing a tutorial.</Text>
+      <Text style={styles.note}>The early walkthroughs explain existing controls without changing data. They are not device-validated yet. Exploring another screen is not the same as completing a tutorial.</Text>
     </ScrollView>
   </SafeAreaView>;
 }
