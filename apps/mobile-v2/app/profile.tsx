@@ -119,6 +119,12 @@ function OwnedProfileScreen() {
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Home equipment, work reheating, and meal-prep constraints</Text>
+              <Link href="/profile/coach-preferences" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}>
+                  <Text style={styles.buttonText}>Coach Preferences</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.muted}>Guidance, explanations, plan-change reviews, and tone</Text>
             </View>
             <View style={styles.card}>
               <Text style={styles.section}>Legal acceptance</Text>
