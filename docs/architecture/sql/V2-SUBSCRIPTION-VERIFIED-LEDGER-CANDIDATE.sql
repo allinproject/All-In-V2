@@ -824,3 +824,35 @@ end;
 $$;
 revoke all on function public.v2_billing_lookup_purchase(text)
  from public,anon,authenticated;
+
+
+-- Sanitized access projection: never send raw purchases, providers, receipt
+-- IDs, event bodies or another owner's billing history to mobile clients.
+-- An authoritative revision and unexpired permitted phase are required.
+-- Beta sandbox and production entitlements remain strictly separate.
+create or replace function public.v2_billing_read_owner_access(
+ p_owner_id uuid,p_environment text
+)
+returns table(entitled boolean,access_until timestamptz)
+language plpgsql security invoker set search_path = ''
+as $$
+begin
+  if current_user <> 'service_role' then
+    raise exception 'billing service only' using errcode='42501';
+  end if;
+  if p_owner_id is null or p_environment not in ('sandbox','production') then
+    raise exception 'invalid entitlement context' using errcode='22023';
+  end if;
+  return query with eligible as (
+    select max(p.access_until) as until_at
+    from allin_private.v2_subscription_purchases p
+    where p.owner_id=p_owner_id and p.environment=p_environment
+      and p.revision>0
+      and p.phase in ('trial','paid','grace','canceling')
+      and p.access_until>pg_catalog.now()
+  )
+  select (eligible.until_at is not null),eligible.until_at from eligible;
+end;
+$$;
+revoke all on function public.v2_billing_read_owner_access(uuid,text)
+ from public,anon,authenticated;
