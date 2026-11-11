@@ -11,6 +11,9 @@ const id = (value, prefix) => typeof value === 'string' &&
   value.startsWith(prefix) && value.length <= 256 &&
   /^[a-zA-Z0-9_]+$/.test(value);
 
+const validUuid = value => typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
 export async function confirmStripeCheckoutForBinding({
   expectedOwnerId,
   checkoutAttempt,
@@ -25,7 +28,7 @@ export async function confirmStripeCheckoutForBinding({
       checkoutAttempt.provider !== 'stripe_web' ||
       checkoutAttempt.environment !== (expectedLiveMode ? 'production' : 'sandbox') ||
       checkoutAttempt.state !== 'pending' ||
-      !id(checkoutAttempt.attemptId, 'attempt_') ||
+      !validUuid(checkoutAttempt.attemptId) ||
       !id(checkoutAttempt.providerCheckoutId, 'cs_') ||
       typeof retrieveCheckoutSession !== 'function' ||
       typeof retrieveSubscription !== 'function' ||
