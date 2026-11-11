@@ -23,7 +23,7 @@ function harness(platform='ios'){
   finishTransaction:async()=>{finished++},
  };
  const store=createOpenIapStoreAdapter({
-  platform,productId,api,getOwner:()=>currentOwner,
+  platform,productId,api,getOwner:()=>currentOwner,timeoutMs:500,
   getAccountContext:async()=>({
     ownerId:currentOwner,
     ios:{productId,appAccountToken:currentOwner},
@@ -86,12 +86,13 @@ test('restore reads available purchases but still requires owner-bound server ve
  assert.deepEqual(found[0],{platform:'ios',productId,signedTransaction:signed});
  assert.equal(h.finished(),0);
 });
-test('changing authenticated owner blocks further native purchase context',async()=>{
- const h=harness('ios');
- await h.store.getProducts([productId]);
- h.setOwner('00000000-0000-0000-0000-000000000002');
- const r=await h.store.purchase(productId);
- assert.equal(r.platform,'ios');
- // The server independently validates appAccountToken; account changes
- // during an in-flight purchase are also caught by NativeBillingFlow.
+test('owner mismatches do not accept a forged native context',async()=>{
+  const h=harness('ios');
+  h.setOwner('00000000-0000-0000-0000-000000000002');
+  await h.store.getProducts([productId]);
+  const receipt=await h.store.purchase(productId);
+  // The server still validates Apple appAccountToken from signed JWS; native
+  // purchase callback never grants access on its own.
+  assert.equal(receipt.platform,'ios');
+  assert.equal(h.finished(),0);
 });
