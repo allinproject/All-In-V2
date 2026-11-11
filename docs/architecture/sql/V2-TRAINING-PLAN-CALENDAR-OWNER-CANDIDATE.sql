@@ -93,8 +93,8 @@ CREATE TABLE public.v2_training_revision_sessions (
  local_start_time time,
  timezone text NOT NULL CHECK(length(btrim(timezone)) BETWEEN 1 AND 100),
  sport text NOT NULL CHECK(
-  sport IN ('running','cycling','swimming','strength','hiking','rucking',
-            'rowing','elliptical','stair','yoga','mobility','other')
+  sport IN ('running','walking','cycling','swimming','strength','hiking','rucking',
+            'rowing','elliptical','stair','yoga','mobility','hiit','multisport','other')
  ),
  session_kind text NOT NULL CHECK(length(btrim(session_kind)) BETWEEN 1 AND 100),
  purpose text NOT NULL CHECK(length(btrim(purpose)) BETWEEN 1 AND 500),
