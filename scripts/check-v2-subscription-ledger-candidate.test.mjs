@@ -98,3 +98,12 @@ test('atomic checkout finalization remains service-only and preserves original b
   assert.match(sql,/v2_bind_confirmed_subscription_purchase\(p_attempt_id\)/);
   assert.match(sql,/revoke all on function allin_private\.v2_finalize_verified_subscription_checkout/);
 });
+
+test('authoritative trial claim serializes account and enforces cross-provider one-trial rule',()=>{
+  assert.match(sql,/create or replace function allin_private\.v2_claim_trial_checkout_attempt/);
+  assert.match(sql,/p_authenticated_owner_id is distinct from p_owner_id/);
+  assert.match(sql,/hashtextextended\('trial:' \|\| p_owner_id::text,0\)/);
+  assert.match(sql,/trial_ineligible/);
+  assert.match(sql,/trial_unavailable/);
+  assert.match(sql,/revoke all on function allin_private\.v2_claim_trial_checkout_attempt/);
+});
