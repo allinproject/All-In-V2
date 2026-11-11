@@ -47,6 +47,20 @@ BEGIN
  EXCEPTION WHEN check_violation THEN NULL; END;
  IF (SELECT parent_segment_id FROM public.v2_activity_segments WHERE id=root) IS NOT NULL
  THEN RAISE EXCEPTION 'Rejected parent-cycle update changed persisted ancestry'; END IF;
+ -- Same-owner metric/source FKs are insufficient if a source-free
+ -- segment can later move to another canonical activity. No reassignment.
+ BEGIN
+   UPDATE public.v2_activity_segments SET activity_id=foreign_act WHERE id=other_root;
+   RAISE EXCEPTION 'Segment owner activity changed after creation';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ IF (SELECT activity_id FROM public.v2_activity_segments WHERE id=other_root)<>act
+ THEN RAISE EXCEPTION 'Segment identity changed despite rejection'; END IF;
+ BEGIN
+   UPDATE public.v2_activity_segments SET user_id=b WHERE id=other_root;
+   RAISE EXCEPTION 'Segment athlete changed after creation';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ IF (SELECT user_id FROM public.v2_activity_segments WHERE id=other_root)<>a
+ THEN RAISE EXCEPTION 'Segment athlete changed despite rejection'; END IF;
  -- Root 1 cannot be duplicated despite both having NULL parent.
  BEGIN
   INSERT INTO public.v2_activity_segments(
