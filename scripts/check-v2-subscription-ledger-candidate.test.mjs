@@ -56,7 +56,7 @@ test('confirmed checkout provenance is mandatory for each purchase identity', ()
   assert.match(sql,/state text not null\s+check \(state in \('reserved','pending','server_confirmed'\)\)/);
   assert.match(sql,/v2_checkout_state_provenance check/);
   assert.match(sql,/state = 'reserved' and provider_checkout_id is null/);
-  assert.match(sql,/state = 'pending' and provider_subscription_id is null and verified_at is null/);
+  assert.match(sql,/state = 'pending' and provider_checkout_id is not null and\s+provider_subscription_id is null and verified_at is null/);
   assert.doesNotMatch(sql,/state text not null default/);
   assert.match(sql,/checkout_attempt_id uuid not null unique/);
   assert.match(sql,/v2_subscription_checkout_provenance foreign key/);
