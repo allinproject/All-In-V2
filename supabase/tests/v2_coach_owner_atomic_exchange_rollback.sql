@@ -44,7 +44,7 @@ begin
       'cc33cc33-3333-4333-8333-333333333333',
       'ee55ee55-5555-4555-8555-555555555555',
       'dd44dd44-4444-4444-8444-444444444444',
-      'ff66ff66-6666-4666-8666-666666666666','hello','fake');
+      'ff66ff66-6666-4666-8666-666666666666',1,'hello','fake');
     raise exception 'Authenticated client executed server-only exchange RPC';
   exception when insufficient_privilege then null;
   end;
@@ -85,7 +85,6 @@ select public.v2_coach_claim_turn(
  'ee55ee55-5555-4555-8555-555555555555',
  'dd44dd44-4444-4444-8444-444444444444',
  'ff66ff66-6666-4666-8666-666666666666',
-      1,
  repeat('a',64));
 
 select public.v2_coach_append_exchange(
@@ -148,7 +147,7 @@ begin
       '22222222-2222-4222-8222-222222222222',
       '33333333-3333-4333-8333-333333333333',1,'bad','bad');
     raise exception 'B server writer targeted A thread';
-  exception when insufficient_privilege then null;
+  exception when sqlstate '40001' then null;
   end;
   begin
     perform public.v2_coach_append_exchange(
@@ -161,7 +160,7 @@ begin
       'same request moved to a different thread',
       'should not persist');
     raise exception 'A request ID was replayed into a different Coach thread';
-  exception when sqlstate '22000' then null;
+  exception when sqlstate '40001' then null;
   end;
   perform public.v2_coach_claim_turn(
       'aa11aa11-1111-4111-8111-111111111111',
