@@ -149,12 +149,12 @@ BEGIN
    id,activity_id,user_id,provider,source_kind,source_record_id,quality,source_payload_hash)
  VALUES('11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',act,a,
  'apple_watch','workout_record','watch-interval','trusted',repeat('b',64));
- INSERT INTO public.v2_activity_metric_values(
-  id,activity_id,user_id,segment_id,source_id,metric_code,definition_version,
-  value_numeric,measurement_kind,quality,source_payload_hash)
- VALUES('11111111-bbbb-4bbb-8bbb-bbbbbbbbbbbb',act,a,child,
-  '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa','power_w',1,
-  250,'source_measured','trusted',repeat('b',64));
+ metric_read:=allin_private.v2_activity_append_segment_scalar_candidate(
+  a,act,child,'11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  '11111111-bbbb-4bbb-8bbb-bbbbbbbbbbbb','power_w',1,
+  'source_measured',250,NULL,NULL,repeat('b',64));
+ IF metric_read->>'replayed'<>'false' THEN
+   RAISE EXCEPTION 'Second sensor could not append independent segment evidence'; END IF;
  metric_read:=allin_private.v2_activity_segment_scalar_projection_candidate(a,act,child);
  IF pg_catalog.jsonb_array_length(metric_read->'metrics')<>1
  OR metric_read#>>'{metrics,0,metricCode}'<>'leg_cadence_rpm'
