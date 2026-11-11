@@ -165,3 +165,62 @@ END
 $verify_bind$;
 SQL
 echo "PASS ALL-252 PostgreSQL two-session first-purchase owner collision"
+
+
+# Two simultaneous initial trial claims must share the same DB-owned UUID,
+# not create two valid seven-day trials or two Stripe idempotency keys.
+docker exec -i "$cid" psql -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 <<'SQL'
+INSERT INTO auth.users(id) VALUES ('00000000-0000-0000-0000-000000000009');
+INSERT INTO public.v2_profiles(user_id) VALUES ('00000000-0000-0000-0000-000000000009');
+SQL
+: >"$log_a"
+: >"$log_b"
+docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_a" 2>&1 <<'SQL' &
+SET ROLE service_role;
+BEGIN;
+SELECT attempt_id FROM allin_private.v2_claim_trial_checkout_attempt(
+ '00000000-0000-0000-0000-000000000009',
+ '00000000-0000-0000-0000-000000000009','stripe_web','sandbox');
+\echo TRIAL_LOCK_HELD
+SELECT pg_sleep(3);
+COMMIT;
+SQL
+pid_a=$!
+ready=0
+for _ in $(seq 1 50); do
+  if grep -q '^TRIAL_LOCK_HELD$' "$log_a"; then ready=1; break; fi
+  if ! kill -0 "$pid_a" 2>/dev/null; then break; fi
+  sleep 0.1
+done
+if [[ "$ready" -ne 1 ]]; then
+  echo "First account trial claim did not acquire owner lock" >&2
+  cat "$log_a" >&2
+  exit 1
+fi
+docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_b" 2>&1 <<'SQL'
+SET ROLE service_role;
+SELECT attempt_id FROM allin_private.v2_claim_trial_checkout_attempt(
+ '00000000-0000-0000-0000-000000000009',
+ '00000000-0000-0000-0000-000000000009','stripe_web','sandbox');
+SQL
+wait "$pid_a"
+pid_a=""
+first=$(grep -E '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$' "$log_a" | head -1)
+second=$(grep -E '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$' "$log_b" | head -1)
+if [[ -z "$first" || "$first" != "$second" ]]; then
+  echo "Concurrent trial requests created separate checkout UUIDs" >&2
+  cat "$log_a" "$log_b" >&2
+  exit 1
+fi
+docker exec -i "$cid" psql -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 <<'SQL'
+DO $trial_unique$
+BEGIN
+ IF (SELECT count(*) FROM allin_private.v2_subscription_checkout_attempts
+      WHERE owner_id='00000000-0000-0000-0000-000000000009'
+        AND state='reserved') <> 1 THEN
+   RAISE EXCEPTION 'Concurrent owner trial claim created duplicate rows';
+ END IF;
+END
+$trial_unique$;
+SQL
+echo "PASS ALL-252 PostgreSQL concurrent owner trial claim same UUID"
