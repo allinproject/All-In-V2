@@ -42,6 +42,7 @@ on:
       - 'scripts/test-v2-training-two-connection-finish-assert-postgres.psql'
       - 'scripts/test-v2-training-account-deletion-cascade-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -243,4 +244,6 @@ jobs:
           docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_complete_integration training_account_deletion
           docker cp docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql
+          docker cp docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-account-deletion-cascade-postgres.psql
