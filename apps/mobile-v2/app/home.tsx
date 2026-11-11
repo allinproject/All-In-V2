@@ -12,6 +12,7 @@ import { combineCalendarReads } from '../src/features/training/trainingCalendarR
 import { summarizeTodayTraining } from '../src/features/today/todayTrainingCard';
 import { todayEnergyGlance } from '../src/features/today/todayEnergyGlance';
 import { todayFoodLog } from '../src/features/today/todayFoodLog';
+import { todayWellnessGlance } from '../src/features/today/todayWellnessGlances';
 
 /**
  * Today is the one existing /home entry point.
@@ -58,6 +59,10 @@ function HomeOwnerScreen() {
   const energyGlance = todayEnergyGlance({ status: 'unavailable' }, user?.id ?? '', localDay);
   // Canonical Fuel entries are not available yet; do not invent rows or photos.
   const foodLog = todayFoodLog({ status: 'unavailable' }, user?.id ?? '', localDay);
+  // Progress/Recovery owners are not connected yet: preserve unknown rather
+  // than manufacturing performance statistics or a readiness recommendation.
+  const progressGlance = todayWellnessGlance({status:'unavailable'}, user?.id ?? '', localDay, 'progress');
+  const recoveryGlance = todayWellnessGlance({status:'unavailable'}, user?.id ?? '', localDay, 'recovery');
 
   async function handleSignOut() {
     if (!signOutGuard.current.tryEnter()) return;
@@ -160,12 +165,14 @@ function HomeOwnerScreen() {
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Progress</Text>
-          <Text style={styles.help}>Your sport- and goal-specific progress summary is not connected yet. No performance statistics are being inferred.</Text>
+          {progressGlance.label ? <Text style={styles.sectionLabel}>{progressGlance.label}</Text> : null}
+          <Text style={styles.help}>{progressGlance.detail}</Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Recovery</Text>
-          <Text style={styles.help}>Your current Recovery assessment is not connected yet. No recovery recommendation is being inferred.</Text>
+          {recoveryGlance.label ? <Text style={styles.sectionLabel}>{recoveryGlance.label}</Text> : null}
+          <Text style={styles.help}>{recoveryGlance.detail}</Text>
         </View>
 
         <Text style={styles.account}>Signed in as {user.email ?? 'your V2 account'}</Text>
