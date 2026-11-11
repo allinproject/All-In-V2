@@ -148,3 +148,44 @@ test('native purchase callback after owner switch cannot produce signed evidence
  await assert.rejects(task,/owner_changed/);
  assert.equal(launches,1);
 });
+
+test('store discovery may return null without creating a purchase entitlement',async()=>{
+ const h=harness('ios');
+ h.api.fetchProducts=async()=>null;
+ assert.deepEqual(await h.store.getProducts([productId]),[]);
+});
+
+test('restore account switch during store lookup rejects receipts before storing evidence',async()=>{
+ let currentOwner=owner;
+ let releaseRestore;
+ const api={
+  initConnection:async()=>true,
+  fetchProducts:async()=>[{id:productId}],
+  purchaseUpdatedListener:()=>({remove(){}}),
+  purchaseErrorListener:()=>({remove(){}}),
+  requestPurchase:async()=>{},
+  getAvailablePurchases:async()=>new Promise(resolve=>{releaseRestore=resolve;}),
+  finishTransaction:async()=>{},
+ };
+ const store=createOpenIapStoreAdapter({
+  platform:'ios',productId,api,getOwner:()=>currentOwner,
+  getAccountContext:async()=>({ownerId:owner,ios:{productId,appAccountToken:owner}}),
+ });
+ const task=store.restore();
+ while(!releaseRestore)await Promise.resolve();
+ currentOwner='00000000-0000-0000-0000-000000000002';
+ releaseRestore([{store:'apple',productId,purchaseToken:signed}]);
+ await assert.rejects(task,/owner_changed/);
+ await assert.rejects(
+  store.finishVerifiedPurchase({platform:'ios',productId,signedTransaction:signed}),
+  /native_transaction_not_found/
+ );
+});
+
+test('previous owner verified purchase cannot be finished by a new account',async()=>{
+ const h=harness('ios');
+ const receipt=(await h.store.restore())[0];
+ h.setOwner('00000000-0000-0000-0000-000000000002');
+ await assert.rejects(h.store.finishVerifiedPurchase(receipt),/owner_changed/);
+ assert.equal(h.finished(),0);
+});
