@@ -1,0 +1,51 @@
+\set ON_ERROR_STOP on
+-- ALL-251 review-only bridge test in a CLONE of the populated Training graph.
+-- Do not run against hosted Supabase. The existing public RPC name is reused.
+ALTER TABLE auth.users ADD COLUMN email text;
+ALTER TABLE auth.users ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE auth.users ADD COLUMN last_sign_in_at timestamptz;
+UPDATE auth.users SET email='training-export-owner@invalid.example'
+ WHERE id='11111111-1111-4111-8111-111111111111';
+CREATE SCHEMA storage;
+CREATE TABLE storage.buckets (id text PRIMARY KEY);
+CREATE TABLE public.v2_profile_settings(user_id uuid);
+CREATE TABLE public.v2_onboarding_progress(user_id uuid);
+CREATE TABLE public.v2_legal_acceptances(user_id uuid,accepted_at timestamptz);
+CREATE TABLE allin_private.v2_health_considerations(user_id uuid);
+CREATE TABLE allin_private.v2_profile_settings_actions(user_id uuid,created_at timestamptz);
+CREATE TABLE allin_private.v2_onboarding_actions(user_id uuid,created_at timestamptz);
+CREATE TABLE allin_private.v2_account_deletion_requests(user_id uuid);
+CREATE TABLE allin_private.v2_account_deletion_execution_audit(user_id uuid);
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql
+
+SELECT pg_catalog.set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+DO $qa$
+DECLARE
+ v_owner uuid:='11111111-1111-4111-8111-111111111111';
+ v jsonb;
+BEGIN
+ v:=public.v2_export_my_account_snapshot(v_owner);
+ IF v->>'schema_version'<>'v2-account-export-snapshot-v2'
+ OR v#>>'{account,email}'<>'training-export-owner@invalid.example'
+ OR v#>>'{training_activity,ownerId}'<>v_owner::text
+ OR v#>>'{training_activity,completeUserExport}'<>'false'
+ OR pg_catalog.jsonb_array_length(v#>'{training_activity,records,public.v2_completed_activities}')<>1
+ OR NOT (v ? 'health_considerations')
+ THEN RAISE EXCEPTION 'Canonical ALL-251 export bridge omitted existing or new records'; END IF;
+ BEGIN
+  PERFORM public.v2_export_my_account_snapshot(
+    '22222222-2222-4222-8222-222222222222');
+  RAISE EXCEPTION 'Foreign owner export accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- Storage-backed routes/series cannot be silently exported as complete.
+ INSERT INTO storage.buckets(id) VALUES('v2-private-workout-objects');
+ BEGIN
+  PERFORM public.v2_export_my_account_snapshot(v_owner);
+  RAISE EXCEPTION 'Storage-backed export proceeded without file coverage';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ DELETE FROM storage.buckets;
+ RAISE NOTICE 'PASS ALL-251: original RPC extended, legacy data retained, owner isolation, Storage fail closed';
+END $qa$;
+-- The export contract must be v2: unupdated mobile v1 parser MUST NOT
+-- be considered compatible. No production client or existing migration changed.
