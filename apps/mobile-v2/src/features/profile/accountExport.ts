@@ -26,6 +26,29 @@ export function prepareV2AccountExport(value: unknown, expectedOwnerId: string):
   if (required.some(key => !(key in snapshot))) {
     throw new Error('Account export is incomplete. Nothing was shared.');
   }
+  // Verify all nested owner-bearing records as defense in depth.
+  // The database RPC already filters rows; do not trust a malformed response.
+  const single = [
+    'profile', 'profile_settings', 'onboarding_progress',
+    'health_considerations', 'deletion_request', 'deletion_execution',
+  ];
+  for (const key of single) {
+    const record = snapshot[key];
+    if (record === null) continue;
+    if (!record || typeof record !== 'object' || Array.isArray(record)
+      || (record as Record<string, unknown>).user_id !== expectedOwnerId) {
+      throw new Error('Export contains an invalid or other-account record.');
+    }
+  }
+  for (const key of ['legal_acceptances', 'profile_settings_actions', 'onboarding_actions']) {
+    const records = snapshot[key];
+    if (!Array.isArray(records) || records.some(record =>
+      !record || typeof record !== 'object' || Array.isArray(record)
+      || (record as Record<string, unknown>).user_id !== expectedOwnerId
+    )) {
+      throw new Error('Export contains invalid or other-account records.');
+    }
+  }
   const json = JSON.stringify(snapshot, null, 2);
   if (!json || json.length > V2_EXPORT_MAX_CHARS) {
     throw new Error('This export is too large for a temporary file. Contact support for a larger export.');
