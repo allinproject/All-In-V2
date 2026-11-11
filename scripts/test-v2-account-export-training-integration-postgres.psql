@@ -38,6 +38,18 @@ BEGIN
     '22222222-2222-4222-8222-222222222222');
   RAISE EXCEPTION 'Foreign owner export accepted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- An unregistered future user-owned table must fail closed, even when
+ -- empty. This prevents later domain migrations silently omitting export data.
+ CREATE TABLE public.v2_unregistered_owner_export_probe(user_id uuid);
+ BEGIN
+  PERFORM public.v2_export_my_account_snapshot(v_owner);
+  RAISE EXCEPTION 'Unregistered user-data table incorrectly accepted by export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ DROP TABLE public.v2_unregistered_owner_export_probe;
+ -- The allowlisted schema must recover after the incompatible table goes away.
+ v:=public.v2_export_my_account_snapshot(v_owner);
+ IF v#>>'{training_activity,ownerId}'<>v_owner::text
+ THEN RAISE EXCEPTION 'Owner export did not recover after catalog guard probe'; END IF;
  -- Storage-backed routes/series cannot be silently exported as complete.
  INSERT INTO storage.buckets(id) VALUES('v2-private-workout-objects');
  BEGIN
