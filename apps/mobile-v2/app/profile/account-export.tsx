@@ -3,7 +3,6 @@ import { Link, Redirect, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
-import { useAccessGate } from '../../src/auth/AccessGateProvider';
 import { v2AuthenticatedScreenKey } from '../../src/auth/authRoute';
 import { assertV2SessionOwner } from '../../src/auth/accessGateClient';
 import { prepareV2AccountExport } from '../../src/features/profile/accountExport';
@@ -17,7 +16,6 @@ export default function AccountExportScreen() {
 
 function OwnedAccountExport() {
   const { user, loading: authLoading } = useAuth();
-  const gate = useAccessGate();
   const owner = user?.id ?? null;
   const mounted = useRef(false);
   const busy = useRef(false);
@@ -33,7 +31,7 @@ function OwnedAccountExport() {
   }, [owner]));
 
   async function shareSnapshot() {
-    if (!owner || !mounted.current || busy.current || sharing || !confirming || gate.status !== 'ready') return;
+    if (!owner || !mounted.current || busy.current || sharing || !confirming) return;
     if (Platform.OS === 'web') {
       setError('Native sharing is available in the mobile app. Secure file download is not available yet.');
       return;
@@ -65,9 +63,7 @@ function OwnedAccountExport() {
   }
 
   if (!authLoading && !user) return <Redirect href="/sign-in" />;
-  if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
-  if (gate.status === 'onboarding_required') return <Redirect href="/onboarding-required" />;
-  if (authLoading || gate.status !== 'ready' || !user) return <Redirect href="/" />;
+  if (authLoading || !user) return <Redirect href="/" />;
 
   return (
     <SafeAreaView style={styles.safe}>
