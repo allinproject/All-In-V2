@@ -98,3 +98,22 @@ test('failed checkout/Stripe or missing backend returns generic response without
     assert.equal(JSON.stringify(result).includes('private'),false);
   }
 });
+
+test('consumed trial routes only to a trusted paid claim with no Stripe trial',async()=>{
+  let params=null;
+  const result=await run({
+    claimEligibleAttempt:async()=>({status:'trial_ineligible'}),
+    claimPaidAttempt:async()=>({status:'eligible_reserved',ownerId:owner,
+      attemptId,trialEligible:false}),
+    createCheckoutSession:async request=>{params=request;return session;},
+  });
+  assert.equal(result.status,200);
+  assert.equal('subscription_data' in params,false);
+  assert.equal(params.line_items[0].price,'price_1UaDovRBJdOnJBog5swb8zpS');
+  const denied=await run({
+    claimEligibleAttempt:async()=>({status:'trial_ineligible'}),
+    claimPaidAttempt:async()=>({status:'subscription_unresolved'}),
+  });
+  assert.equal(denied.status,503);
+  assert.equal('checkoutUrl' in denied,false);
+});
