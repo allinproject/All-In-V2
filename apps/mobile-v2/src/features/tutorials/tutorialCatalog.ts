@@ -13,13 +13,18 @@ export type TutorialEntry = {
   readiness: TutorialReadiness;
   /** Optional, verified V2 screen to explore independently from a tutorial. */
   exploreRoute?: '/profile'|'/profile/sports'|'/profile/kitchen'|'/profile/coach-preferences'|'/train';
+  /** Canonical deep link to the actual guide; absent until guide wiring is integrated. */
+  launchRoute?: '/profile?tutorial=profile-settings'
+    | '/profile/sports?tutorial=sports'
+    | '/profile/kitchen?tutorial=kitchen'
+    | '/profile/coach-preferences?tutorial=coach-preferences';
 };
 export const V2_TUTORIAL_CATALOG: readonly TutorialEntry[] = [
   {id:'app-tour',title:'Welcome to ALL IN 365',category:'Getting started',summary:'Explore the real V2 app and what each area does.',readiness:'planned',exploreRoute:'/profile'},
-  {id:'profile-settings',title:'Profile & Settings',category:'Profile & Settings',summary:'Personalize sports, Kitchen, Coach and your account.',readiness:'integrated',exploreRoute:'/profile'},
-  {id:'sports-interests',title:'Sports & Interests',category:'Profile & Settings',summary:'Learn training focus, active activities, and explicit saving.',readiness:'integrated',exploreRoute:'/profile/sports'},
-  {id:'kitchen',title:'Kitchen',category:'Profile & Settings',summary:'Learn home equipment, work reheating, kitchen constraints and saving.',readiness:'integrated',exploreRoute:'/profile/kitchen'},
-  {id:'coach-preferences',title:'Coach Preferences',category:'Profile & Settings',summary:'Review guidance, explanations, plan-change approvals and coaching tone.',readiness:'integrated',exploreRoute:'/profile/coach-preferences'},
+  {id:'profile-settings',title:'Profile & Settings',category:'Profile & Settings',summary:'Personalize sports, Kitchen, Coach and your account.',readiness:'integrated',exploreRoute:'/profile',launchRoute:'/profile?tutorial=profile-settings'},
+  {id:'sports-interests',title:'Sports & Interests',category:'Profile & Settings',summary:'Learn training focus, active activities, and explicit saving.',readiness:'integrated',exploreRoute:'/profile/sports',launchRoute:'/profile/sports?tutorial=sports'},
+  {id:'kitchen',title:'Kitchen',category:'Profile & Settings',summary:'Learn home equipment, work reheating, kitchen constraints and saving.',readiness:'integrated',exploreRoute:'/profile/kitchen',launchRoute:'/profile/kitchen?tutorial=kitchen'},
+  {id:'coach-preferences',title:'Coach Preferences',category:'Profile & Settings',summary:'Review guidance, explanations, plan-change approvals and coaching tone.',readiness:'integrated',exploreRoute:'/profile/coach-preferences',launchRoute:'/profile/coach-preferences?tutorial=coach-preferences'},
   {id:'weekly-routine',title:'Weekly Routine',category:'Profile & Settings',summary:'Set preferred training, shopping and meal-prep times.',readiness:'planned'},
   {id:'coach-learning',title:'What Coach Knows',category:'Profile & Settings',summary:'Review, correct and remove learned preferences.',readiness:'planned'},
   {id:'coach-conversation',title:'Working with Coach',category:'Getting started',summary:'Understand Coach guidance, memory and reviewed actions.',readiness:'planned'},
@@ -38,11 +43,16 @@ export const V2_TUTORIAL_CATALOG: readonly TutorialEntry[] = [
 ] as const;
 
 export function canStartTutorial(tutorial: TutorialEntry): boolean {
-  return tutorial.readiness === 'integrated' || tutorial.readiness === 'device_validated';
+  return Boolean(tutorial.launchRoute)
+    && (tutorial.readiness === 'integrated' || tutorial.readiness === 'device_validated');
+}
+/** A release-ready entry must have a usable route, not merely a status label. */
+export function tutorialLaunchRoute(tutorial: TutorialEntry): TutorialEntry['launchRoute'] | null {
+  return canStartTutorial(tutorial) ? tutorial.launchRoute ?? null : null;
 }
 export function publishedTutorials(catalog: readonly TutorialEntry[]=V2_TUTORIAL_CATALOG): TutorialEntry[] {
   // Only device-validated tutorials may be presented as completed/release-ready.
-  return catalog.filter(item=>item.readiness==='device_validated');
+  return catalog.filter(item=>item.readiness==='device_validated' && canStartTutorial(item));
 }
 export function tutorialCatalogCategories(catalog: readonly TutorialEntry[]=V2_TUTORIAL_CATALOG): TutorialCategory[] {
   const order: TutorialCategory[]=['Getting started','Training','Food & Kitchen','Community','Profile & Settings','Devices'];
