@@ -96,3 +96,40 @@ test("invalid trusted fingerprint fails before any claim or provider spend",asyn
  assert.equal((await executeCoachServerExchange(r,d)).reason,"fingerprint_unavailable");
  assert.equal(claims,0);assert.equal(spend,0);
 });
+
+test("completed Coach request replays canonical assistant answer without new provider spend",async()=>{
+ const r=req(),d=deps(r);let generated=0,finish=0;
+ d.claimTurn=async()=>({action:"completed",executionVersion:1});
+ d.providerGenerate=async()=>{generated++;throw Error("must not generate")};
+ d.finishClaim=async()=>{finish++;return {completed:true}};
+ const output=await executeCoachServerExchange(r,d);
+ assert.equal(output.status,"saved_verified");
+ assert.equal(output.replayed,true);
+ assert.equal(output.message,"Your plan evidence is incomplete.");
+ assert.equal(generated,0);assert.equal(finish,0);
+});
+test("saved-pending-finalize recovers exact saved reply without provider call",async()=>{
+ const r=req(),d=deps(r);let generated=0,finished=0;
+ d.claimTurn=async()=>({action:"saved_pending_finalize",executionVersion:3});
+ d.providerGenerate=async()=>{generated++;throw Error("no duplicate spend")};
+ d.finishClaim=async p=>{finished=p.executionVersion;return {completed:true}};
+ const output=await executeCoachServerExchange(r,d);
+ assert.equal(output.replayed,true);assert.equal(output.status,"saved_verified");
+ assert.equal(generated,0);assert.equal(finished,3);
+});
+test("replay with missing canonical row cannot falsely claim saved",async()=>{
+ const r=req(),d=deps(r);let generated=0;
+ d.claimTurn=async()=>({action:"completed",executionVersion:1});
+ d.readPair=async()=>[];
+ d.providerGenerate=async()=>{generated++;return {message:"wrong"}};
+ assert.equal((await executeCoachServerExchange(r,d)).reason,"replay_unverified");
+ assert.equal(generated,0);
+});
+test("replay refuses different persisted user prompt even when IDs match",async()=>{
+ const r=req(),d=deps(r);let generated=0;
+ d.claimTurn=async()=>({action:"completed",executionVersion:1});
+ const orig=d.readPair;d.readPair=async()=>{const x=await orig();x[0].content="Different request";return x};
+ d.providerGenerate=async()=>{generated++;return {message:"wrong"}};
+ assert.equal((await executeCoachServerExchange(r,d)).reason,"replay_unverified");
+ assert.equal(generated,0);
+});

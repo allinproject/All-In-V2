@@ -46,7 +46,42 @@ export async function executeCoachServerExchange(request,deps){
    clientRequestId:request.clientRequestId,requestFingerprint,
    userMessageId:request.userMessageId,assistantMessageId:request.assistantMessageId});
   if(await owner()!==request.ownerId)return blocked("authentication_changed");
-  // In-progress/replay/failed/rate-limited claims MUST NEVER invoke provider.
+  // Previously saved/finished turns replay the persisted answer, not another
+  // paid model generation. Even a lost completion ACK is safe to recover.
+  if(claim?.action==="completed" || claim?.action==="saved_pending_finalize"){
+   const prior=decodeCoachExchangeRows(await deps.readPair({
+    ownerId:request.ownerId,threadId:request.threadId,
+    clientRequestId:request.clientRequestId,
+    userMessageId:request.userMessageId,
+    assistantMessageId:request.assistantMessageId}),{
+     ownerId:request.ownerId,threadId:request.threadId,
+     clientRequestId:request.clientRequestId,
+     userMessageId:request.userMessageId,
+     assistantMessageId:request.assistantMessageId
+    });
+   if(await owner()!==request.ownerId)return blocked("authentication_changed");
+   const user=prior?.find(x=>x.role==="user");
+   const assistant=prior?.find(x=>x.role==="assistant");
+   if(!user||!assistant||user.content!==request.userContent.trim())
+    return blocked("replay_unverified");
+   if(claim.action==="saved_pending_finalize"){
+    if(!Number.isSafeInteger(claim.executionVersion)||claim.executionVersion<1)
+     return blocked("unfenced_claim");
+    const finalized=await deps.finishClaim({
+     ownerId:request.ownerId,threadId:request.threadId,
+     clientRequestId:request.clientRequestId,
+     assistantMessageId:request.assistantMessageId,
+     executionVersion:claim.executionVersion});
+    if(finalized?.completed!==true)return blocked("completion_unverified");
+   }
+   if(await owner()!==request.ownerId)return blocked("authentication_changed");
+   return {status:"saved_verified",message:assistant.content,
+     receipt:{ownerId:request.ownerId,threadId:request.threadId,
+      clientRequestId:request.clientRequestId,
+      userMessageId:request.userMessageId,
+      assistantMessageId:request.assistantMessageId},replayed:true};
+  }
+  // Waiting, rejected and rate-limited claims MUST NEVER invoke the provider.
   if(claim?.action!=="claimed")return blocked("claim_not_granted");
   if(!Number.isSafeInteger(claim.executionVersion)||claim.executionVersion<1)
    return blocked("unfenced_claim");
