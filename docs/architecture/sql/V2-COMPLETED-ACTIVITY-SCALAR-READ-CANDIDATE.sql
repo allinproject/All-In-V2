@@ -24,8 +24,11 @@ BEGIN
  WITH rows AS (
   SELECT m.metric_code,m.definition_version,d.canonical_unit,
    m.value_numeric,m.value_text,m.value_boolean,m.measurement_kind,
-   m.quality,m.source_id
+   CASE WHEN m.quality=s.quality THEN m.quality ELSE 'unverified' END AS quality,
+   m.source_id
   FROM public.v2_activity_metric_values m
+  JOIN public.v2_activity_sources s
+    ON s.id=m.source_id AND s.activity_id=m.activity_id AND s.user_id=m.user_id
   JOIN public.v2_activity_metric_definitions d
    ON d.metric_code=m.metric_code AND d.definition_version=m.definition_version
   WHERE m.activity_id=p_activity_id AND m.user_id=p_user_id
@@ -59,9 +62,12 @@ BEGIN
  INTO v_values FROM grouped g
  WHERE g.low_confidence_count=0 AND g.distinct_fact_count=1;
  WITH rows AS (
-  SELECT m.metric_code,m.definition_version,m.quality,
+  SELECT m.metric_code,m.definition_version,
+   CASE WHEN m.quality=s.quality THEN m.quality ELSE 'unverified' END AS quality,
    m.value_numeric,m.value_text,m.value_boolean,m.measurement_kind
   FROM public.v2_activity_metric_values m
+  JOIN public.v2_activity_sources s
+   ON s.id=m.source_id AND s.activity_id=m.activity_id AND s.user_id=m.user_id
   JOIN public.v2_activity_metric_definitions d
    ON d.metric_code=m.metric_code AND d.definition_version=m.definition_version
   WHERE m.activity_id=p_activity_id AND m.user_id=p_user_id
