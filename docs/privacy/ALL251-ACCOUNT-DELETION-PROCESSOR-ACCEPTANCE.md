@@ -70,6 +70,14 @@ A [rollback-only synthetic orphan record test](../../supabase/tests/all251_compl
 
 **Remaining unverified release items:** a genuine isolated two-session concurrent race, real Auth Admin API integration, true installed-iPhone flow and account swap, stale JWT/session access after deletion, retention/notification privacy decisions, and legal/founder acceptance. Do not infer session invalidation merely because the Auth session row is gone: previously issued JWTs can remain valid until expiration, so guard all sensitive server operations appropriately.
 
+## 2026-11-11 — Stale JWT account-existence protection
+
+**Applied to live V2:** [`20261111131212_v2_stale_auth_token_account_existence_guards.sql`](../../supabase/migrations/20261111131212_v2_stale_auth_token_account_existence_guards.sql) preserves nine existing owner SECURITY DEFINER RPCs, adding a check that `auth.uid()` still corresponds to an `auth.users` row. Applies to Profile read/settings, onboarding, health read/write, legal acceptance and deletion request/status/cancellation. The owner ID in a previously issued JWT alone is insufficient after Auth deletion.
+
+**Verified:** [rollback-only SQL regression](../../supabase/tests/all251_stale_jwt_owner_rpc_rollback.sql) showed a synthetic account using Profile normally before deletion and all nine owner RPCs rejecting its simulated still-valid JWT after the Auth user row was removed. The saved test file was executed successfully; all synthetic changes rolled back. Live DB readback confirmed nine guarded functions, no accounts, requests, audits or Storage objects and processing switch OFF.
+
+**Remaining:** this is not global token revocation. Future new RPCs, Edge Functions, Storage access, and Coach must also enforce current account/session validity; verify with real authenticated two-device and expired-token tests. Isolated Auth Admin and true concurrent transaction validation, iPhone acceptance, external deletion coverage and legal/founder signoff remain outstanding. No worker deployed or external signup enabled.
+
 ## The actual deletion processor must still do all of the following
 
 1. Trusted server-side authentication and authorization; never expose service key/admin deletion to mobile clients. No silent scheduled claims or broad user enumerations.
