@@ -1,13 +1,12 @@
 /**
- * ALL-251 REVIEW ONLY — server-only authorization binding for the EXISTING
- * account export worker, not a public API or new source of truth.
+ * ALL-251 REVIEW ONLY — service-only Supabase Auth and approved request
+ * binding for the EXISTING account-export worker. No deployed endpoint.
  *
- * authClient.auth.getUser() validates the Bearer token with Supabase Auth.
- * The session ID is read from that verified token, then checked against live
- * auth.sessions by the private SQL candidate (not client-editable metadata).
- * Existing ALL-251 owner workflow must supply authorizeDurableRequest to
- * prove request ownership, active status and finite expiry; NO fallback.
- * No service keys / JWTs / storage URLs are returned to the mobile client.
+ * Auth getUser verifies the supplied bearer token. Session ID is read only
+ * from that verified JWT and checked in auth.sessions by the owning private
+ * function. A public-schema, service-only, DEFAULT-OFF wrapper delegates
+ * to the private owner+session+durable-request gate. Never expose the private
+ * schema or grant worker RPC to anon/authenticated roles.
  */
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function tokenSessionId(token) {
@@ -18,57 +17,50 @@ function tokenSessionId(token) {
     const payload=bits[1].replace(/-/g,'+').replace(/_/g,'/');
     const json=JSON.parse(atob(payload.padEnd(Math.ceil(payload.length/4)*4,'=')));
     return UUID.test(json?.session_id??'')?json.session_id:null;
-  } catch {return null;}
+  }catch{return null;}
 }
 export function createTrainingExportAuthServices({
-  bearerToken,authClient,serverClient,authorizeDurableRequest,
-  storageAdapter,archiveSink,
+ bearerToken,authClient,serverClient,storageAdapter,archiveSink,
 }) {
-  if(typeof authClient?.auth?.getUser!=='function'
-   ||typeof serverClient?.schema!=='function'
-   ||typeof authorizeDurableRequest!=='function'
+ if(typeof authClient?.auth?.getUser!=='function'
+   ||typeof serverClient?.rpc!=='function'
    ||typeof storageAdapter?.listEvidence!=='function'
    ||typeof storageAdapter?.downloadPrivateObject!=='function'
    ||typeof archiveSink?.writeEncryptedArchive!=='function'
    ||typeof archiveSink?.deleteStagedArchive!=='function') {
-    throw new Error('Trusted account export dependencies missing');
-  }
-  const sessionId=tokenSessionId(bearerToken);
-  if(!sessionId)throw new Error('Verified session claim required');
-  async function authorizeExport(requestId) {
-    if(!UUID.test(requestId??''))throw new Error('Exact export request required');
-    // Do not cache getUser: a deleted user must be rejected between archive
-    // retrieval and persistence as well as on the initial request.
-    const response=await authClient.auth.getUser(bearerToken);
-    const ownerId=response?.data?.user?.id;
-    if(response?.error||!UUID.test(ownerId??'')) {
-      throw new Error('Current Auth user unavailable');
-    }
-    const {data:gate,error}=await serverClient.schema('allin_private')
-      .rpc('v2_account_export_authorize_session_candidate',{
-        p_user_id:ownerId,p_session_id:sessionId,
-      });
-    if(error||gate?.ownerId!==ownerId||gate?.sessionId!==sessionId
-      ||gate?.activeSession!==true||gate?.exportPermitted!==true
-      ||gate?.completeUserExport!==false) {
-      throw new Error('Active Auth session not authorized for private export');
-    }
-    const request=await authorizeDurableRequest({requestId,ownerId,sessionId});
-    if(request?.requestId!==requestId||request?.ownerId!==ownerId
-      ||request?.status!=='approved'||request?.cancelled===true
-      ||typeof request.expiresAt!=='string'
-      ||!Number.isFinite(Date.parse(request.expiresAt))
-      ||Date.parse(request.expiresAt)<=Date.now()
-      ||Date.parse(request.expiresAt)>Date.now()+24*60*60*1000) {
-      throw new Error('Owner export request missing, expired or revoked');
-    }
-    return {ownerId,activeSession:true,exportPermitted:true};
-  }
-  return Object.freeze({
-    authorizeExport,
-    listEvidence:storageAdapter.listEvidence,
-    downloadPrivateObject:storageAdapter.downloadPrivateObject,
-    writeEncryptedArchive:archiveSink.writeEncryptedArchive,
-    deleteStagedArchive:archiveSink.deleteStagedArchive,
-  });
+   throw new Error('Trusted account export dependencies missing');
+ }
+ const sessionId=tokenSessionId(bearerToken);
+ if(!sessionId)throw new Error('Verified session claim required');
+ async function authorizeExport(requestId) {
+   if(!UUID.test(requestId??''))throw new Error('Exact export request required');
+   // Never cache getUser or DB authorization. A deleted owner or revoked
+   // session/request must interrupt retrieval and post-write acceptance.
+   const userResult=await authClient.auth.getUser(bearerToken);
+   const ownerId=userResult?.data?.user?.id;
+   if(userResult?.error||!UUID.test(ownerId??'')) {
+     throw new Error('Current Auth user unavailable');
+   }
+   const {data:gate,error}=await serverClient.rpc(
+     'v2_account_export_worker_authorize_candidate',{
+      p_user_id:ownerId,p_session_id:sessionId,p_request_id:requestId,
+     }
+   );
+   if(error||gate?.ownerId!==ownerId||gate?.sessionId!==sessionId
+      ||gate?.requestId!==requestId||gate?.status!=='approved'
+      ||gate?.cancelled!==false||typeof gate?.expiresAt!=='string'
+      ||!Number.isFinite(Date.parse(gate.expiresAt))
+      ||Date.parse(gate.expiresAt)<=Date.now()
+      ||Date.parse(gate.expiresAt)>Date.now()+24*60*60*1000) {
+     throw new Error('Current Auth session and approved export request required');
+   }
+   return {ownerId,activeSession:true,exportPermitted:true};
+ }
+ return Object.freeze({
+   authorizeExport,
+   listEvidence:storageAdapter.listEvidence,
+   downloadPrivateObject:storageAdapter.downloadPrivateObject,
+   writeEncryptedArchive:archiveSink.writeEncryptedArchive,
+   deleteStagedArchive:archiveSink.deleteStagedArchive,
+ });
 }
