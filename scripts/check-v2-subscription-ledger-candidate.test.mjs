@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const sql = readFileSync(new URL('../../docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql',import.meta.url),'utf8');
+const sql = readFileSync(new URL('../docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql',import.meta.url),'utf8');
 
 test('subscription SQL is review-only and cannot silently be treated as a migration',()=>{
   assert.match(sql,/REVIEW-ONLY/i);
