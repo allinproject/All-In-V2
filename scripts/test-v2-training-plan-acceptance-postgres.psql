@@ -30,6 +30,11 @@ BEGIN
  (id,plan_id,user_id,revision_number,source_kind,status)
  VALUES(r1,p,u,1,'coach_proposal','candidate'),
        (r2,p,u,2,'athlete_authored','candidate');
+ -- These athlete-approved bounds are independent of the submitted day rows.
+ UPDATE public.v2_training_plan_revisions
+ SET calendar_start_date='2026-11-16', calendar_end_date='2026-11-16',
+     calendar_timezone='America/Chicago'
+ WHERE id IN (r1,r2);
  INSERT INTO public.v2_training_revision_days
  (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
  VALUES('12121212-1212-4212-8212-121212121212',r1,p,u,'2026-11-16','America/Chicago','planned',0),
@@ -117,6 +122,10 @@ BEGIN
  INSERT INTO public.v2_training_plans(id,user_id,plan_kind) VALUES(p,u,'general');
  INSERT INTO public.v2_training_plan_revisions(id,plan_id,user_id,revision_number,status,source_kind)
  VALUES(rev,p,u,1,'candidate','coach_proposal');
+ UPDATE public.v2_training_plan_revisions
+ SET calendar_start_date='2026-11-17',calendar_end_date='2026-11-19',
+     calendar_timezone='America/Chicago'
+ WHERE id=rev;
  INSERT INTO public.v2_training_session_slots(id,plan_id,user_id,slot_key)
  VALUES(slot,p,u,'bike-interv');
  INSERT INTO public.v2_training_revision_days
