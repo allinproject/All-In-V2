@@ -236,9 +236,8 @@ jobs:
           PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           set -euo pipefail
-          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" training_account_deletion
           docker cp scripts/test-v2-training-account-deletion-cascade-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-account-deletion-cascade-postgres.psql"
-          docker exec "$PG_CONTAINER" pg_dump -U "$PGUSER" -d training_complete_integration --schema-only --no-owner --no-privileges > /tmp/qa_schema.sql
-          docker exec -i "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 < /tmp/qa_schema.sql
-          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-completed-integrated-release-postgres.psql
+          # Clone the already populated integrated fixture after race checks.
+          # This ensures deletion is never attempted on the source test DB.
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_complete_integration training_account_deletion
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-account-deletion-cascade-postgres.psql
