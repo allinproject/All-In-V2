@@ -71,7 +71,8 @@ export function createNativeBillingFlow(input:{
       // previous owner's entitlement after an intervening account switch.
       if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
       return 'server_entitled';
-    }catch{return 'verification_unavailable'}
+    }catch{return input.getAuthenticatedOwner()===owner?
+      'verification_unavailable':'wrong_account'}
   }
   const ready=()=>!!input.store&&input.store.platform===input.platform&&
     product(input.productId??'')&&typeof input.getAuthenticatedOwner==='function';
