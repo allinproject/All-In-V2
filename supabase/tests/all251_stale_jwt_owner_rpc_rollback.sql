@@ -24,15 +24,15 @@ declare
  n integer:=0;
 begin
  for item in select * from (values
-  ('profile state','select public.v2_my_profile_state()'),
-  ('deletion status','select public.v2_my_account_deletion_request('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251')'),
-  ('deletion request','select public.v2_request_account_deletion('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','DELETE MY ACCOUNT')'),
-  ('health write','select public.v2_save_health_considerations('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','[]'::jsonb,'[]'::jsonb,false,0)'),
-  ('settings write','select public.v2_patch_profile_settings_section('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','profile_preferences','{}'::jsonb,0,'stale-test')'),
-  ('onboarding write','select public.v2_set_onboarding_step('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','focus','complete',0,'stale-test')'),
-  ('legal write','select public.v2_accept_legal_documents('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','v1','v1','v1',true,'stale-test')'),
-  ('health read','select public.v2_my_health_considerations('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251')'),
-  ('cancel deletion','select public.v2_cancel_account_deletion_request('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','cccccccc-cccc-4ccc-8ccc-cccccccc0251')')
+  ('profile state',$sql$select public.v2_my_profile_state()$sql$),
+  ('deletion status',$sql$select public.v2_my_account_deletion_request('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251')$sql$),
+  ('deletion request',$sql$select public.v2_request_account_deletion('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','DELETE MY ACCOUNT')$sql$),
+  ('health write',$sql$select public.v2_save_health_considerations('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','[]'::jsonb,'[]'::jsonb,false,0)$sql$),
+  ('settings write',$sql$select public.v2_patch_profile_settings_section('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','profile_preferences','{}'::jsonb,0,'stale-test')$sql$),
+  ('onboarding write',$sql$select public.v2_set_onboarding_step('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','focus','complete',0,'stale-test')$sql$),
+  ('legal write',$sql$select public.v2_accept_legal_documents('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','v1','v1','v1',true,'stale-test')$sql$),
+  ('health read',$sql$select public.v2_my_health_considerations('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251')$sql$),
+  ('cancel deletion',$sql$select public.v2_cancel_account_deletion_request('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaa251','cccccccc-cccc-4ccc-8ccc-cccccccc0251')$sql$)
  ) as checks(label,query_text)
  loop
   denied:=false;
