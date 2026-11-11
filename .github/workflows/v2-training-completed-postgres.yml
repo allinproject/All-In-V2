@@ -24,6 +24,7 @@ on:
       - 'docs/architecture/sql/V2-TRAINING-START-PLANNED-WORKOUT-CANDIDATE.sql'
       - 'scripts/test-v2-training-start-planned-postgres.psql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql'
       - 'scripts/test-v2-completed-scalar-metrics-postgres.psql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql'
       - 'scripts/test-v2-completed-scalar-read-postgres.psql'
@@ -133,6 +134,7 @@ jobs:
         run: |
           docker exec "$PG_CONTAINER" createdb -U "$PGUSER" completed_scalar_metrics
           docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql"
+          docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql"
           docker cp scripts/test-v2-completed-scalar-metrics-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-completed-scalar-metrics-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d completed_scalar_metrics -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-completed-scalar-metrics-postgres.psql
       - name: Verify conservative Completed Activity source-consensus projection
