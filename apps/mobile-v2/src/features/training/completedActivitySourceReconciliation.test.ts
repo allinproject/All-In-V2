@@ -19,11 +19,11 @@ test('source revision or changed bytes cannot silently overwrite canonical measu
  assert.equal(reconcileActivitySource(source({payloadFingerprint:'sha256-new'}),[linked(source())]).decision,'revision_review');
 });
 test('Watch and HealthKit source IDs may attach only through certified identical Training session',()=>{
- const health=source({provider:'healthkit',sourceRecordId:'hk-91'});
+ const health=source({provider:'apple_healthkit',sourceRecordId:'hk-91'});
  assert.deepEqual(reconcileActivitySource(health,[linked(source())]),{
   decision:'attach_certified_session',activityId:'activity-1',reason:'same_certified_session',
  });
- const unlinked=source({provider:'healthkit',sourceRecordId:'hk-91',certifiedSessionInstanceId:null});
+ const unlinked=source({provider:'apple_healthkit',sourceRecordId:'hk-91',certifiedSessionInstanceId:null});
  assert.equal(reconcileActivitySource(unlinked,[linked(source())]).decision,'needs_review');
 });
 test('even close/overlapping source records must not auto merge without certified session',()=>{
@@ -37,7 +37,7 @@ test('same source pointing to two canonical activities blocks reconciliation',()
  });
 });
 test('same certified session linked to conflicting activities blocks reconciliation',()=>{
- const health=source({provider:'healthkit',sourceRecordId:'hk-91'});
+ const health=source({provider:'apple_healthkit',sourceRecordId:'hk-91'});
  assert.equal(reconcileActivitySource(health,[linked(source()),linked(source({provider:'garmin',sourceRecordId:'fit-91'}),'activity-2')]).decision,'needs_review');
 });
 test('different owner cannot cause cross-user merging',()=>{
@@ -47,6 +47,12 @@ test('different owner cannot cause cross-user merging',()=>{
 test('distinct source without overlapping candidates creates new-activity candidate, not ready activity ID',()=>{
  const result=reconcileActivitySource(source(),[]);
  assert.deepEqual(result,{decision:'new_activity_candidate',activityId:null,reason:'distinct_source_no_verified_link'});
+});
+test('SQL canonical provider name is not silently aliased to a mismatched external source',()=>{
+ const official=source({provider:'apple_healthkit',sourceRecordId:'hk-91'});
+ const unrecognized=source({provider:'healthkit',sourceRecordId:'hk-91'});
+ assert.notEqual(sourceIdentityKey(official),sourceIdentityKey(unrecognized));
+ assert.equal(reconcileActivitySource(unrecognized,[linked(official)]).decision,'needs_review');
 });
 test('provider external IDs remain exact and tuple-safe',()=>{
  const a=source({sourceRecordId:'id|segment'});
