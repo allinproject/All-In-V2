@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Redirect } from 'expo-router';
+import { Link, Redirect } from 'expo-router';
 import {
   ActivityIndicator,
   Pressable,
@@ -564,6 +564,17 @@ function OnboardingOwnerFlow() {
               {saving ? <ActivityIndicator color={colors.background} /> : <Text style={styles.primaryButtonText}>Continue</Text>}
             </Pressable>
           </View>
+          <Text style={styles.helper}>You can export your data or request account deletion without finishing setup.</Text>
+          <Link href="/profile/account-export" asChild>
+            <Pressable accessibilityRole="button" style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Export my data</Text>
+            </Pressable>
+          </Link>
+          <Link href="/profile/account-deletion" asChild>
+            <Pressable accessibilityRole="button" style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Delete account</Text>
+            </Pressable>
+          </Link>
           <Text style={styles.footer}>Start where you are. Go as far as you want.</Text>
         </View>
       </ScrollView>
