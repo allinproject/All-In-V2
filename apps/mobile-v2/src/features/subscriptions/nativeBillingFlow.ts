@@ -24,6 +24,9 @@ export type NativeStoreAdapter=Readonly<{
   getProducts:(ids:readonly string[])=>Promise<readonly {id:string}[]>;
   purchase:(productId:string)=>Promise<NativePurchaseEvidence|null>;
   restore:()=>Promise<readonly NativePurchaseEvidence[]>;
+  // The native store transaction is finished only AFTER the trusted server
+  // confirms original-owner entitlement; never auto-finish at purchase.
+  finishVerifiedPurchase?:(evidence:NativePurchaseEvidence)=>Promise<void>;
 }>;
 
 export type NativeBillingServer=Readonly<{
@@ -57,7 +60,12 @@ export function createNativeBillingFlow(input:{
       if(result!=='verified')return 'verification_unavailable';
       const read=await input.server.readOwnerEntitlement(owner);
       if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
-      return read?.entitled===true?'server_entitled':'not_entitled';
+      if(read?.entitled!==true)return 'not_entitled';
+      if(input.store?.finishVerifiedPurchase){
+        try{await input.store.finishVerifiedPurchase(evidence)}
+        catch{return 'purchase_pending'}
+      }
+      return 'server_entitled';
     }catch{return 'verification_unavailable'}
   }
   const ready=()=>!!input.store&&input.store.platform===input.platform&&
