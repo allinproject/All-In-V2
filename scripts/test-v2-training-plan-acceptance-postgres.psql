@@ -123,7 +123,7 @@ BEGIN
  INSERT INTO public.v2_training_plan_revisions(id,plan_id,user_id,revision_number,status,source_kind)
  VALUES(rev,p,u,1,'candidate','coach_proposal');
  UPDATE public.v2_training_plan_revisions
- SET calendar_start_date='2026-11-17',calendar_end_date='2026-11-19',
+ SET calendar_start_date='2026-11-17',calendar_end_date='2026-11-17',
      calendar_timezone='America/Chicago'
  WHERE id=rev;
  INSERT INTO public.v2_training_session_slots(id,plan_id,user_id,slot_key)
@@ -152,6 +152,17 @@ BEGIN
   RAISE EXCEPTION 'Timezone-inconsistent workout calendar accepted';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  UPDATE public.v2_training_revision_sessions SET timezone='America/Chicago' WHERE id=sid;
+ -- Reject a missing FIRST day even if all submitted days are contiguous.
+ UPDATE public.v2_training_plan_revisions
+ SET calendar_start_date='2026-11-16' WHERE id=rev;
+ BEGIN
+  PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+   u,p,rev,'28282828-2828-4828-8828-282828282828',1);
+  RAISE EXCEPTION 'Approved start boundary omitted but accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ UPDATE public.v2_training_plan_revisions
+ SET calendar_start_date='2026-11-17', calendar_end_date='2026-11-19'
+ WHERE id=rev;
  -- Even with a valid session/day pair, an accepted revision must not
  -- silently skip dates inside its submitted calendar window.
  INSERT INTO public.v2_training_revision_days
