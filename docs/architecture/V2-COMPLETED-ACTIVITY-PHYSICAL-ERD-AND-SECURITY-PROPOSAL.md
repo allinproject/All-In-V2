@@ -417,3 +417,44 @@ The policy's returned `activityId` is only a linkage proposal. No result is a pe
 
 **Still blocked:** schema approval, indexed uniqueness, account-isolated RLS, race-safe consumer, provider-specific match tolerance, exact Training session certification, conflict/resolution audit, privacy-safe source raw-data lifecycle and two-session PostgreSQL race tests. Source attachments with partial/unknown timing must retain review state until sufficient evidence arrives.
 
+
+## 12. Database release-readiness contract — next schema review decision (2026-11-11)
+
+This section is a **review packet, not migration approval or deployed DDL**. It extends the existing ALL-222/ALL-243/ALL-246 ownership model; do not create a competing activity writer, history aggregate or unreviewed public API.
+
+### Recommended canonical keys and database enforcement
+
+| Object / event | Proposed uniqueness / relation | Mandatory enforcement / failure mode |
+| --- | --- | --- |
+| Completed Activity parent | `(id, user_id)` same-owner composite identity; optional `(user_id, training_session_instance_id)` unique when non-null | Source import may have no Training session; a present session link must be owner-certified and cannot point to two completed activities |
+| Source observation identity | `(user_id, provider, source_kind, source_record_id)` exact external key | Provider/source key scope per athlete, immutable origin; retries with changed revision/fingerprint enter reviewed correction, not silent overwrite |
+| Source-to-activity link | same-owner FK `(activity_id,user_id)` | Source row cannot point to a different athlete's activity; binding changes require auditable server writer |
+| Metric definition | `(metric_code, definition_version)` | Stable definitions, explicit sport applicability/units and allowed measurement kinds; old observations keep original version |
+| Metric fact / selection | multiple source observations permitted; one reviewed *selected* fact per activity/metric/segment at a revision | Never unique only on `(activity_id, metric_code)` if it would erase conflicting evidence; selected value must reference provenance |
+| Training terminal finish | immutable `(user_id,session_instance_id,finish_event_id)`; exact retry action/payload fingerprint | Finishing transaction commits terminal event and private outbox operation together; concurrent finish cannot emit two distinct terminal events |
+| Private outbox | unique `(user_id, finish_event_id)` and immutable event/owner/session source references | Claimed worker may retry after a crash; acknowledgement occurs only after the canonical writer returns an actual ID |
+| Completed Activity write receipt | unique `(user_id,training_session_instance_id)` when present; exact source retry keyed separately | Same finish retried after response loss returns same canonical activity ID, never a second one |
+| Confirmed gear assignment | one current association per `(user_id, completed_activity_id)` where relevant, bound to a same-owner gear ID | Shoe/bike editing replaces attribution, not additive mileage; deleted activity no longer contributes; manual baseline retained |
+| Owner-scoped source candidate snapshot | stable query generation, exact source identity scope, bounded relevant overlap window, explicit complete pagination | Partial results cannot claim `new_activity_candidate` or a verified cross-provider match |
+
+**Constraint distinction:** These are recommended target invariants, not exact executable index declarations. Composite same-owner foreign keys require supporting unique keys on the referenced tables. For nullable Training links and multiple source kinds, finalize the PostgreSQL index predicate and source scope during owner review. Public RLS is mandatory on every new exposed table, even if client writes are revoked.
+
+### First safe backend release slice, after approval
+
+1. Review and approve canonical identity, source key and Training handoff relationships across ALL-222/243/246, including the open Training day-state mismatch. Avoid introducing a Completed Activity writer before its exact consuming identity and transaction are fixed.
+2. Generate reviewed versioned migrations in the existing repository workflow. **First migration:** canonical parent, strict source identity, registry definitions and least-privilege owner SELECT; no provider workers, route buckets or UI claims. **Second migration:** typed facts, segment/strength/series metadata and owner-bound readers as their domain owners sign off. **Third:** transactional Training finish/outbox plus idempotent Completed Activity consumer and reconciliation receipts. Order may change with dependencies but never create a second writer.
+3. Verify on an isolated database replay with at least two distinct athlete identities, a signed-out role, foreign-owner key probes and nested cross-owner FKs. PostgreSQL RLS must explicitly restrict `user_id=(select auth.uid())` for owner reads; authenticated role alone is insufficient.
+4. Private outbox/idempotency tables have RLS enabled and no direct `anon` or `authenticated` access. Owner-checked RPCs require explicit `p_expected_user_id` verification before idempotency lookup; service-only operations must not become generally executable. Test stale-session/account-existence behavior consistent with current V2 auth deletion controls.
+5. Exercise parallel finish/duplicate source inserts in separate database sessions, worker interruption before/after write, retry after lost acknowledgment, altered-fingerprint retry, same-source revision correction, and unrelated workouts nearby in time. **No release** if any duplicate or cross-owner leak occurs.
+6. Run full TypeScript/Expo/device tests with actual activity read -> Overview/Details/Coach, private route access restrictions, custom layout save, post-workout shoe attribution and deletion. Historical imports, Coach, Progress, Community and account deletion must all consume/reference the same canonical ID, not shadow rows.
+
+### Source-only implementations available for that release
+
+- `completedActivityHandoffContract.ts` — immutable finish identity and truthful pending/ready receipt
+- `completedActivitySourceReconciliation.ts` — conservative source-key, certified-session and conflict decisions
+- `completedActivitySourceCandidates.ts` — **requires complete owner-certified candidate read** before claiming no matching source
+- `completedActivityOwnerRead.ts` — validates owner/activity identity, metric/source registry versions and runtime quality/provenance
+- `completedActivityGearMileage.ts` — read-only mileage derived from unique confirmed gear assignments; manually entered gear mileage stays baseline, and displayed total corrections subtract already credited activity distance
+- `completedActivityDetailProjection.ts`, `completedActivityScreenModel.ts` and `CompletedActivityScreenContent.tsx` — V1-standard source-backed Overview/Details/Coach, including pinned additional Overview metrics
+
+**Remaining blocking approval:** Owner decision/review of these database keys, persistent source deduplication and transactional handoff; table/migration creation, RLS replay and live mobile integration have **not** occurred.
