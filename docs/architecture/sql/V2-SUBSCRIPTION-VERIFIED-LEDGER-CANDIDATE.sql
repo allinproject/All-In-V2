@@ -329,7 +329,7 @@ returns text
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 declare
   v_confirmation text;
   v_binding text;
@@ -351,7 +351,7 @@ begin
   return case when v_confirmation='already_confirmed' and v_binding='already_bound'
               then 'already_finalized' else 'finalized' end;
 end;
-$;
+$$;
 revoke all on function allin_private.v2_finalize_verified_subscription_checkout(
   uuid,uuid,text,text,text,text
 ) from public,anon,authenticated;
