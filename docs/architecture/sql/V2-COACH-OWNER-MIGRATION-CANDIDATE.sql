@@ -25,7 +25,8 @@ create table public.v2_coach_messages (
   ),
   constraint v2_coach_message_thread_owner_fk
     foreign key (thread_id,user_id) references public.v2_coach_threads(id,user_id) on delete cascade,
-  unique (user_id,thread_id,client_request_id,role)
+  -- Stable request identity cannot move between threads for one owner.
+  unique (user_id,client_request_id,role)
 );
 
 create index v2_coach_messages_owner_thread_recent
@@ -100,6 +101,7 @@ declare
   v_user_text text := btrim(coalesce(p_user_content,''));
   v_assistant_text text := btrim(coalesce(p_assistant_content,''));
   v_matched integer;
+  v_existing integer;
 begin
   if v_user is null or not exists(select 1 from auth.users where id=v_user) then
     raise exception 'Active verified V2 owner required' using errcode='42501';
@@ -121,6 +123,29 @@ begin
     where t.id=p_thread_id and t.user_id=v_user and t.archived_at is null
   ) then
     raise exception 'Active Coach thread not owned by account' using errcode='42501';
+  end if;
+
+  select count(*) into v_existing from public.v2_coach_messages m
+  where m.user_id=v_user and m.client_request_id=p_client_request_id;
+  if v_existing not in (0,2) then
+    raise exception 'Incomplete Coach exchange requires owner repair' using errcode='22000';
+  end if;
+  if v_existing=2 then
+    select count(*) into v_matched from public.v2_coach_messages m
+    where m.user_id=v_user and m.thread_id=p_thread_id
+      and m.client_request_id=p_client_request_id
+      and ((m.id=p_user_message_id and m.role='user' and m.content=v_user_text)
+           or (m.id=p_assistant_message_id and m.role='assistant' and m.content=v_assistant_text));
+    if v_matched<>2 then
+      raise exception 'Coach request IDs were reused with different content or identity'
+        using errcode='22000';
+    end if;
+    return pg_catalog.jsonb_build_object(
+      'ok',true,'thread_id',p_thread_id,
+      'client_request_id',p_client_request_id,
+      'user_message_id',p_user_message_id,
+      'assistant_message_id',p_assistant_message_id
+    );
   end if;
 
   insert into public.v2_coach_messages
