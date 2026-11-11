@@ -44,7 +44,8 @@ export async function handleStripeSandboxCheckoutRequest({
   catch {return {status:503,code:'eligibility_unavailable'};}
   // A former subscriber may pay again but must NOT receive a second trial.
   // The private paid claim must reject active or unreconciled subscriptions.
-  if(claim?.status==='trial_ineligible'){
+  const returningPaid = claim?.status==='trial_ineligible';
+  if(returningPaid){
     if(typeof claimPaidAttempt!=='function')
       return {status:409,code:'trial_ineligible'};
     try{
@@ -53,7 +54,7 @@ export async function handleStripeSandboxCheckoutRequest({
     }catch{return {status:503,code:'eligibility_unavailable'};}
   }
   if(claim?.status!=='eligible_reserved'||claim.ownerId!==user.id||
-     !uuid(claim.attemptId)||typeof claim.trialEligible!=='boolean')
+     !uuid(claim.attemptId)||claim.trialEligible!==!returningPaid)
     return {status:503,code:'checkout_unavailable'};
 
   const outcome=await prepareStripeSandboxCheckout({
