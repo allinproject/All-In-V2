@@ -53,7 +53,7 @@ test('webhook writer can never claim an unbound provider purchase', () => {
 
 test('confirmed checkout provenance is mandatory for each purchase identity', () => {
   assert.match(sql,/create table allin_private\.v2_subscription_checkout_attempts/);
-  assert.match(sql,/state text not null default 'server_confirmed'/);
+  assert.match(sql,/state text not null\\s+check \\(state = 'server_confirmed'\\)/);\n  assert.doesNotMatch(sql,/state text not null default/);
   assert.match(sql,/checkout_attempt_id uuid not null unique/);
   assert.match(sql,/v2_subscription_checkout_provenance foreign key/);
   assert.match(sql,/alter table allin_private\.v2_subscription_checkout_attempts enable row level security/);
