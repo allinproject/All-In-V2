@@ -9,6 +9,7 @@ function fixture(changes = {}) {
     deleteAuthUser: async () => ({}),
     inspectAuthUser: async () => ({error:{status:404,code:'user_not_found'}}),
     complete: async () => ({data:{status:'completed',request_id:request.request_id}}),
+    verifyCompletion: async () => ({data:{status:'not_completed',request_id:request.request_id}}),
     recordFailure: async () => ({}),
     ...changes,
   };
@@ -89,4 +90,31 @@ test('completion network ambiguity cannot trigger a second delete', async () => 
   const {services,calls}=fixture({complete:async()=>{throw Error('db unavailable')}});
   assert.equal(await executeDeletionOnce(request,services),'manual_recovery_required');
   assert.equal(calls.filter(c=>c[0]==='deleteAuthUser').length,1);
+});
+
+test('lost completion response is recovered through read-only durable audit', async () => {
+  const {services,calls} = fixture({
+    complete: async () => { throw Error('completion receipt response lost'); },
+    verifyCompletion: async () => ({data:{status:'completed',request_id:request.request_id}}),
+  });
+  assert.equal(await executeDeletionOnce(request,services),'completed');
+  assert.deepEqual(calls.map(x=>x[0]),['claim','deleteAuthUser','inspectAuthUser','complete','verifyCompletion']);
+  assert.equal(calls.filter(x=>x[0]==='deleteAuthUser').length,1);
+});
+test('wrong request ID in read-only audit cannot assert completion', async () => {
+  const {services,calls}=fixture({
+    complete: async () => ({error:{code:'timeout'}}),
+    verifyCompletion: async () => ({data:{status:'completed',request_id:'ffffffff-ffff-4fff-8fff-ffffffffffff'}}),
+  });
+  assert.equal(await executeDeletionOnce(request,services),'manual_recovery_required');
+  assert.equal(calls.at(-1)[0],'recordFailure');
+});
+test('audit readback failure cannot trigger retrying destructive operations', async () => {
+  const {services,calls}=fixture({
+    complete: async () => { throw Error('lost receipt'); },
+    verifyCompletion: async () => { throw Error('audit read failed'); },
+  });
+  assert.equal(await executeDeletionOnce(request,services),'manual_recovery_required');
+  assert.equal(calls.filter(x=>x[0]==='deleteAuthUser').length,1);
+  assert.equal(calls.filter(x=>x[0]==='complete').length,1);
 });
