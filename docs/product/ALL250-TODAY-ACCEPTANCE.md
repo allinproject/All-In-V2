@@ -12,7 +12,7 @@
 4. **Progress is fourth**, contextual to the athlete's selected sports/goals, not runner-only. Source-backed PRs and performance trends only when the Progress owner verifies coverage.
 5. **Recovery is fifth**, current personalized recovery context only when Recovery owner supplies it. Never invent readiness, diagnosis, or stretch recommendations.
 6. **Meal Prep / Cook Now** are contextual, not a permanent sixth section. Display only verified due items from the canonical Kitchen owner, and never imply a cooking action happened without that owner's write/readback.
-7. Weather belongs in the **top-right** of Today, but must remain explicitly unavailable until the weather/location source is approved. Profile/settings remains accessible.
+7. Weather belongs in the **top-right** of Today. The read-only weather projection must require explicit location consent, exact owner/day, source revision and observation freshness; otherwise show **Weather unavailable**. Never request location or invent a forecast from Today itself. Profile/settings remains accessible.
 8. Approved styling: near-black, white/warm off-white, muted gold; five bottom tabs (Today, Fuel, Train, Community, Coach). No extra nav tab or shadow data store.
 
 ## Safety and data checks
@@ -42,6 +42,7 @@
 | Tap Daily Extended View more | Exact date plus `section=daily` | `todayFuelNavigation.test.ts` |
 | Progress or Recovery stale/another owner | Hide unverifiable data | `todayWellnessGlances.test.ts` |
 | Kitchen reminder due/completed/unknown | Only explicitly due verified item shown | `todayKitchenDue.test.ts` |
+| Current weather, consent denied, stale or cross-owner | Only authorized fresh source shows; otherwise Weather unavailable | `todayWeatherGlance.test.ts` focused tests; device/provider pending |
 | VoiceOver / TalkBack | Five section headings, labelled tiles, accessible links | Static checks; installed device pending |
 
 ## Remaining genuine blockers
