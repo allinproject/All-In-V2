@@ -30,8 +30,8 @@ export default function TutorialsRoute() {
       </Link>
       <Text accessibilityRole="header" style={styles.title}>Help & Tutorials</Text>
       <Text style={styles.description}>
-        Guides are being rebuilt for the new ALL IN 365. Profile and Sports & Interests walkthroughs
-        are available for early testing. Neither has been validated on a device.
+        Guides are being rebuilt for the new ALL IN 365. Working Profile settings have early
+        walkthroughs available for testing. None has been validated on a device.
       </Text>
       {tutorialCatalogCategories().map(category => <View style={styles.section} key={category}>
         <Text style={styles.heading}>{category}</Text>
@@ -47,6 +47,16 @@ export default function TutorialsRoute() {
           {t.id==='sports-interests' && canStartTutorial(t) ? <Link href="/profile/sports?tutorial=sports" asChild>
             <Pressable accessibilityRole="button" style={styles.primary}>
               <Text style={styles.primaryLabel}>Start Sports walkthrough</Text>
+            </Pressable>
+          </Link> : null}
+          {t.id==='kitchen' && canStartTutorial(t) ? <Link href="/profile/kitchen?tutorial=kitchen" asChild>
+            <Pressable accessibilityRole="button" style={styles.primary}>
+              <Text style={styles.primaryLabel}>Start Kitchen walkthrough</Text>
+            </Pressable>
+          </Link> : null}
+          {t.id==='coach-preferences' && canStartTutorial(t) ? <Link href="/profile/coach-preferences?tutorial=coach-preferences" asChild>
+            <Pressable accessibilityRole="button" style={styles.primary}>
+              <Text style={styles.primaryLabel}>Start Coach Preferences walkthrough</Text>
             </Pressable>
           </Link> : null}
           {t.exploreRoute ? <Link href={t.exploreRoute} asChild>
