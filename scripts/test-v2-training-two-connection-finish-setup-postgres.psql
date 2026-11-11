@@ -1,0 +1,36 @@
+\set ON_ERROR_STOP on
+-- ALL-243/246 independent DB connection finish race after successful start
+-- race replay in disposable database.
+CREATE TABLE public.v2_qa_training_finish_race_results(
+ action_id uuid PRIMARY KEY,
+ outcome text NOT NULL CHECK(outcome IN ('finished','stale'))
+);
+CREATE FUNCTION public.v2_qa_finish_race(p_action_id uuid)
+RETURNS text LANGUAGE plpgsql SECURITY INVOKER SET search_path=''
+AS $finish$
+DECLARE
+ v_session_id uuid;
+ v_status text;
+ v_outcome text;
+BEGIN
+ SELECT session_id INTO v_session_id
+ FROM public.v2_qa_training_start_race_results
+ WHERE outcome='created';
+ IF v_session_id IS NULL THEN
+   RAISE EXCEPTION 'Expected one winner from start race';
+ END IF;
+ BEGIN
+  PERFORM allin_private.v2_training_apply_session_candidate(
+    'abcdefab-cdef-4abc-8def-abcdefabcdef',
+    v_session_id,p_action_id,'finish',1,repeat('b',64),
+    NULL,NULL,'2026-11-11 20:00:00+00');
+  v_outcome:='finished';
+  PERFORM pg_catalog.pg_sleep(0.7);
+ EXCEPTION WHEN serialization_failure THEN
+  v_outcome:='stale';
+ END;
+ INSERT INTO public.v2_qa_training_finish_race_results(action_id,outcome)
+ VALUES(p_action_id,v_outcome);
+ RETURN v_outcome;
+END;
+$finish$;
