@@ -1,0 +1,31 @@
+\set ON_ERROR_STOP on
+DO $assert$
+DECLARE
+ v_created integer;
+ v_prevented integer;
+ v_live integer;
+ v_receipts integer;
+ v_events integer;
+BEGIN
+ SELECT count(*) FILTER(WHERE outcome='created'),
+        count(*) FILTER(WHERE outcome='prevented')
+ INTO v_created,v_prevented
+ FROM public.v2_qa_training_start_race_results;
+ SELECT count(*) INTO v_live
+ FROM public.v2_training_session_instances
+ WHERE user_id='abcdefab-cdef-4abc-8def-abcdefabcdef'
+ AND status IN ('active','paused','finishing');
+ SELECT count(*) INTO v_receipts
+ FROM allin_private.v2_training_action_receipts
+ WHERE user_id='abcdefab-cdef-4abc-8def-abcdefabcdef';
+ SELECT count(*) INTO v_events
+ FROM public.v2_training_execution_events
+ WHERE user_id='abcdefab-cdef-4abc-8def-abcdefabcdef';
+ IF v_created<>1 OR v_prevented<>1 OR v_live<>1
+    OR v_receipts<>1 OR v_events<>1 THEN
+   RAISE EXCEPTION 'Two-connection start race diverged: created %, prevented %, live %, receipts %, events %',
+   v_created,v_prevented,v_live,v_receipts,v_events;
+ END IF;
+ RAISE NOTICE 'PASS ALL-246: concurrent independent PG connections create one active session, one receipt and one event';
+END
+$assert$;
