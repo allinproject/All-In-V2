@@ -19,15 +19,17 @@ test('verified empty food day is distinguished from unknown',()=>{
   assert.equal(result.status,'ready');
   assert.match(result.detail,/No food entries/);
 });
-test('show at most two recent rows, compact without duplicated calories',()=>{
+test('show at most four recent photo tiles, compact without duplicated calories',()=>{
   const rows=[
     entry,
     {...entry,id:'two',label:'Chicken bowl',meal:'lunch' as const,createdAt:'2026-11-11T16:00:00Z'},
     {...entry,id:'three',label:'Apple',meal:'snack' as const,createdAt:'2026-11-11T18:00:00Z'},
+    {...entry,id:'four',label:'Soup',meal:'dinner' as const,createdAt:'2026-11-11T19:00:00Z'},
+    {...entry,id:'five',label:'Banana',meal:'snack' as const,createdAt:'2026-11-11T20:00:00Z'},
   ];
   const result=run(rows);
   assert.equal(result.status,'ready');
-  assert.deepEqual(result.visible.map(r=>r.id),['three','two']);
+  assert.deepEqual(result.visible.map(r=>r.id),['five','four','three','two']);
   assert.equal(result.additionalCount,1);
 });
 test('cross-owner or wrong-day results cannot leak',()=>{
@@ -45,4 +47,20 @@ test('invalid/duplicate records fail closed',()=>{
 test('does not display a partially unverified list',()=>{
   const good={status:'ready' as const,ownerId,athleteLocalDate:day,sourceRevision:'',entries:[entry]};
   assert.equal(todayFoodLog(good,ownerId,day).status,'unavailable');
+});
+
+test('only verified HTTPS image sources can appear in compact tiles',()=>{
+  const verified={status:'verified' as const,uri:'https://storage.example.org/food/owned-photo.jpg'};
+  assert.equal(run([{...entry,photo:verified}]).visible[0]?.photoUri,verified.uri);
+  assert.equal(run([{...entry,photo:null}]).visible[0]?.photoUri,null);
+  assert.equal(run([{...entry,photo:{...verified,uri:'http://storage.example.org/foo.jpg'}}]).visible[0]?.photoUri,null);
+  assert.equal(run([{...entry,photo:{...verified,uri:'https://a:b@storage.example.org/foo.jpg'}}]).visible[0]?.photoUri,null);
+  assert.equal(run([{...entry,photo:{...verified,uri:'https://storage.example.org/foo.jpg#token'}}]).visible[0]?.photoUri,null);
+});
+test('missing images use labelled fallback without fabricating photo URLs',()=>{
+  const result=run([entry]);
+  assert.equal(result.status,'ready');
+  assert.equal(result.visible.length,1);
+  assert.equal(result.visible[0]?.label,'Oatmeal');
+  assert.equal(result.visible[0]?.photoUri,null);
 });
