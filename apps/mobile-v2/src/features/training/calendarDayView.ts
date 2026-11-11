@@ -75,9 +75,9 @@ export function formatCalendarMonth(day: string): string {
 /** Month markers reflect verified source facts only, never inferred from dates. */
 export type CalendarWorkoutMarker = {
   athleteLocalDate: string;
-  kind: 'running' | 'walking' | 'cycling' | 'swimming' | 'strength' | 'hiking' | 'rucking' | 'rowing' | 'elliptical' | 'stair' | 'yoga' | 'mobility' | 'other' | 'rest' | 'recovery';
+  kind: 'running' | 'walking' | 'cycling' | 'swimming' | 'strength' | 'hiking' | 'rucking' | 'rowing' | 'elliptical' | 'stair' | 'yoga' | 'mobility' | 'other' | 'rest' | 'recovery' | 'unavailable' | 'race' | 'review_required';
   /** Missed/rest/recovery are explicit canonical states, never inferred from a past date or lack of workouts. */
-  status: 'planned' | 'completed' | 'missed' | 'rest' | 'recovery';
+  status: 'planned' | 'completed' | 'missed' | 'rest' | 'recovery' | 'unavailable' | 'race' | 'review_required';
 };
 /** Two visible activity hints with explicit overflow count; never silently drop additional sports. */
 export function monthDayMarkerSummary(evidence: CalendarEvidence<CalendarWorkoutMarker>, day: string): {
@@ -89,7 +89,9 @@ export function monthDayMarkerSummary(evidence: CalendarEvidence<CalendarWorkout
   if (records === null) return { kind: 'unavailable', visible: [], additionalCount: 0 };
   const valid = records.filter(record =>
     validAthleteLocalDate(record.athleteLocalDate) &&
-    (record.status === 'rest' ? record.kind === 'rest' : record.status === 'recovery' ? record.kind === 'recovery' : record.kind !== 'rest' && record.kind !== 'recovery')
+    (['rest','recovery','unavailable','race','review_required'].includes(record.status)
+      ? record.kind === record.status
+      : !['rest','recovery','unavailable','race','review_required'].includes(record.kind))
   );
   return { kind: 'known', visible: valid.slice(0, 2), additionalCount: Math.max(0, valid.length - 2) };
 }
