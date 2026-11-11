@@ -9,18 +9,40 @@ LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=''
 AS $segment_projection$
 DECLARE
  v_sport text;
+ v_parent_sport text;
  v_values jsonb;
  v_conflicts jsonb;
 BEGIN
  IF p_user_id IS NULL OR p_activity_id IS NULL OR p_segment_id IS NULL THEN
   RAISE EXCEPTION 'Segment owner and identity required' USING ERRCODE='22023'; END IF;
- SELECT a.sport INTO v_sport
+ -- An event's parent sport can be 'multisport', but power, running pace,
+ -- swim stroke etc. are governed by the recorded LEG sport. Descendants
+ -- inherit the nearest explicitly recorded ancestor sport in the SAME
+ -- owner/activity graph. Never use a metric's own sport to infer the leg.
+ WITH RECURSIVE lineage AS (
+   SELECT seg.id,seg.parent_segment_id,seg.sport,0 AS depth
+   FROM public.v2_activity_segments seg
+   WHERE seg.id=p_segment_id AND seg.activity_id=p_activity_id AND seg.user_id=p_user_id
+   UNION ALL
+   SELECT parent.id,parent.parent_segment_id,parent.sport,child.depth+1
+   FROM public.v2_activity_segments parent
+   JOIN lineage child ON parent.id=child.parent_segment_id
+   WHERE parent.activity_id=p_activity_id AND parent.user_id=p_user_id
+     AND child.depth<32
+ )
+ SELECT a.sport,
+   coalesce((SELECT l.sport FROM lineage l
+     WHERE l.sport IS NOT NULL ORDER BY l.depth LIMIT 1),a.sport)
+ INTO v_parent_sport,v_sport
  FROM public.v2_completed_activities a
- JOIN public.v2_activity_segments seg
-   ON seg.activity_id=a.id AND seg.user_id=a.user_id AND seg.id=p_segment_id
- WHERE a.id=p_activity_id AND a.user_id=p_user_id;
+ WHERE a.id=p_activity_id AND a.user_id=p_user_id
+   AND EXISTS(SELECT 1 FROM lineage);
  IF v_sport IS NULL THEN
   RAISE EXCEPTION 'Activity segment not owned or unavailable' USING ERRCODE='42501';
+ END IF;
+ IF v_parent_sport<>'multisport' AND v_sport<>v_parent_sport THEN
+  RAISE EXCEPTION 'Segment sport contradicts canonical activity sport'
+    USING ERRCODE='22023';
  END IF;
  -- A metric is "agreed" only when trusted/partial evidence for this exact
  -- segment has one typed value and measurement kind across all sources.
