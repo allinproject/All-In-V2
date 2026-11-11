@@ -21,8 +21,13 @@ BEGIN
  OR pg_catalog.jsonb_array_length(v_out#>'{records,public.v2_activity_metric_values}')<>1
  OR pg_catalog.jsonb_array_length(v_out#>'{records,public.v2_indoor_weekly_attempts}')<>1
  THEN RAISE EXCEPTION 'Canonical workout/metric/competition owner records missing: %',v_out; END IF;
- IF v_out::text LIKE '%22222222-2222-4222-8222-222222222222%'
- THEN RAISE EXCEPTION 'Foreign owner identity leaked'; END IF;
+ -- A non-owner UUID can legitimately be a plan/session ID; validate
+ -- only the ownership field on every exported record, not arbitrary text.
+ IF EXISTS (
+   SELECT 1 FROM pg_catalog.jsonb_each(v_out->'records') AS entries(k,v)
+   CROSS JOIN LATERAL pg_catalog.jsonb_array_elements(entries.v) AS row_data(item)
+   WHERE row_data.item->>'user_id' IS DISTINCT FROM v_owner::text
+ ) THEN RAISE EXCEPTION 'Foreign owner record leaked'; END IF;
  -- Existing second synthetic Auth user must see only its own (empty) graph.
  INSERT INTO auth.users(id) VALUES('22222222-2222-4222-8222-222222222222');
  v_others:=allin_private.v2_training_account_export_fragment_candidate(
