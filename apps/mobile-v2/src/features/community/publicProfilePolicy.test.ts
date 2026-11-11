@@ -14,6 +14,7 @@ test('private account requires follow approval; no private location by default',
  assert.equal(v.canFollowDirectly,false);
  assert.equal(v.visibleGeneralArea,null);
  assert.equal(canViewProfilePost('followers',v),false);
+ assert.equal(canViewProfilePost('public',v),false);
  assert.equal(canDisplayRaceParticipation('private',v),false);
 });
 test('pending follow does not grant access; approved follower sees follower content',()=>{
