@@ -43,6 +43,7 @@ on:
       - 'scripts/test-v2-training-account-deletion-cascade-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-DIRECT-AUTH-CASCADE-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql'
       - 'scripts/test-v2-training-account-export-fragment-postgres.psql'
       - '.github/workflows/v2-training-completed-postgres.yml'
@@ -257,4 +258,6 @@ jobs:
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql
           docker cp docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql
+          docker cp docs/architecture/sql/V2-TRAINING-DIRECT-AUTH-CASCADE-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-DIRECT-AUTH-CASCADE-REVIEW-CANDIDATE.sql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-TRAINING-DIRECT-AUTH-CASCADE-REVIEW-CANDIDATE.sql
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_account_deletion -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-account-deletion-cascade-postgres.psql
