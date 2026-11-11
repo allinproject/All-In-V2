@@ -11,6 +11,10 @@ test('Today preserves five-section order and four compact verified food tiles', 
   const offsets = sections.map(section => home.indexOf(section));
   assert.ok(offsets.every(position => position >= 0));
   assert.deepEqual(offsets, [...offsets].sort((a,b) => a-b));
+  for (const heading of ['Daily Extended','Food Log','Progress','Recovery']) {
+    assert.ok(home.includes(`<Text accessibilityRole="header" style={styles.sectionTitle}>${heading}</Text>`),
+      `missing accessible Today heading: ${heading}`);
+  }
   assert.match(home, /foodLog\.visible\.map\(row => \(/);
   assert.match(home, /<Link key=\{row\.id\} href=\{foodLogDestination\} asChild>/);
   assert.match(home, /accessibilityLabel=\{`View \$\{row\.label\} in this day's Food Log`\}/);
