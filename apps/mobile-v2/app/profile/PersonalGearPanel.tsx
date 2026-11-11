@@ -1,12 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { assertV2SessionOwner, readV2OwnedProfileState } from '../../src/auth/accessGateClient';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
-import {addPersonalGear,changeGearStatus,changeGearDistance,selectGearDefault,
+import {addPersonalGear,changeGearStatus,changeGearDistance,setShoeMileageRecommendation,selectGearDefault,
  parsePersonalGear,personalGearPatch,emptyPersonalGear,type PersonalGear,type GearKind,
  type GearItem,type ShoeUse,type BikeUse} from '../../src/features/training/personalGear';
+import {lookupVerifiedShoeMileage,type ShoeMileageRecommendation} from '../../src/features/training/shoeMileageRecommendation';
 const MI_TO_KM=1.609344;
 const miles=(km:number)=>Math.round(km/MI_TO_KM*10)/10;
 export function PersonalGearPanel({owner}:{owner:string}){
@@ -18,6 +19,7 @@ export function PersonalGearPanel({owner}:{owner:string}){
  const [name,setName]=useState(''),[distance,setDistance]=useState('0'),[threshold,setThreshold]=useState('');
  const [use,setUse]=useState<ShoeUse|BikeUse|'general'>('road');
  const [editing,setEditing]=useState<string|null>(null),[editedDistance,setEditedDistance]=useState('');
+ const [editingTarget,setEditingTarget]=useState<string|null>(null),[targetValue,setTargetValue]=useState('');
  const [retry,setRetry]=useState(0);
  const alive=useRef(false),busy=useRef(false),ids=useRef(0);
  const pending=useRef<{version:number;serialized:string;id:string}|null>(null);
@@ -40,14 +42,16 @@ export function PersonalGearPanel({owner}:{owner:string}){
   try{setState(make(state));setError(null);setNotice(null);pending.current=null}
   catch(e){setError(e instanceof Error?e.message:'Could not change gear.')}
  }
- function changeSection(kind:GearKind){setSection(kind);setUse(kind==='shoes'?'road':kind==='bikes'?'outdoor':'general');setEditing(null)}
+ function changeSection(kind:GearKind){setSection(kind);setUse(kind==='shoes'?'road':kind==='bikes'?'outdoor':'general');setEditing(null);setEditingTarget(null)}
  function create(){
   try{
-   const mi=Number(distance),thresholdMi=threshold.trim()===''?null:Number(threshold);
+   const mi=Number(distance),recommendation=section==='shoes'?lookupVerifiedShoeMileage(name):null;
+   const thresholdMi=threshold.trim()===''?(recommendation?recommendation.recommendedAlertKm/MI_TO_KM:null):Number(threshold);
    if(distance.trim()===''||!Number.isFinite(mi)||mi<0||thresholdMi!==null&&(!Number.isFinite(thresholdMi)||thresholdMi<=0))
     throw new Error('Enter a valid starting mileage and optional reminder threshold.');
    const item:GearItem={id:newId(),kind:section,name,distanceKm:mi*MI_TO_KM,status:'active',
-     reminderKm:thresholdMi===null?null:thresholdMi*MI_TO_KM,use};
+     reminderKm:thresholdMi===null?null:thresholdMi*MI_TO_KM,use,
+     ...(section==='shoes'?{recommendation}:{}),};
    const next=addPersonalGear(state,item);
    update(()=>next);setName('');setDistance('0');setThreshold('');
   }catch(e){setError(e instanceof Error?e.message:'Could not add gear.')}
@@ -75,6 +79,8 @@ export function PersonalGearPanel({owner}:{owner:string}){
   finally{busy.current=false;if(alive.current)setSaving(false)}
  }
  const shown=state.items.filter(item=>item.kind===section);
+ const suggested=section==='shoes'?lookupVerifiedShoeMileage(name):null;
+ const miRange=(r:ShoeMileageRecommendation)=>`${Math.round(miles(r.minKm))}–${Math.round(miles(r.maxKm))} mi`;
  const defaultKeys=(item:GearItem):Array<keyof PersonalGear['defaults']>=>{
   if(item.kind==='shoes')return item.use==='mixed'?['road','trail']:item.use==='road'?['road']:['trail'];
   if(item.kind==='bikes')return item.use==='outdoor'?['outdoorBike']:['indoorBike'];
@@ -82,7 +88,7 @@ export function PersonalGearPanel({owner}:{owner:string}){
  };
  return <View style={styles.wrap}>
   <Text style={styles.heading}>Personal Gear</Text>
-  <Text style={styles.helper}>Manage your shoes, bikes, and other gear. Mileage is entered manually until workouts can update it reliably.</Text>
+  <Text style={styles.helper}>Manage shoes, bikes and gear. Shoe lifespan recommendations use verified guidance when available; mileage remains manual until completed workouts are connected.</Text>
   <View style={styles.tabs}>{(['shoes','bikes','other'] as GearKind[]).map(kind=><Pressable key={kind} accessibilityRole="tab" accessibilityState={{selected:section===kind}}
    style={[styles.tab,section===kind&&styles.active]} onPress={()=>changeSection(kind)}>
    <Text style={section===kind?styles.selectedText:styles.labelText}>{kind==='shoes'?'Shoes':kind==='bikes'?'Bikes':'Other Gear'}</Text>
@@ -97,7 +103,29 @@ export function PersonalGearPanel({owner}:{owner:string}){
     <Text style={styles.helper}>{item.kind==='shoes'?(item.use==='road'?'Road':item.use==='trail'?'Trail':'Road & Trail'):
      item.kind==='bikes'?(item.use==='indoor'?'Indoor':'Outdoor'):'Personal gear'} · {item.status==='retired'?'Retired':'Active'}</Text>
     <Text style={styles.metric}>{miles(item.distanceKm)} mi</Text>
-    {item.reminderKm!==null?<Text style={styles.helper}>Reminder threshold: {miles(item.reminderKm)} mi · Advisory only, not automatic retirement</Text>:null}
+    {item.recommendation?<><Text style={styles.helper}>Recommended shoe lifespan: {miRange(item.recommendation)} ({item.recommendation.scope==='model_specific'?'Model-specific':'Brand/general guidance'})</Text>
+      <Text style={styles.helper}>Source: {item.recommendation.sourceName}</Text>
+      {item.recommendation.sourceUrl?<Pressable accessibilityRole="link" onPress={()=>void Linking.openURL(item.recommendation!.sourceUrl!)}><Text style={styles.gold}>View recommendation source</Text></Pressable>:null}
+     </>:null}
+    {item.reminderKm!==null?<Text style={styles.helper}>Mileage alert target: {miles(item.reminderKm)} mi · Advisory only; no automatic retirement</Text>:null}
+    {item.kind==='shoes'?<>
+     {editingTarget===item.id?<View style={styles.card}>
+      <Text style={styles.helper}>Notify me at (miles)</Text>
+      <TextInput style={styles.input} keyboardType="decimal-pad" accessibilityLabel="Shoe mileage alert target" value={targetValue} onChangeText={setTargetValue}/>
+      <Pressable style={styles.outline} accessibilityRole="button" onPress={()=>{
+       const value=Number(targetValue);
+       if(targetValue.trim()===''||!Number.isFinite(value)||value<=0){setError('Enter a valid mileage alert target.');return;}
+       update(s=>setShoeMileageRecommendation(s,item.id,item.recommendation??null,value*MI_TO_KM));setEditingTarget(null);
+      }}><Text style={styles.gold}>Apply alert target</Text></Pressable>
+     </View>:<Pressable style={styles.outline} accessibilityRole="button" onPress={()=>{
+       setEditingTarget(item.id);setTargetValue(item.reminderKm===null?'':String(miles(item.reminderKm)));
+      }}><Text style={styles.gold}>Edit shoe mileage alert</Text></Pressable>}
+     {!item.recommendation?<Pressable style={styles.outline} accessibilityRole="button" onPress={()=>{
+       const found=lookupVerifiedShoeMileage(item.name);
+       if(!found){setNotice('No verified manufacturer recommendation found yet. Set your preferred alert mileage manually.');return;}
+       update(s=>setShoeMileageRecommendation(s,item.id,found,item.reminderKm??found.recommendedAlertKm));
+      }}><Text style={styles.gold}>Look up shoe lifespan guidance</Text></Pressable>:null}
+    </>:null}
     {defaultKeys(item).map(key=><Pressable key={key} accessibilityRole="button" disabled={saving||item.status==='retired'}
        style={styles.outline} onPress={()=>update(s=>selectGearDefault(s,key,s.defaults[key]===item.id?null:item.id))}>
        <Text style={styles.gold}>{state.defaults[key]===item.id?'★ Default · Remove':key==='road'?'Set road default':key==='trail'?'Set trail default':key==='outdoorBike'?'Set outdoor bike default':'Set indoor bike default'}</Text>
@@ -131,7 +159,10 @@ export function PersonalGearPanel({owner}:{owner:string}){
      </View></>:null}
     <Text style={styles.helper}>Starting mileage (mi)</Text>
     <TextInput style={styles.input} keyboardType="decimal-pad" accessibilityLabel="Starting mileage in miles" value={distance} onChangeText={setDistance}/>
-    {section==='shoes'?<><Text style={styles.helper}>Mileage reminder threshold (mi, optional)</Text>
+    {section==='shoes'?<>
+      {suggested?<Text style={styles.helper}>Verified guidance found: {miRange(suggested)} · {suggested.sourceName}. The alert will default to {Math.round(miles(suggested.recommendedAlertKm))} mi unless you set a different target.</Text>
+       :name.trim()?<Text style={styles.helper}>No manufacturer recommendation verified for this model yet. You can set your own alert mileage.</Text>:null}
+      <Text style={styles.helper}>Mileage alert target (mi, optional)</Text>
       <TextInput style={styles.input} keyboardType="decimal-pad" accessibilityLabel="Mileage reminder threshold" placeholder="e.g. 500"
        placeholderTextColor={colors.mutedText} value={threshold} onChangeText={setThreshold}/></>:null}
     <Pressable accessibilityRole="button" disabled={saving} style={styles.outline} onPress={create}><Text style={styles.gold}>＋ Add {section==='shoes'?'Shoes':section==='bikes'?'Bike':'Gear'}</Text></Pressable>
