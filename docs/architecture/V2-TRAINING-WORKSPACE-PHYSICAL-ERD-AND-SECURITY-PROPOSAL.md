@@ -403,3 +403,34 @@ To implement this decision in the **existing** \`public.v2_training_plan_revisio
 Release tests: single-day race, 24-month non-race goal window (bounded accepted slices), multiple overlapping races, mixed-sport sessions, a missing first/last **boundary day** as well as missing interior day, a day in the wrong timezone, DST/travel, stale changed event date/course version, and exact old-revision Completed Activity links. No workout should be auto-generated simply to make the calendar pass.
 
 **Approval status:** proposed final physical decision recorded; schema activation/DB migration awaits cross-owner review and actual PG replay. The current candidate writer's interior-day check is necessary but insufficient until the explicit window fields are implemented.
+
+
+## 14. Typed Goal/Event owner binding contract — pending external record certification (2026-11-11)
+
+This decision reuses the ALL-239 Goal owner, ALL-234 Race Course owner, ALL-244 EventHub URL-join/group owner, ALL-231 multi-event proposal and ALL-246 Training plan owner. **No new event table, discovery service, duplicate race store or imported V1 personal records are authorized.**
+
+### Stable IDs, record roles and boundaries
+
+| Fact | Owning system and required typed evidence | Fail-closed rule |
+|---|---|---|
+| Athlete goal/intention | Goal owner: stable \`goalId\`, \`ownerId\`, typed sport/outcome/behavior intent, optional dates, stable version and athlete priority | A general intention is valid with no deadline; do not invent a race or daily plan |
+| Event/race instance | Canonical Event owner: stable \`eventId\`, organizer reference/source URL, exact event day and IANA timezone, version/generation, event sport/distance when supported, verification state | A name, plain URL, EventHub membership or date guessed by Coach is **not** a verified event |
+| Race course | Existing Race Course owner: \`raceId/eventId\`, \`routeId\` when known, \`courseVersion\`, event date, provenance for distance/elevation/terrain/aid stations, completeness and source URLs | No inferred aid station, route, GPX or course confirmation; changed course version invalidates dependent pace/fueling claims |
+| Athlete event participation | Explicit user-authorized Event/Goal participation state and authenticated owner/session reference | Joining the event workout-sharing group is **not** registration, race result or verified participation |
+| Accepted Training revision | Existing \`v2_training_plan_revisions.id/plan_id/user_id\` with reviewed \`calendar_start_date\`, \`calendar_end_date\`, \`calendar_timezone\`, status/version and immutable days/sessions | Must cover every selected day; event-plan acceptance requires **independent certified event binding** before claiming race readiness |
+| Scheduled competition | Stable \`v2_training_revision_sessions.id\`, exact owner, plan/revision, local date/sport and certified \`eventId\` binding in a typed owner-reviewed relationship | An ordinary workout on a date, or a UI \`race\` day marker alone, does not certify the scheduled event |
+| Finished event | Exactly one canonical Completed Activity, typed source identities, optional proven Training session and certified event/result match | Race results/PRs never inferred from completed workout proximity |
+
+### Formal acceptance input to the future Event/Training owner writer
+
+The writer must require an authenticated, owner-certified and **version-consistent** binding for each scheduled competition, including these fields: \`ownerId\`, \`eventId\`, \`eventVersion\`, \`eventLocalDate\`, \`eventTimezone\`, \`eventSport\`, \`planId\`, \`planRevisionId\`, \`revisionSessionId\`, \`evidenceGeneration\`, and \`participationState\` (explicit). Where course-specific planning is used it must additionally bind \`courseVersion\` and \`routeId\` when available with field-level verified/partial source provenance; a changed course triggers review, never silently mutates an accepted revision. The final FK target must be the **existing Event/Goal owning table once published**; do not prematurely create a shadow Event table or use an unchecked free-text URL as FK.
+
+An athlete can have **multiple** active race and non-race goal bindings; no unique constraint on \`(user_id,event_date)\`. A single accepted Training revision may coordinate more than one event, but every competition session requires its own exact event-to-session association. If events overlap and the calendar could require incompatible races/tapers, require user review; never auto-discard one event. Distinct competitions need distinct owning scheduled-session identities. The single live workout rule and one canonical physical completed activity per workout still apply.
+
+The existing source-only \`multiEventOwnerBridge.ts\` already insists on complete signed-in owner snapshots, exact event IDs, dates, sports, session links, priorities and certified race-day markers; \`multiEventCourseEvidence.ts\` requires the matching event/course dates and provenance. Neither is a server source of truth, published database schema or proof of an organizer website being verified. EventHub's locked URL-enter-and-join semantics must not become an event-discovery product.
+
+### Database-approval handoff
+
+Before creating an actual Event FK, obtain the Event/Goal owner's canonical table/key and stable version policy, the organizer/source verification contract, and the athlete's explicit event participation scope. Then attach the typed owner FK to **existing** Training plan/revision-session identities, gate all race-plan acceptance and event-session starts against it in one transactional owner writer, and test duplicate event names, same-date multi-race, wrong owner, stale event/course version, event postponement, optional undated strength goals and post-race recovery. Until then, a dated revision may be a **candidate accepted-calendar contract in isolated tests**, but it must not be exposed as a fully certified race plan.
+
+**Status:** ownership and validation semantics are ready for final Event/Goal owner review. The actual Event database identity/date/version source is not yet deployed or verified, so this is not production schema approval.
