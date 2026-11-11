@@ -1,13 +1,13 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
-import { deviceLocalToday, todayTrainingDestination } from '../src/features/today/todayEntry';
+import { deviceLocalToday, shouldRefreshTodayOnAppState, todayTrainingDestination } from '../src/features/today/todayEntry';
 
 /**
  * Today is the one existing /home entry point.
@@ -30,6 +30,14 @@ function HomeOwnerScreen() {
   // This is device-local until the athlete's preferred timezone is available.
   const [localDay, setLocalDay] = useState(deviceLocalToday);
   useFocusEffect(useCallback(() => { setLocalDay(deviceLocalToday()); }, []));
+  // React Native may resume without remounting the Today tab. Recheck the day
+  // on every foreground transition; never trust a date cached before midnight.
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', state => {
+      if (shouldRefreshTodayOnAppState(state)) setLocalDay(deviceLocalToday());
+    });
+    return () => listener.remove();
+  }, []);
   const trainingDestination = todayTrainingDestination(localDay) ?? '/train';
 
   async function handleSignOut() {
