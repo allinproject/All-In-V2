@@ -4,12 +4,12 @@ import {canonicalActivityToScreenInput,readOwnedCompletedActivity,
  type CanonicalCompletedActivityRead} from './completedActivityOwnerRead.ts';
 
 const base=():CanonicalCompletedActivityRead=>({
- id:'activity-1',ownerId:'owner-A',version:1,sport:'outdoor_run',title:'Morning Run',
+ id:'activity-1',ownerId:'owner-A',version:1,sport:'running',sportSubtype:'road',title:'Morning Run',
  completedAt:'2026-11-11T07:01:00-06:00',primarySourceId:'watch-record',
  sources:[{id:'watch-record',provider:'Apple Watch',quality:'trusted'}],
  definitions:[
   {code:'distance',version:1,displayName:'Distance',canonicalUnit:'m',
-   sportScope:['outdoor_run'],measurementKinds:['source_measured']},
+   sportScope:['running'],measurementKinds:['source_measured']},
   {code:'zone2',version:1,displayName:'Zone 2 time',canonicalUnit:'s',
    sportScope:['outdoor_run'],measurementKinds:['provider_derived']},
  ],
@@ -24,6 +24,7 @@ const base=():CanonicalCompletedActivityRead=>({
 test('one canonical owner read preserves measured zero, omits unknown and keeps source-backed sections',async()=>{
  const data=await readOwnedCompletedActivity('owner-A','activity-1',async()=> 'owner-A',
   async()=>base());
+ assert.equal(data.sport,'outdoor_run');
  assert.equal(data.metrics.length,1);
  assert.equal(data.metrics[0].value,'0');
  assert.equal(data.metrics[0].provenance,'device');
