@@ -65,3 +65,17 @@ test('signed-out viewer may see permitted public identity but cannot follow or i
  assert.equal(v.canInteract,false);
  assert.equal(canViewProfilePost('public',v),true);
 });
+
+test('unsupported audience values never default to public visibility',()=>{
+ const publicView=evaluatePublicProfileView(viewer({profileVisibility:'public'}));
+ assert.equal(canViewProfilePost('unknown' as 'public',publicView),false);
+ assert.equal(canDisplayRaceParticipation('unknown' as 'public',publicView),false);
+});
+test('anonymous visitors cannot claim an approved follow or pending relationship',()=>{
+ assert.throws(()=>evaluatePublicProfileView(viewer({
+  viewerId:null,profileVisibility:'public',relationship:'approved_follower',
+ })),/Signed-out/);
+ assert.throws(()=>evaluatePublicProfileView(viewer({
+  viewerId:null,profileVisibility:'private',relationship:'follow_requested',
+ })),/Signed-out/);
+});
