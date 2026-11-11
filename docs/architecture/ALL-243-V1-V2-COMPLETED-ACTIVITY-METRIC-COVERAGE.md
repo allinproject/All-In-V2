@@ -43,6 +43,14 @@ Before ALL-243 can be marked integrated/validated, every metric in **the full V1
 6. Fixtures proving true measured, absent/unknown, conflicting, manual, imported, duplicate and corrected readings
 7. Verified Coach context and optional comparable history where appropriate
 
+## Source-backed Details read-model slice — 2026-11-11
+
+`apps/mobile-v2/src/features/training/completedActivityDetailProjection.ts` adds a **read-only, backend-agnostic Details presentation projection**. It accepts only metrics already supplied by the future canonical owner with semantic keys, display labels/values and nonempty source/provenance metadata. It does **not** acquire or certify those measurements independently, does **not** calculate missing values or touch the database, and rejects conflicting duplicate metric keys until upstream source reconciliation is resolved.
+
+It orders the actual supplied scalar labels using the imported V1 17-sport baseline while **retaining all additional source-backed metric keys** in Details rather than silently dropping them. All legitimately available recorded metrics remain in the projection even if a user chooses to hide an optional metric in the personalized display. Required safety/source rows cannot be hidden by that layout. A separate bounded `sections` list carries only present, source-attested structured detail **descriptors** (splits, routes, time series, Strength sets, swim sets, multisport legs); actual route/sensor/health payload access remains the responsibility of the privacy-safe canonical reader.
+
+`completedActivityDetailProjection.test.ts` tests preservation of extra Zone 2 metrics, missing-data absence, pin/hide without source mutation, structured data presence, conflicts and sport requirements. **This is neither completed schema nor a live workout screen.** Full per-metric capability/provenance checks and every structured series reader remain explicit ALL-243 acceptance gaps.
+
 ## Current evidence / outstanding gaps
 
 - [x] Exact 17-sport **V1 native scalar** Overview/Details baseline is in V2 and unit-test guarded.
