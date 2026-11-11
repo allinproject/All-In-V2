@@ -143,6 +143,24 @@ BEGIN
   RAISE EXCEPTION 'Timezone-inconsistent workout calendar accepted';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  UPDATE public.v2_training_revision_sessions SET timezone='America/Chicago' WHERE id=sid;
+ -- Even with a valid session/day pair, an accepted revision must not
+ -- silently skip dates inside its submitted calendar window.
+ INSERT INTO public.v2_training_revision_days
+ (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
+ VALUES('29292929-2929-4929-8929-292929292929',
+        rev,p,u,'2026-11-19','America/Chicago','recovery',2);
+ BEGIN
+  PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+   u,p,rev,'30303030-3030-4030-8030-303030303030',1);
+  RAISE EXCEPTION 'Calendar with missing interior day accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ IF (SELECT version FROM public.v2_training_plans WHERE id=p)<>1
+ OR (SELECT status FROM public.v2_training_plan_revisions WHERE id=rev)<>'candidate'
+ THEN RAISE EXCEPTION 'Gapped plan acceptance caused partial write'; END IF;
+ INSERT INTO public.v2_training_revision_days
+ (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
+ VALUES('31313131-3131-4131-8131-313131313131',
+        rev,p,u,'2026-11-18','America/Chicago','rest',1);
  result:=allin_private.v2_training_accept_plan_revision_candidate(
   u,p,rev,'27272727-2727-4727-8727-272727272727',1);
  IF result->>'version'<>'2' OR
