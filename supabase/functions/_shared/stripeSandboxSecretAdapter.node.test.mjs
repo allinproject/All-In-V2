@@ -148,3 +148,14 @@ test('no cross-account header or customer metadata are sent by checkout adapter'
   assert.equal(new URLSearchParams(calls[1].init.body).get('metadata[ownerId]'),null);
   assert.equal(calls[1].init.headers.Authorization.startsWith('Bearer sk_test_'),true);
 });
+
+test('returning-customer Stripe checkout has no trial_period_days parameter',async()=>{
+  const {adapter,calls}=setup();
+  const request={...requestShape};
+  delete request.subscription_data;
+  const session=await adapter.createCheckoutSession(request);
+  assert.equal(session.id,'cs_test_123');
+  const body=new URLSearchParams(calls[1].init.body);
+  assert.equal(body.has('subscription_data[trial_period_days]'),false);
+  assert.equal(body.get('line_items[0][price]'),price);
+});
