@@ -109,7 +109,7 @@ function OwnedProfileScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {guiding ? <GuidedTourPanel key={ownerId} title="Profile guide"
-        steps={PROFILE_GUIDE_STEPS} onExit={() => router.replace('/profile')}
+        steps={PROFILE_GUIDE_STEPS} onExit={() => router.replace('/profile/tutorials')}
         onPositionChange={onGuidePositionChange} /> : null}
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Link href="/home" asChild>
