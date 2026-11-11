@@ -52,6 +52,8 @@ BEGIN
        has_table_privilege(r,'allin_private.v2_subscription_purchases','INSERT') OR
        has_table_privilege(r,'allin_private.v2_subscription_verified_events','INSERT') OR
        has_function_privilege(r,
+       'public.v2_billing_lookup_purchase(text)','EXECUTE') OR
+       has_function_privilege(r,
        'public.v2_billing_verify_checkout_reservation(uuid,uuid)','EXECUTE') OR
        has_function_privilege(r,
        'public.v2_billing_claim_trial_checkout(uuid)','EXECUTE') OR
@@ -108,6 +110,7 @@ GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_checkout_attempts TO
 GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_purchases TO service_role;
 GRANT SELECT,INSERT ON allin_private.v2_subscription_verified_events TO service_role;
 GRANT USAGE,SELECT ON SEQUENCE allin_private.v2_subscription_verified_events_id_seq TO service_role;
+GRANT EXECUTE ON FUNCTION public.v2_billing_lookup_purchase(text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.v2_billing_verify_checkout_reservation(uuid,uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.v2_billing_claim_trial_checkout(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.v2_billing_claim_paid_checkout(uuid) TO service_role;
@@ -608,6 +611,14 @@ BEGIN
     WHERE owner_id='00000000-0000-0000-0000-000000000013'
       AND provider_subscription_id='sub_bridge_13' AND revision=1 AND phase='paid'
   ) THEN RAISE EXCEPTION 'Bridge failed to persist original owner and revision'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.v2_billing_lookup_purchase('sub_bridge_13')
+    WHERE owner_id='00000000-0000-0000-0000-000000000013'
+      AND provider_subscription_id='sub_bridge_13' AND revision=1
+  ) THEN RAISE EXCEPTION 'Webhook purchase lookup returned wrong owner'; END IF;
+  IF EXISTS (SELECT 1 FROM public.v2_billing_lookup_purchase('sub_unbound_13')) THEN
+    RAISE EXCEPTION 'Webhook purchase lookup accepted unbound provider ID';
+  END IF;
 END
 $bridge$;
 RESET ROLE;
