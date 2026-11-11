@@ -147,7 +147,8 @@ begin
   where m.user_id=p_user_id and m.thread_id=p_thread_id and
   m.client_request_id=p_client_request_id;
  if v_count<>0 then
-  return pg_catalog.jsonb_build_object('action','saved_pending_finalize');
+  return pg_catalog.jsonb_build_object('action','saved_pending_finalize',
+    'execution_version',v_row.execution_version);
  end if;
  if v_row.lease_expires_at>v_now then
   return pg_catalog.jsonb_build_object('action','wait','lease_expires_at',v_row.lease_expires_at);
@@ -304,8 +305,8 @@ begin
   raise exception 'Coach completion fence lost' using errcode='40001';end if;
  if v_row.status='completed' then
   return pg_catalog.jsonb_build_object('completed',true);end if;
- if v_row.lease_expires_at<=pg_catalog.clock_timestamp() then
-  raise exception 'Coach completion lease expired' using errcode='40001';end if;
+ -- A saved pair may be finalized after the lease expires, provided the
+ -- execution fence is unchanged. Claim refuses to re-run a saved exchange.
  select count(*) into v_count from public.v2_coach_messages m
   where m.user_id=p_user_id and m.thread_id=p_thread_id
   and m.client_request_id=p_client_request_id
