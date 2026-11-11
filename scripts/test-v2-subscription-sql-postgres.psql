@@ -94,7 +94,7 @@ BEGIN
   IF r <> 'duplicate' THEN RAISE EXCEPTION 'Replay: %',r; END IF;
   SELECT allin_private.v2_apply_verified_subscription_event(
     '00000000-0000-0000-0000-000000000001','stripe_web','sandbox',
-    'sub_1','evt_old',0,'paid','2026-12-20 UTC') INTO r;
+    'sub_1','evt_old',1,'paid','2026-12-20 UTC') INTO r;
   IF r <> 'stale' THEN RAISE EXCEPTION 'Stale: %',r; END IF;
 
   BEGIN
