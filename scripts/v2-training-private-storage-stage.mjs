@@ -43,11 +43,10 @@ export async function stageTrainingPrivateStorageExport({
     ...snapshot.routes.map(x => ({ ...x, kind: 'route' })),
   ];
   if (rows.length > maxFiles) throw new Error('Private export file count exceeds limit');
-  const fetchedObjects = [];
-  let used = 0;
+  // Preflight the ENTIRE canonical evidence list before the first privileged
+  // Storage read. A malicious second record must not trigger partial fetching.
+  const seenPaths = new Set();
   for (const row of rows) {
-    // Prevalidate metadata before even touching privileged private Storage.
-    // The integrity verifier validates each path and owner again after fetch.
     if (!row || row.user_id !== ownerId || row.state !== 'ready'
         || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(row.activity_id ?? '')
         || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(row.source_id ?? '')
@@ -57,9 +56,15 @@ export async function stageTrainingPrivateStorageExport({
         || row.object_path.length < 80 || row.object_path.length > 500
         || !row.object_path.startsWith(ownerId + '/')
         || row.object_path.includes('..') || row.object_path.includes('\\')
-        || row.object_path.includes('//') || /[?#%]/.test(row.object_path)) {
+        || row.object_path.includes('//') || /[?#%]/.test(row.object_path)
+        || seenPaths.has(row.object_path)) {
       throw new Error('Unapproved private evidence object');
     }
+    seenPaths.add(row.object_path);
+  }
+  const fetchedObjects = [];
+  let used = 0;
+  for (const row of rows) {
     const object = await services.downloadPrivateObject({
       ownerId, requestId, path: row.object_path, kind: row.kind,
     });
