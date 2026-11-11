@@ -40,6 +40,13 @@ BEGIN
  INSERT INTO public.v2_activity_segments(
  id,activity_id,user_id,parent_segment_id,segment_kind,sequence_number,sport,source_id)
  VALUES(child,act,a,root,'interval',1,'cycling',src);
+ -- Same-owner FK cannot detect a cyclic graph: the DB guard must.
+ BEGIN
+   UPDATE public.v2_activity_segments SET parent_segment_id=child WHERE id=root;
+   RAISE EXCEPTION 'Cyclic leg ancestry accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ IF (SELECT parent_segment_id FROM public.v2_activity_segments WHERE id=root) IS NOT NULL
+ THEN RAISE EXCEPTION 'Rejected parent-cycle update changed persisted ancestry'; END IF;
  -- Root 1 cannot be duplicated despite both having NULL parent.
  BEGIN
   INSERT INTO public.v2_activity_segments(
