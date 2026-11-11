@@ -9,6 +9,8 @@
 const safe = value => typeof value === 'string' && value.length > 0 &&
   value.length <= 256 && value.trim() === value &&
   !/[\x00-\x1f\x7f]/.test(value);
+const validUuid = value => typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const providers = new Set(['app_store','google_play','stripe_web']);
 const environments = new Set(['sandbox','production']);
 
@@ -24,7 +26,7 @@ export function authorizeVerifiedPurchaseBinding({
   const a = checkoutAttempt;
   const p = providerPurchase;
   if (!providers.has(a.provider) || !environments.has(a.environment) ||
-      !safe(a.ownerId) || !safe(a.attemptId) || !safe(a.providerSubscriptionId) ||
+      !safe(a.ownerId) || !validUuid(a.attemptId) || !safe(a.providerSubscriptionId) ||
       !safe(a.providerCheckoutId) || !safe(p.providerSubscriptionId) ||
       !safe(p.providerCheckoutId) || p.provider !== a.provider ||
       p.environment !== a.environment ||
