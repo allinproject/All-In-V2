@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {addPersonalGear,changeGearStatus,emptyPersonalGear} from './personalGear.ts';
-import {deriveGearMileage,type CanonicalGearAssignment} from './completedActivityGearMileage.ts';
+import {deriveGearMileage,correctDisplayedGearMileage,type CanonicalGearAssignment} from './completedActivityGearMileage.ts';
 const gear=()=>{
  let state=addPersonalGear(emptyPersonalGear(),{id:'road-shoe',name:'Road shoes',kind:'shoes',use:'road',status:'active',distanceKm:150,reminderKm:800});
  state=addPersonalGear(state,{id:'trail-shoe',name:'Trail shoes',kind:'shoes',use:'trail',status:'retired',distanceKm:80,reminderKm:800});
@@ -51,4 +51,17 @@ test('cannot credit a running shoe with cycling distance or an unknown gear ID',
  assert.throws(()=>deriveGearMileage('owner-A',gear(),[assign('run-1','other-shoe',8)],true),/Unrecognized/);
  const valid=deriveGearMileage('owner-A',gear(),[assign('bike-ride','bike',25,'cycling')],true);
  assert.equal(valid[2].totalDistanceKm,1025);
+});
+
+test('manual correction of displayed total does not count the same workout twice',()=>{
+ const s=gear(),events=[assign('run-1','road-shoe',12)];
+ const changed=correctDisplayedGearMileage('owner-A',s,events,'road-shoe',200,true);
+ assert.equal(changed.items[0].distanceKm,188);
+ assert.equal(deriveGearMileage('owner-A',changed,events,true)[0].totalDistanceKm,200);
+ assert.equal(s.items[0].distanceKm,150);
+});
+test('correction below already confirmed activity mileage is not silently represented as negative baseline',()=>{
+ const s=gear(),events=[assign('run-1','road-shoe',12)];
+ assert.throws(()=>correctDisplayedGearMileage('owner-A',s,events,'road-shoe',5,true),/Correct the linked workout/);
+ assert.throws(()=>correctDisplayedGearMileage('owner-A',s,events,'road-shoe',200,false),/Complete owner/);
 });
