@@ -30,6 +30,9 @@ CREATE TABLE public.v2_activity_metric_values (
  activity_id uuid NOT NULL,
  user_id uuid NOT NULL,
  source_id uuid NOT NULL,
+ -- NULL denotes an activity-global fact. Segment FK is installed only when
+ -- the owning semantic segments candidate is activated later in the release.
+ segment_id uuid,
  metric_code text NOT NULL,
  definition_version integer NOT NULL,
  value_numeric numeric,
@@ -123,7 +126,7 @@ BEGIN
  v_quality:=v_source.quality;
  SELECT * INTO v_existing FROM public.v2_activity_metric_values
    WHERE activity_id=p_activity_id AND user_id=p_user_id
-     AND source_id=p_source_id AND metric_code=p_metric_code
+     AND segment_id IS NULL AND source_id=p_source_id AND metric_code=p_metric_code
      AND definition_version=p_definition_version FOR UPDATE;
  IF FOUND THEN
   IF v_existing.id<>p_value_id OR
