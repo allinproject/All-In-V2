@@ -1,0 +1,100 @@
+\set ON_ERROR_STOP on
+-- ALL-246/222 isolated PostgreSQL 17 canonical plans, not live Supabase.
+DO $roles$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+END $roles$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql
+DO $qa$
+DECLARE
+ owner_a uuid:='11111111-1111-4111-8111-111111111111';
+ owner_b uuid:='22222222-2222-4222-8222-222222222222';
+ plan_a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ plan_b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ rev_a uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ rev_b uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ slot_a uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ slot_b uuid:='ffffffff-ffff-4fff-8fff-ffffffffffff';
+ session_a uuid:='44444444-4444-4444-8444-444444444444';
+BEGIN
+ INSERT INTO auth.users VALUES(owner_a),(owner_b);
+ INSERT INTO public.v2_training_plans(id,user_id,plan_kind,status)
+ VALUES(plan_a,owner_a,'race','draft'),(plan_b,owner_b,'general','draft');
+ INSERT INTO public.v2_training_plan_revisions(id,plan_id,user_id,revision_number,status,source_kind)
+ VALUES(rev_a,plan_a,owner_a,1,'candidate','coach_proposal'),
+       (rev_b,plan_b,owner_b,1,'candidate','athlete_authored');
+ INSERT INTO public.v2_training_session_slots(id,plan_id,user_id,slot_key)
+ VALUES(slot_a,plan_a,owner_a,'monday-run'),(slot_b,plan_b,owner_b,'monday-bike');
+ INSERT INTO public.v2_training_revision_days
+  (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
+ VALUES('99999999-9999-4999-8999-999999999999',rev_a,plan_a,owner_a,
+       '2026-11-16','America/Chicago','planned',0);
+ INSERT INTO public.v2_training_revision_sessions
+  (id,plan_revision_id,session_slot_id,plan_id,user_id,athlete_local_date,
+   timezone,sport,session_kind,purpose,priority,intensity,intent_schema_version,intent,sort_order)
+ VALUES(session_a,rev_a,slot_a,plan_a,owner_a,'2026-11-16','America/Chicago',
+        'running','easy_run','Aerobic base','supporting','easy','session-intent-v1','{}',0);
+ -- Candidate may exist before athlete explicitly accepts it, but plan cannot
+ -- promote an unrelated revision as current.
+ BEGIN
+   UPDATE public.v2_training_plans SET active_revision_id=rev_b WHERE id=plan_a;
+   RAISE EXCEPTION 'Cross-plan active revision accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ -- Cross-athlete logical slot cannot be inserted into another revision.
+ BEGIN
+   INSERT INTO public.v2_training_revision_sessions
+    (id,plan_revision_id,session_slot_id,plan_id,user_id,athlete_local_date,
+     timezone,sport,session_kind,purpose,priority,intensity,intent_schema_version,intent,sort_order)
+   VALUES('55555555-5555-4555-8555-555555555555',rev_a,slot_b,plan_a,owner_a,
+          '2026-11-16','America/Chicago','cycling','easy_ride',
+          'Cross-account race','supporting','easy','session-intent-v1','{}',1);
+   RAISE EXCEPTION 'Cross-owner scheduled slot accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ -- The same logical slot is unique inside one immutable revision.
+ BEGIN
+   INSERT INTO public.v2_training_revision_sessions
+    (id,plan_revision_id,session_slot_id,plan_id,user_id,athlete_local_date,
+     timezone,sport,session_kind,purpose,priority,intensity,intent_schema_version,intent,sort_order)
+   VALUES('66666666-6666-4666-8666-666666666666',rev_a,slot_a,plan_a,owner_a,
+          '2026-11-16','America/Chicago','running','easy_run',
+          'Duplicate','supporting','easy','session-intent-v1','{}',1);
+   RAISE EXCEPTION 'Repeated slot in revision accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ -- Date state must be explicit and match revision/calendar day.
+ BEGIN
+   INSERT INTO public.v2_training_revision_sessions
+    (id,plan_revision_id,session_slot_id,plan_id,user_id,athlete_local_date,
+     timezone,sport,session_kind,purpose,priority,intensity,intent_schema_version,intent,sort_order)
+   VALUES('77777777-7777-4777-8777-777777777777',rev_a,slot_a,plan_a,owner_a,
+          '2026-11-17','America/Chicago','running','easy_run',
+          'No day','supporting','easy','session-intent-v1','{}',1);
+   RAISE EXCEPTION 'Session without calendar day accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL;
+           WHEN unique_violation THEN NULL; END;
+ -- A launched Training execution must bind exact owner and revision session.
+ INSERT INTO public.v2_training_session_instances(
+   id,user_id,revision_session_id,status,source_kind,athlete_local_date,timezone)
+ VALUES('88888888-8888-4888-8888-888888888888',owner_a,session_a,
+        'active','phone','2026-11-16','America/Chicago');
+ BEGIN
+   INSERT INTO public.v2_training_session_instances(
+     id,user_id,revision_session_id,status,source_kind,athlete_local_date,timezone)
+   VALUES('12121212-1212-4212-8212-121212121212',owner_b,session_a,
+          'active','phone','2026-11-16','America/Chicago');
+   RAISE EXCEPTION 'Wrong-owner revision execution accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ -- Plan owner sees no direct unreviewed insert/update privilege.
+ IF EXISTS(
+   SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='public' AND c.relname LIKE 'v2_training_%'
+     AND (NOT c.relrowsecurity OR has_table_privilege('authenticated',c.oid,'INSERT')
+       OR has_table_privilege('anon',c.oid,'SELECT'))
+ ) THEN RAISE EXCEPTION 'Unsafe Training relation RLS or direct permissions'; END IF;
+ RAISE NOTICE 'PASS ALL-246: owner-bound plan/revision/slot/day/session and canonical execution';
+END $qa$;
