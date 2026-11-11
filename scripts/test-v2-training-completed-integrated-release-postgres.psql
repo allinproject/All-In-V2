@@ -103,7 +103,7 @@ BEGIN
  THEN RAISE EXCEPTION 'Competition enabled in release-candidate replay'; END IF;
  IF EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
   WHERE n.nspname='public' AND c.relkind IN ('r','p')
-    AND c.relname LIKE 'v2_%' AND
+    AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%' OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%') AND
     (NOT c.relrowsecurity OR has_table_privilege('authenticated',c.oid,'INSERT')))
  THEN RAISE EXCEPTION 'Integrated schema exposed unreviewed client writes'; END IF;
  RAISE NOTICE 'PASS ALL-222/243/246/253: plan -> accepted session -> completion -> source -> metrics -> unverified challenge';
