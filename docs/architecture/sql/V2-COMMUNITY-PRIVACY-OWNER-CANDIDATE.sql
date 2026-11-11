@@ -18,6 +18,19 @@ create table allin_private.v2_community_visibility (
   updated_at timestamptz not null default now()
 );
 
+-- One authoritative revision per unordered pair of athletes. This is
+-- the CAS/locking source for follow, request, approve, block, unblock and
+-- their replays. Other per-row versions MUST NOT become competing CAS owners.
+-- Server creates/locks this exact row transactionally (ordered UUIDs).
+create table allin_private.v2_community_pair_revisions (
+  lower_user_id uuid not null references public.v2_profiles(user_id) on delete cascade,
+  upper_user_id uuid not null references public.v2_profiles(user_id) on delete cascade,
+  version bigint not null default 1 check (version > 0),
+  updated_at timestamptz not null default now(),
+  primary key (lower_user_id,upper_user_id),
+  constraint v2_community_pair_sorted check (lower_user_id < upper_user_id)
+);
+
 -- One directional relationship from follower to followed athlete. An accepted
 -- relation must have been approved by the recipient if private at acceptance.
 -- RLS is not sufficient for approval authorization: server must lock and
@@ -26,7 +39,6 @@ create table allin_private.v2_community_follows (
   follower_id uuid not null references public.v2_profiles(user_id) on delete cascade,
   followed_id uuid not null references public.v2_profiles(user_id) on delete cascade,
   state text not null check (state in ('pending','approved')),
-  version bigint not null default 1 check (version > 0),
   requested_at timestamptz not null default now(),
   approved_at timestamptz,
   updated_at timestamptz not null default now(),
@@ -79,17 +91,21 @@ create index v2_community_action_receipts_actor_recent
 -- depth. This intentionally creates NO user-facing SELECT, INSERT, UPDATE or
 -- DELETE policy; the approved server reader/writer is not implemented yet.
 alter table allin_private.v2_community_visibility enable row level security;
+alter table allin_private.v2_community_pair_revisions enable row level security;
 alter table allin_private.v2_community_follows enable row level security;
 alter table allin_private.v2_community_blocks enable row level security;
 alter table allin_private.v2_community_action_receipts enable row level security;
 
 revoke all on allin_private.v2_community_visibility from public,anon,authenticated,service_role;
+revoke all on allin_private.v2_community_pair_revisions from public,anon,authenticated,service_role;
 revoke all on allin_private.v2_community_follows from public,anon,authenticated,service_role;
 revoke all on allin_private.v2_community_blocks from public,anon,authenticated,service_role;
 revoke all on allin_private.v2_community_action_receipts from public,anon,authenticated,service_role;
 
 comment on table allin_private.v2_community_visibility is
   'Proposed private-by-default Community visibility; owner-approved backend only.';
+comment on table allin_private.v2_community_pair_revisions is
+  'Proposed sole relationship-pair CAS revision and concurrency row.';
 comment on table allin_private.v2_community_follows is
   'Proposed directed follow/approval state; no direct client write or private-profile access.';
 comment on table allin_private.v2_community_blocks is
@@ -103,7 +119,10 @@ comment on table allin_private.v2_community_action_receipts is
 --    respect account deletion, profile defaults, and session-existence rules.
 -- 3. Enforce a private actor's approval, rejection and pending request scope
 --    within the SAME server transaction, including both block directions.
--- 4. Lock ordered actor+target identity pairs to prevent follow/block races;
+-- 4. Lock the v2_community_pair_revisions row for actor+target and use it
+--    as the ONLY relationship CAS version; lock profile visibility rows too
+--    when approvals or public/private changes depend on that setting.
+--    Prevent follow/block races;
 --    use expected-version CAS and fingerprint-checked idempotency.
 -- 5. Reject reports without an independently reviewed moderation intake;
 --    the action receipt table is NOT a report store or moderation queue.
