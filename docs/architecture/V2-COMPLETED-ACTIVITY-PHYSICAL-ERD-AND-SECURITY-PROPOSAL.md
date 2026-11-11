@@ -493,3 +493,20 @@ This section is a **review packet, not migration approval or deployed DDL**. It 
 This decision locks the **proposed ownership/key/version/quality policy**; it does **not** certify a particular Apple Watch/HealthKit device identifier namespace, exact Garmin/COROS provider mapping, approved sport-wide metric definitions/units, strength exercise IDs, source calibration, route bucket, retention limit or a real service worker. Those require owner-specific evidence and compatibility reviews before migrations and grants. The all-stats fixture matrix in ALL-243, existing account export mobile parser, two-account RLS and concurrency tests, source/provider correction replay, and installed-device capture are release blockers, not documentation-only checkboxes.
 
 **Status:** schema review decision recorded in the canonical ERD. No deployment approval, production DDL or live source verification implied.
+
+
+## 14. Locked V1 sport-family compatibility — schema review (2026-11-11)
+
+The original locked V1 Completed Activity decisions at \`ALL-IN/docs/decisions/2026-10-29-sport-specific-completed-activity-screens.md\` and \`2026-10-29-customizable-analytics-layouts.md\` are binding product scope, not automatically verified provider telemetry. The physical V2 candidate used to omit **walking**, **HIIT**, and **multisport** from its sport CHECK enums despite V2's own presentation adapter and the locked V1 screens.
+
+The existing SQL candidate has now been extended (same owner, no new tables) so the canonical sport families for Training prescriptions, Completed Activity parents, semantic segments and the metric registry share:
+
+\`running, walking, cycling, swimming, strength, hiking, rucking, rowing, elliptical, stair, yoga, mobility, hiit, multisport, other\`.
+
+Sport subtypes (e.g. road/trail/treadmill, indoor trainer/outdoor ride, pool/open-water, triathlon/brick) are **not** alternative parent sport identities. The presentation adapter maps \`hiit\` to locked V1 HIIT and \`multisport\` to locked V1 Hybrid / Multisport. The separate source-scoped sport leg of a multisport activity is the authority for a *leg-specific* metric; the parent \`multisport\` is not allowed to suppress cycling power, running pace, or swim stroke facts from its real legs. The candidate segment projection now reads the nearest recorded owner-bound segment ancestor sport, with a contradictory sport rejected for a non-multisport parent.
+
+The existing Postgres identity replay adds valid walking/HIIT/multisport parent rows; the segment replay adds a nested cycling interval within a multisport parent, preserving sourced watts; the existing mobile presentation test covers HIIT/Hybrid subtype routing. **No fresh test run has been verified**.
+
+**Still required for complete schema signoff:** reconcile all approved V1 screen-specific metric definitions and their source/unit/protocol into the single metric registry; add a **reviewed segment-scalar ingest command** that binds source identity, segment sport and immutable definition version (the current candidate scalar append helper accepts only an activity-global metric, while the segment projection already supports segment rows). Also review taxonomy/profile behavior for rowing and other currently honest generic fallbacks, and ensure any sport-vs-subtype combinations cannot be misclassified by provider imports. No unsupported metric or new family is auto-published by expanding the enum.
+
+This is a review-stage compatibility correction only; it does not constitute production migration or final source/provider approval.
