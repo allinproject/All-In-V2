@@ -59,3 +59,13 @@ test('confirmed checkout provenance is mandatory for each purchase identity', ()
   assert.match(sql,/alter table allin_private\.v2_subscription_checkout_attempts enable row level security/);
   assert.match(sql,/revoke all on allin_private\.v2_subscription_checkout_attempts from public, anon, authenticated/);
 });
+
+test('confirmed checkout binder is service-only, locked and owner-idempotent', () => {
+  assert.match(sql,/create or replace function allin_private\.v2_bind_confirmed_subscription_purchase\(/);
+  assert.match(sql,/purchase binding requires service role/);
+  assert.match(sql,/attempt_id=p_attempt_id and state='server_confirmed'/);
+  assert.match(sql,/v_purchase\.owner_id <> v_attempt\.owner_id/);
+  assert.match(sql,/v_purchase\.checkout_attempt_id <> v_attempt\.attempt_id/);
+  assert.match(sql,/return 'already_bound'/);
+  assert.match(sql,/revoke all on function allin_private\.v2_bind_confirmed_subscription_purchase\(uuid\)/);
+});
