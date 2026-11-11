@@ -1,0 +1,123 @@
+\set ON_ERROR_STOP on
+-- ALL-222/243/246/253: isolated PG17 only. No live Supabase or real user data.
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE authenticated NOLOGIN;
+CREATE ROLE service_role NOLOGIN;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql
+
+DO $test$
+DECLARE
+ a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ s uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ c uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ d uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ w uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+BEGIN
+ INSERT INTO auth.users(id) VALUES (a),(b);
+ INSERT INTO public.v2_training_session_instances
+   (id,user_id,status,source_kind,started_at,athlete_local_date,timezone)
+ VALUES (s,a,'active','phone','2026-11-11 10:00:00+00','2026-11-11','America/Chicago');
+
+ -- One active/paused/finishing envelope across all devices for a user.
+ BEGIN
+  INSERT INTO public.v2_training_session_instances
+    (id,user_id,status,source_kind,athlete_local_date,timezone)
+  VALUES ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',a,'paused','watch','2026-11-11','America/Chicago');
+  RAISE EXCEPTION 'FAIL: parallel active Watch session accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+
+ -- A Completed Activity must belong to the same athlete as its Training session.
+ BEGIN
+  INSERT INTO public.v2_completed_activities
+    (id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,
+     status,training_session_instance_id)
+  VALUES (c,b,'cycling','workout','2026-11-11','America/Chicago','device_measured','completed',s);
+  RAISE EXCEPTION 'FAIL: foreign session linked to activity';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+
+ INSERT INTO public.v2_completed_activities
+   (id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,
+    status,training_session_instance_id)
+ VALUES (c,a,'cycling','workout','2026-11-11','America/Chicago','device_measured','completed',s);
+
+ -- Imported-only activity is valid without a fabricated Training instance.
+ INSERT INTO public.v2_completed_activities
+   (id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,status)
+ VALUES (d,b,'running','free_activity','2026-11-11','America/Chicago','provider_import','needs_review');
+
+ -- Exactly one canonical completed row for a proven Training session.
+ BEGIN
+  INSERT INTO public.v2_completed_activities
+    (id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,
+     status,training_session_instance_id)
+  VALUES ('ffffffff-ffff-4fff-8fff-ffffffffffff',a,'cycling','workout','2026-11-11',
+          'America/Chicago','device_measured','completed',s);
+  RAISE EXCEPTION 'FAIL: double Completed Activity per Training instance';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+
+ INSERT INTO public.v2_activity_sources
+   (id,activity_id,user_id,provider,source_kind,source_record_id,quality)
+ VALUES ('11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',c,a,'apple_watch',
+         'workout_record','watch-123','trusted');
+ -- Provider replay must not create second source or completed activity credit.
+ BEGIN
+  INSERT INTO public.v2_activity_sources
+    (id,activity_id,user_id,provider,source_kind,source_record_id,quality)
+  VALUES ('11111111-bbbb-4bbb-8bbb-bbbbbbbbbbbb',c,a,'apple_watch',
+          'workout_record','watch-123','trusted');
+  RAISE EXCEPTION 'FAIL: duplicate provider source accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ -- A third-party source can't be linked to another athlete's activity.
+ BEGIN
+  INSERT INTO public.v2_activity_sources
+    (id,activity_id,user_id,provider,source_kind,source_record_id,quality)
+  VALUES ('11111111-cccc-4ccc-8ccc-cccccccccccc',c,b,'import',
+          'workout_record','foreign-1','partial');
+  RAISE EXCEPTION 'FAIL: foreign activity source accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ -- Multiple correctly verified providers can reference one completed identity.
+ INSERT INTO public.v2_activity_sources
+   (id,activity_id,user_id,provider,source_kind,source_record_id,quality)
+ VALUES ('11111111-dddd-4ddd-8ddd-dddddddddddd',c,a,'supported_equipment',
+         'device_session','trainer-987','trusted');
+
+ -- Existing weekly competition FK now resolves to a REAL candidate canonical activity.
+ INSERT INTO public.v2_indoor_weekly_challenges
+  (id,week_start,rules_version,generator_version,scoring_version,
+   prescription_version,common_structure_id,workout_definition,
+   scored_effort_definition,opens_at,closes_at)
+ VALUES (w,'2026-11-09','v1','v1','challenge-score-v1','v1',
+         'identical-shared-session','{}','{}',
+         '2026-11-09 09:00:00+00','2026-11-16 09:00:00+00');
+ INSERT INTO public.v2_indoor_weekly_attempts
+  (id,challenge_id,user_id,completed_activity_id,
+   frozen_prescription_version,frozen_prescription,frozen_baseline)
+ VALUES ('33333333-3333-4333-8333-333333333333',w,a,c,'v1','{}','{}');
+ BEGIN
+  INSERT INTO public.v2_indoor_weekly_attempts
+   (id,challenge_id,user_id,completed_activity_id,
+    frozen_prescription_version,frozen_prescription,frozen_baseline)
+  VALUES ('44444444-4444-4444-8444-444444444444',w,b,c,'v1','{}','{}');
+  RAISE EXCEPTION 'FAIL: competition accepted another athlete activity';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+
+ -- Anon/authenticated cannot directly read or mutate identity rows.
+ IF EXISTS (
+  SELECT 1 FROM pg_class rel JOIN pg_namespace n ON n.oid=rel.relnamespace
+  WHERE n.nspname='public' AND rel.relname IN
+    ('v2_training_session_instances','v2_completed_activities','v2_activity_sources')
+    AND (
+     NOT rel.relrowsecurity OR has_table_privilege('anon',rel.oid,'SELECT')
+     OR has_table_privilege('authenticated',rel.oid,'INSERT')
+     OR has_table_privilege('authenticated',rel.oid,'UPDATE')
+    )
+ ) THEN RAISE EXCEPTION 'FAIL: unrestricted owner/anon access'; END IF;
+ RAISE NOTICE 'PASS ALL-222/243/246/253: shared owner-bound identities, source replay and real challenge FK';
+END
+$test$;
