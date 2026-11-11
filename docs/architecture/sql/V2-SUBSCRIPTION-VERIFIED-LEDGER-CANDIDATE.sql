@@ -91,7 +91,7 @@ returns text
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 declare
   v_attempt allin_private.v2_subscription_checkout_attempts%rowtype;
   v_purchase allin_private.v2_subscription_purchases%rowtype;
@@ -137,7 +137,7 @@ begin
   );
   return 'bound';
 end;
-$;
+$$;
 revoke all on function allin_private.v2_bind_confirmed_subscription_purchase(uuid)
   from public, anon, authenticated;
 
