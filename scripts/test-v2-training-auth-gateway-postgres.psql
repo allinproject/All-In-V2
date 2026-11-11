@@ -80,7 +80,37 @@ BEGIN
  RAISE NOTICE 'PASS ALL-246: expected-owner, active-session, idempotency and raw-writer isolation';
 END $qa$;
 RESET ROLE;
--- Deleted account claim must fail even if an old JWT sub remains.
+-- Physical session revocation is checked even when the client still presents
+-- the same apparently valid JWT claim. Test before deleting the account.
 DELETE FROM auth.sessions WHERE id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+SET ROLE authenticated;
+SELECT pg_catalog.set_config('request.jwt.claim.session_id',
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',false);
+DO $revoked$
+BEGIN
+ BEGIN
+  PERFORM public.v2_training_session_action_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','pause',1,
+   repeat('a',64),NULL,NULL,'2026-11-11 12:01+00');
+  RAISE EXCEPTION 'Deleted Auth session accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $revoked$;
+RESET ROLE;
+-- A deleted V2 identity also must not be reusable with stale claims.
 DELETE FROM public.v2_profiles WHERE user_id='11111111-1111-4111-8111-111111111111';
+SET ROLE authenticated;
+DO $deleted$
+BEGIN
+ BEGIN
+  PERFORM public.v2_training_session_action_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','pause',1,
+   repeat('a',64),NULL,NULL,'2026-11-11 12:01+00');
+  RAISE EXCEPTION 'Deleted V2 profile accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $deleted$;
+RESET ROLE;
 -- No production user data was affected.
