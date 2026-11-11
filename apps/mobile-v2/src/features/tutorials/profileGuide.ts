@@ -4,14 +4,14 @@
  * The generic stepper can be reused by later route-owned guides.
  */
 export type ProfileGuideTarget = 'account' | 'sports' | 'kitchen' | 'coach' | 'help' | 'legal';
-export type GuidedStep = {
+export type GuidedStep<TTarget extends string = string> = {
   id: string;
   title: string;
   body: string;
-  target: ProfileGuideTarget;
+  target: TTarget;
 };
 export const PROFILE_GUIDE_VERSION = 2;
-export const PROFILE_GUIDE_STEPS: readonly GuidedStep[] = [
+export const PROFILE_GUIDE_STEPS: readonly GuidedStep<ProfileGuideTarget>[] = [
   { id:'account',title:'Your account',target:'account',body:'Your account details and Edit Profile are here. The guide does not edit anything.' },
   { id:'sports',title:'Your activities',target:'sports',body:'Sports & Interests lets you set Training Focus and the activities you currently do. It does not restrict other sports.' },
   { id:'kitchen',title:'Kitchen equipment',target:'kitchen',body:'Kitchen tracks home cooking equipment, work reheating options and meal-prep constraints. Only changes you save become preferences.' },
