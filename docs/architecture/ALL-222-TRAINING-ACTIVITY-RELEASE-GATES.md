@@ -38,3 +38,19 @@ The first full populated account-deletion replay exposed **two real candidate bl
 - **PASS** [PG17 workflow 43092896750](https://github.com/allinproject/All-In-V2/actions/runs/43092896750): adds direct Auth cascade foreign key coverage audit matching ALL-251's existing deletion-claim preflight.
 
 **Still NOT release accepted:** These are candidate schema amendments and private export fragments, not migration files, production user-data deletion, or a downloadable account export. ALL-251's current public export allowlist will still intentionally **fail closed** on the new Training tables until the owning ALL-251 team integrates and tests the fragment, addresses size/pagination and private Storage object bytes, verifies current Auth and deleted-account behavior, and reviews actual deletion worker flow. Storage bucket contents must be removed/returned through independently reviewed policies. The immutable-guard modification needs explicit owner/security approval and real Supabase Auth trigger-order acceptance. Never apply candidate SQL automatically or weaken existing ALL-251 gates.
+
+## 2026-11-11 — Private Storage object integrity preflight (ALL-251)
+
+The review-only [offline integrity checker](../../scripts/v2-training-storage-export-integrity.mjs) and its [regression tests](../../scripts/v2-training-storage-export-integrity.test.mjs) provide a distinct gate between *metadata* and an actual private Storage archive. Given an **already authenticated and authorized** service-supplied list of owner object metadata and fetched bytes, they reject:
+- missing, extra, or duplicate objects; foreign owner paths and unsafe traversal;
+- non-ready series/routes, public route privacy, and unexpected object kinds;
+- byte-level checksum mismatches against the canonical source-linked metadata.
+
+The checker returns a manifest explicitly labeled `completeUserExport=false` and `storageAuthorizationVerified=false`. It **does not** fetch from Supabase, authorize object access, mint signed URLs, prove bucket existence, or create a user-downloadable archive.
+
+**Required next release steps** in the existing ALL-251 account-export owner workflow:
+1. Under actual Supabase Auth with active session, query the authoritative owner's series/route references. Include pending/rejected/revoked entries as an explicit failure or redaction policy, not silently omit them.
+2. Fetch each object from a private Storage bucket through a least-privileged server-side identity; verify owner+source+path against database metadata, physical bytes, checksum and content length. No direct user-supplied Storage path or signed URL proxy.
+3. Use the offline integrity check as a subordinate gate, not a substitute for server authorization. Produce a bounded temporary encrypted archive and owner-visible manifest; handle large exports by background-safe bounded jobs with expiration/cleanup and replay-safe export requests.
+4. Account for route redaction, deletion pending state, object recreation/races, missing files, and no-bucket/no-file cases; do not claim complete export before successful archive finalization.
+5. Add real Storage integration and owner/session tests plus mobile parser update for snapshot v2. Current mobile snapshot-v1 intentionally rejects the prospective incomplete v2 result. Keep the deployed ALL-251 Storage fail-closed check unchanged until all gates pass.
