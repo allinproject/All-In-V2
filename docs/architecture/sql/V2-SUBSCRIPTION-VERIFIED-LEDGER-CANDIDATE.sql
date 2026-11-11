@@ -958,3 +958,53 @@ $$;
 revoke all on function allin_private.v2_bind_verified_native_subscription(
   uuid,text,text,text,text,text,timestamptz
 ) from public,anon,authenticated;
+
+
+-- Service-role-only PostgREST bridge to the SAME private native receipt ledger.
+-- The trusted Apple/Google Edge worker must authenticate its request with
+-- Auth.getUser, verify provider current state and original owner BEFORE RPC.
+-- No client receipt/JWS/purchase-token storage or direct client grants.
+create or replace function public.v2_billing_find_native_purchase_owner(
+ p_provider text,p_environment text,p_subscription_id text
+)
+returns table(owner_id uuid)
+language plpgsql security invoker set search_path = ''
+as $$
+begin
+  if current_user <> 'service_role' then
+    raise exception 'native billing service only' using errcode='42501';
+  end if;
+  if p_provider not in ('app_store','google_play') or
+     p_environment not in ('sandbox','production') or
+     p_subscription_id is null or length(p_subscription_id) not between 1 and 220 then
+    raise exception 'invalid native purchase lookup' using errcode='22023';
+  end if;
+  return query select p.owner_id
+    from allin_private.v2_subscription_purchases p
+   where p.provider=p_provider and p.environment=p_environment
+     and p.provider_subscription_id=p_subscription_id;
+end;
+$$;
+revoke all on function public.v2_billing_find_native_purchase_owner(
+ text,text,text) from public,anon,authenticated;
+
+create or replace function public.v2_billing_commit_verified_native(
+ p_owner_id uuid,p_provider text,p_environment text,
+ p_subscription_id text,p_event_id text,p_phase text,
+ p_access_until timestamptz
+)
+returns text
+language plpgsql security invoker set search_path = ''
+as $$
+begin
+  if current_user <> 'service_role' then
+    raise exception 'native billing service only' using errcode='42501';
+  end if;
+  return allin_private.v2_bind_verified_native_subscription(
+    p_owner_id,p_provider,p_environment,p_subscription_id,
+    p_event_id,p_phase,p_access_until);
+end;
+$$;
+revoke all on function public.v2_billing_commit_verified_native(
+ uuid,text,text,text,text,text,timestamptz
+) from public,anon,authenticated;
