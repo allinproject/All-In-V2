@@ -48,7 +48,7 @@ test('paid access is explicitly bounded and retry is not access',()=>{
 test('webhook writer can never claim an unbound provider purchase', () => {
   assert.match(sql,/if not found then\s+raise exception 'subscription purchase is not prebound/);
   assert.doesNotMatch(sql,/if not found then\s+insert into allin_private\.v2_subscription_purchases/);
-  assert.match(sql,/purchase-binding workflow BEFORE this function can apply an event/);
+  assert.match(sql,/v2_subscription_checkout_attempts BEFORE this function can apply an event/);
 });
 
 test('confirmed checkout provenance is mandatory for each purchase identity', () => {
