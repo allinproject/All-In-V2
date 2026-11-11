@@ -21,7 +21,9 @@ test('Google-current, acknowledged monthly state yields only owner-binding candi
  assert.equal(r.status,'verified_for_owner_binding');
  assert.equal(r.phase,'paid');
  assert.equal(r.accessUntil,now+86400000);
- assert.equal(r.providerPurchaseIdentityPending,true);
+ assert.equal(r.providerPurchaseIdentityPending,false);
+ assert.match(r.providerSubscriptionId,/^sha256:[a-f0-9]{64}$/);
+ assert.equal(r.providerSubscriptionId.includes('tok_'),false);
  assert.equal('purchaseToken' in r,false);
 });
 test('untrusted tokens and wrong app or missing API fail closed',async()=>{
@@ -72,4 +74,10 @@ test('Google Play account binding must match server-owned obfuscation',async()=>
  const missing=await run({fetchSubscription:async()=>({...provider,
   externalAccountIdentifiers:null})});
  assert.equal(missing.status,'owner_binding_unverified');
+});
+
+test('linked Google purchase token cannot silently replace original bound owner',async()=>{
+ const r=await run({fetchSubscription:async()=>({...provider,
+  linkedPurchaseToken:'old-token-123456'})});
+ assert.equal(r.status,'linked_purchase_reconciliation_required');
 });
