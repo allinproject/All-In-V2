@@ -21,6 +21,7 @@ DECLARE
  src_a uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
  src_b uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
  src_c uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ src_d uuid:='ffffffff-ffff-4fff-8fff-ffffffffffff';
  v jsonb;
 BEGIN
  INSERT INTO auth.users VALUES(a),(b);
@@ -64,18 +65,21 @@ BEGIN
  OR (v->'metrics'->1->>'valueNumeric')<>'0'
  OR (v->'unresolvedMetrics'->0->>'reason')<>'source_review_required'
  THEN RAISE EXCEPTION 'Agreed evidence and known-zero projection wrong: %',v; END IF;
+ INSERT INTO public.v2_activity_sources
+ (id,activity_id,user_id,provider,source_kind,source_record_id,quality,source_payload_hash)
+ VALUES(src_d,ride,a,'import','workout_record','conflicting-d','trusted',repeat('d',64));
  INSERT INTO public.v2_activity_metric_values
  (id,activity_id,user_id,source_id,metric_code,definition_version,
  value_numeric,measurement_kind,quality,source_payload_hash)
  VALUES
- ('00000000-0000-4000-8000-000000000005',ride,a,src_c,
-  'avg_power_w',1,250,'source_measured','trusted',repeat('c',64));
+ ('00000000-0000-4000-8000-000000000005',ride,a,src_d,
+  'avg_power_w',1,250,'source_measured','trusted',repeat('d',64));
  v:=allin_private.v2_activity_scalar_evidence_projection_candidate(a,ride);
  IF jsonb_array_length(v->'metrics')<>1
  OR jsonb_array_length(v->'unresolvedMetrics')<>2
- OR (SELECT count(*) FROM jsonb_array_elements(v->'unresolvedMetrics') as x
-     WHERE x->>'metricCode'='avg_power_w'
-       AND x->>'reason'='conflicting_sources')<>1
+ OR (SELECT count(*) FROM jsonb_array_elements(v->'unresolvedMetrics') as x(item)
+     WHERE item->>'metricCode'='avg_power_w'
+       AND item->>'reason'='conflicting_sources')<>1
  THEN RAISE EXCEPTION 'Conflicting watts were displayed rather than quarantined: %',v; END IF;
  BEGIN
   PERFORM allin_private.v2_activity_scalar_evidence_projection_candidate(b,ride);
