@@ -1,8 +1,8 @@
-/** ALL-251: validate a current-schema account snapshot before explicit native sharing.
+/** ALL-251: validate a current-schema account snapshot before explicit native file export.
  * No on-device persistence, logging or automatic export.
  */
 export const V2_ACCOUNT_EXPORT_VERSION = 'v2-account-export-snapshot-v1';
-export const V2_SHARE_MAX_CHARS = 60000;
+export const V2_EXPORT_MAX_CHARS = 1000000;
 
 export function prepareV2AccountExport(value: unknown, expectedOwnerId: string): string {
   if (!expectedOwnerId.trim()) throw new Error('Sign in before exporting account data.');
@@ -27,8 +27,8 @@ export function prepareV2AccountExport(value: unknown, expectedOwnerId: string):
     throw new Error('Account export is incomplete. Nothing was shared.');
   }
   const json = JSON.stringify(snapshot, null, 2);
-  if (!json || json.length > V2_SHARE_MAX_CHARS) {
-    throw new Error('This export is too large for text sharing. Secure file export is required.');
+  if (!json || json.length > V2_EXPORT_MAX_CHARS) {
+    throw new Error('This export exceeds the temporary file size limit. Contact support for a larger export.');
   }
   return json;
 }
