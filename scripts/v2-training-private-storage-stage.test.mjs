@@ -91,7 +91,7 @@ test('writes only after verified bytes, checks authorization again, returns no s
  f.services.writeEncryptedArchive=async payload=>{
    f.calls.push('write');
    handoff=payload;
-   return {encrypted:true,ownerId:owner,requestId,archiveId:'staged-qa-1',secret:'do-not-return'};
+   return {encrypted:true,ownerId:owner,requestId,archiveId:'staged-qa-1',private:true,expiresAt:new Date(Date.now()+3600000).toISOString(),secret:'do-not-return'};
  };
  f.services.deleteStagedArchive=async()=>{f.calls.push('cleanup');};
  const result=await stageTrainingPrivateStorageExport({requestId,services:f.services});
@@ -130,7 +130,7 @@ test('staged archive purged on post-write revocation or metadata change',async()
   };
   f.services.writeEncryptedArchive=async()=>{
     f.calls.push('write');
-    return {encrypted:true,ownerId:owner,requestId,archiveId:'qa'};
+    return {encrypted:true,ownerId:owner,requestId,archiveId:'qa',private:true,expiresAt:new Date(Date.now()+3600000).toISOString()};
   };
   f.services.deleteStagedArchive=async()=>{f.calls.push('cleanup');};
   await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:f.services}),/expired|changed/);
@@ -183,4 +183,19 @@ test('rejects malformed request IDs and evidence quality downgrade during retrie
  await assert.rejects(stageTrainingPrivateStorageExport({
   requestId,services:changed.services,
  }),/changed/);
+});
+
+test('rejects archive receipt with missing privacy or expiration proof',async()=>{
+ for(const partial of [
+   {encrypted:true,ownerId:owner,requestId,archiveId:'unproven'},
+   {encrypted:true,ownerId:owner,requestId,archiveId:'future',private:true,
+     expiresAt:new Date(Date.now()+48*3600000).toISOString()},
+ ]) {
+  const f=fixture();
+  let purges=0;
+  f.services.writeEncryptedArchive=async()=>partial;
+  f.services.deleteStagedArchive=async()=>{purges++;};
+  await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:f.services}),/receipt/);
+  assert.equal(purges,1);
+ }
 });
