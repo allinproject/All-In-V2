@@ -16,6 +16,7 @@ DECLARE
  v_session public.v2_training_session_instances%ROWTYPE;
  v_activity public.v2_completed_activities%ROWTYPE;
  v_source jsonb;
+ v_planned_sport text;
 BEGIN
  IF p_user_id IS NULL OR p_session_id IS NULL OR p_activity_id IS NULL OR
     p_sport IS NULL OR p_activity_kind IS NULL OR p_capture_kind IS NULL
@@ -30,6 +31,18 @@ BEGIN
   WHERE id=p_session_id AND user_id=p_user_id AND status='completed' FOR UPDATE;
  IF NOT FOUND OR v_session.finished_at IS NULL THEN
    RAISE EXCEPTION 'Training session not finished' USING ERRCODE='22023'; END IF;
+ -- The accepted plan owns the scheduled sport. A completion dispatcher must
+ -- not relabel a planned ride as a run or strength session, even if it has
+ -- otherwise supplied valid source provenance. This is checked on replay too.
+ IF v_session.revision_session_id IS NOT NULL THEN
+   SELECT sport INTO v_planned_sport
+   FROM public.v2_training_revision_sessions
+   WHERE id=v_session.revision_session_id AND user_id=p_user_id;
+   IF v_planned_sport IS NULL OR v_planned_sport IS DISTINCT FROM p_sport THEN
+     RAISE EXCEPTION 'Completed Activity sport differs from scheduled workout'
+       USING ERRCODE='22023';
+   END IF;
+ END IF;
  SELECT * INTO v_activity FROM public.v2_completed_activities
   WHERE training_session_instance_id=p_session_id AND user_id=p_user_id FOR UPDATE;
  IF FOUND THEN
