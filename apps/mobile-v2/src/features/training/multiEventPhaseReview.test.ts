@@ -69,3 +69,20 @@ test('unavailable canonical day is retained and flagged, never overwritten by ta
  assert.ok(r.issues.some(i=>i.code==='PHASE_CONFLICTS_WITH_CANONICAL_DAY'&&i.date==='2027-06-01'));
  assert.equal(s.days.find(d=>d.date==='2027-06-01')?.state,'unavailable');
 });
+
+test('tune-up event inside later A-race taper requires explicit coaching tradeoff',()=>{
+ const s=buildMultiEventSeasonPlan({startDate:'2027-03-01',events:[
+  {...events[0],date:'2027-05-29'},
+  {...events[1],date:'2027-06-05'}
+ ]});
+ const d=decisions();d[0].recoveryReviewDays=0;d[1].taperDays=14;
+ const r=reviewMultiEventPhaseWindows({season:s,decisions:d});
+ assert.ok(r.issues.some(i=>i.code==='EVENT_IN_OTHER_TAPER_WINDOW'&&i.eventIds.includes('half')&&i.eventIds.includes('marathon')));
+});
+test('taper extending before confirmed season start is flagged and does not backfill workouts',()=>{
+ const s=buildMultiEventSeasonPlan({startDate:'2027-03-30',events});
+ const d=decisions();d[0].taperDays=20;
+ const r=reviewMultiEventPhaseWindows({season:s,decisions:d});
+ assert.ok(r.issues.some(i=>i.code==='TAPER_BEFORE_CALENDAR'&&i.eventIds.includes('half')));
+ assert.ok(r.annotations.every(a=>a.date>=s.startDate));
+});
