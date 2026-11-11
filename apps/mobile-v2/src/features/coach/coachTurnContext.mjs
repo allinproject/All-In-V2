@@ -51,8 +51,12 @@ export function prepareCoachTurnContext(input) {
     return blocked("history_invalid");
   }
   if (Date.parse(model.generatedAt) > Date.parse(cert.readAt)) return blocked("history_future_snapshot");
-  if (input.currentTime && (!validTime(input.currentTime) ||
-    Date.parse(cert.readAt) > Date.parse(input.currentTime))) return blocked("history_future_read");
+  // The trusted host supplies currentTime. No cached history snapshot should
+  // silently provide current-day plan advice after the owner read goes stale.
+  if (!validTime(input.currentTime) ||
+      Date.parse(cert.readAt) > Date.parse(input.currentTime)) return blocked("history_future_read");
+  const ageMs = Date.parse(input.currentTime) - Date.parse(cert.readAt);
+  if (ageMs > 15 * 60 * 1000) return blocked("history_stale");
 
   // A missing restrictions reader is not an empty verified restriction list.
   if (input.restrictionsVerified !== true) return blocked("restrictions_unverified");
