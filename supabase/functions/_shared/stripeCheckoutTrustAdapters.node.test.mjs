@@ -74,3 +74,20 @@ test('checkout request composes with trusted Auth and serialized trial DB result
   assert.equal(response.status,200);
   assert.equal(response.code,'checkout_ready');
 });
+
+test('trusted paid claim maps terminal subscriber, never grants another trial',async()=>{
+  const a=setup({claimPrivatePaid:async()=>({
+    data:[{owner_id:owner,attempt_id:attemptId,
+      trial_eligible:false,status:'eligible_reserved'}],error:null,
+  })});
+  assert.deepEqual(await a.claimPaidAttempt({ownerId:owner,provider:'stripe_web',
+    environment:'sandbox'}),{status:'eligible_reserved',attemptId,
+    ownerId:owner,trialEligible:false});
+  assert.deepEqual(await setup({claimPrivatePaid:async()=>({
+    data:[{owner_id:owner,status:'subscription_unresolved'}],error:null,
+  })}).claimPaidAttempt({ownerId:owner,provider:'stripe_web',
+    environment:'sandbox'}),{status:'subscription_unresolved'});
+  assert.deepEqual(await setup().claimPaidAttempt({
+    ownerId:owner,provider:'stripe_web',environment:'sandbox'
+  }),{status:'paid_unavailable'});
+});
