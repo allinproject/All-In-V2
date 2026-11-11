@@ -60,3 +60,29 @@ test("distinct turns cannot reuse the same persisted message identity",()=>{
  const c=receiveCoachResponse(b,{...response,clientRequestId:"req-2",turnId:"turn-2",responseId:"response-2"}).state;
  assert.equal(verifyCoachMessageReceipt(c,{...receipt,clientRequestId:"req-2",turnId:"turn-2",responseId:"response-2"}).reason,"message_id_reused");
 });
+
+test("hundreds of successfully saved turns do not permanently block Coach",()=>{
+ let state=initial();
+ for(let i=0;i<200;i++){
+  const req={...request,turnId:"turn-"+i,clientRequestId:"req-"+i};
+  const start=startCoachTurn(state,req);
+  assert.equal(start.kind,"updated");
+  const generated=receiveCoachResponse(start.state,{...req,responseId:"response-"+i});
+  assert.equal(generated.kind,"updated");
+  const saved=verifyCoachMessageReceipt(generated.state,{
+    ...req,responseId:"response-"+i,messageId:"saved-"+i,ownerVerified:true,readbackVerified:true
+  });
+  assert.equal(saved.kind,"updated");
+  state=saved.state;
+ }
+ assert.equal(state.turns.length<=66,true);
+ assert.equal(startCoachTurn(state,{...request,turnId:"next",clientRequestId:"next"}).kind,"updated");
+});
+test("unfinished turns remain bounded, preserving saved retry semantics",()=>{
+ let state=initial();
+ for(let i=0;i<16;i++){
+   const x=startCoachTurn(state,{...request,turnId:"pending-"+i,clientRequestId:"pending-"+i});
+   assert.equal(x.kind,"updated");state=x.state;
+ }
+ assert.equal(startCoachTurn(state,{...request,turnId:"overflow",clientRequestId:"overflow"}).reason,"too_many_pending_turns");
+});
