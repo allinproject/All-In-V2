@@ -10,7 +10,8 @@ type SeasonInput=Parameters<typeof previewCertifiedSeasonPhases>[0];
 export type OwnerDatedSession=DatedTrainingSession&{ownerId:string;planRevisionId:string};
 export type SeasonSessionConflict={
  code:'SESSION_ON_EVENT_DAY'|'KEY_WORK_DURING_RECOVERY'|
- 'HARD_WORK_DURING_TAPER'|'UNKNOWN_INTENSITY_IN_WINDOW'|'DUPLICATE_SESSION_ID';
+ 'HARD_WORK_DURING_TAPER'|'UNKNOWN_INTENSITY_IN_WINDOW'|'DUPLICATE_SESSION_ID'|
+ 'HIGH_IMPACT_DURING_TAPER'|'HIGH_LOCAL_LOAD_DURING_RECOVERY';
  severity:'blocking'|'review';sessionIds:string[];eventIds:string[];date:string;message:string;
 };
 export type SeasonSessionAudit=
@@ -77,6 +78,18 @@ export function auditCertifiedSeasonSessions(input:{
    issues.push({code:'HARD_WORK_DURING_TAPER',severity:'review',sessionIds:[session.id],
     eventIds:[...new Set(taper.map(x=>x.eventId))],date:session.date,
     message:'A hard session falls inside an event taper window; assess purpose and priority before changing it.'});
+  }
+  // Component loads remain distinct: never turn cycling minutes or lifting
+  // volume into invented equivalent running impact.
+  if(taper.length&&session.intent.demand?.mechanicalImpact==='high'){
+   issues.push({code:'HIGH_IMPACT_DURING_TAPER',severity:'review',sessionIds:[session.id],
+    eventIds:[...new Set(taper.map(x=>x.eventId))],date:session.date,
+    message:'High mechanical-impact work overlaps event taper review; check sport-specific impact and recovery.'});
+  }
+  if(recovering.length&&session.intent.demand?.localMuscular==='high'){
+   issues.push({code:'HIGH_LOCAL_LOAD_DURING_RECOVERY',severity:'review',sessionIds:[session.id],
+    eventIds:[...new Set(recovering.map(x=>x.eventId))],date:session.date,
+    message:'High local muscular demand overlaps post-event recovery review; check prior-event fatigue and next key session.'});
   }
   if((taper.length||recovering.length)&&session.intent.intensity==='unknown'){
    issues.push({code:'UNKNOWN_INTENSITY_IN_WINDOW',severity:'review',sessionIds:[session.id],
