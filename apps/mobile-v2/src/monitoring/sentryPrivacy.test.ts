@@ -34,3 +34,21 @@ test('reporting requires a complete HTTPS project DSN', () => {
   assert.equal(sentryDsnIsConfigured('http://key@example.com/1'),false);
   assert.equal(sentryDsnIsConfigured('https://key@o123.ingest.sentry.io/456'),true);
 });
+
+test('sensitive stack-frame paths are removed without discarding safe bundle locations', () => {
+  const event = {
+    exception: { values: [{ stacktrace: { frames: [
+      { filename: 'src/monitoring/sentry.ts', abs_path: '/Users/athlete/private/path.ts', module: 'token-in-module', lineno: 42 },
+      { filename: 'https://example.com/path?token=private', lineno: 10 },
+      { filename: 'C:\\\\Users\\\\athlete\\\\private.ts', lineno: 11 },
+      { filename: '/home/athlete/private.ts', lineno: 12 },
+    ] } }] },
+  };
+  const result = scrubCrashEvent(event);
+  assert.deepEqual(result.exception.values[0].stacktrace.frames, [
+    { filename: 'src/monitoring/sentry.ts', lineno: 42 },
+    { lineno: 10 },
+    { lineno: 11 },
+    { lineno: 12 },
+  ]);
+});
