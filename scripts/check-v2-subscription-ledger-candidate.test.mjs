@@ -53,7 +53,9 @@ test('webhook writer can never claim an unbound provider purchase', () => {
 
 test('confirmed checkout provenance is mandatory for each purchase identity', () => {
   assert.match(sql,/create table allin_private\.v2_subscription_checkout_attempts/);
-  assert.match(sql,/state text not null\s+check \(state = 'server_confirmed'\)/);
+  assert.match(sql,/state text not null\s+check \(state in \('pending','server_confirmed'\)\)/);
+  assert.match(sql,/v2_checkout_state_provenance check/);
+  assert.match(sql,/state = 'pending' and provider_subscription_id is null and verified_at is null/);
   assert.doesNotMatch(sql,/state text not null default/);
   assert.match(sql,/checkout_attempt_id uuid not null unique/);
   assert.match(sql,/v2_subscription_checkout_provenance foreign key/);
@@ -69,4 +71,14 @@ test('confirmed checkout binder is service-only, locked and owner-idempotent', (
   assert.match(sql,/v_purchase\.checkout_attempt_id <> v_attempt\.attempt_id/);
   assert.match(sql,/return 'already_bound'/);
   assert.match(sql,/revoke all on function allin_private\.v2_bind_confirmed_subscription_purchase\(uuid\)/);
+});
+
+test('pending and confirmation service transitions are identity locked and private',()=>{
+  assert.match(sql,/create or replace function allin_private\.v2_register_pending_subscription_checkout\(/);
+  assert.match(sql,/p_authenticated_owner_id is distinct from p_owner_id/);
+  assert.match(sql,/create or replace function allin_private\.v2_confirm_pending_subscription_checkout\(/);
+  assert.match(sql,/v_attempt\.owner_id <> p_owner_id/);
+  assert.match(sql,/v_attempt\.provider_checkout_id <> p_provider_checkout_id/);
+  assert.match(sql,/revoke all on function allin_private\.v2_register_pending_subscription_checkout/);
+  assert.match(sql,/revoke all on function allin_private\.v2_confirm_pending_subscription_checkout/);
 });
