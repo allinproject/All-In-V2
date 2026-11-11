@@ -19,6 +19,13 @@ CREATE TABLE public.v2_training_plan_revisions (
  plan_id uuid NOT NULL,
  user_id uuid NOT NULL,
  revision_number integer NOT NULL CHECK(revision_number>=1),
+ -- Candidate drafts can be incomplete. Acceptance requires all three explicit
+ -- immutable calendar coverage values; never derive them from inserted days.
+ calendar_start_date date,
+ calendar_end_date date,
+ calendar_timezone text CHECK(
+   calendar_timezone IS NULL OR length(btrim(calendar_timezone)) BETWEEN 1 AND 100
+ ),
  status text NOT NULL DEFAULT 'candidate'
   CHECK(status IN ('candidate','accepted','superseded','rejected','archived')),
  source_kind text NOT NULL
@@ -31,6 +38,14 @@ CREATE TABLE public.v2_training_plan_revisions (
  accepted_at timestamptz,
  UNIQUE(plan_id,revision_number),
  UNIQUE(id,plan_id,user_id),
+ CHECK (
+   (calendar_start_date IS NULL AND calendar_end_date IS NULL AND calendar_timezone IS NULL)
+   OR (calendar_start_date IS NOT NULL AND calendar_end_date IS NOT NULL
+       AND calendar_timezone IS NOT NULL AND calendar_start_date<=calendar_end_date)
+ ),
+ CHECK(status NOT IN ('accepted','superseded','archived')
+   OR calendar_start_date IS NOT NULL),
+
  FOREIGN KEY(plan_id,user_id) REFERENCES public.v2_training_plans(id,user_id),
  CHECK(status<>'accepted' OR accepted_at IS NOT NULL)
 );
