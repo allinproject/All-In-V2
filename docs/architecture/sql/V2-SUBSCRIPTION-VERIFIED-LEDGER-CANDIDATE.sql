@@ -104,7 +104,7 @@ returns table(status text, attempt_id uuid, owner_id uuid, trial_eligible boolea
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 declare
   v_attempt uuid;
 begin
@@ -158,7 +158,7 @@ begin
   );
   return query select 'eligible_reserved'::text,v_attempt,p_owner_id,true;
 end;
-$;
+$$;
 revoke all on function allin_private.v2_claim_trial_checkout_attempt(
   uuid,uuid,text,text
 ) from public,anon,authenticated;
