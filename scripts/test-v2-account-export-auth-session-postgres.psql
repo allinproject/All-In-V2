@@ -90,7 +90,8 @@ BEGIN
    PERFORM allin_private.v2_account_export_authorize_session_candidate(owner_id,session_id);
    RAISE EXCEPTION 'Revoked Auth session authorized archive export';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
- IF EXISTS(SELECT 1 FROM allin_private.v2_account_export_requests_candidate WHERE user_id=owner_id)
+ IF EXISTS(SELECT 1 FROM allin_private.v2_account_export_requests_candidate
+   WHERE user_id=owner_id AND session_id=session_id)
  THEN RAISE EXCEPTION 'Revoked Auth session left a durable export request'; END IF;
  IF pg_catalog.has_function_privilege('anon',
     'public.v2_account_export_worker_authorize_candidate(uuid,uuid,uuid)','EXECUTE')
