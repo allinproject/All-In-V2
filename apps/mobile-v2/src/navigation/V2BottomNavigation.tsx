@@ -1,8 +1,7 @@
 import { Link, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, navigation } from '../theme/tokens';
-
-const destinations = ['/home', '/fuel', '/train', '/community', '/coach'] as const;
+import { v2SelectedTab, v2TabRoutes } from './v2TabRoutes';
 
 /** One canonical, shared navigation surface for the five approved V2 workspaces. */
 export function V2BottomNavigation() {
@@ -10,8 +9,8 @@ export function V2BottomNavigation() {
   return (
     <View accessibilityRole="tablist" style={styles.bar}>
       {navigation.map((label, index) => {
-        const href = destinations[index];
-        const active = pathname === href || pathname.startsWith(href + '/');
+        const href = v2TabRoutes[index];
+        const active = v2SelectedTab(pathname) === label;
         return (
           <Link href={href} asChild key={label}>
             <Pressable
