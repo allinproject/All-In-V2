@@ -7,6 +7,8 @@ on:
       - 'docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-training-completed-postgres.psql'
+      - 'docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql'
+      - 'scripts/test-v2-training-session-writer-postgres.psql'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -49,3 +51,11 @@ jobs:
           docker cp docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql"
           docker cp scripts/test-v2-training-completed-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-completed-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-completed-postgres.psql
+      - name: Replay lifecycle and outbox in an independent disposable DB
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" session_writer_contract
+          docker cp docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql"
+          docker cp scripts/test-v2-training-session-writer-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-session-writer-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d session_writer_contract -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-session-writer-postgres.psql
