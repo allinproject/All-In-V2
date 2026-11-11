@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   V2_TUTORIAL_CATALOG,canStartTutorial,publishedTutorials,
-  tutorialCatalogCategories,isExploreRoute,type TutorialEntry,
+  tutorialCatalogCategories,isExploreRoute,tutorialLaunchRoute,type TutorialEntry,
 } from './tutorialCatalog.ts';
 
 test('catalog has stable, unique tutorial ids and ordered categories',()=>{
@@ -22,9 +22,12 @@ test('tutorial readiness gates are not equivalent to working screen links',()=>{
   assert.equal(canStartTutorial(entry),false);
   assert.equal(isExploreRoute(entry.exploreRoute),true);
   assert.equal(canStartTutorial({...entry,readiness:'coded'}),false);
-  assert.equal(canStartTutorial({...entry,readiness:'integrated'}),true);
+  assert.equal(canStartTutorial({...entry,readiness:'integrated'}),false);
+  assert.equal(tutorialLaunchRoute({...entry,readiness:'integrated'}),null);
+  assert.equal(canStartTutorial({...entry,readiness:'integrated',launchRoute:'/profile?tutorial=profile-settings'}),true);
   assert.equal(publishedTutorials([{...entry,readiness:'integrated'}]).length,0);
-  assert.equal(publishedTutorials([{...entry,readiness:'device_validated'}]).length,1);
+  assert.equal(publishedTutorials([{...entry,readiness:'device_validated'}]).length,0);
+  assert.equal(publishedTutorials([{...entry,readiness:'device_validated',launchRoute:'/profile?tutorial=profile-settings'}]).length,1);
 });
 test('only explicitly reviewed routes may be explored from tutorial catalog',()=>{
   assert.equal(isExploreRoute('/profile/kitchen'),true);
@@ -32,4 +35,17 @@ test('only explicitly reviewed routes may be explored from tutorial catalog',()=
   assert.equal(isExploreRoute('/coach'),false);
   assert.equal(isExploreRoute('/meal-prep'),false);
   assert.equal(isExploreRoute('https://example.com'),false);
+});
+
+test('integrated V2 guides have one canonical launch target and no planned guide gets a launch route',()=>{
+  const available=V2_TUTORIAL_CATALOG.filter(canStartTutorial);
+  assert.equal(available.length,4);
+  assert.deepEqual(available.map(t=>tutorialLaunchRoute(t)),[
+    '/profile?tutorial=profile-settings',
+    '/profile/sports?tutorial=sports',
+    '/profile/kitchen?tutorial=kitchen',
+    '/profile/coach-preferences?tutorial=coach-preferences',
+  ]);
+  assert.equal(new Set(available.map(t=>t.launchRoute)).size,available.length);
+  assert.ok(V2_TUTORIAL_CATALOG.filter(t=>t.readiness==='planned').every(t=>tutorialLaunchRoute(t)===null));
 });
