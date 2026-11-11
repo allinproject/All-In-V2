@@ -2,6 +2,7 @@
  * Canonical path: training_preferences.personal_gear.
  * Mileage here is a manually supplied starting/adjusted total until workout reconciliation exists.
  */
+import {validateShoeMileageRecommendation,type ShoeMileageRecommendation} from './shoeMileageRecommendation.ts';
 export type GearKind='shoes'|'bikes'|'other';
 export type ShoeUse='road'|'trail'|'mixed';
 export type BikeUse='outdoor'|'indoor';
@@ -9,6 +10,8 @@ export type GearItem={
  id:string;kind:GearKind;name:string;distanceKm:number;
  status:'active'|'retired';use:ShoeUse|BikeUse|'general';
  reminderKm:number|null;
+ /** Source-backed recommended shoe lifespan, independent of editable reminder target. */
+ recommendation?:ShoeMileageRecommendation|null;
 };
 export type PersonalGear={items:GearItem[];defaults:{road:string|null;trail:string|null;outdoorBike:string|null;indoorBike:string|null}};
 const object=(x:unknown):Record<string,unknown>=>x&&typeof x==='object'&&!Array.isArray(x)?x as Record<string,unknown>:{};
@@ -20,6 +23,15 @@ const compatible=(item:GearItem,key:keyof PersonalGear['defaults'])=>{
  if(key==='outdoorBike')return item.kind==='bikes'&&item.use==='outdoor';
  return item.kind==='bikes'&&item.use==='indoor';
 };
+function parseRecommendation(value:unknown):ShoeMileageRecommendation|null{
+ if(!value)return null;
+ const r=object(value);
+ try{return validateShoeMileageRecommendation({
+  minKm:r.minKm as number,maxKm:r.maxKm as number,recommendedAlertKm:r.recommendedAlertKm as number,
+  scope:r.scope as ShoeMileageRecommendation['scope'],sourceName:r.sourceName as string,
+  sourceUrl:r.sourceUrl as string|null,modelMatch:r.modelMatch as string|null,
+ });}catch{return null;}
+}
 export function parsePersonalGear(settings:unknown):PersonalGear {
  const raw=object(object(object(settings).training_preferences).personal_gear);
  const items:GearItem[]=(Array.isArray(raw.items)?raw.items:[]).slice(0,100).map(x=>{
@@ -30,7 +42,8 @@ export function parsePersonalGear(settings:unknown):PersonalGear {
      kind==='bikes'&&['outdoor','indoor'].includes(use)?use:'general') as GearItem['use'],
    distanceKm:typeof r.distanceKm==='number'&&Number.isFinite(r.distanceKm)&&r.distanceKm>=0&&r.distanceKm<=10000000?r.distanceKm:0,
    status:r.status==='retired'?'retired' as const:'active' as const,
-   reminderKm:typeof r.reminderKm==='number'&&Number.isFinite(r.reminderKm)&&r.reminderKm>0&&r.reminderKm<=10000000?r.reminderKm:null};
+   reminderKm:typeof r.reminderKm==='number'&&Number.isFinite(r.reminderKm)&&r.reminderKm>0&&r.reminderKm<=10000000?r.reminderKm:null,
+   ...(kind==='shoes'?{recommendation:parseRecommendation(r.recommendation)}:{})};
  }).filter(x=>x.id&&x.name);
  const rawDefaults=object(raw.defaults),defaults=emptyPersonalGear().defaults;
  for(const key of Object.keys(defaults) as (keyof typeof defaults)[]){
@@ -47,9 +60,21 @@ export function addPersonalGear(state:PersonalGear,item:GearItem):PersonalGear{
  if(!item.id||state.items.some(x=>x.id===item.id))throw new Error('Duplicate gear identifier.');
  if(!Number.isFinite(item.distanceKm)||item.distanceKm<0||item.distanceKm>10000000)throw new Error('Mileage must be zero or higher.');
  if(item.reminderKm!==null&&(!Number.isFinite(item.reminderKm)||item.reminderKm<=0))throw new Error('Invalid reminder distance.');
+ if(item.recommendation&&item.kind!=='shoes')throw new Error('Mileage recommendation is for shoes only.');
+ if(item.recommendation)validateShoeMileageRecommendation(item.recommendation);
  const allowed=item.kind==='shoes'?['road','trail','mixed']:item.kind==='bikes'?['outdoor','indoor']:['general'];
  if(!allowed.includes(item.use))throw new Error('Choose a valid gear activity.');
  return {...state,items:[...state.items,{...item,name,status:'active'}]};
+}
+export function setShoeMileageRecommendation(
+ state:PersonalGear,id:string,recommendation:ShoeMileageRecommendation|null,alertKm:number|null,
+):PersonalGear{
+ const shoe=state.items.find(x=>x.id===id);
+ if(!shoe||shoe.kind!=='shoes')throw new Error('Shoe not found.');
+ if(recommendation)validateShoeMileageRecommendation(recommendation);
+ if(alertKm!==null&&(!Number.isFinite(alertKm)||alertKm<=0||alertKm>10000000))
+  throw new Error('Invalid shoe mileage alert target.');
+ return {...state,items:state.items.map(x=>x.id===id?{...x,recommendation,reminderKm:alertKm}:x)};
 }
 export function changeGearStatus(state:PersonalGear,id:string,status:'active'|'retired'):PersonalGear{
  if(!state.items.some(x=>x.id===id))throw new Error('Gear not found.');
