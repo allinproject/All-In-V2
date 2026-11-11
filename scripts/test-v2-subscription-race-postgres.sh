@@ -224,3 +224,81 @@ END
 $trial_unique$;
 SQL
 echo "PASS ALL-252 PostgreSQL concurrent owner trial claim same UUID"
+
+
+# Renewal event and returning paid checkout must serialize on the owner.
+# A renewal that commits first prevents a stale/duplicate paid checkout.
+docker exec -i "$cid" psql -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 <<'SQL'
+INSERT INTO auth.users(id) VALUES ('00000000-0000-0000-0000-000000000011');
+INSERT INTO public.v2_profiles(user_id) VALUES ('00000000-0000-0000-0000-000000000011');
+SET ROLE service_role;
+SELECT allin_private.v2_reserve_subscription_checkout(
+ '10000000-0000-0000-0000-000000000011',
+ '00000000-0000-0000-0000-000000000011',
+ '00000000-0000-0000-0000-000000000011','stripe_web','sandbox');
+SELECT allin_private.v2_register_pending_subscription_checkout(
+ '10000000-0000-0000-0000-000000000011',
+ '00000000-0000-0000-0000-000000000011',
+ '00000000-0000-0000-0000-000000000011','stripe_web','sandbox','cs_11');
+SELECT allin_private.v2_finalize_verified_subscription_checkout(
+ '10000000-0000-0000-0000-000000000011',
+ '00000000-0000-0000-0000-000000000011',
+ 'stripe_web','sandbox','cs_11','sub_11');
+SELECT allin_private.v2_apply_verified_subscription_event(
+ '00000000-0000-0000-0000-000000000011',
+ 'stripe_web','sandbox','sub_11','evt_initial_refund_11',3,'refunded',NULL);
+SQL
+: >"$log_a"
+: >"$log_b"
+docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_a" 2>&1 <<'SQL' &
+SET ROLE service_role;
+BEGIN;
+SELECT allin_private.v2_apply_verified_subscription_event(
+ '00000000-0000-0000-0000-000000000011',
+ 'stripe_web','sandbox','sub_11','evt_renew_11',4,'paid','2027-01-01 UTC');
+\echo RENEWAL_LOCK_HELD
+SELECT pg_sleep(3);
+COMMIT;
+SQL
+pid_a=$!
+ready=0
+for _ in $(seq 1 50); do
+  if grep -q '^RENEWAL_LOCK_HELD$' "$log_a"; then ready=1; break; fi
+  if ! kill -0 "$pid_a" 2>/dev/null; then break; fi
+  sleep 0.1
+done
+if [[ "$ready" -ne 1 ]]; then
+  echo "Renewal did not acquire owner lock" >&2
+  cat "$log_a" >&2
+  exit 1
+fi
+docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_b" 2>&1 <<'SQL'
+SET ROLE service_role;
+SELECT status FROM allin_private.v2_claim_paid_checkout_attempt(
+ '00000000-0000-0000-0000-000000000011',
+ '00000000-0000-0000-0000-000000000011','stripe_web','sandbox');
+SQL
+wait "$pid_a"
+pid_a=""
+if ! grep -q '^subscription_unresolved$' "$log_b"; then
+  echo "Returning checkout raced an active renewal" >&2
+  cat "$log_a" "$log_b" >&2
+  exit 1
+fi
+docker exec -i "$cid" psql -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 <<'SQL'
+DO $renewal_lock$
+BEGIN
+ IF EXISTS (SELECT 1 FROM allin_private.v2_subscription_checkout_attempts
+            WHERE owner_id='00000000-0000-0000-0000-000000000011'
+              AND offer_kind='paid') THEN
+   RAISE EXCEPTION 'Duplicate paid reactivation created during renewal';
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM allin_private.v2_subscription_purchases
+                WHERE provider_subscription_id='sub_11' AND revision=4
+                  AND phase='paid') THEN
+   RAISE EXCEPTION 'Renewal was not committed before paid claim';
+ END IF;
+END
+$renewal_lock$;
+SQL
+echo "PASS ALL-252 PostgreSQL renewal versus paid reactivation"
