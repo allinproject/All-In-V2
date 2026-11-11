@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
@@ -10,7 +10,7 @@ import { profileOwnerMatches } from '../src/auth/profileEditor';
 import { supabase } from '../src/lib/supabase';
 import { colors } from '../src/theme/tokens';
 import { GuidedTourPanel } from '../src/features/tutorials/GuidedTourPanel';
-import { PROFILE_GUIDE_STEPS } from '../src/features/tutorials/profileGuide';
+import { PROFILE_GUIDE_STEPS, profileGuideTarget, type ProfileGuideTarget, type GuidePosition } from '../src/features/tutorials/profileGuide';
 
 type ProfileSnapshot = {
   profile?: { user_id?: string; display_name?: string | null } | null;
@@ -37,6 +37,22 @@ function OwnedProfileScreen() {
   const [retry, setRetry] = useState(0);
   const mounted = useRef(true);
   const busy = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const guideAnchors = useRef<Partial<Record<ProfileGuideTarget, number>>>({});
+  const [highlightedTarget, setHighlightedTarget] = useState<ProfileGuideTarget | null>(null);
+
+  const onGuidePositionChange = useCallback((position: GuidePosition) => {
+    const target = profileGuideTarget(position);
+    setHighlightedTarget(target);
+    if (target) {
+      const y = guideAnchors.current[target];
+      if (y !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
+    }
+  }, []);
+  const onGuideAnchorLayout = useCallback((target: ProfileGuideTarget) => (event: LayoutChangeEvent) => {
+    guideAnchors.current[target] = event.nativeEvent.layout.y;
+  }, []);
+  const guiding = tutorial === 'profile-settings' && !loading && Boolean(snapshot);
 
   useEffect(() => {
     mounted.current = true;
@@ -83,7 +99,10 @@ function OwnedProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      {guiding ? <GuidedTourPanel key={ownerId} title="Profile guide"
+        steps={PROFILE_GUIDE_STEPS} onExit={() => router.replace('/profile')}
+        onPositionChange={onGuidePositionChange} /> : null}
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Link href="/home" asChild>
           <Pressable accessibilityRole="button" style={styles.back}><Text style={styles.gold}>‹ Today</Text></Pressable>
         </Link>
@@ -98,9 +117,7 @@ function OwnedProfileScreen() {
         ) : null}
         {!loading && snapshot ? (
           <>
-            {tutorial === 'profile-settings' ? <GuidedTourPanel key={ownerId} title="Profile guide"
-              steps={PROFILE_GUIDE_STEPS} onExit={() => router.replace('/profile')} /> : null}
-            <View style={styles.card}>
+            <View onLayout={onGuideAnchorLayout("account")} style={[styles.card, highlightedTarget==="account" && styles.guideTarget]}>
               <Text style={styles.label}>ACCOUNT EMAIL</Text>
               <Text style={styles.white}>{user.email ?? 'Email unavailable'}</Text>
               <Text style={styles.label}>DISPLAY NAME</Text>
@@ -111,28 +128,33 @@ function OwnedProfileScreen() {
                 </Pressable>
               </Link>
             </View>
-            <View style={styles.card}>
+            <View onLayout={event => {
+              const y=event.nativeEvent.layout.y;
+              guideAnchors.current.sports=y;
+              guideAnchors.current.kitchen=y;
+              guideAnchors.current.coach=y;
+            }} style={styles.card}>
               <Text style={styles.section}>Personalize ALL IN</Text>
               <Link href="/profile/sports" asChild>
-                <Pressable accessibilityRole="button" style={styles.button}>
+                <Pressable accessibilityRole="button" accessibilityHint="Open your training focus and active activities" style={[styles.button, highlightedTarget==="sports" && styles.guideTarget]}>
                   <Text style={styles.buttonText}>Sports & Interests</Text>
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Training Focus and Active Activities</Text>
               <Link href="/profile/kitchen" asChild>
-                <Pressable accessibilityRole="button" style={styles.button}>
+                <Pressable accessibilityRole="button" accessibilityHint="Edit your cooking equipment and reheating setup" style={[styles.button, highlightedTarget==="kitchen" && styles.guideTarget]}>
                   <Text style={styles.buttonText}>Kitchen</Text>
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Home equipment, work reheating, and meal-prep constraints</Text>
               <Link href="/profile/coach-preferences" asChild>
-                <Pressable accessibilityRole="button" style={styles.button}>
+                <Pressable accessibilityRole="button" accessibilityHint="Choose how Coach communicates and proposes plan changes" style={[styles.button, highlightedTarget==="coach" && styles.guideTarget]}>
                   <Text style={styles.buttonText}>Coach Preferences</Text>
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Guidance, explanations, plan-change reviews, and tone</Text>
             </View>
-            <View style={styles.card}>
+            <View onLayout={onGuideAnchorLayout("help")} style={[styles.card, highlightedTarget==="help" && styles.guideTarget]}>
               <Text style={styles.section}>Help</Text>
               <Link href="/profile/tutorials" asChild>
                 <Pressable accessibilityRole="button" style={styles.button}>
@@ -141,7 +163,7 @@ function OwnedProfileScreen() {
               </Link>
               <Text style={styles.muted}>Explore existing screens and see which V2 guides are being rebuilt</Text>
             </View>
-            <View style={styles.card}>
+            <View onLayout={onGuideAnchorLayout("legal")} style={[styles.card, highlightedTarget==="legal" && styles.guideTarget]}>
               <Text style={styles.section}>Legal acceptance</Text>
               <Text style={styles.muted}>Accepted versions for this account</Text>
               <Text style={styles.white}>Terms: {snapshot.latest_legal_acceptance?.terms_version ?? 'Not available'}</Text>
@@ -167,6 +189,7 @@ const styles = StyleSheet.create({
   gold: { color: colors.goldSoft },
   title: { fontSize: 30, fontWeight: '800', color: colors.warmWhite },
   card: { padding: 18, gap: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  guideTarget: { borderColor: colors.gold, borderWidth: 2 },
   section: { fontSize: 19, fontWeight: '800', color: colors.warmWhite },
   label: { color: colors.mutedText, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   white: { color: colors.warmWhite, fontSize: 14 },
