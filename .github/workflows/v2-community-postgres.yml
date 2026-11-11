@@ -10,6 +10,9 @@ on:
       - 'scripts/test-v2-community-writer-postgres.psql'
       - 'scripts/test-v2-community-reader-postgres.psql'
       - 'scripts/test-v2-community-cas-race.sh'
+      - 'docs/architecture/sql/V2-COMMUNITY-VISIBILITY-OWNER-CANDIDATE.sql'
+      - 'scripts/test-v2-community-visibility-postgres.psql'
+      - 'scripts/test-v2-community-visibility-race.sh'
       - 'docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-READER-CANDIDATE.sql'
       - '.github/workflows/v2-community-postgres.yml'
   workflow_dispatch:
@@ -61,3 +64,12 @@ jobs:
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
         run: bash scripts/test-v2-community-cas-race.sh "$PG_CONTAINER" "$PGDATABASE"
+      - name: Replay visibility owner and public-to-private follow race in fresh database
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" community_visibility
+          docker cp docs/architecture/sql/V2-COMMUNITY-VISIBILITY-OWNER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-VISIBILITY-OWNER-CANDIDATE.sql"
+          docker cp scripts/test-v2-community-visibility-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-community-visibility-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d community_visibility -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-visibility-postgres.psql
+          bash scripts/test-v2-community-visibility-race.sh "$PG_CONTAINER" community_visibility
