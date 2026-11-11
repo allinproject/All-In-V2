@@ -113,3 +113,13 @@ test('active checkout unique constraint defends against privileged direct duplic
   assert.match(sql,/on allin_private\.v2_subscription_checkout_attempts\(owner_id\)/);
   assert.match(sql,/where state in \('reserved','pending'\)/);
 });
+
+test('returning-customer paid claim is isolated from first-trial eligibility',()=>{
+  assert.match(sql,/offer_kind text not null default 'trial'/);
+  assert.match(sql,/create or replace function allin_private\.v2_claim_paid_checkout_attempt/);
+  assert.match(sql,/not_returning_customer/);
+  assert.match(sql,/subscription_unresolved/);
+  assert.match(sql,/p\.revision=0 or p\.phase not in \('expired','refunded','revoked'\)/);
+  assert.match(sql,/a\.offer_kind='paid'/);
+  assert.match(sql,/revoke all on function allin_private\.v2_claim_paid_checkout_attempt/);
+});
