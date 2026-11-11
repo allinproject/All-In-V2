@@ -61,6 +61,16 @@ BEGIN
     'foreign','trusted',repeat('a',64),'2026-11-11 12:00+00');
    RAISE EXCEPTION 'foreign completed activity accepted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- Provider-local identifiers can repeat for different athletes.
+ -- The composite uniqueness boundary must include the verified owner.
+ res:=allin_private.v2_activity_attach_source_candidate(b,other_act,
+   '31313131-3131-4131-8131-313131313131','apple_watch',
+   'workout_record','record-1','trusted',repeat('a',64),'2026-11-11 12:00+00');
+ IF res->>'replayed'<>'false'
+ OR (SELECT count(*) FROM public.v2_activity_sources
+     WHERE user_id=b AND activity_id=other_act
+       AND source_record_id='record-1')<>1
+ THEN RAISE EXCEPTION 'Second athlete could not own independent provider source'; END IF;
  res:=allin_private.v2_activity_attach_source_candidate(a,act,
    '12121212-1212-4212-8212-121212121212','supported_equipment',
    'device_session','trainer-1','trusted',repeat('c',64),'2026-11-11 12:00+00');
