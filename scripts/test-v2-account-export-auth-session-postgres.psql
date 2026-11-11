@@ -1,0 +1,53 @@
+\set ON_ERROR_STOP on
+-- ALL-251: standalone Auth-session / deletion-state gate replay.
+-- Run only in cloned disposable PG17 integrated candidate database.
+CREATE TABLE IF NOT EXISTS allin_private.v2_account_deletion_requests(
+ user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+ request_id uuid NOT NULL UNIQUE,
+ status text NOT NULL CHECK(status IN ('requested','processing','completed','rejected','cancelled'))
+);
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql
+DO $qa$
+DECLARE
+ owner_id uuid:='11111111-1111-4111-8111-111111111111';
+ other_id uuid:='22222222-2222-4222-8222-222222222222';
+ session_id uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ v jsonb;
+BEGIN
+ INSERT INTO auth.users(id) VALUES(other_id) ON CONFLICT DO NOTHING;
+ INSERT INTO auth.sessions(id,user_id) VALUES(session_id,owner_id);
+ v:=allin_private.v2_account_export_authorize_session_candidate(owner_id,session_id);
+ IF v->>'ownerId'<>owner_id::text
+   OR v->>'sessionId'<>session_id::text OR v->>'exportPermitted'<>'true'
+   OR v->>'completeUserExport'<>'false' THEN
+    RAISE EXCEPTION 'Trusted Auth session gate returned invalid approval'; END IF;
+ BEGIN
+   PERFORM allin_private.v2_account_export_authorize_session_candidate(other_id,session_id);
+   RAISE EXCEPTION 'Foreign owner reused a different owner session';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+ VALUES(owner_id,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','requested');
+ BEGIN
+   PERFORM allin_private.v2_account_export_authorize_session_candidate(owner_id,session_id);
+   RAISE EXCEPTION 'Pending deletion request authorized archive export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE allin_private.v2_account_deletion_requests SET status='processing' WHERE user_id=owner_id;
+ BEGIN
+   PERFORM allin_private.v2_account_export_authorize_session_candidate(owner_id,session_id);
+   RAISE EXCEPTION 'Processing deletion authorized archive export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE allin_private.v2_account_deletion_requests SET status='cancelled' WHERE user_id=owner_id;
+ v:=allin_private.v2_account_export_authorize_session_candidate(owner_id,session_id);
+ IF v->>'activeSession'<>'true' THEN RAISE EXCEPTION 'Cancelled deletion did not restore eligible account'; END IF;
+ DELETE FROM auth.sessions WHERE id=session_id;
+ BEGIN
+   PERFORM allin_private.v2_account_export_authorize_session_candidate(owner_id,session_id);
+   RAISE EXCEPTION 'Revoked Auth session authorized archive export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF pg_catalog.has_function_privilege('authenticated',
+   'allin_private.v2_account_export_authorize_session_candidate(uuid,uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('service_role',
+   'allin_private.v2_account_export_authorize_session_candidate(uuid,uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Unreviewed Auth export gate exposed to clients/service'; END IF;
+ RAISE NOTICE 'PASS ALL-251: active Auth session, owner binding, deletion state and revocation';
+END $qa$;
