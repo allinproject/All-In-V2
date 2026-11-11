@@ -29,21 +29,25 @@ DO $catalog$
 DECLARE r text;
 BEGIN
   IF (SELECT count(*) FROM pg_tables WHERE schemaname='allin_private'
-      AND tablename LIKE 'v2_subscription_%') <> 2 THEN
+      AND tablename LIKE 'v2_subscription_%') <> 3 THEN
     RAISE EXCEPTION 'Expected exactly two private subscription tables';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public'
              AND tablename LIKE 'v2_subscription_%') THEN
     RAISE EXCEPTION 'Subscription created an exposed public table';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='allin_private.v2_subscription_purchases'::regclass
+  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='allin_private.v2_subscription_checkout_attempts'::regclass
+                 AND relrowsecurity) OR
+     NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='allin_private.v2_subscription_purchases'::regclass
                  AND relrowsecurity) OR
      NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='allin_private.v2_subscription_verified_events'::regclass
                  AND relrowsecurity) THEN
     RAISE EXCEPTION 'Subscription RLS not enabled';
   END IF;
   FOREACH r IN ARRAY ARRAY['anon','authenticated'] LOOP
-    IF has_table_privilege(r,'allin_private.v2_subscription_purchases','SELECT') OR
+    IF has_table_privilege(r,'allin_private.v2_subscription_checkout_attempts','SELECT') OR
+       has_table_privilege(r,'allin_private.v2_subscription_checkout_attempts','INSERT') OR
+       has_table_privilege(r,'allin_private.v2_subscription_purchases','SELECT') OR
        has_table_privilege(r,'allin_private.v2_subscription_verified_events','SELECT') OR
        has_table_privilege(r,'allin_private.v2_subscription_purchases','INSERT') OR
        has_table_privilege(r,'allin_private.v2_subscription_verified_events','INSERT') OR
@@ -66,6 +70,7 @@ INSERT INTO public.v2_profiles VALUES
 -- CI-only explicit service grants needed to exercise security-invoker.
 -- Production grants are still separate reviewed release decisions.
 GRANT USAGE ON SCHEMA allin_private TO service_role;
+GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_checkout_attempts TO service_role;
 GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_purchases TO service_role;
 GRANT SELECT,INSERT ON allin_private.v2_subscription_verified_events TO service_role;
 GRANT USAGE,SELECT ON SEQUENCE allin_private.v2_subscription_verified_events_id_seq TO service_role;
@@ -88,11 +93,34 @@ RESET ROLE;
 
 -- Simulate a distinct approved checkout/restore prebinding transaction;
 -- no webhook is permitted to perform this initial INSERT itself.
-INSERT INTO allin_private.v2_subscription_purchases
-  (owner_id,provider,environment,provider_subscription_id)
+INSERT INTO allin_private.v2_subscription_checkout_attempts
+  (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id)
 VALUES
-  ('00000000-0000-0000-0000-000000000001','stripe_web','sandbox','sub_1'),
-  ('00000000-0000-0000-0000-000000000002','stripe_web','sandbox','sub_2');
+  ('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001',
+   'stripe_web','sandbox','cs_1','sub_1'),
+  ('10000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000002',
+   'stripe_web','sandbox','cs_2','sub_2');
+
+DO $unverified_purchase$
+BEGIN
+  BEGIN
+    INSERT INTO allin_private.v2_subscription_purchases
+      (owner_id,provider,environment,provider_subscription_id,checkout_attempt_id)
+    VALUES ('00000000-0000-0000-0000-000000000002','stripe_web','sandbox',
+            'sub_stolen','10000000-0000-0000-0000-000000000001');
+    RAISE EXCEPTION 'Foreign checkout provenance incorrectly accepted';
+  EXCEPTION WHEN foreign_key_violation THEN NULL;
+  END;
+END
+$unverified_purchase$;
+
+INSERT INTO allin_private.v2_subscription_purchases
+  (owner_id,provider,environment,provider_subscription_id,checkout_attempt_id)
+VALUES
+  ('00000000-0000-0000-0000-000000000001','stripe_web','sandbox','sub_1',
+   '10000000-0000-0000-0000-000000000001'),
+  ('00000000-0000-0000-0000-000000000002','stripe_web','sandbox','sub_2',
+   '10000000-0000-0000-0000-000000000002');
 
 SET ROLE service_role;
 DO $updates$
@@ -153,6 +181,10 @@ BEGIN
              JOIN allin_private.v2_subscription_purchases p ON p.id=e.purchase_id
              WHERE p.provider_subscription_id='sub_1') THEN
     RAISE EXCEPTION 'Account deletion left subscription data behind';
+  END IF;
+  IF EXISTS (SELECT 1 FROM allin_private.v2_subscription_checkout_attempts
+                 WHERE owner_id='00000000-0000-0000-0000-000000000001') THEN
+    RAISE EXCEPTION 'Account deletion left checkout provenance';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM allin_private.v2_subscription_purchases
                  WHERE provider_subscription_id='sub_2') THEN
