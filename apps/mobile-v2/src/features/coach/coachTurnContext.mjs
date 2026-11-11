@@ -77,6 +77,16 @@ export function prepareCoachTurnContext(input) {
   if (!model.events.every(e => e && validId(e.id) && validTime(e.occurredAt) &&
       validTime(e.recordedAt) && validId(e.summary) &&
       Date.parse(e.occurredAt) <= Date.parse(e.recordedAt))) return blocked("events_invalid");
+  if (model.completeness === "complete_for_requested_scope") {
+    const allCovered = model.requested.sports.every(sport => {
+      const reports = model.coverage.filter(c => c.sport === sport);
+      return reports.length > 0 &&
+        reports.every(c => c.status === "complete" && c.missingIntervals.length === 0) &&
+        reports.some(c => c.fromDate <= model.requested.fromDate &&
+          c.throughDate >= model.requested.throughDate);
+    });
+    if (!allCovered) return blocked("coverage_not_complete");
+  }
 
   // Neither the model nor conversation may assert complete history merely
   // because no recent events were returned.
