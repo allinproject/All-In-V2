@@ -12,12 +12,13 @@ const stripeId = (v,prefix) => typeof v === 'string' && v.startsWith(prefix) &&
 export async function prepareStripeSandboxCheckout({
   authenticatedOwnerId, expectedOwnerId, attemptId, trialEligible,
   priceId, expectedMerchantAccountId, createCheckoutSession,
-  registerPendingCheckout, successUrl, cancelUrl, approvedReturnOrigin,
+  reserveCheckoutAttempt, registerPendingCheckout, successUrl, cancelUrl, approvedReturnOrigin,
 } = {}) {
   if (!uuid(authenticatedOwnerId) || expectedOwnerId !== authenticatedOwnerId ||
       !uuid(attemptId) || trialEligible !== true ||
       !stripeId(priceId,'price_') || !stripeId(expectedMerchantAccountId,'acct_') ||
       typeof createCheckoutSession !== 'function' ||
+      typeof reserveCheckoutAttempt !== 'function' ||
       typeof registerPendingCheckout !== 'function') {
     return {status:'invalid_or_ineligible'};
   }
@@ -34,6 +35,22 @@ export async function prepareStripeSandboxCheckout({
         })) return {status:'invalid_return_url'};
   } catch {
     return {status:'invalid_return_url'};
+  }
+
+  // Durable reservation BEFORE Stripe is critical. On a partial provider/DB
+  // failure a retry with this same server-issued UUID must reuse the same
+  // provider idempotency key, not create an untraceable second checkout.
+  let reservation;
+  try {
+    reservation = await reserveCheckoutAttempt({
+      attemptId,ownerId:expectedOwnerId,authenticatedOwnerId,
+      provider:'stripe_web',environment:'sandbox',
+    });
+  } catch {
+    return {status:'reservation_unavailable'};
+  }
+  if (reservation !== 'reserved' && reservation !== 'already_reserved') {
+    return {status:'reservation_rejected'};
   }
 
   // The configured Stripe SDK adapter MUST use a secret key scoped to the
