@@ -18,7 +18,7 @@
     "test:community": "node --experimental-strip-types --test src/features/community/communityPostPresentation.test.ts src/features/community/livePropsLifecycle.test.ts",
     "test:deletion-worker": "node --experimental-strip-types --test ../../supabase/functions/v2-account-deletion-worker/policy.test.mjs ../../supabase/functions/v2-account-deletion-worker/execution.test.mjs",
     "test:coach-quality": "node --test src/features/coach/coachQualityEvidence.test.mjs src/features/coach/coachQualityScenarios.test.mjs src/features/coach/coachTurnContinuity.test.mjs src/features/coach/coachTurnContext.test.mjs src/features/coach/coachConversationLifecycle.test.mjs src/features/coach/coachExchangePersistence.test.mjs ../../scripts/test-v2-coach-sql-guard.mjs",
-    "test:subscriptions": "node --experimental-strip-types --test src/features/subscriptions/entitlementContract.test.ts"
+    "test:subscriptions": "node --experimental-strip-types --test src/features/subscriptions/entitlementContract.test.ts src/features/subscriptions/offerPolicy.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
