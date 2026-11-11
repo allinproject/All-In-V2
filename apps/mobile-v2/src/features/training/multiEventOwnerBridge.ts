@@ -10,7 +10,7 @@ import type {CalendarWorkoutMarker} from './calendarDayView.ts';
 
 export type SeasonOwnerBinding={
  eventId:string;sessionId:string;planRevisionId:string;ownerId:string;
- athleteLocalDate:string;sport:string;competitionConfirmed:true;
+ athleteLocalDate:string;sport:string;priority:SeasonEvent['priority'];competitionConfirmed:true;
 };
 export type MultiEventOwnerResult=
  | {status:'unavailable';reason:string;proposal:null}
@@ -82,7 +82,8 @@ export function proposeSeasonFromVerifiedTraining(input:{
   if(matches.length!==1||matches[0].athleteLocalDate!==event.date||
      matches[0].state!=='planned'||
      matches[0].sport!==event.sport||
-     binding.athleteLocalDate!==event.date||binding.sport!==event.sport)
+     binding.athleteLocalDate!==event.date||binding.sport!==event.sport||
+     binding.priority!==event.priority)
    return unavailable('event_session_conflicts_with_calendar');
   if(states[event.date]!=='race')
    return unavailable('event_day_not_certified');
