@@ -73,7 +73,7 @@ export function certifyEventHubUrlResolution(
   typeof receipt.verifiedIdentity!=='boolean'||typeof receipt.joined!=='boolean')
   throw new Error('Unverified or cross-account EventHub URL result.');
  if(receipt.status==='matched'){
-  if(!receipt.verifiedIdentity||!valid(receipt.eventId)||!valid(receipt.groupId))
+  if(!receipt.verifiedIdentity||!valid(receipt.eventId)||!valid(receipt.groupId)||receipt.joined)
    throw new Error('EventHub match lacks exact owner-certified event and group.');
  }else if(receipt.eventId!==null||receipt.groupId!==null||
            receipt.verifiedIdentity||receipt.joined){
