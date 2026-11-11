@@ -4,7 +4,7 @@ import type { ExpoConfig } from 'expo/config';
 // Never invent them or quietly reuse a V1 signing identity.
 const isStoreApplicationId = (value: string | undefined): value is string =>
   typeof value === 'string' &&
-  /^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$/.test(value) &&
+  /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/.test(value) &&
   value.length <= 180;
 const iosStoreBundleId = process.env.ALLIN_V2_IOS_BUNDLE_ID?.trim();
 const androidStorePackage = process.env.ALLIN_V2_ANDROID_PACKAGE?.trim();
