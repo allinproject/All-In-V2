@@ -75,3 +75,12 @@ test('cancelled screen cannot start Community read',async()=>{
  }),/session unavailable/);
  assert.equal(reads,0);
 });
+
+test('unexpected server fields must not be downloaded and discarded client-side',()=>{
+ assert.throws(()=>certifyCommunityPostsRead({
+  ...response(),privateEmail:'owner@example.test',
+ } as CommunityPostsResponse,'athlete-1',viewer()),/unexpected private/);
+ assert.throws(()=>certifyCommunityPostsRead(response({
+  posts:[{...post(),sourcePrivateWorkout:{heartRate:140}} as unknown as ReturnType<typeof post>],
+ }),'athlete-1',viewer()),/unexpected private fields/);
+});
