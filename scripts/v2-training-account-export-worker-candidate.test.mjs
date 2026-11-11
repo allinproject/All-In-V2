@@ -66,19 +66,33 @@ function setup(options={}) {
      return {data:{id:name,public:options.publicBucket??false},error:null};
    },
    from(name){
-     assert.equal(name,'v2-private-workout-objects');
-     return {async download(objectPath){
-       assert.equal(objectPath,path);
-       events.push('download');
-       return {data:new Blob([options.corrupt?Buffer.from('wrong'):bytes]),error:null};
-     }};
+     assert(['v2-private-workout-objects','v2-private-account-exports'].includes(name));
+     return {
+       async download(objectPath){
+         assert.equal(name,'v2-private-workout-objects');
+         assert.equal(objectPath,path);
+         events.push('download');
+         return {data:new Blob([options.corrupt?Buffer.from('wrong'):bytes]),error:null};
+       },
+       async upload(objectPath,blob,opts){
+         assert.equal(name,'v2-private-account-exports');
+         assert.equal(opts.upsert,false);
+         events.push('archiveUpload');
+         envelope=JSON.parse(await blob.text());
+         return {data:{path:objectPath},error:null};
+       },
+       async remove(paths){
+         assert.equal(name,'v2-private-account-exports');
+         events.push('archiveRemove');
+         purges++;
+         return {data:paths.map(name=>({name})),error:null};
+       },
+     };
    },
   },
  };
  let purges=0;
- const worker=createTrainingAccountExportWorkerCandidate({
-   bearerToken:token,authClient,serviceClient,
-   resolveEncryptionKey:async()=>key,
+ const defaultPersistence={
    persistPrivateEnvelope:async payload=>{
      events.push('archiveWrite');
      envelope=payload.envelope;
@@ -90,6 +104,17 @@ function setup(options={}) {
      assert.equal(ownerId,owner);assert.equal(request,requestId);
      events.push('purge');purges++;return true;
    },
+ };
+ const selectedPersistence=options.useSupabasePersistence
+  ?{readApprovedRequestExpiry:async ({ownerId,requestId:rid})=>{
+      assert.equal(ownerId,owner);assert.equal(rid,requestId);
+      return {ownerId:owner,requestId,status:'approved',cancelled:false,
+        expiresAt:new Date(Date.now()+3600000).toISOString()};
+    }}
+  :defaultPersistence;
+ const worker=createTrainingAccountExportWorkerCandidate({
+   bearerToken:token,authClient,serviceClient,
+   resolveEncryptionKey:async()=>key,...selectedPersistence,
  });
  return {worker,events,key,get envelope(){return envelope;},
    get purges(){return purges;}};
@@ -131,5 +156,23 @@ test('revoked session after durable archive write invokes cleanup, no success',a
  const f=setup({revokeAfterWrite:true});
  await assert.rejects(f.worker.stageApprovedRequest(requestId),/unavailable/);
  assert.equal(f.events.filter(x=>x==='archiveWrite').length,1);
+ assert.equal(f.purges,1);
+});
+
+test('complete service-only Supabase archive path persists encrypted envelope and owner receipt',async()=>{
+ const f=setup({useSupabasePersistence:true});
+ const result=await f.worker.stageApprovedRequest(requestId);
+ assert.equal(result.archiveStaged,true);
+ assert.equal(result.archiveId,owner+'/'+requestId+'/archive.aesgcm.json');
+ assert.equal(result.completeUserExport,false);
+ assert.equal(f.events.filter(x=>x==='archiveUpload').length,1);
+ const clear=decryptTrainingExportForVerification(f.envelope,f.key,owner,requestId);
+ assert.equal(Buffer.from(clear.files[0].bytes,'base64').toString(),bytes.toString());
+});
+test('Supabase archive is removed via Storage API when session revoked after write',async()=>{
+ const f=setup({useSupabasePersistence:true,revokeAfterWrite:true});
+ await assert.rejects(f.worker.stageApprovedRequest(requestId),/unavailable/);
+ assert.equal(f.events.filter(x=>x==='archiveUpload').length,1);
+ assert.equal(f.events.filter(x=>x==='archiveRemove').length,1);
  assert.equal(f.purges,1);
 });
