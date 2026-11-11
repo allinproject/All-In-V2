@@ -15,7 +15,7 @@ test('bike indoor/outdoor and swimming pool/open-water never share incompatible 
 });
 test('every supported canonical V2 sport has a defined screen; rowing fallback is honest',()=>{
  const sports=['running','walking','hiking','rucking','cycling','swimming','strength','rowing',
-  'elliptical','stair','yoga','mobility','other'];
+  'elliptical','stair','yoga','mobility','hiit','multisport','other'];
  for(const sport of sports)assert.ok(resolve(sport).sport,sport);
  assert.deepEqual(resolve('rowing','machine'),{sport:'other',terrain:null,fallback:true});
 });
@@ -24,4 +24,12 @@ test('subtype mismatch cannot silently reclassify an activity',()=>{
  assert.throws(()=>resolve('swimming','treadmill'),/Unsupported activity sport/);
  assert.throws(()=>resolve('cycling','trail_run'),/Unsupported activity sport/);
  assert.throws(()=>resolve('rowing','bike'),/Unsupported activity sport/);
+});
+
+test('approved HIIT and one-parent multisport stay distinct from generic activity',()=>{
+ assert.deepEqual(resolve('hiit'),{sport:'hiit',terrain:null,fallback:false});
+ assert.deepEqual(resolve('multisport','triathlon'),{sport:'hybrid',terrain:null,fallback:false});
+ assert.deepEqual(resolve('multisport','brick'),{sport:'hybrid',terrain:null,fallback:false});
+ assert.throws(()=>resolve('multisport','treadmill'),/Unsupported activity sport/);
+ assert.throws(()=>resolve('hiit','pool'),/Unsupported activity sport/);
 });
