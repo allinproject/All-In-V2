@@ -71,7 +71,9 @@ export function createStripeSandboxSecretAdapter({
          !Array.isArray(input.line_items)||input.line_items.length!==1||
          input.line_items[0]?.price!==approvedPriceId||
          input.line_items[0].quantity!==1||
-         input.subscription_data?.trial_period_days!==7||
+         (input.subscription_data!==undefined &&
+           (input.subscription_data?.trial_period_days!==7 ||
+            Object.keys(input.subscription_data).length!==1))||
          !safeUrl(input.success_url)||!safeUrl(input.cancel_url)||
          input.idempotencyKey!=='allin-v2-checkout-'+input.client_reference_id)
         throw Error('invalid_checkout_request');
@@ -80,7 +82,7 @@ export function createStripeSandboxSecretAdapter({
         mode:'subscription',
         'line_items[0][price]':input.line_items[0].price,
         'line_items[0][quantity]':'1',
-        'subscription_data[trial_period_days]':'7',
+        ...(input.subscription_data?{'subscription_data[trial_period_days]':'7'}:{}),
         client_reference_id:input.client_reference_id,
         success_url:input.success_url,
         cancel_url:input.cancel_url,
