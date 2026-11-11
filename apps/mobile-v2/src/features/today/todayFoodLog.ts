@@ -10,6 +10,8 @@ export type FuelLogEntry = {
   label: string;
   meal: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other';
   createdAt: string;
+  /** Only verified image evidence returned by the canonical Fuel media reader. */
+  photo?: { status: 'verified'; uri: string } | null;
 };
 export type FuelLogDayEvidence =
   | { status: 'loading' | 'unavailable' | 'error'; entries?: never }
@@ -17,7 +19,7 @@ export type FuelLogDayEvidence =
 export type TodayFoodLog = {
   status: 'unavailable' | 'ready';
   detail: string;
-  visible: readonly { id: string; label: string; meal: string }[];
+  visible: readonly { id: string; label: string; meal: string; photoUri: string | null }[];
   additionalCount: number;
 };
 const fallback: TodayFoodLog = {
@@ -27,6 +29,16 @@ const fallback: TodayFoodLog = {
   additionalCount: 0,
 };
 const meals = ['breakfast','lunch','dinner','snack','other'];
+/** Reject unverified, non-HTTPS, credential-bearing and malformed media URLs. */
+function verifiedPhotoUri(photo: FuelLogEntry['photo']): string | null {
+  if (!photo || photo.status !== 'verified' || typeof photo.uri !== 'string') return null;
+  try {
+    const url = new URL(photo.uri);
+    if (url.protocol !== 'https:' || !url.hostname || url.username || url.password
+      || url.hash || photo.uri.length > 2048) return null;
+    return photo.uri;
+  } catch { return null; }
+}
 export function todayFoodLog(evidence: FuelLogDayEvidence, ownerId: string, day: string | null): TodayFoodLog {
   if (!ownerId || !day || !validAthleteLocalDate(day) || evidence.status !== 'ready'
     || evidence.ownerId !== ownerId || evidence.athleteLocalDate !== day
@@ -46,7 +58,10 @@ export function todayFoodLog(evidence: FuelLogDayEvidence, ownerId: string, day:
     status: 'ready',
     detail: ordered.length ? 'Recent logged foods. Open Fuel for the complete day.' :
       'No food entries in the verified log for this day.',
-    visible: ordered.slice(0, 2).map(row => ({ id: row.id, label: row.label.trim(), meal: row.meal })),
-    additionalCount: Math.max(0, ordered.length-2),
+    visible: ordered.slice(0, 4).map(row => ({
+      id: row.id, label: row.label.trim(), meal: row.meal,
+      photoUri: verifiedPhotoUri(row.photo),
+    })),
+    additionalCount: Math.max(0, ordered.length - 4),
   };
 }
