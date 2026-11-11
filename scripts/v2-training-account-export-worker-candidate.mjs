@@ -10,17 +10,31 @@
 import {createTrainingExportAuthServices} from '../supabase/functions/_shared/trainingExportAuthServices.mjs';
 import {createTrainingSupabaseEvidenceAdapter} from '../supabase/functions/_shared/trainingExportSupabaseStorage.mjs';
 import {createTrainingEncryptedArchiveSink} from './v2-training-export-archive-writer.mjs';
+import {createSupabasePrivateArchivePersistence} from '../supabase/functions/_shared/trainingExportSupabaseArchive.mjs';
 import {stageTrainingPrivateStorageExport} from './v2-training-private-storage-stage.mjs';
 
 export function createTrainingAccountExportWorkerCandidate({
   bearerToken,authClient,serviceClient,resolveEncryptionKey,
-  persistPrivateEnvelope,deletePrivateRequest,
+  persistPrivateEnvelope,deletePrivateRequest,readApprovedRequestExpiry,
 }) {
   if(!serviceClient?.storage?.getBucket||!serviceClient?.from||!serviceClient?.rpc)
     throw new Error('Trusted Supabase service client missing');
   const storageAdapter=createTrainingSupabaseEvidenceAdapter({supabase:serviceClient});
+  // One owning ALL-251 flow: either explicit trusted persistence adapters,
+  // or the fixed Supabase private archive adapter with an independently
+  // approved owner/session/request lease. Never use an anonymous fallback.
+  const hasSupabaseLease=typeof readApprovedRequestExpiry==='function';
+  if(hasSupabaseLease&&(persistPrivateEnvelope!==undefined
+     ||deletePrivateRequest!==undefined)) {
+    throw new Error('Conflicting private archive persistence sources');
+  }
+  const persistence=hasSupabaseLease
+    ?createSupabasePrivateArchivePersistence({
+      serviceClient,readApprovedRequestExpiry,
+     })
+    :{persistPrivateEnvelope,deletePrivateRequest};
   const archiveSink=createTrainingEncryptedArchiveSink({
-    resolveEncryptionKey,persistPrivateEnvelope,deletePrivateRequest,
+    resolveEncryptionKey,...persistence,
   });
   const services=createTrainingExportAuthServices({
     bearerToken,authClient,serverClient:serviceClient,
