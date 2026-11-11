@@ -19,7 +19,7 @@
 
 ## Exact completion sequence
 
-- [ ] **Recover the complete actual V1 document text**, not merely the Linear description/snippet; establish an immutable source copy and source timestamp for Terms, Privacy and Founder Beta Terms. The Linear connector's document search currently exposes a truncated content preview; do not reconstruct or invent unseen paragraphs.
+- [x] **Recover complete V1 website legal text** and preserve source snapshot with timestamp: [`docs/legal/V1-WEBSITE-FOUNDER-BETA-LEGAL-SOURCE-2026-11-11.md`](./V1-WEBSITE-FOUNDER-BETA-LEGAL-SOURCE-2026-11-11.md). Three exact section review copies are in [`docs/legal/review/`](./review/): `terms-terms-of-use-v1.md`, `privacy-privacy-policy-v1.md`, `founder_beta_terms-founder-beta-terms-v1.md`. Retrieval and isolation are complete, **not** legal review/approval.
 - [ ] **Prepare three V2 review copies**, preserving V1 paragraphs and creating a short redline of every factual or policy adjustment. Review the complete V1 source, not an AI-written substitute.
 - [ ] **Verify business identity**: LLC/operator, postal/legal notice address if required, current support/privacy email, domain and contact routing. A company Gmail is noted in the draft; confirm whether it remains the designated legal contact.
 - [ ] **Confirm beta scope**: invitation/eligibility, testing risks, support, feedback rights, termination, whether beta is free, and how beta transitions to the seven-day trial / $9.99 monthly plan. Do not present current paid billing as active until implemented.
@@ -57,3 +57,8 @@ Do not open signup through placeholder texts, invent legal clauses, mutate V1 da
 **Founder beta vs paid launch:** Retain current proposed seven-day trial / $9.99/month as commercial direction; the beta document must separately identify when/if charges start and how migration to paid subscriptions works. The beta legal release must not claim implemented subscription billing or privacy deletion/export processes that remain unverified.
 
 **Next executable path:** (1) obtain exact complete canonical V1 text; (2) redline against actual V2 facts, preserve original text and version evidence; (3) approve via founder + appropriate legal/privacy review; (4) publish three immutable V2 records under a controlled, reviewable change; (5) validate full text/version/receipts and links in app and on device. Each stage stays open until evidence is attached.
+
+
+## 2026-11-11 — Source blocker cleared
+
+Actual legal website was successfully scraped live with the connected website extractor. The full three-document source snapshot and separate section copies are committed on the V2 integration branch. The old "Linear only returns 500 characters" report is historical; it is **no longer a source retrieval blocker**. Current remaining gates: accuracy/redline review, explicit founder and human legal/privacy approval, controlled DB publication and live signup/receipt validation. Review Privacy Policy representations about scheduled daily database backups, account deletion request/processing and data transfer against actual V2 operations before approving. Do not automatically enable signup.
