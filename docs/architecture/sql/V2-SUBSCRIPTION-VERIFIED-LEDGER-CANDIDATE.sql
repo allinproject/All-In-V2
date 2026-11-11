@@ -143,7 +143,7 @@ begin
     from allin_private.v2_subscription_checkout_attempts a
    where a.owner_id=p_owner_id and a.provider=p_provider
      and a.environment=p_environment and a.state in ('reserved','pending')
-   order by a.attempt_id for update limit 1;
+   order by a.attempt_id limit 1 for update;
   if found then
     return query select 'eligible_reserved'::text,v_attempt,p_owner_id,true;
     return;
