@@ -17,6 +17,10 @@ select public.v2_coach_create_thread(
  'aa11aa11-1111-4111-8111-111111111111',
  'cc33cc33-3333-4333-8333-333333333333'
 );
+select public.v2_coach_create_thread(
+ 'aa11aa11-1111-4111-8111-111111111111',
+ 'cc88cc88-8888-4888-8888-888888888888'
+);
 
 do $a$
 begin
@@ -83,16 +87,27 @@ select public.v2_coach_append_exchange(
  'How should I train?',
  'Please review your accepted plan.'
 );
--- Exact retry must not create additional messages.
-select public.v2_coach_append_exchange(
- 'aa11aa11-1111-4111-8111-111111111111',
- 'cc33cc33-3333-4333-8333-333333333333',
- 'ee55ee55-5555-4555-8555-555555555555',
- 'dd44dd44-4444-4444-8444-444444444444',
- 'ff66ff66-6666-4666-8666-666666666666',
- 'How should I train?',
- 'Please review your accepted plan.'
-);
+-- Exact retry does not add rows OR refresh the thread's "latest activity".
+do $retry$
+declare before_retry timestamptz; after_retry timestamptz;
+begin
+  select updated_at into before_retry from public.v2_coach_threads
+  where id='cc33cc33-3333-4333-8333-333333333333';
+  perform public.v2_coach_append_exchange(
+   'aa11aa11-1111-4111-8111-111111111111',
+   'cc33cc33-3333-4333-8333-333333333333',
+   'ee55ee55-5555-4555-8555-555555555555',
+   'dd44dd44-4444-4444-8444-444444444444',
+   'ff66ff66-6666-4666-8666-666666666666',
+   'How should I train?',
+   'Please review your accepted plan.');
+  select updated_at into after_retry from public.v2_coach_threads
+  where id='cc33cc33-3333-4333-8333-333333333333';
+  if before_retry is distinct from after_retry then
+    raise exception 'Exact Coach retry changed thread activity time';
+  end if;
+end;
+$retry$;
 
 do $s$
 begin
@@ -121,6 +136,18 @@ begin
       '33333333-3333-4333-8333-333333333333','bad','bad');
     raise exception 'B server writer targeted A thread';
   exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.v2_coach_append_exchange(
+      'aa11aa11-1111-4111-8111-111111111111',
+      'cc88cc88-8888-4888-8888-888888888888',
+      'ee55ee55-5555-4555-8555-555555555555',
+      '10101010-1010-4010-8010-101010101010',
+      '20202020-2020-4020-8020-202020202020',
+      'same request moved to a different thread',
+      'should not persist');
+    raise exception 'A request ID was replayed into a different Coach thread';
+  exception when sqlstate '22000' then null;
   end;
   -- If assistant insertion collides with an existing ID, the newly inserted
   -- user message must roll back with the failing RPC.
