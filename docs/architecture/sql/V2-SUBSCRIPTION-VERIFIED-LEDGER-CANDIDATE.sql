@@ -636,3 +636,141 @@ revoke all on function allin_private.v2_apply_verified_subscription_event(
 -- Critical acceptance remains outstanding: Auth subject existence, cross-owner
 -- read/RLS, stale-event replay, event collision, concurrent bind/refund/renewal,
 -- account deletion, two simultaneous subscriptions, installed-device states.
+
+
+-- ALL-252 / ALL-222: REVIEW-ONLY Supabase Data API bridge, still same ledger.
+-- Functions are SECURITY INVOKER, reject non-service SQL roles, and revoke
+-- EXECUTE from PUBLIC/anon/authenticated. Service role grants are NOT made
+-- by this candidate. A trusted Edge backend must authenticate the user
+-- independently with Auth.getUser before passing owner IDs into these APIs.
+create or replace function public.v2_billing_claim_trial_checkout(p_owner_id uuid)
+returns table(status text,attempt_id uuid,owner_id uuid,trial_eligible boolean)
+language plpgsql security invoker set search_path = ''
+as $
+begin
+  if current_user <> 'service_role' then
+    raise exception 'billing service only' using errcode='42501';
+  end if;
+  return query select x.status,x.attempt_id,x.owner_id,x.trial_eligible
+    from allin_private.v2_claim_trial_checkout_attempt(
+      p_owner_id,p_owner_id,'stripe_web','sandbox') x;
+end;
+$;
+revoke all on function public.v2_billing_claim_trial_checkout(uuid)
+  from public,anon,authenticated;
+
+create or replace function public.v2_billing_claim_paid_checkout(p_owner_id uuid)
+returns table(status text,attempt_id uuid,owner_id uuid,trial_eligible boolean)
+language plpgsql security invoker set search_path = ''
+as $
+begin
+  if current_user <> 'service_role' then
+    raise exception 'billing service only' using errcode='42501';
+  end if;
+  return query select x.status,x.attempt_id,x.owner_id,x.trial_eligible
+    from allin_private.v2_claim_paid_checkout_attempt(
+      p_owner_id,p_owner_id,'stripe_web','sandbox') x;
+end;
+$;
+revoke all on function public.v2_billing_claim_paid_checkout(uuid)
+  from public,anon,authenticated;
+
+create or replace function public.v2_billing_register_pending_checkout(
+ p_attempt_id uuid,p_owner_id uuid,p_checkout_id text
+)
+returns text
+language plpgsql security invoker set search_path = ''
+as $
+begin
+  if current_user <> 'service_role' then
+    raise exception 'billing service only' using errcode='42501';
+  end if;
+  return allin_private.v2_register_pending_subscription_checkout(
+    p_attempt_id,p_owner_id,p_owner_id,'stripe_web','sandbox',p_checkout_id);
+end;
+$;
+revoke all on function public.v2_billing_register_pending_checkout(
+  uuid,uuid,text) from public,anon,authenticated;
+
+create or replace function public.v2_billing_finalize_checkout(
+  p_attempt_id uuid,p_owner_id uuid,p_checkout_id text,p_subscription_id text
+)
+returns text
+language plpgsql security invoker set search_path = ''
+as $
+begin
+  if current_user <> 'service_role' then
+    raise exception 'billing service only' using errcode='42501';
+  end if;
+  return allin_private.v2_finalize_verified_subscription_checkout(
+    p_attempt_id,p_owner_id,'stripe_web','sandbox',p_checkout_id,p_subscription_id);
+end;
+$;
+revoke all on function public.v2_billing_finalize_checkout(
+  uuid,uuid,text,text) from public,anon,authenticated;
+
+-- Resolve the already bound owner from a provider-verified checkout ID,
+-- never from webhook metadata, email or a client supplied account ID.
+create or replace function public.v2_billing_lookup_checkout(
+  p_checkout_id text
+)
+returns table(attempt_id uuid,owner_id uuid,provider_checkout_id text,
+              provider_subscription_id text,state text,offer_kind text)
+language plpgsql security invoker set search_path = ''
+as $
+begin
+  if current_user <> 'service_role' then
+    raise exception 'billing service only' using errcode='42501';
+  end if;
+  return query
+   select a.attempt_id,a.owner_id,a.provider_checkout_id,
+          a.provider_subscription_id,a.state,a.offer_kind
+     from allin_private.v2_subscription_checkout_attempts a
+    where a.provider='stripe_web' and a.environment='sandbox'
+      and a.provider_checkout_id=p_checkout_id;
+end;
+$;
+revoke all on function public.v2_billing_lookup_checkout(text)
+  from public,anon,authenticated;
+
+-- Actual merchant verification and event-state projection are performed in
+-- the trusted Edge layer. This bridge assigns local revision transactionally,
+-- not by Stripe event timestamp. It rejects an unknown/foreign purchase.
+create or replace function public.v2_billing_apply_current_subscription_event(
+ p_owner_id uuid,p_subscription_id text,p_event_id text,
+ p_phase text,p_access_until timestamptz
+)
+returns text
+language plpgsql security invoker set search_path = ''
+as $
+declare v_revision bigint;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'billing service only' using errcode='42501';
+  end if;
+  if p_owner_id is null or p_subscription_id is null or p_event_id is null then
+    raise exception 'invalid billing event' using errcode='22023';
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('trial:' || p_owner_id::text,0));
+  select p.revision into v_revision
+    from allin_private.v2_subscription_purchases p
+   where p.owner_id=p_owner_id and p.provider='stripe_web'
+     and p.environment='sandbox'
+     and p.provider_subscription_id=p_subscription_id for update;
+  if not found then
+    raise exception 'unknown or foreign subscription purchase' using errcode='42501';
+  end if;
+  if v_revision=9223372036854775807 then
+    raise exception 'billing revision exhausted' using errcode='22003';
+  end if;
+  return allin_private.v2_apply_verified_subscription_event(
+    p_owner_id,'stripe_web','sandbox',p_subscription_id,p_event_id,
+    v_revision+1,p_phase,p_access_until);
+end;
+$;
+revoke all on function public.v2_billing_apply_current_subscription_event(
+  uuid,text,text,text,timestamptz) from public,anon,authenticated;
+
+-- Do not grant service_role EXECUTE until ALL-222 approves the complete
+-- private ledger, public bridge, and provider-verified Edge handler together.
