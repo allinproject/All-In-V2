@@ -10,6 +10,7 @@ import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
 import { deviceLocalToday, shouldRefreshTodayOnAppState, todayTrainingDestination } from '../src/features/today/todayEntry';
 import { combineCalendarReads } from '../src/features/training/trainingCalendarReadModel';
 import { summarizeTodayTraining } from '../src/features/today/todayTrainingCard';
+import { todayEnergyGlance } from '../src/features/today/todayEnergyGlance';
 
 /**
  * Today is the one existing /home entry point.
@@ -51,6 +52,9 @@ function HomeOwnerScreen() {
     completed: { status: 'unavailable' },
   }), [user?.id, localDay]);
   const trainingCard = summarizeTodayTraining(trainingRead, localDay);
+  // Read-only Fuel projection. The canonical daily Fuel owner is not connected;
+  // do not invent calories or present a missing food day as zero.
+  const energyGlance = todayEnergyGlance({ status: 'unavailable' }, user?.id ?? '', localDay);
 
   async function handleSignOut() {
     if (!signOutGuard.current.tryEnter()) return;
@@ -110,11 +114,11 @@ function HomeOwnerScreen() {
             </Link>
           </View>
           <View style={styles.metricRow}>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Burned</Text><Text style={styles.metricUnknown}>—</Text></View>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Eaten</Text><Text style={styles.metricUnknown}>—</Text></View>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Left to eat</Text><Text style={styles.metricUnknown}>—</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Burned</Text><Text style={styles.metricUnknown}>{energyGlance.burned}</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Eaten</Text><Text style={styles.metricUnknown}>{energyGlance.eaten}</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Left to eat</Text><Text style={styles.metricUnknown}>{energyGlance.remaining}</Text></View>
           </View>
-          <Text style={styles.help}>Nutrition totals are unavailable until your verified food and activity data are connected.</Text>
+          <Text style={styles.help}>{energyGlance.detail}</Text>
         </View>
 
         <View style={styles.card}>
