@@ -32,7 +32,8 @@ export function createTrainingEncryptedArchiveSink({
       if(!Number.isFinite(expires)||expires<=Date.now()||expires>Date.now()+24*60*60*1000) {
         throw new Error('Encrypted archive expiry is invalid');
       }
-      return {ownerId,requestId,archiveId:saved.archiveId,encrypted:true};
+      return {ownerId,requestId,archiveId:saved.archiveId,encrypted:true,
+        private:true,expiresAt:saved.expiresAt};
     },
     async deleteStagedArchive({ownerId,requestId}) {
       // Cleanup keyed by owner+request, not by a possibly lost receipt ID.
