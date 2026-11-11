@@ -75,12 +75,10 @@ BEGIN
     WHERE plan_revision_id=p_revision_id AND plan_id=p_plan_id AND user_id=p_user_id)
  THEN RAISE EXCEPTION 'Cannot accept a revision without explicit day state'
      USING ERRCODE='22023'; END IF;
- -- Explicit revision days must cover every date BETWEEN the earliest
- -- and latest submitted day. The table's unique(revision_id,date) makes
- -- count equal to span length iff there is no missing interior day.
- -- This does not establish the athlete-selected plan START or goal/race END:
- -- authoritative boundaries must be checked by the later accepted owner
- -- contract before this candidate can be deployed.
+ -- Count every date in the athlete-reviewed inclusive revision window.
+ -- The per-revision unique date key makes count + exact min/max sufficient
+ -- to reject missing first, interior or last days. Event date/course source
+ -- certification is separately required from the Goal/Event owner.
  SELECT min(athlete_local_date),max(athlete_local_date),count(*)
  INTO v_first_day,v_last_day,v_day_count
  FROM public.v2_training_revision_days
