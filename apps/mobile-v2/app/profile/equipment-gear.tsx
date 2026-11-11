@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { useAccessGate } from '../../src/auth/AccessGateProvider';
@@ -125,7 +125,13 @@ function OwnedEquipmentGear(){
       <View style={styles.flex}><Text style={styles.label}>Weight (kg, optional)</Text><TextInput accessibilityLabel="Equipment weight in kilograms" keyboardType="decimal-pad" style={styles.input} value={weight} onChangeText={setWeight} placeholder="Unknown" placeholderTextColor={colors.mutedText} editable={!saving}/></View>
      </View>
      <Pressable accessibilityRole="button" style={styles.action} disabled={saving} onPress={createItem}><Text style={styles.gold}>＋ Add Equipment</Text></Pressable>
-     <Pressable accessibilityRole="button" disabled={saving} onPress={()=>{edit(s=>removeTrainingLocation(s,loc.id));setSelected(null)}}><Text style={styles.danger}>Remove this location</Text></Pressable>
+     <Pressable accessibilityRole="button" disabled={saving} onPress={()=>Alert.alert(
+      'Remove training location?',
+      `Remove ${loc.name} and its equipment entries from your unsaved changes? This cannot be undone once saved.`,
+      [{text:'Cancel',style:'cancel'},{text:'Remove location',style:'destructive',onPress:()=>{
+        edit(s=>removeTrainingLocation(s,loc.id));setSelected(null);
+      }}]
+     )}><Text style={styles.danger}>Remove this location</Text></Pressable>
     </>:null}
    </View>)}
    <View style={styles.card}><Text style={styles.heading}>Add Training Location</Text>
