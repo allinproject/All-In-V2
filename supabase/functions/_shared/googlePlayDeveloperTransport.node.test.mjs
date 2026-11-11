@@ -43,3 +43,23 @@ test('OAuth, HTTP, and response failures do not fake verified subscription',asyn
   await assert.rejects(()=>api.fetchSubscription({packageName,purchaseToken:token}));
  }
 });
+
+test('Google acknowledgement uses scoped POST and no customer metadata',async()=>{
+ const {api,calls}=setup();
+ assert.equal(await api.acknowledgeSubscription({packageName,purchaseToken:token}),
+  'acknowledged');
+ assert.equal(calls[0].scope,'https://www.googleapis.com/auth/androidpublisher');
+ assert.equal(calls[1].url,
+  'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/'+
+  packageName+'/purchases/subscriptions/tokens/'+token+':acknowledge');
+ assert.equal(calls[1].init.method,'POST');
+ assert.equal(calls[1].init.body,'{}');
+});
+test('Google acknowledgement cannot run with different app or provider outage',async()=>{
+ const {api,calls}=setup();
+ await assert.rejects(()=>api.acknowledgeSubscription({
+  packageName:'com.attacker.app',purchaseToken:token}));
+ assert.equal(calls.length,0);
+ const broken=setup({request:async()=>({ok:false})});
+ await assert.rejects(()=>broken.api.acknowledgeSubscription({packageName,purchaseToken:token}));
+});
