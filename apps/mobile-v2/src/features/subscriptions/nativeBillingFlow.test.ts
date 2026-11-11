@@ -150,3 +150,45 @@ test('transport failure after switching accounts is classified as wrong_account'
  rejectEvidence(Error('service down'));
  assert.equal(await task,'wrong_account');
 });
+
+test('store cancellation after account switch reports wrong_account, not canceled',async()=>{
+ let currentOwner=owner;
+ let completePurchase;
+ const store={
+  platform:'ios',
+  getProducts:async()=>[{id:productId}],
+  purchase:async()=>new Promise(resolve=>{completePurchase=resolve;}),
+  restore:async()=>[],
+ };
+ const flow=createNativeBillingFlow({platform:'ios',productId,store,
+  server:{submitEvidence:async()=> 'rejected',
+    readOwnerEntitlement:async()=>({entitled:false})},
+  getAuthenticatedOwner:()=>currentOwner,
+ });
+ const task=flow.purchase();
+ while(!completePurchase)await Promise.resolve();
+ currentOwner='00000000-0000-0000-0000-000000000002';
+ completePurchase(null);
+ assert.equal(await task,'wrong_account');
+});
+
+test('store restore transport error after owner switch reports wrong_account',async()=>{
+ let currentOwner=owner;
+ let rejectRestore;
+ const store={
+  platform:'ios',
+  getProducts:async()=>[{id:productId}],
+  purchase:async()=>null,
+  restore:async()=>new Promise((resolve,reject)=>{rejectRestore=reject;}),
+ };
+ const flow=createNativeBillingFlow({platform:'ios',productId,store,
+  server:{submitEvidence:async()=> 'rejected',
+    readOwnerEntitlement:async()=>({entitled:false})},
+  getAuthenticatedOwner:()=>currentOwner,
+ });
+ const task=flow.restore();
+ while(!rejectRestore)await Promise.resolve();
+ currentOwner='00000000-0000-0000-0000-000000000002';
+ rejectRestore(Error('store unavailable'));
+ assert.equal(await task,'wrong_account');
+});
