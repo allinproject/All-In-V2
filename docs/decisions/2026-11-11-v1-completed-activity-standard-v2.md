@@ -39,6 +39,27 @@ V2 ownership remains `ALL-243` (one completed activity/metric registry), with Tr
 
 Additional sports follow the full V1 locked configuration, not this abbreviated table. User display customization is sport-specific and presentation-only.
 
+
+## Details completeness — founder reaffirmation 2026-11-11
+
+The **Details** tab is the exhaustive per-activity statistics surface, not an arbitrary fixed selection or shortened "advanced stats" card. ALL source-backed metrics discussed/approved in V1 must be covered by a **versioned, auditable sport-specific metric registry**, with source adapters, unit/quality/provenance policy and a rendering owner. The current summary and implementation sample are **illustrative only**, not a ceiling on metrics. Carry forward the entire authoritative V1 per-sport metric catalog, not just those implemented in the early V1 native screen.
+
+For every activity, Details exposes *every metric actually available* from its authenticated source, plus properly labeled supported derived values, without forcing users to hunt through separate pages or falsely inventing unsupported values. Include relevant:
+
+- Timing: total elapsed, moving/active, paused/rest, intervals, split/lap/segment times and prescribed-vs-actual execution when recorded.
+- Distance/pace/speed: overall and time-series data, min/max/average when meaningful and sourced, split/lap pace, pace/speed zones and distributions, treadmill calibration with explicit provenance.
+- Heart rate: average/max/min if captured, trace, zone durations, time in Zone 2, sensor/quality gaps; historical zone definition as appropriate.
+- Elevation/location/environment: route/map with privacy, ascent/descent, profiles/high-low elevation, grade/incline, sourced temperature/weather, terrain and technical trail context when recorded.
+- Running/walking/hiking/rucking: cadence, steps, stride length, contact time, vertical oscillation, running power/economy signals only where measured, pack weight for ruck only if entered/supplied.
+- Cycling and trainer: watts (average, max and eligible weighted/normalized/FTP-relative metrics), watts/kg only with compatible recorded weight provenance, power zones/distributions, cadence, resistance/ERG/simulation, speed, gearing/other telemetry only if actually reported, interval target/execution and source continuity.
+- Swimming: pool length, lengths/laps/sets, pace per 50/100, swim rest and splits, stroke type/count/rate/distance per stroke, SWOLF only when supported, open-water GPS/context separately.
+- Strength: each exercise and every recorded set (reps, load and unit, bodyweight handling, RIR/RPE, rest, volume), ordered history, substitutions, plan comparison and verified PRs.
+- Stairs/elliptical/other machines: actual machine levels, steps/floors, stride/step rate, ramp/incline, resistance, machine distance/power only where supplied; no fabricated conversions.
+- Hybrid/multisport: separate metrics for every leg/segment and transition, preserving source changes and total-versus-moving time.
+- Where valid: energy/active calories, effort/feedback, supported achievements, wearable/equipment/source metadata, capture quality, correction history and relevant annotations.
+
+**Completeness acceptance:** Inventory the V1 metric registry and Completed Workout Detail Gap Audit as well as the V1 locked sport screens; build a traceable coverage matrix of each metric -> canonical definition -> allowed sources -> persistence/quality -> Details location -> automated fixture. Any missing metric remains explicitly tracked until closed. Present all *recorded* eligible fields even if not part of the default Overview; provide collapsible sections and per-sport customization so completeness does not become an unreadable wall. Source-less metrics are absent/unknown, never zero. No invented charts, computed physiology, rankings or measurement certainty. The user controls display priority, not the truth of recorded measurements. Details remains named **Details**.
+
 ## Implementation gates
 
 1. ALL-243 canonical schema/metric registry/source merge and least-privilege user reads approved and deployed.
