@@ -42,3 +42,18 @@
 **Paid-launch-ready** is a *separate* gate; do not conflate founder-beta legal acceptance with subscription compliance or implemented billing.
 
 Do not open signup through placeholder texts, invent legal clauses, mutate V1 data, claim an attorney reviewed documents without evidence, or downgrade safeguards to unblock the screen.
+
+
+## 2026-11-11 — Evidence audit and exact remaining dependencies
+
+**V1 publication evidence:** V1 Linear ALL-84 records a founder statement that all three documents were completed, but the verified website origin `/terms` screenshot on 2026-11-08 instead displayed a **draft/status page**, explicitly saying app/store terms were not yet published. Treat authorship and web publication as separate facts; do not substitute that page for actual legal content.
+
+**V1 legal source retrieval:** The canonical Linear document is discoverable by ID `ca258284-4afc-4fbd-9d56-9d2b00ce5750`, but `list_documents` returns only the first 500 characters and `get_document`/`fetch` yield empty results through the current connector. Available Drive/Library/code searches do not locate a complete verified copy. This is an access/retrieval blocker, **not** proof the documents were never written. Preserve the source link and request full text through the existing Linear document UI or a supported export when available; do not ask the founder to rewrite legal clauses.
+
+**Public link verification:** Both `https://allin365.app/terms` and the previously working V1 origin `https://all-in-365.sugary-bean-1546.chatgpt.site/terms` were inaccessible through the current automated web check; this does not prove they are globally down or publish final text. Do not change DNS/hosting in this legal slice. V2 can publish its own approved text into the versioned legal database independently, but web-based public terms links still need a verified working destination before external beta.
+
+**V2 source inspection:** Existing V2 `app/sign-up.tsx` and `app/legal-acceptance.tsx` load three published legal records, show exact markdown text and per-document review checkboxes, require age 18 and revalidate the publication snapshot before writing acceptance. V2 database schema enforces the three keys and owner-bound acceptance records. This is implementation evidence only, not full UI/device test or current publication evidence.
+
+**Founder beta vs paid launch:** Retain current proposed seven-day trial / $9.99/month as commercial direction; the beta document must separately identify when/if charges start and how migration to paid subscriptions works. The beta legal release must not claim implemented subscription billing or privacy deletion/export processes that remain unverified.
+
+**Next executable path:** (1) obtain exact complete canonical V1 text; (2) redline against actual V2 facts, preserve original text and version evidence; (3) approve via founder + appropriate legal/privacy review; (4) publish three immutable V2 records under a controlled, reviewable change; (5) validate full text/version/receipts and links in app and on device. Each stage stays open until evidence is attached.
