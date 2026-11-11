@@ -11,6 +11,7 @@ CREATE SCHEMA allin_private;
 CREATE TABLE auth.users(id uuid PRIMARY KEY);
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql
 DO $qa$
 DECLARE
@@ -56,6 +57,17 @@ BEGIN
   'cadence_rpm',1,0,'source_measured','trusted',repeat('a',64)),
  ('00000000-0000-4000-8000-000000000004',ride,a,src_c,
   'hr_bpm',1,160,'source_measured','unverified',repeat('c',64));
+ -- Interval power is NOT an activity-global average and must not
+ -- introduce a conflict or silently replace activity-global power.
+ INSERT INTO public.v2_activity_segments(
+  id,activity_id,user_id,segment_kind,sequence_number,sport,source_id)
+ VALUES('abababab-abab-4bab-8bab-abababababab',ride,a,'interval',1,'cycling',src_a);
+ INSERT INTO public.v2_activity_metric_values(
+ id,activity_id,user_id,segment_id,source_id,metric_code,definition_version,
+ value_numeric,measurement_kind,quality,source_payload_hash)
+ VALUES('00000000-0000-4000-8000-000000000008',ride,a,
+ 'abababab-abab-4bab-8bab-abababababab',src_a,'avg_power_w',1,
+ 300,'source_measured','trusted',repeat('a',64));
  v:=allin_private.v2_activity_scalar_evidence_projection_candidate(a,ride);
  IF jsonb_array_length(v->'metrics')<>2
  OR jsonb_array_length(v->'unresolvedMetrics')<>1
