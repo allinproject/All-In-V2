@@ -25,6 +25,10 @@ export type RelationshipMutationIntent={
  expectedVersion:number;actionId:string;
 };
 const id=(x:unknown):x is string=>typeof x==='string'&&x.trim().length>0&&x.length<=150&&x.trim()===x;
+// The canonical PostgreSQL action ledger uses uuid, not arbitrary text IDs.
+const actionUuid=(x:unknown):x is string=>typeof x==='string'&&
+ /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(x)&&
+ x!=='00000000-0000-0000-0000-000000000000';
 export function relationshipActionAvailability(s:RelationshipSnapshot):ReadonlySet<RelationshipAction>{
  if(!id(s.viewerId)||!id(s.targetOwnerId)||s.viewerId===s.targetOwnerId||
   !Number.isSafeInteger(s.version)||s.version<1||
@@ -56,7 +60,7 @@ export function relationshipActionAvailability(s:RelationshipSnapshot):ReadonlyS
 export function prepareRelationshipMutation(s:RelationshipSnapshot,action:RelationshipAction,actionId:string):RelationshipMutationIntent{
  const allowed=relationshipActionAvailability(s);
  if(!allowed.has(action))throw new Error('Community action unavailable for current relationship.');
- if(!id(actionId,150))throw new Error('Stable idempotent Community action ID is required.');
+ if(!actionUuid(actionId))throw new Error('Stable idempotent Community action ID is required.');
  return {actorId:s.viewerId,targetOwnerId:s.targetOwnerId,action,
   expectedVersion:s.version,actionId};
 }
