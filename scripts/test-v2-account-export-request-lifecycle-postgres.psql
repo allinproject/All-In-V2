@@ -1,0 +1,67 @@
+\set ON_ERROR_STOP on
+-- ALL-251 disposable PG17 canonical owner request lifecycle tests.
+-- Run AFTER the full Training/Activity integration fixture in a clone.
+CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE
+AS $$ SELECT nullif(pg_catalog.current_setting('request.jwt.claims',true),'')::jsonb $$;
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-LIFECYCLE-REVIEW-CANDIDATE.sql
+DO $qa$
+DECLARE
+ u uuid:='11111111-1111-4111-8111-111111111111';
+ other uuid:='22222222-2222-4222-8222-222222222222';
+ sid uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ req uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ v jsonb;
+BEGIN
+ PERFORM pg_catalog.set_config('request.jwt.claim.sub',u::text,true);
+ PERFORM pg_catalog.set_config('request.jwt.claims',
+   pg_catalog.jsonb_build_object('session_id',sid)::text,true);
+ v:=public.v2_begin_account_export_candidate(u);
+ IF v->>'ownerId'<>u::text OR v->>'requestId'<>req::text
+ OR v->>'status'<>'requested' THEN
+   RAISE EXCEPTION 'Existing owner request was duplicated or not selected'; END IF;
+ v:=public.v2_begin_account_export_candidate(u);
+ IF (SELECT count(*) FROM allin_private.v2_account_export_requests_candidate
+      WHERE user_id=u)<>1 THEN RAISE EXCEPTION 'Owner request was not idempotent'; END IF;
+ BEGIN
+  PERFORM public.v2_begin_account_export_candidate(other);
+  RAISE EXCEPTION 'Owner request allowed another account';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_account_export_worker_authorize_candidate(u,sid,req);
+  RAISE EXCEPTION 'Unapproved request authorized private archive';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ v:=public.v2_account_export_worker_approve_candidate(u,sid,req);
+ IF v->>'status'<>'approved' THEN
+   RAISE EXCEPTION 'Trusted owner request approval failed'; END IF;
+ v:=public.v2_account_export_worker_approve_candidate(u,sid,req);
+ IF v->>'requestId'<>req::text THEN
+   RAISE EXCEPTION 'Exact approval replay was not idempotent'; END IF;
+ v:=public.v2_account_export_worker_authorize_candidate(u,sid,req);
+ IF v->>'requestId'<>req::text OR v->>'status'<>'approved'
+ THEN RAISE EXCEPTION 'Approved request did not pass authorization gate'; END IF;
+ INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+ VALUES(u,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','requested');
+ BEGIN
+  PERFORM public.v2_account_export_worker_approve_candidate(u,sid,req);
+  RAISE EXCEPTION 'Deletion request did not block export approval';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE allin_private.v2_account_deletion_requests SET status='cancelled' WHERE user_id=u;
+ UPDATE allin_private.v2_account_export_requests_candidate
+  SET status='cancelled' WHERE request_id=req;
+ BEGIN
+  PERFORM public.v2_account_export_worker_authorize_candidate(u,sid,req);
+  RAISE EXCEPTION 'Cancelled export request authorized staging';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF pg_catalog.has_function_privilege('anon',
+   'public.v2_begin_account_export_candidate(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('authenticated',
+   'public.v2_begin_account_export_candidate(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('anon',
+   'public.v2_account_export_worker_approve_candidate(uuid,uuid,uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('authenticated',
+   'public.v2_account_export_worker_approve_candidate(uuid,uuid,uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('service_role',
+   'public.v2_account_export_worker_approve_candidate(uuid,uuid,uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Staged export RPC was accidentally enabled'; END IF;
+ RAISE NOTICE 'PASS ALL-251: existing owner export request, approval replay, session, deletion and disabled grants';
+END $qa$;
