@@ -30,3 +30,26 @@ test('a race-state day cannot be inferred from a different date',()=>{
 test('missed/cancelled are execution lifecycle states, never inferred from plan day',()=>{
  assert.throws(()=>project([day('2026-11-10','missed' as CanonicalPlanDay['dayState'])]),/Unsupported/);
 });
+
+test('two canonical races appear as separate Training markers with legacy single-race callers intact',()=>{
+ const dates=['2027-04-10','2027-06-05'];
+ const eventDays=dates.map(date=>({...day(date,'race'),planRevisionId:'rev-2'}));
+ const markers=projectCanonicalPlanDayMarkers({
+  expectedOwnerId:'owner-A',activePlanRevisionId:'rev-2',complete:true,
+  raceDate:null,raceDates:dates,days:eventDays
+ });
+ assert.deepEqual(markers.map(m=>m.athleteLocalDate),dates);
+ assert.ok(markers.every(m=>m.status==='race'));
+ assert.deepEqual(monthDayMarkerSummary({status:'ready',records:markers},'2027-04-10').visible.map(m=>m.kind),['race']);
+ assert.deepEqual(monthDayMarkerSummary({status:'ready',records:markers},'2027-06-05').visible.map(m=>m.kind),['race']);
+ assert.equal(project([day('2026-11-15','race')]).length,1);
+});
+test('uncertified event dates, duplicate dates and inconsistent single/multiple arguments fail closed',()=>{
+ const base={expectedOwnerId:'owner-A',activePlanRevisionId:'rev-2',complete:true,
+  raceDate:null,days:[day('2027-04-10','race'),day('2027-06-05','race')]};
+ assert.throws(()=>projectCanonicalPlanDayMarkers({...base,raceDates:['2027-04-10']}),/certified exact/);
+ assert.throws(()=>projectCanonicalPlanDayMarkers({...base,raceDates:['2027-04-10','2027-04-10']}),/Distinct certified/);
+ assert.throws(()=>projectCanonicalPlanDayMarkers({...base,raceDates:['2027-04-10','2027-02-30']}),/Distinct certified/);
+ assert.throws(()=>projectCanonicalPlanDayMarkers({...base,raceDate:'2027-06-05',raceDates:['2027-04-10','2027-06-05']}),/Distinct certified/);
+ assert.throws(()=>projectCanonicalPlanDayMarkers(base),/certified exact/);
+});
