@@ -142,7 +142,7 @@ function HomeOwnerScreen() {
 
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Daily Extended</Text>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>Daily Extended</Text>
             <Link href={dailyDestination} asChild>
               <Pressable accessibilityRole="button" accessibilityLabel="View daily nutrition details" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View more ›</Text>
@@ -159,7 +159,7 @@ function HomeOwnerScreen() {
 
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Food Log</Text>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>Food Log</Text>
             <Link href={foodLogDestination} asChild>
               <Pressable accessibilityRole="button" accessibilityLabel="Open this day's food log" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View log ›</Text>
@@ -207,13 +207,13 @@ function HomeOwnerScreen() {
         ) : null}
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Progress</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>Progress</Text>
           {progressGlance.label ? <Text style={styles.sectionLabel}>{progressGlance.label}</Text> : null}
           <Text style={styles.help}>{progressGlance.detail}</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Recovery</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>Recovery</Text>
           {recoveryGlance.label ? <Text style={styles.sectionLabel}>{recoveryGlance.label}</Text> : null}
           <Text style={styles.help}>{recoveryGlance.detail}</Text>
         </View>
