@@ -23,9 +23,8 @@ INSERT INTO allin_private.v2_subscription_checkout_attempts
  (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id)
 VALUES ('10000000-0000-0000-0000-000000000003',
  '00000000-0000-0000-0000-000000000003','stripe_web','sandbox','cs_race','sub_race');
-INSERT INTO allin_private.v2_subscription_purchases
- (owner_id,provider,environment,provider_subscription_id,checkout_attempt_id)
-VALUES ('00000000-0000-0000-0000-000000000003','stripe_web','sandbox','sub_race',
+SET ROLE service_role;
+SELECT allin_private.v2_bind_confirmed_subscription_purchase(
  '10000000-0000-0000-0000-000000000003');
 SQL
 
@@ -108,11 +107,10 @@ SQL
 : >"$log_a"
 : >"$log_b"
 docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_a" 2>&1 <<'SQL' &
+SET ROLE service_role;
 BEGIN;
-INSERT INTO allin_private.v2_subscription_purchases
- (owner_id,provider,environment,provider_subscription_id,checkout_attempt_id)
-VALUES ('00000000-0000-0000-0000-000000000004','stripe_web','sandbox','sub_bind_race',
-'10000000-0000-0000-0000-000000000004');
+SELECT allin_private.v2_bind_confirmed_subscription_purchase(
+ '10000000-0000-0000-0000-000000000004');
 \echo FIRST_BIND_HELD
 SELECT pg_sleep(3);
 COMMIT;
@@ -131,11 +129,10 @@ if [[ "$ready" -ne 1 ]]; then
 fi
 
 if docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_b" 2>&1 <<'SQL'
+SET ROLE service_role;
 SET lock_timeout = '7s';
-INSERT INTO allin_private.v2_subscription_purchases
- (owner_id,provider,environment,provider_subscription_id,checkout_attempt_id)
-VALUES ('00000000-0000-0000-0000-000000000005','stripe_web','sandbox','sub_bind_race',
-'10000000-0000-0000-0000-000000000005');
+SELECT allin_private.v2_bind_confirmed_subscription_purchase(
+ '10000000-0000-0000-0000-000000000005');
 SQL
 then
   echo "CRITICAL: second owner claimed same provider purchase" >&2
@@ -144,8 +141,8 @@ then
 fi
 wait "$pid_a"
 pid_a=""
-if ! grep -q 'duplicate key value violates unique constraint' "$log_b"; then
-  echo "Second owner insert failed for a reason other than unique purchase identity" >&2
+if ! grep -q 'existing purchase has different verified owner or checkout' "$log_b"; then
+  echo "Second owner binding failed for an unexpected reason" >&2
   cat "$log_a" "$log_b" >&2
   exit 1
 fi
