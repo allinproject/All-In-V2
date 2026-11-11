@@ -73,6 +73,16 @@ export async function confirmStripeCheckoutForBinding({
     return {status:'unapproved_offer'};
   }
 
+  // The first trial must match the approved seven-day offer exactly.
+  // An already eligible customer can instead enter an immediately active
+  // paid plan, but must not receive an invented second trial.
+  if (subscription.status === 'trialing' &&
+      (!Number.isSafeInteger(subscription.trial_start) ||
+       !Number.isSafeInteger(subscription.trial_end) ||
+       subscription.trial_end - subscription.trial_start !== 7 * 24 * 60 * 60)) {
+    return {status:'unapproved_trial'};
+  }
+
   // Do not let a completed Checkout Session from another subscription replace
   // the ID already recorded in a server-owned pending attempt. The pending
   // attempt may omit that ID until its initial provider checkout completes.
