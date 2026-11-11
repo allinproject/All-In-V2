@@ -78,3 +78,14 @@ test("stale, future, or missing clock evidence fails closed",()=>{
  const c=fixture();delete c.currentTime;
  assert.equal(prepareCoachTurnContext(c).reason,"history_future_read");
 });
+
+test("complete-history claims require full per-sport coverage evidence",()=>{
+ const a=fixture();a.history.completeness="complete_for_requested_scope";
+ assert.equal(prepareCoachTurnContext(a).reason,"coverage_not_complete");
+ const b=fixture();b.history.completeness="complete_for_requested_scope";
+ b.history.coverage[0].status="complete";
+ assert.equal(prepareCoachTurnContext(b).kind,"ready");
+ const c=fixture();c.history.completeness="complete_for_requested_scope";
+ c.history.coverage=[];
+ assert.equal(prepareCoachTurnContext(c).reason,"coverage_not_complete");
+});
