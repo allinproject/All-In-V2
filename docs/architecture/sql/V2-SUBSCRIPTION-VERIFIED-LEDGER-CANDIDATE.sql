@@ -8,9 +8,30 @@
 -- The SQL below cannot authenticate a webhook and is not an HTTP endpoint.
 -- Avoid provider payment tokens, raw webhook JSON, customer email/PII in tables.
 
+-- A checkout attempt is confirmed ONLY after a trusted server has verified
+-- provider checkout/session identity AND the authenticated V2 account owner.
+-- This private provenance row is NOT created by webhook payload metadata.
+-- Worker must validate owner/checkout state before inserting this row.
+create table allin_private.v2_subscription_checkout_attempts (
+  attempt_id uuid primary key,
+  owner_id uuid not null references public.v2_profiles(user_id) on delete cascade,
+  provider text not null check (provider in ('app_store','google_play','stripe_web')),
+  environment text not null check (environment in ('sandbox','production')),
+  provider_checkout_id text not null
+    check (length(provider_checkout_id) between 1 and 256),
+  provider_subscription_id text not null
+    check (length(provider_subscription_id) between 1 and 256),
+  state text not null default 'server_confirmed'
+    check (state = 'server_confirmed'),
+  verified_at timestamptz not null default now(),
+  unique (provider,environment,provider_checkout_id),
+  unique (attempt_id,owner_id,provider,environment,provider_subscription_id)
+);
+
 create table allin_private.v2_subscription_purchases (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.v2_profiles(user_id) on delete cascade,
+  checkout_attempt_id uuid not null unique,
   provider text not null check (provider in ('app_store','google_play','stripe_web')),
   environment text not null check (environment in ('sandbox','production')),
   provider_subscription_id text not null
@@ -22,6 +43,11 @@ create table allin_private.v2_subscription_purchases (
   last_provider_event_id text,
   updated_at timestamptz not null default now(),
   unique (provider,environment,provider_subscription_id),
+  constraint v2_subscription_checkout_provenance foreign key
+    (checkout_attempt_id,owner_id,provider,environment,provider_subscription_id)
+    references allin_private.v2_subscription_checkout_attempts
+      (attempt_id,owner_id,provider,environment,provider_subscription_id)
+    on delete cascade,
   constraint v2_subscription_bounded_access check (
     phase not in ('trial','paid','grace','canceling') or access_until is not null
   )
@@ -45,8 +71,10 @@ create table allin_private.v2_subscription_verified_events (
 
 -- Deny direct API mutations/reads; a separately reviewed, authenticated owner
 -- projection function may eventually expose sanitized derived access.
+alter table allin_private.v2_subscription_checkout_attempts enable row level security;
 alter table allin_private.v2_subscription_purchases enable row level security;
 alter table allin_private.v2_subscription_verified_events enable row level security;
+revoke all on allin_private.v2_subscription_checkout_attempts from public, anon, authenticated;
 revoke all on allin_private.v2_subscription_purchases from public, anon, authenticated;
 revoke all on allin_private.v2_subscription_verified_events from public, anon, authenticated;
 revoke all on sequence allin_private.v2_subscription_verified_events_id_seq
@@ -54,7 +82,7 @@ revoke all on sequence allin_private.v2_subscription_verified_events_id_seq
 
 -- Privileged service-only transaction. Strictly store verified facts only:
 -- no client grants and no exposed RPC. New purchase binding requires a trusted
--- checkout/restore authorization decision recorded in a separately reviewed\n-- purchase-binding workflow BEFORE this function can apply an event.
+-- checkout/restore authorization and immutable prebinding provenance recorded\n-- as v2_subscription_checkout_attempts BEFORE this function can apply an event.
 create or replace function allin_private.v2_apply_verified_subscription_event(
   p_owner_id uuid,
   p_provider text,
