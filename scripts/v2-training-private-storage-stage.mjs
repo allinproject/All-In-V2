@@ -90,8 +90,53 @@ export async function stageTrainingPrivateStorageExport({
       || fingerprint(later) !== fingerprint(snapshot)) {
     throw new Error('Private export evidence changed during retrieval');
   }
-  // Byte data is intentionally NOT returned to the mobile client or stored.
-  // An eventual bounded archive worker must own lifecycle/cleanup separately.
+  // Optional server-only archive handoff. The caller must provide BOTH
+  // durable-write and cleanup adapters: any ambiguous write or expired Auth
+  // requires an attempted purge. This never exposes file bytes to mobile.
+  let archiveReceipt = null;
+  if (services.writeEncryptedArchive !== undefined
+      || services.deleteStagedArchive !== undefined) {
+    if (typeof services.writeEncryptedArchive !== 'function'
+        || typeof services.deleteStagedArchive !== 'function') {
+      throw new Error('Archive staging requires both writer and cleanup');
+    }
+    try {
+      const result = await services.writeEncryptedArchive({
+        ownerId, requestId, verifiedManifest: manifest,
+        files: fetchedObjects,
+      });
+      if (!result || result.encrypted !== true
+          || result.ownerId !== ownerId || result.requestId !== requestId
+          || typeof result.archiveId !== 'string' || !result.archiveId) {
+        throw new Error('Encrypted archive receipt not confirmed');
+      }
+      archiveReceipt = result;
+      // There is an additional authorization window across any durable write.
+      const afterWrite = await services.authorizeExport(requestId);
+      if (!afterWrite?.activeSession || !afterWrite?.exportPermitted
+          || afterWrite.ownerId !== ownerId) {
+        throw new Error('Archive authorization expired after write');
+      }
+      const afterEvidence = await services.listEvidence(ownerId, requestId);
+      if (!afterEvidence || afterEvidence.ownerId !== ownerId
+          || !Array.isArray(afterEvidence.series)
+          || !Array.isArray(afterEvidence.routes)
+          || fingerprint(afterEvidence) !== fingerprint(snapshot)) {
+        throw new Error('Archive source evidence changed after write');
+      }
+    } catch (error) {
+      // Request-scoped cleanup must be safe even when a write timed out
+      // without returning an archive receipt. Never claim cleanup succeeded.
+      try { await services.deleteStagedArchive({ownerId, requestId}); }
+      catch { throw new Error('Private archive state uncertain; manual cleanup required', {cause:error}); }
+      throw error;
+    }
+  }
+  // Archive receipt has only non-secret ID, not a signed URL or bytes.
+  // No release action is taken by this stage. The owner workflow must
+  // independently authorize archive delivery, TTL and purge.
   return { ...manifest, inspectedBytes: used, readyForArchiveReview: true,
+    archiveStaged:archiveReceipt!==null,
+    archiveId:archiveReceipt?.archiveId??null,
     completeUserExport: false, storageAuthorizationVerified: false };
 }
