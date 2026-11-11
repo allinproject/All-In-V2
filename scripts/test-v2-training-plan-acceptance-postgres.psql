@@ -49,12 +49,31 @@ BEGIN
   WHERE plan_revision_id=r1;
  UPDATE public.v2_training_revision_days SET day_state='planned'
   WHERE plan_revision_id=r1;
+ -- A complete day row is NOT an approved calendar window by itself.
+ UPDATE public.v2_training_plan_revisions
+ SET calendar_start_date=NULL,calendar_end_date=NULL,calendar_timezone=NULL
+ WHERE id=r1;
+ BEGIN
+   PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+      u,p,r1,'32323232-3232-4232-8232-323232323232',1);
+   RAISE EXCEPTION 'Accepted calendar silently inferred its coverage window';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ UPDATE public.v2_training_plan_revisions
+ SET calendar_start_date='2026-11-16',calendar_end_date='2026-11-16',
+     calendar_timezone='America/Chicago'
+ WHERE id=r1;
  res:=allin_private.v2_training_accept_plan_revision_candidate(u,p,r1,act,1);
  IF res->>'version'<>'2' OR res->>'replayed'<>'false' THEN
    RAISE EXCEPTION 'First acceptance failed'; END IF;
  IF (SELECT active_revision_id FROM public.v2_training_plans WHERE id=p)<>r1
  OR (SELECT status FROM public.v2_training_plan_revisions WHERE id=r1)<>'accepted'
  THEN RAISE EXCEPTION 'Accepted revision not current'; END IF;
+ -- Accepted window dates are immutable, not only workout rows.
+ BEGIN
+   UPDATE public.v2_training_plan_revisions
+   SET calendar_end_date='2026-11-17' WHERE id=r1;
+   RAISE EXCEPTION 'Accepted calendar window was mutable';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN
   UPDATE public.v2_training_revision_days SET day_state='rest'
    WHERE plan_revision_id=r1;
