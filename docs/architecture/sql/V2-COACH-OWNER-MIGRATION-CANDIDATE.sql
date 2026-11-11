@@ -1,7 +1,7 @@
 -- ALL-217 / ALL-222 — V2 Coach owner proposal ONLY; NOT an applied migration.
 -- Promote through Supabase CLI migration-new workflow after isolated two-user PG replay.
--- This deliberately contains no model/provider, generic app writer or cost claim RPC.
--- Contract: canonical Coach threads/messages, atomic pair append, owner-scoped read.
+-- No model/provider or generic app writer. Durable request claims are default-OFF until rate policy acceptance.
+-- Contract: Coach-only threads, private default-OFF claims, fenced append/finish, owner-scoped read.
 create table public.v2_coach_threads (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -102,6 +102,22 @@ revoke all on allin_private.v2_coach_turn_claims from public,anon,authenticated,
 grant select,insert,update on allin_private.v2_coach_turn_claims to service_role;
 create index v2_coach_claims_owner_created on allin_private.v2_coach_turn_claims(user_id,created_at desc);
 
+-- The model-spend path is disabled until a deliberate reviewed release.
+-- Limits below are provisional; use an owner-approved policy before enabling.
+create table allin_private.v2_coach_request_policy (
+  singleton boolean primary key default true check (singleton),
+  enabled boolean not null default false,
+  requests_per_minute integer not null default 3 check (requests_per_minute between 1 and 60),
+  requests_per_hour integer not null default 30 check (requests_per_hour between 1 and 1000),
+  requests_per_month integer not null default 300 check (requests_per_month between 1 and 20000),
+  updated_at timestamptz not null default now()
+);
+insert into allin_private.v2_coach_request_policy(singleton,enabled)
+ values(true,false);
+alter table allin_private.v2_coach_request_policy enable row level security;
+revoke all on allin_private.v2_coach_request_policy from public,anon,authenticated,service_role;
+grant select on allin_private.v2_coach_request_policy to service_role;
+
 -- Caller MUST be a trusted JWT-verifying Edge host; never expose service key.
 -- A claimed lease is a pre-model-spend gate; exhausted limits must be checked
 -- by host before invoking provider (cost policy is not implemented here).
@@ -111,7 +127,9 @@ create function public.v2_coach_claim_turn(
 ) returns jsonb language plpgsql security definer set search_path=''
 as $function$
 declare v_row allin_private.v2_coach_turn_claims%rowtype;
+ v_policy allin_private.v2_coach_request_policy%rowtype;
  v_now timestamptz:=pg_catalog.clock_timestamp();v_count integer;
+ v_minute integer;v_hour integer;v_month integer;
 begin
  if p_user_id is null or not exists(select 1 from auth.users where id=p_user_id)
    or p_thread_id is null or p_client_request_id is null
@@ -128,6 +146,27 @@ begin
  select * into v_row from allin_private.v2_coach_turn_claims
    where user_id=p_user_id and client_request_id=p_client_request_id for update;
  if not found then
+  -- Claim per-user rate admission MUST serialize across distinct request IDs.
+  -- Reclaims/replays of an already admitted request do not consume new budget.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    'v2-coach-rate:'||p_user_id::text,0));
+  select * into v_policy from allin_private.v2_coach_request_policy
+   where singleton=true;
+  if not found or v_policy.enabled is distinct from true then
+    return pg_catalog.jsonb_build_object('action','rate_unavailable');
+  end if;
+  select count(*) filter(where c.created_at>=v_now-interval '1 minute'),
+         count(*) filter(where c.created_at>=v_now-interval '1 hour'),
+         count(*) filter(where c.created_at>=date_trunc('month',v_now))
+    into v_minute,v_hour,v_month
+    from allin_private.v2_coach_turn_claims c
+    where c.user_id=p_user_id
+      and c.created_at>=least(v_now-interval '1 hour',date_trunc('month',v_now));
+  if v_minute>=v_policy.requests_per_minute
+    or v_hour>=v_policy.requests_per_hour
+    or v_month>=v_policy.requests_per_month then
+    return pg_catalog.jsonb_build_object('action','rate_limited');
+  end if;
   insert into allin_private.v2_coach_turn_claims(
     user_id,thread_id,client_request_id,user_message_id,assistant_message_id,
     request_fingerprint,lease_expires_at)
@@ -167,8 +206,8 @@ grant execute on function public.v2_coach_claim_turn(uuid,uuid,uuid,uuid,uuid,te
 -- Exactly-once paired exchange: do not give the client table INSERT privileges.
 -- Only the JWT-verifying Coach Edge host may invoke this service-role-only
 -- writer; the mobile app cannot forge assistant messages through a public RPC.
--- This does not claim a request or authorize model cost. A separate
--- pre-provider request claim/rate gate is required.
+-- Pre-provider claims have the private default-OFF rate-admission gate.
+-- Provider dollar/token cost limits need a separate reviewed accounting gate.
 create function public.v2_coach_append_exchange(
   p_expected_user_id uuid,
   p_thread_id uuid,
