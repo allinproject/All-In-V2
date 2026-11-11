@@ -103,7 +103,7 @@ BEGIN
   INSERT INTO public.v2_indoor_weekly_attempts
    (id,challenge_id,user_id,completed_activity_id,
     frozen_prescription_version,frozen_prescription,frozen_baseline)
-  VALUES ('44444444-4444-4444-8444-444444444444',w,b,c,'v1','{}','{}');
+  VALUES ('44444444-4444-4444-8444-444444444444',w,a,d,'v1','{}','{}');
   RAISE EXCEPTION 'FAIL: competition accepted another athlete activity';
  EXCEPTION WHEN foreign_key_violation THEN NULL; END;
 
