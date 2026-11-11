@@ -79,8 +79,10 @@ revoke all on function public.v2_coach_create_thread(uuid,uuid)
 grant execute on function public.v2_coach_create_thread(uuid,uuid) to authenticated;
 
 -- Exactly-once paired exchange: do not give the client table INSERT privileges.
--- Host has already obtained its authorized model response; this does not claim
--- a request or authorize model cost. That separate pre-spend gate is required.
+-- Only the JWT-verifying Coach Edge host may invoke this service-role-only
+-- writer; the mobile app cannot forge assistant messages through a public RPC.
+-- This does not claim a request or authorize model cost. A separate
+-- pre-provider request claim/rate gate is required.
 create function public.v2_coach_append_exchange(
   p_expected_user_id uuid,
   p_thread_id uuid,
@@ -92,14 +94,15 @@ create function public.v2_coach_append_exchange(
 ) returns jsonb language plpgsql security definer set search_path=''
 as $function$
 declare
-  v_user uuid := auth.uid();
+  -- Service-role-only caller must have independently validated bearer JWT and
+  -- bound this ID to the authenticated user before privileged invocation.
+  v_user uuid := p_expected_user_id;
   v_user_text text := btrim(coalesce(p_user_content,''));
   v_assistant_text text := btrim(coalesce(p_assistant_content,''));
   v_matched integer;
 begin
-  if v_user is null or not exists(select 1 from auth.users where id=v_user)
-    or p_expected_user_id is distinct from v_user then
-    raise exception 'Active expected V2 owner required' using errcode='42501';
+  if v_user is null or not exists(select 1 from auth.users where id=v_user) then
+    raise exception 'Active verified V2 owner required' using errcode='42501';
   end if;
   if p_thread_id is null or p_client_request_id is null or
      p_user_message_id is null or p_assistant_message_id is null or
@@ -158,7 +161,7 @@ revoke all on function public.v2_coach_append_exchange(
   uuid,uuid,uuid,uuid,uuid,text,text)
   from public,anon,authenticated,service_role;
 grant execute on function public.v2_coach_append_exchange(
-  uuid,uuid,uuid,uuid,uuid,text,text) to authenticated;
+  uuid,uuid,uuid,uuid,uuid,text,text) to service_role;
 
 -- Owner-RLS-invoker, bounded cursor pagination (newest first).
 create function public.v2_coach_read_messages(
