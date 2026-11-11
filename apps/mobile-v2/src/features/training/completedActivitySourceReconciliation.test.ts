@@ -54,6 +54,11 @@ test('provider external IDs remain exact and tuple-safe',()=>{
  assert.notEqual(sourceIdentityKey(a),sourceIdentityKey(b));
  assert.throws(()=>sourceIdentityKey(source({payloadFingerprint:''})),/Invalid activity source/);
 });
+test('exact provider source with newly certified or removed session needs review, not exact replay',()=>{
+ const old=source({certifiedSessionInstanceId:null});
+ assert.equal(reconcileActivitySource(source(),[linked(old)]).decision,'revision_review');
+ assert.equal(reconcileActivitySource(old,[linked(source())]).decision,'revision_review');
+});
 test('source attached to different certified session cannot be silently reassigned',()=>{
  const result=reconcileActivitySource(source({certifiedSessionInstanceId:'session-2'}),[linked(source())]);
  assert.equal(result.decision,'needs_review');
