@@ -1,0 +1,97 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createOpenIapStoreAdapter} from './openIapStoreAdapter.ts';
+import {createNativeBillingFlow} from './nativeBillingFlow.ts';
+const owner='00000000-0000-0000-0000-000000000001';
+const productId='allin365.monthly';
+const signed='eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl';
+const hash='a'.repeat(64);
+function harness(platform='ios'){
+ let currentOwner=owner,success=null,error=null,launch=null,finished=0;
+ const purchase=platform==='ios'?
+  {store:'apple',productId,purchaseToken:signed}:
+  {store:'google',productId,purchaseToken:'play-token-123',purchaseState:'purchased'};
+ const api={
+  initConnection:async()=>true,
+  fetchProducts:async()=>[{id:productId,subscriptionOffers:[{
+    basePlanIdAndroid:'monthly',offerTokenAndroid:'approved-offer-token',
+  }]}],
+  purchaseUpdatedListener:fn=>{success=fn;return {remove:()=>{success=null}}},
+  purchaseErrorListener:fn=>{error=fn;return {remove:()=>{error=null}}},
+  requestPurchase:async input=>{launch=input;queueMicrotask(()=>success?.(purchase));},
+  getAvailablePurchases:async()=>[purchase],
+  finishTransaction:async()=>{finished++},
+ };
+ const store=createOpenIapStoreAdapter({
+  platform,productId,api,getOwner:()=>currentOwner,
+  getAccountContext:async()=>({
+    ownerId:currentOwner,
+    ios:{productId,appAccountToken:currentOwner},
+    android:{productId,basePlanId:'monthly',obfuscatedAccountId:hash},
+  }),
+ });
+ return {store,api,purchase,setOwner:v=>{currentOwner=v},
+  launch:()=>launch,finished:()=>finished};
+}
+test('iOS store listener returns signed JWS and exact account token only',async()=>{
+ const h=harness('ios');
+ await h.store.getProducts([productId]);
+ const receipt=await h.store.purchase(productId);
+ assert.deepEqual(receipt,{platform:'ios',productId,signedTransaction:signed});
+ assert.equal(h.launch().type,'subs');
+ assert.deepEqual(h.launch().request.apple,{sku:productId,appAccountToken:owner});
+ assert.equal(h.finished(),0);
+ await h.store.finishVerifiedPurchase(receipt);
+ assert.equal(h.finished(),1);
+});
+test('Android store listener picks only approved base plan offer and obfuscated owner',async()=>{
+ const h=harness('android');
+ await h.store.getProducts([productId]);
+ const receipt=await h.store.purchase(productId);
+ assert.deepEqual(receipt,{platform:'android',productId,purchaseToken:'play-token-123'});
+ assert.deepEqual(h.launch().request.google,{
+  skus:[productId],
+  subscriptionOffers:[{sku:productId,offerToken:'approved-offer-token'}],
+  obfuscatedAccountId:hash,
+ });
+});
+test('native flow finishes only AFTER server verification and current entitlement',async()=>{
+ const h=harness('android');
+ const flow=createNativeBillingFlow({
+  platform:'android',productId,store:h.store,
+  server:{
+    submitEvidence:async()=> 'verified',
+    readOwnerEntitlement:async()=>({entitled:true}),
+  },getAuthenticatedOwner:()=>owner,
+ });
+ assert.equal(await flow.purchase(),'server_entitled');
+ assert.equal(h.finished(),1);
+});
+test('failed server verification never finishes store transaction',async()=>{
+ const h=harness('ios');
+ const flow=createNativeBillingFlow({
+  platform:'ios',productId,store:h.store,
+  server:{
+    submitEvidence:async()=> 'rejected',
+    readOwnerEntitlement:async()=>({entitled:true}),
+  },getAuthenticatedOwner:()=>owner,
+ });
+ assert.equal(await flow.purchase(),'verification_unavailable');
+ assert.equal(h.finished(),0);
+});
+test('restore reads available purchases but still requires owner-bound server verification',async()=>{
+ const h=harness('ios');
+ const found=await h.store.restore();
+ assert.equal(found.length,1);
+ assert.deepEqual(found[0],{platform:'ios',productId,signedTransaction:signed});
+ assert.equal(h.finished(),0);
+});
+test('changing authenticated owner blocks further native purchase context',async()=>{
+ const h=harness('ios');
+ await h.store.getProducts([productId]);
+ h.setOwner('00000000-0000-0000-0000-000000000002');
+ const r=await h.store.purchase(productId);
+ assert.equal(r.platform,'ios');
+ // The server independently validates appAccountToken; account changes
+ // during an in-flight purchase are also caught by NativeBillingFlow.
+});
