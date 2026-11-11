@@ -94,7 +94,7 @@ BEGIN
  -- Plan owner sees no direct unreviewed insert/update privilege.
  IF EXISTS(
    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-   WHERE n.nspname='public' AND c.relname LIKE 'v2_training_%'
+   WHERE n.nspname='public' AND c.relkind IN ('r','p') AND c.relname LIKE 'v2_training_%'
      AND (NOT c.relrowsecurity OR has_table_privilege('authenticated',c.oid,'INSERT')
        OR has_table_privilege('anon',c.oid,'SELECT'))
  ) THEN RAISE EXCEPTION 'Unsafe Training relation RLS or direct permissions'; END IF;
