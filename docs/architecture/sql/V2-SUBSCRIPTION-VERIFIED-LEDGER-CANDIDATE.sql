@@ -39,6 +39,12 @@ create table allin_private.v2_subscription_checkout_attempts (
   unique (attempt_id,owner_id,provider,environment,provider_subscription_id)
 );
 
+-- Defense in depth: even a mistaken direct privileged insert cannot open
+-- two pending/reserved trials across different providers for one V2 account.
+create unique index v2_subscription_one_active_checkout_per_owner_idx
+  on allin_private.v2_subscription_checkout_attempts(owner_id)
+  where state in ('reserved','pending');
+
 create table allin_private.v2_subscription_purchases (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.v2_profiles(user_id) on delete cascade,
