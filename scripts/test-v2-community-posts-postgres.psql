@@ -1,0 +1,191 @@
+\set ON_ERROR_STOP on
+-- Isolated DB only: bootstrap canonical identity + private relationship roles.
+\ir test-v2-community-reader-postgres.psql
+\ir ../docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql
+
+DO $post_permissions$
+BEGIN
+ IF NOT (SELECT relrowsecurity FROM pg_class
+   WHERE oid='allin_private.v2_community_posts'::regclass) THEN
+  RAISE EXCEPTION 'Community post RLS was not enabled';
+ END IF;
+ IF EXISTS (SELECT 1 FROM pg_policy
+   WHERE polrelid='allin_private.v2_community_posts'::regclass) THEN
+  RAISE EXCEPTION 'Review-only post ledger gained unapproved direct policies';
+ END IF;
+ IF has_table_privilege('authenticated',
+   'allin_private.v2_community_posts','SELECT')
+ OR has_table_privilege('anon',
+   'allin_private.v2_community_posts','SELECT')
+ OR has_function_privilege('authenticated',
+   'public.v2_community_posts_read(uuid)','EXECUTE')
+ OR has_function_privilege('anon',
+   'public.v2_community_posts_read(uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'Unapproved post ledger or reader API privileges';
+ END IF;
+END $post_permissions$;
+
+-- Owner 2 is private. User 1 has no approved follow at this point.
+INSERT INTO allin_private.v2_community_posts
+ (id,owner_id,kind,audience,title,source_id,body,published_at)
+VALUES
+ ('50000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000002',
+  'update','public','Public update',NULL,'shareable body',
+  '2026-11-01T12:00:00Z'),
+ ('50000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000002',
+  'update','followers','Followers update',NULL,'followers body',
+  '2026-11-02T12:00:00Z'),
+ ('50000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000002',
+  'update','private','Owner notes',NULL,'secret owner body',
+  '2026-11-03T12:00:00Z'),
+ ('50000000-0000-0000-0000-000000000004',
+  '00000000-0000-0000-0000-000000000002',
+  'workout','public','Long run',
+  '60000000-0000-0000-0000-000000000001','reviewed workout',
+  '2026-11-04T12:00:00Z');
+
+SELECT set_config('request.jwt.claim.sub',
+ '00000000-0000-0000-0000-000000000001',false);
+
+DO $stranger$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_posts_read(
+  '00000000-0000-0000-0000-000000000002');
+ IF (SELECT count(*) FROM jsonb_array_elements(r->'posts'))<>0
+    OR r->>'complete'<>'true' OR r->>'nextCursor' IS NOT NULL THEN
+  RAISE EXCEPTION 'Private athlete content leaked to unapproved viewer: %',r;
+ END IF;
+END $stranger$;
+
+-- Owner switch to public does not open followers/private posts.
+UPDATE allin_private.v2_community_visibility SET profile_visibility='public'
+WHERE user_id='00000000-0000-0000-0000-000000000002';
+DO $public_stranger$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_posts_read(
+  '00000000-0000-0000-0000-000000000002');
+ IF (SELECT count(*) FROM jsonb_array_elements(r->'posts'))<>2
+    OR r::text LIKE '%secret owner body%'
+    OR r::text LIKE '%followers body%'
+ THEN RAISE EXCEPTION 'Public profile over-fetched restricted posts: %',r; END IF;
+END $public_stranger$;
+
+-- Approved follower sees public and followers posts but not owner-only.
+INSERT INTO allin_private.v2_community_follows
+ (follower_id,followed_id,state,approved_at)
+VALUES
+ ('00000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000002',
+  'approved',now());
+DO $follower$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_posts_read(
+  '00000000-0000-0000-0000-000000000002');
+ IF (SELECT count(*) FROM jsonb_array_elements(r->'posts'))<>3
+    OR r::text LIKE '%secret owner body%'
+    OR r::text NOT LIKE '%followers body%'
+ THEN RAISE EXCEPTION 'Approved follower post ACL mismatch: %',r; END IF;
+END $follower$;
+
+-- Reverse direction block revokes read independent of follow row existence.
+INSERT INTO allin_private.v2_community_blocks(blocker_id,blocked_id)
+VALUES ('00000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000001');
+DO $blocked$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_posts_read(
+  '00000000-0000-0000-0000-000000000002');
+ IF r->>'blocked'<>'true'
+    OR (SELECT count(*) FROM jsonb_array_elements(r->'posts'))<>0
+    OR r::text LIKE '%shareable body%' OR r::text LIKE '%followers body%' THEN
+  RAISE EXCEPTION 'Reverse block over-fetched posts: %',r;
+ END IF;
+END $blocked$;
+DELETE FROM allin_private.v2_community_blocks
+WHERE blocker_id='00000000-0000-0000-0000-000000000002'
+ AND blocked_id='00000000-0000-0000-0000-000000000001';
+
+-- Owner can read all three audiences; a post update must preserve its ID
+-- and never silently create a new post.
+SELECT set_config('request.jwt.claim.sub',
+ '00000000-0000-0000-0000-000000000002',false);
+DO $owner$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_posts_read(
+  '00000000-0000-0000-0000-000000000002');
+ IF (SELECT count(*) FROM jsonb_array_elements(r->'posts'))<>4
+    OR r::text NOT LIKE '%secret owner body%' THEN
+  RAISE EXCEPTION 'Owner cannot see canonical posts: %',r;
+ END IF;
+END $owner$;
+UPDATE allin_private.v2_community_posts
+SET title='Edited update',updated_at=now()
+WHERE id='50000000-0000-0000-0000-000000000001';
+DO $edit$
+BEGIN
+ IF (SELECT count(*) FROM allin_private.v2_community_posts
+     WHERE owner_id='00000000-0000-0000-0000-000000000002')<>4
+ OR NOT EXISTS(SELECT 1 FROM allin_private.v2_community_posts
+     WHERE id='50000000-0000-0000-0000-000000000001'
+       AND title='Edited update') THEN
+  RAISE EXCEPTION 'Community post edit duplicated ID';
+ END IF;
+ BEGIN
+  INSERT INTO allin_private.v2_community_posts
+    (id,owner_id,kind,audience,title,source_id)
+  VALUES ('50000000-0000-0000-0000-000000000005',
+   '00000000-0000-0000-0000-000000000002',
+   'workout','public','Duplicate source',
+   '60000000-0000-0000-0000-000000000001');
+  RAISE EXCEPTION 'Duplicate approved workout source accepted';
+ EXCEPTION WHEN unique_violation THEN NULL;
+ END;
+END $edit$;
+
+-- More than 100 authorized posts cannot imply the full history was loaded.
+INSERT INTO allin_private.v2_community_posts
+ (id,owner_id,kind,audience,title)
+SELECT ('70000000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,
+       '00000000-0000-0000-0000-000000000002'::uuid,
+       'update','public','History '||i
+FROM generate_series(1,101) i;
+DO $pagination$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_posts_read(
+  '00000000-0000-0000-0000-000000000002');
+ IF r->>'complete'<>'false'
+ OR r->>'nextCursor'<>'additional-page-required'
+ OR (SELECT count(*) FROM jsonb_array_elements(r->'posts'))<>100 THEN
+  RAISE EXCEPTION 'Truncated feed claimed complete or returned wrong count: %',r;
+ END IF;
+END $pagination$;
+
+DELETE FROM auth.users WHERE id='00000000-0000-0000-0000-000000000002';
+DO $delete$
+BEGIN
+ IF EXISTS(SELECT 1 FROM allin_private.v2_community_posts
+   WHERE owner_id='00000000-0000-0000-0000-000000000002') THEN
+  RAISE EXCEPTION 'Account delete did not cascade Community post content';
+ END IF;
+END $delete$;
+SELECT set_config('request.jwt.claim.sub','',false);
+DO $anon$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_posts_read(
+  '00000000-0000-0000-0000-000000000001');
+ IF r IS NOT NULL THEN
+  RAISE EXCEPTION 'Anonymous Community post reader returned content: %',r;
+ END IF;
+END $anon$;
+
+\echo PASS: Canonical Community posts server-side audience ACL, block, truncation, editing source identity and deletion.
