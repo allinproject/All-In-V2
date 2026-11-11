@@ -17,6 +17,71 @@ BEGIN
  THEN RAISE EXCEPTION 'Unapproved Community post writer API EXECUTE'; END IF;
 END $private_acl$;
 
+
+-- ALL-222 review gate: every candidate Community object is catalog-checked,
+-- including future additions not listed in a hand-maintained function array.
+-- These are unapproved owner candidates: no client role receives direct access.
+DO $community_candidate_roles$
+DECLARE
+  tbl record;
+  fn record;
+  role_name text;
+  privilege_name text;
+  tables_seen integer:=0;
+  functions_seen integer:=0;
+BEGIN
+  IF has_schema_privilege('anon','allin_private','USAGE')
+     OR has_schema_privilege('authenticated','allin_private','USAGE') THEN
+    RAISE EXCEPTION 'Community private schema exposed to a client role';
+  END IF;
+  FOR tbl IN
+    SELECT c.oid,c.relname,c.relrowsecurity,n.nspname
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE c.relkind IN ('r','p')
+      AND n.nspname IN ('allin_private','public')
+      AND c.relname LIKE 'v2_community_%'
+  LOOP
+    tables_seen:=tables_seen+1;
+    IF tbl.nspname<>'allin_private' OR NOT tbl.relrowsecurity THEN
+      RAISE EXCEPTION 'Unapproved Community table %.% exposed or RLS off',
+        tbl.nspname,tbl.relname;
+    END IF;
+    FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+      FOREACH privilege_name IN ARRAY ARRAY[
+        'SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'
+      ] LOOP
+        IF has_table_privilege(role_name,tbl.oid,privilege_name) THEN
+          RAISE EXCEPTION 'Unapproved Community table %.% grants % to %',
+            tbl.nspname,tbl.relname,privilege_name,role_name;
+        END IF;
+      END LOOP;
+    END LOOP;
+  END LOOP;
+  IF tables_seen<6 THEN
+    RAISE EXCEPTION 'Community candidate graph incomplete: only % tables',tables_seen;
+  END IF;
+  FOR fn IN
+    SELECT p.oid,p.proname,n.nspname
+    FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname IN ('public','allin_private')
+      AND p.proname LIKE 'v2_community_%'
+  LOOP
+    functions_seen:=functions_seen+1;
+    FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF has_function_privilege(role_name,fn.oid,'EXECUTE') THEN
+        RAISE EXCEPTION 'Unapproved Community function %.% callable by %',
+          fn.nspname,fn.proname,role_name;
+      END IF;
+    END LOOP;
+  END LOOP;
+  IF functions_seen<3 THEN
+    RAISE EXCEPTION 'Community writer/reader candidate functions missing';
+  END IF;
+  RAISE NOTICE 'ALL-222 Community catalog audited % tables, % functions',
+    tables_seen,functions_seen;
+END
+$community_candidate_roles$;
+
 SELECT set_config('request.jwt.claim.sub',
  '00000000-0000-0000-0000-000000000002',false);
 DO $owner_post$
