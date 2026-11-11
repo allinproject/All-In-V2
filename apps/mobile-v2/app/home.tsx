@@ -7,7 +7,7 @@ import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/a
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
-import { deviceLocalToday, shouldRefreshTodayOnAppState, todayTrainingDestination } from '../src/features/today/todayEntry';
+import { deviceLocalToday, millisecondsUntilNextLocalDay, shouldRefreshTodayOnAppState, todayTrainingDestination } from '../src/features/today/todayEntry';
 import { combineCalendarReads } from '../src/features/training/trainingCalendarReadModel';
 import { summarizeTodayTraining } from '../src/features/today/todayTrainingCard';
 import { todayEnergyGlance } from '../src/features/today/todayEnergyGlance';
@@ -37,6 +37,27 @@ function HomeOwnerScreen() {
   // This is device-local until the athlete's preferred timezone is available.
   const [localDay, setLocalDay] = useState(deviceLocalToday);
   useFocusEffect(useCallback(() => { setLocalDay(deviceLocalToday()); }, []));
+  // Keep an actively open Today screen on the correct day at local midnight.
+  // A suspended native timer is supplemented by focus and AppState refreshes.
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleNextDay = () => {
+      if (!active) return;
+      const delay = millisecondsUntilNextLocalDay();
+      if (delay === null) return;
+      timer = setTimeout(() => {
+        if (!active) return;
+        setLocalDay(deviceLocalToday());
+        scheduleNextDay();
+      }, delay);
+    };
+    scheduleNextDay();
+    return () => {
+      active = false;
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, []);
   // React Native may resume without remounting the Today tab. Recheck the day
   // on every foreground transition; never trust a date cached before midnight.
   useEffect(() => {
