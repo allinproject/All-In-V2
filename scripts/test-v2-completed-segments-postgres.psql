@@ -84,6 +84,14 @@ BEGIN
  IF metric_read#>>'{metrics,0,valueNumeric}'<>'220'
  OR pg_catalog.jsonb_array_length(metric_read->'unresolvedMetrics')<>0
  THEN RAISE EXCEPTION 'Child interval metric incorrectly mixed with parent leg: %',metric_read; END IF;
+ -- A standalone cycling activity cannot use an unrelated running
+ -- segment label to gain access to another sport's metric definitions.
+ UPDATE public.v2_activity_segments SET sport='running' WHERE id=child;
+ BEGIN
+   PERFORM allin_private.v2_activity_segment_scalar_projection_candidate(a,act,child);
+   RAISE EXCEPTION 'Non-multisport parent accepted contradictory leg sport';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ UPDATE public.v2_activity_segments SET sport='cycling' WHERE id=child;
  BEGIN
    PERFORM allin_private.v2_activity_segment_scalar_projection_candidate(b,act,child);
    RAISE EXCEPTION 'Other athlete read activity segment metric';
