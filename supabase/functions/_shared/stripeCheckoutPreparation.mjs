@@ -59,8 +59,17 @@ export async function prepareStripeSandboxCheckout({
       session.status !== 'open' ||
       session.merchantAccountId !== expectedMerchantAccountId ||
       session.client_reference_id !== attemptId ||
-      typeof session.url !== 'string' ||
-      !session.url.startsWith('https://checkout.stripe.com/')) {
+      typeof session.url !== 'string') {
+    return {status:'provider_mismatch'};
+  }
+  try {
+    const checkoutUrl = new URL(session.url);
+    if (checkoutUrl.protocol !== 'https:' ||
+        checkoutUrl.hostname !== 'checkout.stripe.com' ||
+        checkoutUrl.username || checkoutUrl.password) {
+      return {status:'provider_mismatch'};
+    }
+  } catch {
     return {status:'provider_mismatch'};
   }
 
