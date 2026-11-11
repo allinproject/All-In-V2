@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {canonicalActivityToScreenInput,readOwnedCompletedActivity,
+ type CanonicalCompletedActivityRead} from './completedActivityOwnerRead.ts';
+
+const base=():CanonicalCompletedActivityRead=>({
+ id:'activity-1',ownerId:'owner-A',version:1,sport:'outdoor_run',title:'Morning Run',
+ completedAt:'2026-11-11T07:01:00-06:00',primarySourceId:'watch-record',
+ sources:[{id:'watch-record',provider:'Apple Watch',quality:'trusted'}],
+ definitions:[
+  {code:'distance',version:1,displayName:'Distance',canonicalUnit:'m',
+   sportScope:['outdoor_run'],measurementKinds:['source_measured']},
+  {code:'zone2',version:1,displayName:'Zone 2 time',canonicalUnit:'s',
+   sportScope:['outdoor_run'],measurementKinds:['provider_derived']},
+ ],
+ metrics:[
+  {code:'distance',definitionVersion:1,displayValue:'0',measurementKind:'source_measured',
+   sourceId:'watch-record',quality:'trusted'},
+  {code:'zone2',definitionVersion:1,displayValue:null,measurementKind:'provider_derived',
+   sourceId:'watch-record',quality:'trusted'},
+ ],
+ sections:[{key:'splits',kind:'splits',title:'Mile splits',sourceId:'watch-record',count:4}],
+});
+test('one canonical owner read preserves measured zero, omits unknown and keeps source-backed sections',async()=>{
+ const data=await readOwnedCompletedActivity('owner-A','activity-1',async()=> 'owner-A',
+  async()=>base());
+ assert.equal(data.metrics.length,1);
+ assert.equal(data.metrics[0].value,'0');
+ assert.equal(data.metrics[0].provenance,'device');
+ assert.equal(data.sections?.[0].title,'Mile splits');
+});
+test('account switched during asynchronous read fails closed',async()=>{
+ let owner='owner-A';
+ await assert.rejects(readOwnedCompletedActivity('owner-A','activity-1',
+  async()=>owner,async()=>{owner='owner-B';return base();}),/account changed/);
+});
+test('foreign owner row, wrong activity ID and canceled view fail closed',async()=>{
+ assert.throws(()=>canonicalActivityToScreenInput({...base(),ownerId:'other'},'owner-A','activity-1'),/identity/);
+ assert.throws(()=>canonicalActivityToScreenInput(base(),'owner-A','wrong'),/identity/);
+ let called=false;
+ await assert.rejects(readOwnedCompletedActivity('owner-A','activity-1',async()=> 'owner-A',
+  async()=>{called=true;return base();},()=>false),/no longer active/);
+ assert.equal(called,false);
+});
+test('unregistered metric, sport mismatch and conflicting duplicate codes fail closed',()=>{
+ const a=base();
+ assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],code:'fake'}]},'owner-A','activity-1'),/definition/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,sport:'strength'},'owner-A','activity-1'),/definition/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[a.metrics[0],a.metrics[0]]},'owner-A','activity-1'),/Conflicting/);
+});
+test('unverified measurements are not mislabeled validated, rejected source never displays',()=>{
+ const a=base();
+ const b=canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],quality:'unverified'}]},'owner-A','activity-1');
+ assert.equal(b.metrics.length,0);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,sources:[{...a.sources[0],quality:'rejected'}]},'owner-A','activity-1'),/source is unavailable/);
+});
+test('source and source-level sport applicability validated before display',()=>{
+ const a=base();
+ assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],sourceId:'another'}]},'owner-A','activity-1'),/source/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,definitions:[a.definitions[0],a.definitions[0]]},'owner-A','activity-1'),/Duplicate metric/);
+});
