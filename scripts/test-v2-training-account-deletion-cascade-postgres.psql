@@ -20,6 +20,28 @@ BEGIN
   RAISE EXCEPTION 'Accepted revision removed while account active';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $history$;
+-- Match the existing ALL-251 deletion claim's direct Auth cascade rule.
+DO $coverage$
+DECLARE missing text;
+BEGIN
+ SELECT pg_catalog.string_agg(n.nspname||'.'||c.relname,', ' ORDER BY n.nspname,c.relname)
+ INTO missing
+ FROM pg_catalog.pg_class c
+ JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+ JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+  AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
+ WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
+  AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%'
+    OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%')
+  AND NOT EXISTS(
+    SELECT 1 FROM pg_catalog.pg_constraint fk WHERE fk.conrelid=c.oid
+      AND fk.confrelid='auth.users'::regclass AND fk.contype='f'
+      AND fk.confdeltype='c'
+  );
+ IF missing IS NOT NULL THEN
+   RAISE EXCEPTION 'ALL-251 deletion preflight: missing direct Auth cascade: %',missing;
+ END IF;
+END $coverage$;
 -- The integrated fixture uses a minimal v2_profiles mock with NO cascade.
 -- Profile deletion is covered by ALL-251 separately; remove mock profile
 -- so this test isolates Training/Activity cascade paths.
