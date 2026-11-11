@@ -78,6 +78,14 @@ A [rollback-only synthetic orphan record test](../../supabase/tests/all251_compl
 
 **Remaining:** this is not global token revocation. Future new RPCs, Edge Functions, Storage access, and Coach must also enforce current account/session validity; verify with real authenticated two-device and expired-token tests. Isolated Auth Admin and true concurrent transaction validation, iPhone acceptance, external deletion coverage and legal/founder signoff remain outstanding. No worker deployed or external signup enabled.
 
+## 2026-11-11 — Two-owner rollback and independent-session race harness
+
+**Executed and passed in V2:** [two-account owner isolation SQL](../../supabase/tests/all251_two_account_owner_isolation_rollback.sql). Inside one rolled-back transaction, synthetic authenticated Account A could not read, cancel, or submit Account B's deletion request. A cancelled its own request, resubmitted and received a new request UUID; the old UUID could not cancel the new request. B's request remained untouched and B could independently cancel its own request. No real users or request records were retained.
+
+**Staged but NOT EXECUTED:** [true two-connection concurrency harness](../../supabase/tests/all251_true_two_session_race.cjs). Requires the `pg` Node dependency, `ALL251_TEST_DATABASE_URL` pointed at a loopback PostgreSQL database with name ending `_test` or `_isolated`, and explicit `ALL251_ISOLATED_TEST_DB=YES_DISPOSABLE`. It creates only disposable Auth users and runs both deterministic interleavings with **independent connections**: claim first must block then reject cancellation; cancel first must block then reject claim. It restores the processor release gate in cleanup, including cleanup-error paths. **Do not run against live V2, a port-forward to live V2, or shared data.** It mutates the disposable test database and needs independent review/test execution. It is not proof until a real two-connection PASS log is captured.
+
+The production Supabase connector independently issued two lock checks, but request times were serialized by the connector; that run is **not counted as independent-session race evidence**. A disposable database or approved isolated clone is still required for authoritative concurrency acceptance. Worker remains undeployed with execution OFF.
+
 ## The actual deletion processor must still do all of the following
 
 1. Trusted server-side authentication and authorization; never expose service key/admin deletion to mobile clients. No silent scheduled claims or broad user enumerations.
