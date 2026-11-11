@@ -13,8 +13,8 @@ DECLARE
  v_rows jsonb;
  v_record_map jsonb:='{}'::jsonb;
  v_total bigint:=0;
- v_expected_count integer;
- v_actual_count integer;
+ v_missing text[];
+ v_unexpected text[];
 BEGIN
  IF p_user_id IS NULL OR NOT EXISTS(
    SELECT 1 FROM auth.users WHERE id=p_user_id
@@ -62,18 +62,47 @@ BEGIN
   v_record_map:=pg_catalog.jsonb_set(v_record_map,
     ARRAY[v_edge.schema_name||'.'||v_edge.table_name],v_rows);
  END LOOP;
- -- Detect new domain-owned tables before returning an incomplete export.
- SELECT count(*) INTO v_actual_count FROM pg_catalog.pg_class c
+ -- Compare exact qualified owner-table identity, not count alone.
+ -- An unexpected new owner table cannot replace an expected table unnoticed.
+ WITH expected(qualified_name) AS (VALUES
+ ('public.v2_training_session_instances'),
+ ('public.v2_completed_activities'),
+ ('public.v2_activity_sources'),
+ ('public.v2_training_plans'),
+ ('public.v2_training_plan_revisions'),
+ ('public.v2_training_session_slots'),
+ ('public.v2_training_revision_days'),
+ ('public.v2_training_revision_sessions'),
+ ('public.v2_training_execution_events'),
+ ('allin_private.v2_training_action_receipts'),
+ ('allin_private.v2_training_completion_outbox'),
+ ('allin_private.v2_training_plan_accept_receipts'),
+ ('public.v2_activity_metric_values'),
+ ('public.v2_activity_segments'),
+ ('public.v2_activity_strength_sets'),
+ ('public.v2_activity_series'),
+ ('public.v2_activity_route_objects'),
+ ('public.v2_indoor_weekly_attempts'),
+ ('public.v2_indoor_weekly_leaderboard'),
+ ('public.v2_indoor_weekly_achievements')
+ ), actual AS (
+ SELECT n.nspname||'.'||c.relname AS qualified_name
+ FROM pg_catalog.pg_class c
  JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
- JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid AND
-   a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
+ JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+    AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
  WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
- AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%'
-    OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%');
- v_expected_count:=20;
- IF v_actual_count<>v_expected_count THEN
-  RAISE EXCEPTION 'Unknown owner table requires explicit export review: expected %, found %',
-   v_expected_count,v_actual_count USING ERRCODE='42501'; END IF;
+   AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%'
+     OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%')
+ )
+ SELECT
+   ARRAY(SELECT qualified_name FROM expected EXCEPT SELECT qualified_name FROM actual),
+   ARRAY(SELECT qualified_name FROM actual EXCEPT SELECT qualified_name FROM expected)
+ INTO v_missing,v_unexpected;
+ IF pg_catalog.cardinality(v_missing)<>0 OR pg_catalog.cardinality(v_unexpected)<>0 THEN
+   RAISE EXCEPTION 'Training export owner-coverage mismatch: missing %, unexpected %',
+      v_missing,v_unexpected USING ERRCODE='42501';
+ END IF;
  -- The existing ALL-251 account export is the only public entrypoint.
  -- This fragment is not a complete right-to-export implementation.
  RETURN pg_catalog.jsonb_build_object(
