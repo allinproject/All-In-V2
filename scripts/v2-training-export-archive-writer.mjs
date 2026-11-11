@@ -29,7 +29,7 @@ export function createTrainingEncryptedArchiveSink({
         throw new Error('Durable private encrypted archive receipt missing');
       }
       const expires=Date.parse(saved.expiresAt);
-      if(!Number.isFinite(expires)||expires<=Date.now()) {
+      if(!Number.isFinite(expires)||expires<=Date.now()||expires>Date.now()+24*60*60*1000) {
         throw new Error('Encrypted archive expiry is invalid');
       }
       return {ownerId,requestId,archiveId:saved.archiveId,encrypted:true};
