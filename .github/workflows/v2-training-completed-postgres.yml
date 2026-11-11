@@ -17,6 +17,7 @@ on:
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SOURCE-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-completed-source-writer-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-IMMUTABLE-REVISION-GUARD-CANDIDATE.sql'
       - 'scripts/test-v2-training-plan-acceptance-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-ACTIVITY-OUTBOX-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-training-activity-outbox-postgres.psql'
@@ -101,6 +102,7 @@ jobs:
         run: |
           docker exec "$PG_CONTAINER" createdb -U "$PGUSER" training_plan_acceptance
           docker cp docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql"
+          docker cp docs/architecture/sql/V2-TRAINING-IMMUTABLE-REVISION-GUARD-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-IMMUTABLE-REVISION-GUARD-CANDIDATE.sql"
           docker cp scripts/test-v2-training-plan-acceptance-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-plan-acceptance-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_plan_acceptance -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-plan-acceptance-postgres.psql
       - name: Replay source-backed one-activity handoff in disposable DB
