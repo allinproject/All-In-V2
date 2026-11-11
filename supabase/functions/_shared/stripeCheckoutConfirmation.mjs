@@ -25,6 +25,7 @@ export async function confirmStripeCheckoutForBinding({
       checkoutAttempt.provider !== 'stripe_web' ||
       checkoutAttempt.environment !== (expectedLiveMode ? 'production' : 'sandbox') ||
       checkoutAttempt.state !== 'pending' ||
+      !id(checkoutAttempt.attemptId, 'attempt_') ||
       !id(checkoutAttempt.providerCheckoutId, 'cs_') ||
       typeof retrieveCheckoutSession !== 'function' ||
       typeof retrieveSubscription !== 'function' ||
