@@ -13,6 +13,8 @@ on:
       - 'docs/architecture/sql/V2-COMMUNITY-VISIBILITY-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-community-visibility-postgres.psql'
       - 'scripts/test-v2-community-visibility-race.sh'
+      - 'docs/architecture/sql/V2-COMMUNITY-PUBLIC-IDENTITY-READER-CANDIDATE.sql'
+      - 'scripts/test-v2-community-public-identity-postgres.psql'
       - 'docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-READER-CANDIDATE.sql'
       - '.github/workflows/v2-community-postgres.yml'
   workflow_dispatch:
@@ -72,4 +74,7 @@ jobs:
           docker cp docs/architecture/sql/V2-COMMUNITY-VISIBILITY-OWNER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-VISIBILITY-OWNER-CANDIDATE.sql"
           docker cp scripts/test-v2-community-visibility-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-community-visibility-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d community_visibility -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-visibility-postgres.psql
+          docker cp docs/architecture/sql/V2-COMMUNITY-PUBLIC-IDENTITY-READER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-PUBLIC-IDENTITY-READER-CANDIDATE.sql"
+          docker cp scripts/test-v2-community-public-identity-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-community-public-identity-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d community_visibility -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-public-identity-postgres.psql
           bash scripts/test-v2-community-visibility-race.sh "$PG_CONTAINER" community_visibility
