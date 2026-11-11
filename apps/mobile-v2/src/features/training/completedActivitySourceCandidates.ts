@@ -18,7 +18,8 @@ export type CanonicalSourceCandidateSnapshot={
 };
 export type CertifiedReconciliationDecision=
  SourceReconciliationDecision|
- {decision:'needs_review';activityId:null;reason:'incomplete_candidate_coverage'};
+ {decision:'needs_review';activityId:null;reason:
+   'incomplete_candidate_coverage'|'unsupported_provider_namespace'};
 /** Fail closed for unfinished pagination, stale owner, missing snapshot metadata or
  * a source identity other than the one the snapshot was produced for.
  */
@@ -31,6 +32,15 @@ export function reconcileCertifiedActivitySource(
  if(snapshot.scope!=='source_identity_and_relevant_overlap'||
   !Number.isSafeInteger(snapshot.readVersion)||snapshot.readVersion<1)
   throw new Error('Unverified source candidate coverage contract.');
+ // Must match the currently modeled SQL provider + record-kind vocabulary.
+ // This is NOT certification that any provider actually supplied genuine
+ // identity; an unregistered Garmin/COROS/alias feed remains review-only.
+ const providers=new Set(['apple_healthkit','apple_watch',
+   'supported_equipment','manual','import']);
+ const sourceKinds=new Set(['workout_record','sensor_summary','manual_record',
+   'device_session','imported_historical_record']);
+ if(!providers.has(incoming.provider)||!sourceKinds.has(incoming.sourceKind))
+  return {decision:'needs_review',activityId:null,reason:'unsupported_provider_namespace'};
  if(!snapshot.complete||snapshot.nextCursor!==null)
   return {decision:'needs_review',activityId:null,reason:'incomplete_candidate_coverage'};
  if(snapshot.candidates.some(c=>c.identity.ownerId!==incoming.ownerId))
