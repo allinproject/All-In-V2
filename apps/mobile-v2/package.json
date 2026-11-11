@@ -16,7 +16,7 @@
     "test:monitoring": "node --experimental-strip-types --test src/monitoring/sentryPrivacy.test.ts",
     "test:notifications": "node --experimental-strip-types --test src/features/notifications/notificationPolicy.test.ts src/features/notifications/pushReceiptPolicy.test.ts src/features/notifications/deviceRegistrationPolicy.test.ts src/features/notifications/deliveryLifecycle.test.ts src/features/notifications/notificationNavigationPolicy.test.ts",
     "test:community": "node --experimental-strip-types --test src/features/community/communityPostPresentation.test.ts src/features/community/livePropsLifecycle.test.ts",
-    "test:deletion-worker": "node --experimental-strip-types --test ../../supabase/functions/v2-account-deletion-worker/policy.test.mjs"
+    "test:deletion-worker": "node --experimental-strip-types --test ../../supabase/functions/v2-account-deletion-worker/policy.test.mjs ../../supabase/functions/v2-account-deletion-worker/execution.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
