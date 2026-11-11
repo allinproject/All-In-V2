@@ -22,7 +22,8 @@ export type PhaseAnnotation={
 };
 export type MultiEventPhaseIssue={
  code:'MISSING_PHASE_EVIDENCE'|'UNSUPPORTED_PEAK'|'OVERLAPPING_TAPER_RECOVERY'|
-  'EVENT_IN_RECOVERY_WINDOW'|'PHASE_CONFLICTS_WITH_CANONICAL_DAY'|'UNKNOWN_EVENT_DEMAND';
+  'EVENT_IN_RECOVERY_WINDOW'|'EVENT_IN_OTHER_TAPER_WINDOW'|'TAPER_BEFORE_CALENDAR'|
+  'PHASE_CONFLICTS_WITH_CANONICAL_DAY'|'UNKNOWN_EVENT_DEMAND';
  severity:'blocking'|'review';
  eventIds:string[];date:string|null;message:string;
 };
@@ -90,6 +91,9 @@ export function reviewMultiEventPhaseWindows(input:{
    throw Error('Season event date must remain an exact certified race state.');
   push({date:event.date,kind:'event',eventId:event.id,priority:event.priority});
   if(d.taperDays!==null&&d.effort!=='practice'){
+   if(d.taperDays>between(season.startDate,event.date))
+    issues.push(error('TAPER_BEFORE_CALENDAR','review',[event.id],season.startDate,
+     'Requested taper extends before the selected training start; require an explicit short-horizon review.'));
    for(let offset=Math.min(d.taperDays,between(season.startDate,event.date));offset>0;offset--){
     const date=move(event.date,-offset);
     const day=dateIndex.get(date);
@@ -112,6 +116,11 @@ export function reviewMultiEventPhaseWindows(input:{
  for(const [date,items] of allDates){
   const races=items.filter(x=>x.kind==='event'),recovery=items.filter(x=>x.kind==='post_event_recovery_review');
   const taper=items.filter(x=>x.kind==='taper_review');
+  if(races.length&&taper.some(t=>races.some(r=>r.eventId!==t.eventId))){
+   issues.push(error('EVENT_IN_OTHER_TAPER_WINDOW','review',
+    [...new Set([...races,...taper].map(x=>x.eventId))],date,
+    'An event falls during the taper review window for another event; ask whether it is a supported tune-up or a conflicting peak.'));
+  }
   if(recovery.length&&(taper.length||races.length)){
    const ids=[...new Set([...recovery,...taper,...races].map(x=>x.eventId))];
    if(races.length)issues.push(error('EVENT_IN_RECOVERY_WINDOW','review',ids,date,'A subsequent event overlaps recovery review from a prior event; ask the athlete about effort and recovery.'));
