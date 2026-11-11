@@ -8,6 +8,7 @@ import { assertV2SessionOwner,readV2OwnedProfileState } from '../../src/auth/acc
 import { v2AuthenticatedScreenKey } from '../../src/auth/authRoute';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
+import { PersonalGearPanel } from './PersonalGearPanel';
 import {emptyEquipmentInventory,parseEquipmentInventory,addTrainingLocation,removeTrainingLocation,
  addEquipment,removeEquipment,equipmentInventoryPatch,type EquipmentInventory} from '../../src/features/training/equipmentInventory';
 
@@ -142,12 +143,7 @@ function OwnedEquipmentGear(){
    <Pressable accessibilityRole="button" disabled={saving} accessibilityState={{busy:saving,disabled:saving}} style={[styles.save,saving&&styles.dim]} onPress={()=>void save()}><Text style={styles.saveText}>{saving?'Saving…':'Save Equipment & Locations'}</Text></Pressable>
    {notice?<Text style={styles.gold}>{notice}</Text>:null}
   </>:null}
-  {tab==='gear'?<View style={styles.card}><Text style={styles.heading}>Personal Gear</Text>
-   <Text style={styles.helper}>Running shoes, bikes and sport-specific gear will live here, separate from location-based gym equipment. Mileage and workout selection are not connected yet.</Text>
-   <Text style={styles.label}>Running Shoes · Coming next</Text>
-   <Text style={styles.label}>Bikes · Coming next</Text>
-   <Text style={styles.label}>Other Gear · Coming next</Text>
-  </View>:null}
+  {tab==='gear'&&owner?<PersonalGearPanel owner={owner}/>:null}
  </ScrollView></SafeAreaView>;
 }
 const styles=StyleSheet.create({
