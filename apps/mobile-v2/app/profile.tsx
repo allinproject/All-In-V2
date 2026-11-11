@@ -127,6 +127,15 @@ function OwnedProfileScreen() {
               <Text style={styles.muted}>Guidance, explanations, plan-change reviews, and tone</Text>
             </View>
             <View style={styles.card}>
+              <Text style={styles.section}>Help</Text>
+              <Link href="/profile/tutorials" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}>
+                  <Text style={styles.buttonText}>Help & Tutorials</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.muted}>Explore existing screens and see which V2 guides are being rebuilt</Text>
+            </View>
+            <View style={styles.card}>
               <Text style={styles.section}>Legal acceptance</Text>
               <Text style={styles.muted}>Accepted versions for this account</Text>
               <Text style={styles.white}>Terms: {snapshot.latest_legal_acceptance?.terms_version ?? 'Not available'}</Text>
