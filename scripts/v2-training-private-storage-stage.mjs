@@ -49,8 +49,12 @@ export async function stageTrainingPrivateStorageExport({
     // Prevalidate metadata before even touching privileged private Storage.
     // The integrity verifier validates each path and owner again after fetch.
     if (!row || row.user_id !== ownerId || row.state !== 'ready'
+        || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(row.activity_id ?? '')
+        || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(row.source_id ?? '')
+        || !/^[0-9a-f]{64}$/.test(row.checksum_sha256 ?? '')
         || (row.kind === 'route' && !['private', 'redacted'].includes(row.privacy_state))
         || typeof row.object_path !== 'string'
+        || row.object_path.length < 80 || row.object_path.length > 500
         || !row.object_path.startsWith(ownerId + '/')
         || row.object_path.includes('..') || row.object_path.includes('\\')
         || row.object_path.includes('//') || /[?#%]/.test(row.object_path)) {
