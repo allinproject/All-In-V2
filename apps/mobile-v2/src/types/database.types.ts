@@ -171,6 +171,17 @@ export type Database = {
         }
         Returns: string
       }
+      v2_my_health_considerations: { Args: { p_expected_user_id: string }; Returns: Json }
+      v2_save_health_considerations: {
+        Args: {
+          p_expected_user_id: string
+          p_conditions: Json
+          p_limitations: Json
+          p_coach_opt_in: boolean
+          p_expected_version: number
+        }
+        Returns: number
+      }
       v2_my_profile_state: { Args: never; Returns: Json }
       v2_patch_profile_settings_section: {
         Args: {
