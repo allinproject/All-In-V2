@@ -36,3 +36,8 @@ export function todayActivitiesForDate<T extends { athleteLocalDate: string }>(
   if (!validAthleteLocalDate(day) || evidence.status !== 'ready') return null;
   return evidence.records.filter(record => record.athleteLocalDate === day);
 }
+
+/** React Native lifecycle: refresh the local calendar day only when the app is active. */
+export function shouldRefreshTodayOnAppState(state: string): boolean {
+  return state === 'active';
+}
