@@ -646,7 +646,7 @@ revoke all on function allin_private.v2_apply_verified_subscription_event(
 create or replace function public.v2_billing_claim_trial_checkout(p_owner_id uuid)
 returns table(status text,attempt_id uuid,owner_id uuid,trial_eligible boolean)
 language plpgsql security invoker set search_path = ''
-as $
+as $$
 begin
   if current_user <> 'service_role' then
     raise exception 'billing service only' using errcode='42501';
@@ -655,14 +655,14 @@ begin
     from allin_private.v2_claim_trial_checkout_attempt(
       p_owner_id,p_owner_id,'stripe_web','sandbox') x;
 end;
-$;
+$$;
 revoke all on function public.v2_billing_claim_trial_checkout(uuid)
   from public,anon,authenticated;
 
 create or replace function public.v2_billing_claim_paid_checkout(p_owner_id uuid)
 returns table(status text,attempt_id uuid,owner_id uuid,trial_eligible boolean)
 language plpgsql security invoker set search_path = ''
-as $
+as $$
 begin
   if current_user <> 'service_role' then
     raise exception 'billing service only' using errcode='42501';
@@ -671,7 +671,7 @@ begin
     from allin_private.v2_claim_paid_checkout_attempt(
       p_owner_id,p_owner_id,'stripe_web','sandbox') x;
 end;
-$;
+$$;
 revoke all on function public.v2_billing_claim_paid_checkout(uuid)
   from public,anon,authenticated;
 
@@ -680,7 +680,7 @@ create or replace function public.v2_billing_register_pending_checkout(
 )
 returns text
 language plpgsql security invoker set search_path = ''
-as $
+as $$
 begin
   if current_user <> 'service_role' then
     raise exception 'billing service only' using errcode='42501';
@@ -688,7 +688,7 @@ begin
   return allin_private.v2_register_pending_subscription_checkout(
     p_attempt_id,p_owner_id,p_owner_id,'stripe_web','sandbox',p_checkout_id);
 end;
-$;
+$$;
 revoke all on function public.v2_billing_register_pending_checkout(
   uuid,uuid,text) from public,anon,authenticated;
 
@@ -697,7 +697,7 @@ create or replace function public.v2_billing_finalize_checkout(
 )
 returns text
 language plpgsql security invoker set search_path = ''
-as $
+as $$
 begin
   if current_user <> 'service_role' then
     raise exception 'billing service only' using errcode='42501';
@@ -705,7 +705,7 @@ begin
   return allin_private.v2_finalize_verified_subscription_checkout(
     p_attempt_id,p_owner_id,'stripe_web','sandbox',p_checkout_id,p_subscription_id);
 end;
-$;
+$$;
 revoke all on function public.v2_billing_finalize_checkout(
   uuid,uuid,text,text) from public,anon,authenticated;
 
@@ -717,7 +717,7 @@ create or replace function public.v2_billing_lookup_checkout(
 returns table(attempt_id uuid,owner_id uuid,provider_checkout_id text,
               provider_subscription_id text,state text,offer_kind text)
 language plpgsql security invoker set search_path = ''
-as $
+as $$
 begin
   if current_user <> 'service_role' then
     raise exception 'billing service only' using errcode='42501';
@@ -729,7 +729,7 @@ begin
     where a.provider='stripe_web' and a.environment='sandbox'
       and a.provider_checkout_id=p_checkout_id;
 end;
-$;
+$$;
 revoke all on function public.v2_billing_lookup_checkout(text)
   from public,anon,authenticated;
 
@@ -742,7 +742,7 @@ create or replace function public.v2_billing_apply_current_subscription_event(
 )
 returns text
 language plpgsql security invoker set search_path = ''
-as $
+as $$
 declare v_revision bigint;
 begin
   if current_user <> 'service_role' then
@@ -768,7 +768,7 @@ begin
     p_owner_id,'stripe_web','sandbox',p_subscription_id,p_event_id,
     v_revision+1,p_phase,p_access_until);
 end;
-$;
+$$;
 revoke all on function public.v2_billing_apply_current_subscription_event(
   uuid,text,text,text,timestamptz) from public,anon,authenticated;
 
