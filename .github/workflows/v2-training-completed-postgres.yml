@@ -35,6 +35,7 @@ on:
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql'
       - 'scripts/test-v2-completed-evidence-objects-postgres.psql'
       - 'scripts/test-v2-training-completed-integrated-release-postgres.psql'
+      - 'scripts/test-v2-training-completed-real-role-postgres.psql'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -187,3 +188,5 @@ jobs:
           done
           docker cp scripts/test-v2-training-completed-integrated-release-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-completed-integrated-release-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_complete_integration -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-completed-integrated-release-postgres.psql
+          docker cp scripts/test-v2-training-completed-real-role-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-completed-real-role-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_complete_integration -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-completed-real-role-postgres.psql
