@@ -158,3 +158,14 @@ test('archive handoff requires both write and cleanup adapters',async()=>{
  await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:f.services}),
   /writer and cleanup/);
 });
+
+test('checks entire evidence snapshot before any download, including duplicate paths',async()=>{
+ for(const invalid of [
+  {...row(),id:'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',state:'pending'},
+  {...row(),id:'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'},
+ ]) {
+  const f=fixture({listEvidence:async()=>({ownerId:owner,series:[row(),invalid],routes:[]})});
+  await assert.rejects(stageTrainingPrivateStorageExport({requestId,services:f.services}),/Unapproved/);
+  assert.equal(f.calls.some(x=>x.startsWith('download')),false);
+ }
+});
