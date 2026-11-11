@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/authRoute';
@@ -133,12 +133,27 @@ function HomeOwnerScreen() {
               </Pressable>
             </Link>
           </View>
-          {foodLog.visible.map(row => (
-            <View key={row.id} style={styles.foodRow}>
-              <Text style={styles.foodMeal}>{row.meal}</Text>
-              <Text style={styles.foodLabel} numberOfLines={1}>{row.label}</Text>
+          {foodLog.visible.length > 0 ? (
+            <View style={styles.foodPhotoRow}>
+              {foodLog.visible.map(row => (
+                <View key={row.id} style={styles.foodTile}>
+                  {row.photoUri ? (
+                    <Image
+                      source={{ uri: row.photoUri }}
+                      style={styles.foodPhoto}
+                      accessibilityLabel={row.label}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.foodPhotoFallback}>
+                      <Text style={styles.foodFallbackText} numberOfLines={2}>{row.label}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.foodTileLabel} numberOfLines={1}>{row.label}</Text>
+                </View>
+              ))}
             </View>
-          ))}
+          ) : null}
           {foodLog.additionalCount > 0 ? <Text style={styles.help}>+{foodLog.additionalCount} more entries in Fuel</Text> : null}
           <Text style={styles.help}>{foodLog.detail}</Text>
         </View>
@@ -191,9 +206,16 @@ const styles = StyleSheet.create({
   metric: { flex: 1, minWidth: 0, backgroundColor: colors.surfaceRaised, borderRadius: 12, padding: 10, gap: 5 },
   metricLabel: { color: colors.mutedText, fontSize: 11 },
   metricUnknown: { color: colors.warmWhite, fontSize: 22, fontWeight: '800' },
-  foodRow: { flexDirection: 'row', gap: 8, alignItems: 'center', minHeight: 28 },
-  foodMeal: { color: colors.goldSoft, fontSize: 11, minWidth: 64, textTransform: 'capitalize' },
-  foodLabel: { color: colors.warmWhite, fontSize: 13, flex: 1 },
+  foodPhotoRow: { flexDirection: 'row', gap: 8 },
+  foodTile: { flex: 1, minWidth: 0, gap: 4 },
+  foodPhoto: { width: '100%', aspectRatio: 1, borderRadius: 8, backgroundColor: colors.surfaceRaised },
+  foodPhotoFallback: {
+    width: '100%', aspectRatio: 1, borderRadius: 8,
+    backgroundColor: colors.surfaceRaised, borderColor: colors.border,
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center', padding: 4,
+  },
+  foodFallbackText: { color: colors.mutedText, fontSize: 10, textAlign: 'center' },
+  foodTileLabel: { color: colors.warmWhite, fontSize: 10, textAlign: 'center' },
   account: { color: colors.mutedText, fontSize: 12 },
   error: { color: colors.danger, fontSize: 13 },
   signOut: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
