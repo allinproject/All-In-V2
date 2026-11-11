@@ -45,11 +45,17 @@ export async function verifyNativePurchaseForBinding({
    })}catch{return {status:'verification_unavailable'}}
    // Current status is an independently signed, verified store fact. Its
    // returned phase and expiry must be bounded by the transaction fact.
+   const allowed=['trial','paid','grace','canceling'];
    if(!current||current.originalTransactionId!==proof.providerSubscriptionId||
       current.ownerId!==authenticatedOwnerId||
-      !['trial','paid','grace','canceling','expired','refunded','revoked'].includes(current.phase)||
-      (current.accessUntil!==null&&
-        (!Number.isSafeInteger(current.accessUntil)||current.accessUntil>proof.accessUntil)))
+      ![...allowed,'expired','refunded','revoked'].includes(current.phase)||
+      (allowed.includes(current.phase)&&
+        (!Number.isSafeInteger(current.accessUntil)||
+         proof.accessUntil===null||current.accessUntil>proof.accessUntil||
+         current.accessUntil<=nowMs))||
+      (!allowed.includes(current.phase)&&current.accessUntil!==null)||
+      (['revoked','expired'].includes(proof.phase)&&
+         allowed.includes(current.phase)))
      return {status:'verification_unavailable'};
    proof={...proof,phase:current.phase,accessUntil:current.accessUntil};
  }else if(platform==='android'){
