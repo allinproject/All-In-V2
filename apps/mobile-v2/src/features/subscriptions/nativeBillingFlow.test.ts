@@ -128,3 +128,25 @@ test('finishing a verified transaction never returns prior account entitlement a
  releaseFinish();
  assert.equal(await task,'wrong_account');
 });
+
+test('transport failure after switching accounts is classified as wrong_account',async()=>{
+ let currentOwner=owner;
+ let rejectEvidence;
+ const store={
+  platform:'ios',
+  getProducts:async()=>[{id:productId}],
+  purchase:async()=>iosEvidence,
+  restore:async()=>[iosEvidence],
+ };
+ const flow=createNativeBillingFlow({platform:'ios',productId,store,
+  server:{
+   submitEvidence:async()=>new Promise((resolve,reject)=>{rejectEvidence=reject;}),
+   readOwnerEntitlement:async()=>({entitled:true}),
+  },getAuthenticatedOwner:()=>currentOwner,
+ });
+ const task=flow.purchase();
+ while(!rejectEvidence)await Promise.resolve();
+ currentOwner='00000000-0000-0000-0000-000000000002';
+ rejectEvidence(Error('service down'));
+ assert.equal(await task,'wrong_account');
+});
