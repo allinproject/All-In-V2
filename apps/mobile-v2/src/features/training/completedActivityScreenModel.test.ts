@@ -4,11 +4,12 @@ import {buildCompletedActivityScreenModel} from './completedActivityScreenModel.
 const metric=(key:string,label:string,value:string)=>({key,label,value,source:'canonical-source',provenance:'device' as const});
 test('V1 Overview Details Coach tabs are fixed and all supplied stats stay in Details',()=>{
  const model=buildCompletedActivityScreenModel({
-  id:'activity-1',sport:'outdoor_run',title:'Morning Run',completedAt:'2026-11-11T06:30:00',
+  id:'activity-1',sport:'outdoor_run',terrain:'trail',title:'Morning Run',completedAt:'2026-11-11T06:30:00',
   sourceLabel:'Apple Watch',metrics:[metric('distance','Distance','8 mi'),metric('pace','Average Pace','9:30/mi'),
    metric('hr.zone2','Zone 2 time','43 min'),metric('gct','Ground contact time','244 ms')],
  });
  assert.deepEqual(model.tabs,['Overview','Details','Coach']);
+ assert.equal(model.terrain,'trail');
  assert.deepEqual(model.stats.overview.map(x=>x.key),['distance','pace']);
  assert.deepEqual(model.stats.details.map(x=>x.key),['distance','pace','gct','hr.zone2']);
  assert.equal(model.customization.details.length,4);
