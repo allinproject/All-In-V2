@@ -5,7 +5,7 @@ import { authorizeVerifiedPurchaseBinding } from './subscriptionPurchaseBinding.
 
 const priceId='price_1UaDovRBJdOnJBog5swb8zpS';
 const productId='prod_VbQgPefruseFHU';
-const attempt=Object.freeze({ownerId:'owner_a',attemptId:'attempt_a',
+const attempt=Object.freeze({ownerId:'owner_a',attemptId:'10000000-0000-0000-0000-000000000001',
   provider:'stripe_web',environment:'sandbox',
   providerCheckoutId:'cs_test_a',state:'pending'});
 const session=Object.freeze({object:'checkout.session',id:'cs_test_a',livemode:false,
