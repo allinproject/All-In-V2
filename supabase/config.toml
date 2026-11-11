@@ -19,3 +19,9 @@ verify_jwt = true
 # ALLIN_BILLING_SANDBOX_ARMED is unset/false until private SQL & security review.
 [functions.v2-stripe-sandbox-checkout]
 verify_jwt = true
+
+# ALL-252: STAGED ONLY, DEFAULT OFF. Stripe webhooks carry no Supabase JWT.
+# Endpoint verifies the exact raw Stripe signature with a configured secret;
+# ALLIN_STRIPE_SANDBOX_WEBHOOK_ARMED must remain unset until review/deploy.
+[functions.v2-stripe-sandbox-webhook]
+verify_jwt = false
