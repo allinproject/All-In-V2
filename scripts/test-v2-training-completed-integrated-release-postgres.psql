@@ -10,7 +10,7 @@ END $roles$;
 CREATE SCHEMA auth;
 CREATE SCHEMA allin_private;
 CREATE TABLE auth.users(id uuid PRIMARY KEY);
-CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id));
+CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE);
 CREATE TABLE public.v2_profiles(user_id uuid PRIMARY KEY REFERENCES auth.users(id));
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
  SELECT nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
