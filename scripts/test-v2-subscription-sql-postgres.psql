@@ -63,6 +63,9 @@ BEGIN
        has_function_privilege(r,
        'allin_private.v2_bind_confirmed_subscription_purchase(uuid)', 'EXECUTE') OR
        has_function_privilege(r,
+       'allin_private.v2_finalize_verified_subscription_checkout(uuid,uuid,text,text,text,text)',
+       'EXECUTE') OR
+       has_function_privilege(r,
        'allin_private.v2_apply_verified_subscription_event(uuid,text,text,text,text,bigint,text,timestamptz)',
        'EXECUTE') THEN
       RAISE EXCEPTION 'Client role % has direct subscription privilege',r;
@@ -92,6 +95,8 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_register_pending_subscription_checkou
 GRANT EXECUTE ON FUNCTION allin_private.v2_confirm_pending_subscription_checkout(
   uuid,uuid,text,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_bind_confirmed_subscription_purchase(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION allin_private.v2_finalize_verified_subscription_checkout(
+  uuid,uuid,text,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_apply_verified_subscription_event(
   uuid,text,text,text,text,bigint,text,timestamptz) TO service_role;
 
@@ -301,6 +306,56 @@ BEGIN
   END IF;
 END
 $updates$;
+RESET ROLE;
+
+-- Atomic finalization has a single service RPC/transaction boundary.
+INSERT INTO auth.users VALUES ('00000000-0000-0000-0000-000000000006');
+INSERT INTO public.v2_profiles VALUES ('00000000-0000-0000-0000-000000000006');
+SET ROLE service_role;
+DO $finalize$
+DECLARE r text;
+BEGIN
+  SELECT allin_private.v2_reserve_subscription_checkout(
+    '10000000-0000-0000-0000-000000000006',
+    '00000000-0000-0000-0000-000000000006',
+    '00000000-0000-0000-0000-000000000006',
+    'stripe_web','sandbox') INTO r;
+  IF r <> 'reserved' THEN RAISE EXCEPTION 'Finalize reservation: %',r; END IF;
+  SELECT allin_private.v2_register_pending_subscription_checkout(
+    '10000000-0000-0000-0000-000000000006',
+    '00000000-0000-0000-0000-000000000006',
+    '00000000-0000-0000-0000-000000000006',
+    'stripe_web','sandbox','cs_6') INTO r;
+  IF r <> 'pending' THEN RAISE EXCEPTION 'Finalize pending: %',r; END IF;
+  BEGIN
+    PERFORM allin_private.v2_finalize_verified_subscription_checkout(
+      '10000000-0000-0000-0000-000000000006',
+      '00000000-0000-0000-0000-000000000002',
+      'stripe_web','sandbox','cs_6','sub_6');
+    RAISE EXCEPTION 'Foreign account wrongly finalized purchase';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  IF EXISTS (SELECT 1 FROM allin_private.v2_subscription_purchases
+             WHERE provider_subscription_id='sub_6') THEN
+    RAISE EXCEPTION 'Rejected finalization committed a purchase';
+  END IF;
+  SELECT allin_private.v2_finalize_verified_subscription_checkout(
+    '10000000-0000-0000-0000-000000000006',
+    '00000000-0000-0000-0000-000000000006',
+    'stripe_web','sandbox','cs_6','sub_6') INTO r;
+  IF r <> 'finalized' THEN RAISE EXCEPTION 'Finalize: %',r; END IF;
+  SELECT allin_private.v2_finalize_verified_subscription_checkout(
+    '10000000-0000-0000-0000-000000000006',
+    '00000000-0000-0000-0000-000000000006',
+    'stripe_web','sandbox','cs_6','sub_6') INTO r;
+  IF r <> 'already_finalized' THEN RAISE EXCEPTION 'Finalization replay: %',r; END IF;
+  IF (SELECT count(*) FROM allin_private.v2_subscription_purchases
+       WHERE provider_subscription_id='sub_6'
+         AND owner_id='00000000-0000-0000-0000-000000000006') <> 1 THEN
+    RAISE EXCEPTION 'Finalization did not commit exactly one owner-bound purchase';
+  END IF;
+END
+$finalize$;
 RESET ROLE;
 
 DELETE FROM auth.users WHERE id='00000000-0000-0000-0000-000000000001';
