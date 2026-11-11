@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { authorizeVerifiedPurchaseBinding as authorize } from './subscriptionPurchaseBinding.mjs';
 
 const checkoutAttempt=Object.freeze({
-  ownerId:'owner_a',attemptId:'attempt_1',provider:'stripe_web',
+  ownerId:'owner_a',attemptId:'10000000-0000-0000-0000-000000000001',provider:'stripe_web',
   environment:'sandbox',providerSubscriptionId:'sub_1',
   providerCheckoutId:'cs_1',state:'server_confirmed',
 });
@@ -17,7 +17,7 @@ const check=patch=>authorize({...base(),...patch});
 test('only matching server checkout and provider-verified purchase may be prebound',()=>{
   assert.deepEqual(check(),{status:'eligible_for_transaction',binding:{
     ownerId:'owner_a',provider:'stripe_web',environment:'sandbox',
-    providerSubscriptionId:'sub_1',checkoutAttemptId:'attempt_1',
+    providerSubscriptionId:'sub_1',checkoutAttemptId:'10000000-0000-0000-0000-000000000001',
   }});
 });
 test('cross-account session cannot claim somebody else’s checkout',()=>{
