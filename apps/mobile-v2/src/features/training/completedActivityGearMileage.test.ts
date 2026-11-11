@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {addPersonalGear,emptyPersonalGear} from './personalGear.ts';
+import {addPersonalGear,changeGearStatus,emptyPersonalGear} from './personalGear.ts';
 import {deriveGearMileage,type CanonicalGearAssignment} from './completedActivityGearMileage.ts';
 const gear=()=>{
  let state=addPersonalGear(emptyPersonalGear(),{id:'road-shoe',name:'Road shoes',kind:'shoes',use:'road',status:'active',distanceKm:150,reminderKm:800});
  state=addPersonalGear(state,{id:'trail-shoe',name:'Trail shoes',kind:'shoes',use:'trail',status:'retired',distanceKm:80,reminderKm:800});
- return addPersonalGear(state,{id:'bike',name:'Bicycle',kind:'bikes',use:'outdoor',status:'active',distanceKm:1000,reminderKm:null});
+ state=addPersonalGear(state,{id:'bike',name:'Bicycle',kind:'bikes',use:'outdoor',status:'active',distanceKm:1000,reminderKm:null});
+ return changeGearStatus(state,'trail-shoe','retired');
 };
 const assign=(activityId:string,gearId:string|null,distanceKm:number|null,sport:CanonicalGearAssignment['sport']='running'):CanonicalGearAssignment=>({
  ownerId:'owner-A',activityId,activityVersion:1,gearId,distanceKm,sport,confirmed:gearId!==null,
