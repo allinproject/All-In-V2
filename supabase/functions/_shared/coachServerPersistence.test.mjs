@@ -6,9 +6,10 @@ const req=()=>({bearerToken:"jwt",ownerId:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
  clientRequestId:"cccccccc-cccc-4ccc-8ccc-cccccccccccc",
  userMessageId:"dddddddd-dddd-4ddd-8ddd-dddddddddddd",
  assistantMessageId:"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
- requestFingerprint:"a".repeat(64),userContent:"  Help me train  "});
+ userContent:"  Help me train  "});
 const deps=(r=req())=>({
  verifyUser:async()=>({id:r.ownerId}),
+ fingerprintTurn:async()=> "a".repeat(64),
  claimTurn:async()=>({action:"claimed",executionVersion:1}),
  providerGenerate:async()=>({message:"Your plan evidence is incomplete."}),
  appendPair:async v=>({ok:true,thread_id:v.threadId,client_request_id:v.clientRequestId,
@@ -74,4 +75,24 @@ test("fencing version is passed into append and finish",async()=>{
  assert.equal((await executeCoachServerExchange(r,d)).status,"saved_verified");
  assert.equal(appended.executionVersion,1);
  assert.equal(finished.executionVersion,1);
+});
+
+test("request fingerprint is host-derived and binds exact normalized prompt",async()=>{
+ const r=req(),d=deps(r);let input,claimed,spent=0;
+ d.fingerprintTurn=async payload=>{input=payload;return "b".repeat(64)};
+ d.claimTurn=async payload=>{claimed=payload;return {action:"wait"}};
+ d.providerGenerate=async()=>{spent++;return {message:"should not call"}};
+ const x=await executeCoachServerExchange({...r,requestFingerprint:"f".repeat(64)},d);
+ assert.equal(x.reason,"claim_not_granted");
+ assert.equal(input.userContent,"Help me train");
+ assert.equal(claimed.requestFingerprint,"b".repeat(64));
+ assert.equal(spent,0);
+});
+test("invalid trusted fingerprint fails before any claim or provider spend",async()=>{
+ const r=req(),d=deps(r);let claims=0,spend=0;
+ d.fingerprintTurn=async()=>"";
+ d.claimTurn=async()=>{claims++;return {action:"claimed",executionVersion:1}};
+ d.providerGenerate=async()=>{spend++;return {message:"no"}};
+ assert.equal((await executeCoachServerExchange(r,d)).reason,"fingerprint_unavailable");
+ assert.equal(claims,0);assert.equal(spend,0);
 });
