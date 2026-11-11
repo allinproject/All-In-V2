@@ -41,10 +41,10 @@ export function evaluatePublicProfileView(input:PublicProfileViewer):PublicProfi
  const area=typeof input.sharedArea==='string'&&input.sharedArea.trim()?input.sharedArea.trim().slice(0,80):null;
  return {
   canViewIdentity:true,canViewPrivateContent,
-  canRequestToFollow:!isSelf&&visibility==='private'&&input.relationship==='not_following',
-  canFollowDirectly:!isSelf&&visibility==='public'&&input.relationship==='not_following',
+  canRequestToFollow:input.viewerId!==null&&!isSelf&&visibility==='private'&&input.relationship==='not_following',
+  canFollowDirectly:input.viewerId!==null&&!isSelf&&visibility==='public'&&input.relationship==='not_following',
   canApproveRequests:isSelf,
-  canInteract:!isSelf&&(visibility==='public'||follows),
+  canInteract:input.viewerId!==null&&!isSelf&&(visibility==='public'||follows),
   visibleGeneralArea:input.shareGeneralArea&&(isSelf||visibility==='public'||follows)?area:null,
   label:isSelf?'own_profile':input.relationship==='follow_requested'?'follow_request_pending':
    visibility==='private'&&!follows?'private_profile':'public_profile',
