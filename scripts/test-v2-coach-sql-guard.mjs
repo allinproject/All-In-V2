@@ -24,8 +24,10 @@ test("signed-in client can read owner transcripts but cannot forge assistant rep
  assert.match(candidate,/revoke all on table public\.v2_coach_messages from public,anon,authenticated,service_role;/i);
  assert.match(candidate,/grant select on table public\.v2_coach_messages to authenticated;/i);
  assert.match(candidate,/revoke all on function public\.v2_coach_append_exchange\([\s\S]*?from public,anon,authenticated,service_role;/i);
- assert.match(candidate,/grant execute on function public\.v2_coach_append_exchange\([\s\S]*?to service_role;/i);
- assert.doesNotMatch(candidate,/grant execute on function public\.v2_coach_append_exchange\([\s\S]*?to authenticated;/i);
+ const exchangeGrant=candidate.match(/grant execute on function public\.v2_coach_append_exchange\([\s\S]*?;/i)?.[0];
+ assert.ok(exchangeGrant);
+ assert.match(exchangeGrant,/to service_role;/i);
+ assert.doesNotMatch(exchangeGrant,/to authenticated;/i);
 });
 test("atomic exchange has duplicate guards and exact two-message canonical readback",()=>{
  assert.match(candidate,/pg_advisory_xact_lock/i);
