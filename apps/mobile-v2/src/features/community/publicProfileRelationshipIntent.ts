@@ -64,10 +64,10 @@ export function prepareRelationshipMutation(s:RelationshipSnapshot,action:Relati
  */
 export function verifyRelationshipMutationReceipt(
  intent:RelationshipMutationIntent,
- receipt:{actorId:string;targetOwnerId:string;actionId:string;version:number;accepted:boolean},
+ receipt:{actorId:string;targetOwnerId:string;actionId:string;action:RelationshipAction;version:number;accepted:boolean},
 ):boolean{
  if(receipt.actorId!==intent.actorId||receipt.targetOwnerId!==intent.targetOwnerId||
-  receipt.actionId!==intent.actionId||!receipt.accepted||
+  receipt.actionId!==intent.actionId||receipt.action!==intent.action||!receipt.accepted||
   !Number.isSafeInteger(receipt.version)||receipt.version<=intent.expectedVersion)
   throw new Error('Unverified Community relationship write receipt.');
  return true;
