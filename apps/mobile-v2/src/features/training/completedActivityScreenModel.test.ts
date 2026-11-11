@@ -13,7 +13,7 @@ test('V1 Overview Details Coach tabs are fixed and all supplied stats stay in De
  assert.deepEqual(model.stats.overview.map(x=>x.key),['distance','pace']);
  assert.deepEqual(model.stats.details.map(x=>x.key),['distance','pace','gct','hr.zone2']);
  assert.equal(model.customization.details.length,4);
- assert.equal(model.customization.overview.length,2);
+ assert.equal(model.customization.overview.length,4);
  assert.equal(model.coach,null);
 });
 test('source-backed structured data is exposed without inventing missing measurements',()=>{
