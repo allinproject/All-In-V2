@@ -1,0 +1,37 @@
+\set ON_ERROR_STOP on
+-- ALL-222/251/243 synthetic account deletion cascade preflight.
+-- Runs only in the disposable combined candidate PG17 database after the
+-- integration fixture; it never operates on hosted Auth accounts.
+DO $pre$
+DECLARE
+ owner_id uuid:='11111111-1111-4111-8111-111111111111';
+ n integer;
+BEGIN
+ SELECT count(*) INTO n FROM public.v2_completed_activities WHERE user_id=owner_id;
+ IF n<>1 THEN RAISE EXCEPTION 'Missing populated activity fixture'; END IF;
+END $pre$;
+DELETE FROM auth.users WHERE id='11111111-1111-4111-8111-111111111111';
+DO $post$
+DECLARE
+ owner_id uuid:='11111111-1111-4111-8111-111111111111';
+ r record;
+ n integer;
+BEGIN
+ FOR r IN
+   SELECT n.nspname AS schema_name,c.relname AS table_name
+   FROM pg_class c
+   JOIN pg_namespace n ON n.oid=c.relnamespace
+   JOIN pg_attribute a ON a.attrelid=c.oid AND a.attname='user_id'
+    AND a.attnum>0 AND NOT a.attisdropped
+   WHERE n.nspname IN ('public','allin_private')
+     AND c.relkind IN ('r','p')
+     AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%'
+       OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%')
+ LOOP
+   EXECUTE format('SELECT count(*) FROM %I.%I WHERE user_id=$1',
+     r.schema_name,r.table_name) INTO n USING owner_id;
+   IF n<>0 THEN RAISE EXCEPTION 'Deleted owner retained % rows in %.%',
+     n,r.schema_name,r.table_name; END IF;
+ END LOOP;
+ RAISE NOTICE 'PASS ALL-251: populated Training/Completed Activity owner graph fully cascades';
+END $post$;
