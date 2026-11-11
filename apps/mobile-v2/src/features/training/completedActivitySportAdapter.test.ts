@@ -1,0 +1,27 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {resolveActivityPresentationSport as resolve} from './completedActivitySportAdapter.ts';
+test('road and trail remain metadata, not launch prompts or different canonical sports',()=>{
+ assert.deepEqual(resolve('running','road'),{sport:'outdoor_run',terrain:'road',fallback:false});
+ assert.deepEqual(resolve('running','trail'),{sport:'outdoor_run',terrain:'trail',fallback:false});
+ assert.deepEqual(resolve('running'),{sport:'outdoor_run',terrain:null,fallback:false});
+});
+test('bike indoor/outdoor and swimming pool/open-water never share incompatible layouts',()=>{
+ assert.equal(resolve('cycling','trainer').sport,'indoor_trainer');
+ assert.equal(resolve('cycling','outdoor').sport,'outdoor_ride');
+ assert.equal(resolve('swimming','pool').sport,'pool_swim');
+ assert.equal(resolve('swimming','open_water').sport,'open_water_swim');
+ assert.equal(resolve('swimming').sport,'swim');
+});
+test('every supported canonical V2 sport has a defined screen; rowing fallback is honest',()=>{
+ const sports=['running','walking','hiking','rucking','cycling','swimming','strength','rowing',
+  'elliptical','stair','yoga','mobility','other'];
+ for(const sport of sports)assert.ok(resolve(sport).sport,sport);
+ assert.deepEqual(resolve('rowing','machine'),{sport:'other',terrain:null,fallback:true});
+});
+test('subtype mismatch cannot silently reclassify an activity',()=>{
+ assert.throws(()=>resolve('running','pool'),/Unsupported activity sport/);
+ assert.throws(()=>resolve('swimming','treadmill'),/Unsupported activity sport/);
+ assert.throws(()=>resolve('cycling','trail_run'),/Unsupported activity sport/);
+ assert.throws(()=>resolve('rowing','bike'),/Unsupported activity sport/);
+});
