@@ -28,25 +28,34 @@ function fixture(options={}) {
     from(table) {
       calls.push(['table',table]);
       return {
-        select(cols,opts){
+        select(cols,opts) {
           calls.push(['select',table,cols,opts]);
-          return {
+          const filters = [];
+          const query = {
             eq(column,id) {
               calls.push(['eq',column,id]);
-              return {
-                order(column,{ascending}) {
-                  calls.push(['order',column,ascending]);
-                  return {
-                    async range(from,to) {
-                      calls.push(['range',from,to]);
-                      return options.queryFailure ? {error:new Error('query failed')} :
-                        {data:data[table]??[],count:options.reportedCount?.[table]??(data[table]??[]).length,error:null};
-                    },
-                  };
-                },
-              };
+              filters.push([column,id]);
+              return query;
+            },
+            order(column,{ascending}) {
+              calls.push(['order',column,ascending]);
+              return query;
+            },
+            async range(from,to) {
+              calls.push(['range',from,to]);
+              return options.queryFailure ? {error:new Error('query failed')} :
+                {data:data[table]??[],count:options.reportedCount?.[table]??(data[table]??[]).length,error:null};
+            },
+            async maybeSingle() {
+              calls.push(['single',table]);
+              const matches=(data[table]??[]).filter(row=>
+                filters.every(([field,value])=>row[field]===value));
+              return options.queryFailure ? {data:null,error:new Error('query failed')} :
+                {data:matches.length===1?matches[0]:null,
+                 error:matches.length>1?new Error('multiple rows'):null};
             },
           };
+          return query;
         },
       };
     },
@@ -76,7 +85,7 @@ test('queries only source owner in exact tables and downloads a fixed private bu
   assert.equal(snapshot.ownerId,owner);
   assert.equal(snapshot.series.length,1);
   assert.equal(snapshot.routes.length,0);
-  const got=await adapter.downloadPrivateObject({ownerId:owner,requestId,path});
+  const got=await adapter.downloadPrivateObject({ownerId:owner,requestId,path,kind:'series'});
   assert.deepEqual(Buffer.from(got),bytes);
   assert.equal(f.calls.find(x=>x[0]==='fromBucket')[1],TRAINING_PRIVATE_EVIDENCE_BUCKET);
   assert.equal(f.calls.filter(x=>x[0]==='eq').length,2);
@@ -125,9 +134,9 @@ test('foreign owner, pending evidence and duplicate object paths are rejected',a
 test('download request cannot select another owner, invalid path or alternate bucket',async()=>{
   const f=fixture();
   const adapter=createTrainingSupabaseEvidenceAdapter({supabase:f.supabase});
-  await assert.rejects(adapter.downloadPrivateObject({ownerId:owner,requestId,path:foreign+'/x'}),/Unsafe/);
+  await assert.rejects(adapter.downloadPrivateObject({ownerId:owner,requestId,path:foreign+'/x',kind:'series'}),/Unsafe/);
   await assert.rejects(adapter.listEvidence('invalid',requestId),/owner/);
-  await assert.rejects(adapter.downloadPrivateObject({ownerId:owner,requestId,path:owner+'/../'+path}),/Unsafe/);
+  await assert.rejects(adapter.downloadPrivateObject({ownerId:owner,requestId,path:owner+'/../'+path,kind:'series'}),/Unsafe/);
   assert.equal(f.calls.filter(x=>x[0]==='download').length,0);
 });
 test('corrupt Storage bytes fail existing SHA-256 evidence verification',async()=>{
@@ -139,4 +148,20 @@ test('corrupt Storage bytes fail existing SHA-256 evidence verification',async()
       ...adapter,
     },
   }),/checksum/);
+});
+
+test('privileged download requires canonical current owner+path approval, not just owner prefix',async()=>{
+  const f=fixture();
+  const adapter=createTrainingSupabaseEvidenceAdapter({supabase:f.supabase});
+  await assert.rejects(adapter.downloadPrivateObject({
+    ownerId:owner,requestId,kind:'series',path:owner+'/'+'z'.repeat(64)+'/unknown.fit',
+  }),/not approved/);
+  await assert.rejects(adapter.downloadPrivateObject({ownerId:owner,requestId,path,kind:'route'}),/not approved/);
+  assert.equal(f.calls.filter(x=>x[0]==='download').length,0);
+});
+test('a previously listed file revoked in canonical database cannot be fetched',async()=>{
+  const f=fixture({tables:{v2_activity_series:[{...seriesRow(),state:'revoked'}],v2_activity_route_objects:[]}});
+  const adapter=createTrainingSupabaseEvidenceAdapter({supabase:f.supabase});
+  await assert.rejects(adapter.downloadPrivateObject({ownerId:owner,requestId,path,kind:'series'}),/not approved/);
+  assert.equal(f.calls.filter(x=>x[0]==='download').length,0);
 });
