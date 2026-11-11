@@ -7,6 +7,7 @@ export type DeletionServices = {
   deleteAuthUser: (userId: string) => Promise<AdminResponse>;
   inspectAuthUser: (userId: string) => Promise<AdminResponse>;
   complete: (request: WorkerRequest) => Promise<RpcResponse>;
+  verifyCompletion: (request: WorkerRequest) => Promise<RpcResponse>;
   recordFailure: (request: WorkerRequest, reason: FailureReason) => Promise<RpcResponse>;
 };
 export type FailureReason = 'auth_delete_failed' | 'auth_verify_failed' | 'completion_failed';
@@ -49,7 +50,15 @@ export async function executeDeletionOnce(request: WorkerRequest, services: Dele
         const completed = await services.complete(request);
         if (!completed.error && matchingReceipt(completed.data, 'completed', request)) return 'completed';
       } catch {
-        // Completion response may also be uncertain; operator review required.
+        // Completion may have committed despite a lost network response.
+      }
+      // Read-only proof from the durable redacted completion audit. Never retry
+      // Auth deletion or the completion mutation after an ambiguous response.
+      try {
+        const verified = await services.verifyCompletion(request);
+        if (!verified.error && matchingReceipt(verified.data, 'completed', request)) return 'completed';
+      } catch {
+        // Operator recovery remains required if readback is also uncertain.
       }
     } else {
       reason = 'auth_verify_failed';
