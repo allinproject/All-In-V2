@@ -1,0 +1,32 @@
+\set ON_ERROR_STOP on
+-- ALL-246 TWO-CONNECTION RACE setup. Run only after combined candidate schema
+-- replay. Shared disposable PG17 DB; test-owned function/table only.
+INSERT INTO auth.users(id) VALUES('abcdefab-cdef-4abc-8def-abcdefabcdef');
+CREATE TABLE public.v2_qa_training_start_race_results(
+  session_id uuid PRIMARY KEY,
+  outcome text NOT NULL CHECK(outcome IN ('created','prevented'))
+);
+CREATE FUNCTION public.v2_qa_start_race(
+ p_session_id uuid,p_action_id uuid
+) RETURNS text LANGUAGE plpgsql SECURITY INVOKER SET search_path=''
+AS $race$
+DECLARE
+ outcome text;
+BEGIN
+ BEGIN
+   PERFORM allin_private.v2_training_apply_session_candidate(
+      'abcdefab-cdef-4abc-8def-abcdefabcdef',
+      p_session_id,p_action_id,'start',0,repeat('a',64),
+      '2026-11-11','America/Chicago','2026-11-11 19:00:00+00');
+   outcome:='created';
+   -- Retain transaction and owner advisory lock long enough for competing
+   -- connection to genuinely overlap this first connection's transaction.
+   PERFORM pg_catalog.pg_sleep(0.7);
+ EXCEPTION WHEN unique_violation THEN
+   outcome:='prevented';
+ END;
+ INSERT INTO public.v2_qa_training_start_race_results(session_id,outcome)
+ VALUES(p_session_id,outcome);
+ RETURN outcome;
+END;
+$race$;
