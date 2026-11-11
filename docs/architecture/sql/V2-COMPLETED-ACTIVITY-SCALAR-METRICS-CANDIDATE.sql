@@ -22,8 +22,8 @@ CREATE TABLE public.v2_activity_metric_definitions (
    CHECK(status IN ('candidate','published','retired')),
  created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(metric_code,definition_version),
- CHECK(sport_scope <@ ARRAY['running','cycling','swimming','strength','hiking',
-  'rucking','rowing','elliptical','stair','yoga','mobility','other']::text[])
+ CHECK(sport_scope <@ ARRAY['running','walking','cycling','swimming','strength','hiking',
+  'rucking','rowing','elliptical','stair','yoga','mobility','hiit','multisport','other']::text[])
 );
 CREATE TABLE public.v2_activity_metric_values (
  id uuid PRIMARY KEY,
