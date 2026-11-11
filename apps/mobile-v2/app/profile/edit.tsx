@@ -7,6 +7,7 @@ import { useAccessGate } from '../../src/auth/AccessGateProvider';
 import { assertV2SessionOwner, readV2OwnedProfileState } from '../../src/auth/accessGateClient';
 import { v2AuthenticatedScreenKey } from '../../src/auth/authRoute';
 import { normalizeV2DisplayName, profileOwnerMatches } from '../../src/auth/profileEditor';
+import { profileAvatarInitials } from '../../src/features/profile/profileIdentityPresentation';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
 
@@ -102,7 +103,7 @@ function OwnedEditProfile() {
         {!loading && profile ? (
           <>
             <View style={styles.photoSection}>
-              <View style={styles.avatar}><Text style={styles.avatarText}>{(profile.display_name ?? user.email ?? 'A').trim().charAt(0).toUpperCase() || 'A'}</Text></View>
+              <View style={styles.avatar}><Text style={styles.avatarText}>{profileAvatarInitials(profile.display_name)}</Text></View>
               <Text style={styles.gold}>Change Profile Photo</Text>
               <Text style={styles.small}>Photo upload and removal will be enabled when the private V2 avatar storage flow is connected.</Text>
             </View>
