@@ -174,7 +174,7 @@ begin
       '22222222-2222-4222-8222-222222222222',
       '33333333-3333-4333-8333-333333333333',1,'bad','bad');
     raise exception 'B server writer targeted A thread';
-  exception when sqlstate '40001' then null;
+  exception when insufficient_privilege then null;
   end;
   begin
     perform public.v2_coach_append_exchange(
