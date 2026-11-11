@@ -48,6 +48,21 @@ test("read window requires owner authentication and bounded cursor pagination",(
  assert.match(candidate,/p_limit not between 1 and 50/i);
  assert.match(candidate,/\(m\.created_at,m\.id\)<\(p_before_created_at,p_before_message_id\)/);
 });
+test("exact exchange reader is owner-invoker and cannot return a partial saved pair",()=>{
+ const fn=candidate.match(/create function public\.v2_coach_read_exchange\([\s\S]*?\$function\$;/i)?.[0];
+ assert.ok(fn);
+ assert.match(fn,/security invoker/i);
+ assert.match(fn,/auth\.uid\(\)/i);
+ assert.match(fn,/p_expected_user_id is distinct from v_user/);
+ assert.match(fn,/m\.client_request_id=p_client_request_id/);
+ assert.match(fn,/if v_count<>2 then return;/);
+ const grant=candidate.match(/grant execute on function public\.v2_coach_read_exchange\([\s\S]*?;/i)?.[0];
+ assert.ok(grant);
+ assert.match(grant,/to authenticated;/i);
+ assert.match(replay,/Exact owner readback did not return the message pair/);
+ assert.match(replay,/Wrong assistant message ID returned a partial exchange/);
+ assert.match(replay,/B read A exact Coach exchange/);
+});
 test("rollback replay addresses two accounts, direct client write denial and atomic rollback",()=>{
  assert.match(replay,/coach-v2-a@example\.invalid/);
  assert.match(replay,/coach-v2-b@example\.invalid/);
