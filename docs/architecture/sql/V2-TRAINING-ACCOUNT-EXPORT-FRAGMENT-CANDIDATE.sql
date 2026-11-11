@@ -35,6 +35,7 @@ BEGIN
  ('allin_private','v2_training_action_receipts'),
  ('allin_private','v2_training_completion_outbox'),
  ('allin_private','v2_training_plan_accept_receipts'),
+ ('allin_private','v2_account_export_requests_candidate'),
  ('public','v2_activity_metric_values'),
  ('public','v2_activity_segments'),
  ('public','v2_activity_strength_sets'),
@@ -77,6 +78,7 @@ BEGIN
  ('allin_private.v2_training_action_receipts'),
  ('allin_private.v2_training_completion_outbox'),
  ('allin_private.v2_training_plan_accept_receipts'),
+ ('allin_private.v2_account_export_requests_candidate'),
  ('public.v2_activity_metric_values'),
  ('public.v2_activity_segments'),
  ('public.v2_activity_strength_sets'),
@@ -93,7 +95,8 @@ BEGIN
     AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
  WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
    AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%'
-     OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%')
+     OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%'
+     OR c.relname = 'v2_account_export_requests_candidate')
  )
  SELECT
    ARRAY(SELECT qualified_name FROM expected EXCEPT SELECT qualified_name FROM actual),
