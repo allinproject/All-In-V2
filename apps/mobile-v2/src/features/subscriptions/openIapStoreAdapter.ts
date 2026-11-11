@@ -19,7 +19,7 @@ export type OpenIapProduct=Readonly<{
 type Listener={remove:()=>void};
 export type OpenIapPort=Readonly<{
   initConnection:()=>Promise<boolean>;
-  fetchProducts:(query:{skus:string[];type:'subs'})=>Promise<readonly OpenIapProduct[]>;
+  fetchProducts:(query:{skus:string[];type:'subs'})=>Promise<readonly OpenIapProduct[]|null>;
   requestPurchase:(request:unknown)=>Promise<unknown>;
   purchaseUpdatedListener:(callback:(purchase:OpenIapPurchase)=>void)=>Listener;
   purchaseErrorListener:(callback:(error:{code?:string})=>void)=>Listener;
@@ -54,19 +54,19 @@ export function createOpenIapStoreAdapter({
   timeoutMs?:number;
 }):NativeStoreAdapter&{finishVerifiedPurchase:(e:NativePurchaseEvidence)=>Promise<void>} {
   let connected=false,products:readonly OpenIapProduct[]=[];
-  const unfinished=new Map<string,OpenIapPurchase>();
+  const unfinished=new Map<string,{purchase:OpenIapPurchase;ownerId:string}>();
   const connect=async()=>{
     if(!connected)connected=await api.initConnection();
     if(!connected)throw Error('native_store_not_ready');
   };
-  const normalize=(p:OpenIapPurchase):NativePurchaseEvidence|null=>{
+  const normalize=(p:OpenIapPurchase,ownerId:string):NativePurchaseEvidence|null=>{
     if(!p||p.productId!==productId||!acquired(p,platform)||
       typeof p.purchaseToken!=='string'||!p.purchaseToken)
       return null;
     const evidence=platform==='ios'?
       {platform,productId,signedTransaction:p.purchaseToken} as const:
       {platform,productId,purchaseToken:p.purchaseToken} as const;
-    unfinished.set(evidenceKey(evidence),p);
+    unfinished.set(evidenceKey(evidence),{purchase:p,ownerId});
     return evidence;
   };
   const checkedContext=async()=>{
@@ -91,7 +91,7 @@ export function createOpenIapStoreAdapter({
         throw Error('unapproved_native_sku');
       await connect();
       const found=await api.fetchProducts({skus:[productId],type:'subs'});
-      products=found.filter(p=>p.id===productId);
+      products=(found??[]).filter(p=>p.id===productId);
       return products.map(p=>({id:p.id}));
     },
     async purchase(id){
@@ -134,7 +134,7 @@ export function createOpenIapStoreAdapter({
               complete(null,Error('owner_changed'));
               return;
             }
-            const result=normalize(p);
+            const result=normalize(p,context.ownerId);
             if(result)complete(result);
           });
           error=api.purchaseErrorListener(err=>{
@@ -149,20 +149,24 @@ export function createOpenIapStoreAdapter({
     },
     async restore(){
       await connect();
-      await checkedContext();
+      const context=await checkedContext();
       const purchases=await api.getAvailablePurchases(
         platform==='ios'?{onlyIncludeActiveItemsIOS:false}:undefined);
+      const ownerId=getOwner();
+      if(!ownerId||ownerId!==context.ownerId)throw Error('owner_changed');
       const evidence:NativePurchaseEvidence[]=[];
       for(const p of purchases){
-        const normalized=normalize(p);
+        const normalized=normalize(p,ownerId);
         if(normalized)evidence.push(normalized);
       }
       return evidence;
     },
     async finishVerifiedPurchase(e){
-      const key=evidenceKey(e),purchase=unfinished.get(key);
-      if(!purchase)throw Error('native_transaction_not_found');
-      await api.finishTransaction({purchase,isConsumable:false});
+      const key=evidenceKey(e),pending=unfinished.get(key);
+      if(!pending)throw Error('native_transaction_not_found');
+      if(getOwner()!==pending.ownerId)throw Error('owner_changed');
+      await api.finishTransaction({purchase:pending.purchase,isConsumable:false});
+      if(getOwner()!==pending.ownerId)throw Error('owner_changed');
       unfinished.delete(key);
     },
   };
