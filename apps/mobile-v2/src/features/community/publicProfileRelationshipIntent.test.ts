@@ -56,3 +56,8 @@ test('only the canonical server-confirmed same-action advancing revision is acce
   }),/Unverified/);
  }
 });
+
+test('truthy strings cannot forge follow approval or block rights',()=>{
+ assert.throws(()=>relationshipActionAvailability(snap({incomingRequestFromTarget:'true' as unknown as boolean})),/Invalid/);
+ assert.throws(()=>relationshipActionAvailability(snap({viewerBlockedTarget:'false' as unknown as boolean})),/Invalid/);
+});
