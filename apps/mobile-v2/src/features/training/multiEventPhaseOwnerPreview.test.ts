@@ -29,7 +29,7 @@ function args(){
   }))},
   competitionSnapshot:{...common,records:events.map((e,i)=>({
    eventId:e.id,sessionId:'session-'+i,planRevisionId:revision,ownerId:owner,
-   athleteLocalDate:e.date,sport:e.sport,competitionConfirmed:true as const
+   athleteLocalDate:e.date,sport:e.sport,priority:e.priority,competitionConfirmed:true as const
   }))}
  };
  const phaseDecisions:EventPhaseDecision[]=[
