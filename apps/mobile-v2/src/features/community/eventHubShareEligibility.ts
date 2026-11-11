@@ -7,6 +7,8 @@
 export type EventHubCandidate={
   eventId:string;groupId:string;athleteId:string;
   joinedAt:string;eventLocalDay:string;eventTimezone:string;
+  /** Server-computed event-timezone dates for each candidate, not UTC dates. */
+  publishedEventLocalDay:string;workoutEventLocalDay:string;
   acceptedSportKinds:readonly string[];
 };
 export type EventHubShareEvidence={
@@ -14,8 +16,8 @@ export type EventHubShareEvidence={
   /** Explicitly approved Community publication, not an imported history row. */
   postedAfterExplicitApproval:boolean;
   postAudience:'public'|'followers'|'private';
-  /** UTC publish instant plus server-certified event-local dates; do not infer local date from UTC. */
-  publishedAt:string;publishedLocalDay:string;workoutLocalDay:string;
+  /** UTC publication timestamp; per-event dates are certified on candidates. */
+  publishedAt:string;
   workoutSportKind:string;
   /** If user explicitly chose a group, no other group may be selected. */
   explicitlyLinkedGroupId:string|null;
@@ -41,7 +43,7 @@ const instant=(v:unknown)=>typeof v==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d
   Number.isFinite(Date.parse(v));
 function requireEvidence(e:EventHubShareEvidence,b:EventHubCandidateBatch):void{
  if(!valid(e.athleteId)||!valid(e.canonicalPostId)||!valid(e.canonicalWorkoutId)||
-  !valid(e.workoutSportKind)||!day(e.workoutLocalDay)||!day(e.publishedLocalDay)||!instant(e.publishedAt)||
+  !valid(e.workoutSportKind)||!instant(e.publishedAt)||
   !['public','followers','private'].includes(e.postAudience)||
   typeof e.postedAfterExplicitApproval!=='boolean'||
   typeof e.confirmedEventDayWorkout!=='boolean'||
@@ -54,7 +56,8 @@ function requireEvidence(e:EventHubShareEvidence,b:EventHubCandidateBatch):void{
  for(const c of b.candidates){
   if(!valid(c.eventId)||!valid(c.groupId)||!valid(c.athleteId)||
    c.athleteId!==e.athleteId||!instant(c.joinedAt)||
-   !day(c.eventLocalDay)||!valid(c.eventTimezone)||
+   !day(c.eventLocalDay)||!day(c.publishedEventLocalDay)||
+   !day(c.workoutEventLocalDay)||!valid(c.eventTimezone)||
    !Array.isArray(c.acceptedSportKinds)||c.acceptedSportKinds.length>20||
    c.acceptedSportKinds.some(x=>!valid(x))||seen.has(c.groupId))
    throw new Error('Foreign, duplicate or invalid EventHub candidate.');
@@ -75,13 +78,13 @@ export function eventHubWorkoutProjection(
   if(evidence.explicitlyLinkedGroupId!==null&&c.groupId!==evidence.explicitlyLinkedGroupId)return false;
   if(!c.acceptedSportKinds.includes(evidence.workoutSportKind))return false;
   if(Date.parse(evidence.publishedAt)<Date.parse(c.joinedAt))return false;
-  if(evidence.workoutLocalDay>c.eventLocalDay)return false;
+  if(c.workoutEventLocalDay>c.eventLocalDay)return false;
   // A post after event day is never auto-syndicated. A late reviewed
   // event-day workout needs explicit group linkage and human confirmation.
-  const afterEventDay=evidence.publishedLocalDay>c.eventLocalDay;
+  const afterEventDay=c.publishedEventLocalDay>c.eventLocalDay;
   if(afterEventDay&&!(
    evidence.explicitlyLinkedGroupId===c.groupId&&
-   evidence.workoutLocalDay===c.eventLocalDay&&
+   c.workoutEventLocalDay===c.eventLocalDay&&
    evidence.confirmedEventDayWorkout
   ))return false;
   return true;
