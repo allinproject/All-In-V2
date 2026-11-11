@@ -1,0 +1,35 @@
+\set ON_ERROR_STOP on
+-- ALL-217: fresh isolated PostgreSQL DB only, never production.
+do $guard$
+begin
+ if current_database()<>'allin_coach_race_test' then
+  raise exception 'Refusing non-isolated Coach race target';
+ end if;
+end;
+$guard$;
+do $roles$
+begin
+ if not exists(select 1 from pg_roles where rolname='anon') then create role anon nologin;end if;
+ if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin;end if;
+ if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role nologin bypassrls;end if;
+end;
+$roles$;
+alter role service_role bypassrls;
+create schema auth;
+create schema allin_private;
+grant usage on schema public,auth to authenticated;
+grant usage on schema public,auth,allin_private to service_role;
+create table auth.users(id uuid primary key);
+create function auth.uid() returns uuid language sql stable security invoker
+set search_path='' as $uid$
+ select nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
+$uid$;
+\ir ../docs/architecture/sql/V2-COACH-OWNER-MIGRATION-CANDIDATE.sql
+insert into auth.users(id) values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+set role authenticated;
+select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',false);
+select public.v2_coach_create_thread(
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+reset role;
+update allin_private.v2_coach_request_policy set enabled=true where singleton=true;
