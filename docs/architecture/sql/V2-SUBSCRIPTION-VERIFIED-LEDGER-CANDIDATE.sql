@@ -143,7 +143,8 @@ revoke all on function allin_private.v2_bind_confirmed_subscription_purchase(uui
 
 -- Privileged service-only transaction. Strictly store verified facts only:
 -- no client grants and no exposed RPC. New purchase binding requires a trusted
--- checkout/restore authorization and immutable prebinding provenance recorded\n-- as v2_subscription_checkout_attempts BEFORE this function can apply an event.
+-- checkout/restore authorization and immutable prebinding provenance recorded
+-- as v2_subscription_checkout_attempts BEFORE this function can apply an event.
 create or replace function allin_private.v2_apply_verified_subscription_event(
   p_owner_id uuid,
   p_provider text,
