@@ -87,9 +87,23 @@ CREATE TABLE public.v2_activity_sources (
     source_kind IN ('workout_record','sensor_summary','manual_record',
                     'device_session','imported_historical_record')
   ),
-  source_record_id text NOT NULL CHECK (length(source_record_id) BETWEEN 1 AND 500),
-  source_revision text,
-  source_device_ref text,
+  -- Preserve provider-native record identity but reject blanks and
+  -- uncontrolled leading/trailing whitespace that would evade deduplication.
+  -- Provider namespace/certification still belongs to the trusted adapter.
+  source_record_id text NOT NULL CHECK (
+    length(source_record_id) BETWEEN 1 AND 500
+    AND source_record_id=pg_catalog.btrim(source_record_id)
+  ),
+  source_revision text CHECK (
+    source_revision IS NULL OR
+    (length(pg_catalog.btrim(source_revision)) BETWEEN 1 AND 160
+     AND source_revision=pg_catalog.btrim(source_revision))
+  ),
+  source_device_ref text CHECK (
+    source_device_ref IS NULL OR
+    (length(pg_catalog.btrim(source_device_ref)) BETWEEN 1 AND 250
+     AND source_device_ref=pg_catalog.btrim(source_device_ref))
+  ),
   quality text NOT NULL CHECK (quality IN ('trusted','partial','unverified','low_quality','rejected')),
   captured_at timestamptz,
   received_at timestamptz NOT NULL DEFAULT now(),
