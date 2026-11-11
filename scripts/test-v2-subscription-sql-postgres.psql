@@ -52,6 +52,18 @@ BEGIN
        has_table_privilege(r,'allin_private.v2_subscription_purchases','INSERT') OR
        has_table_privilege(r,'allin_private.v2_subscription_verified_events','INSERT') OR
        has_function_privilege(r,
+       'public.v2_billing_claim_trial_checkout(uuid)','EXECUTE') OR
+       has_function_privilege(r,
+       'public.v2_billing_claim_paid_checkout(uuid)','EXECUTE') OR
+       has_function_privilege(r,
+       'public.v2_billing_register_pending_checkout(uuid,uuid,text)','EXECUTE') OR
+       has_function_privilege(r,
+       'public.v2_billing_finalize_checkout(uuid,uuid,text,text)','EXECUTE') OR
+       has_function_privilege(r,
+       'public.v2_billing_lookup_checkout(text)','EXECUTE') OR
+       has_function_privilege(r,
+       'public.v2_billing_apply_current_subscription_event(uuid,text,text,text,timestamptz)','EXECUTE') OR
+       has_function_privilege(r,
        'allin_private.v2_claim_paid_checkout_attempt(uuid,uuid,text,text)',
        'EXECUTE') OR
        has_function_privilege(r,
@@ -94,6 +106,12 @@ GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_checkout_attempts TO
 GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_purchases TO service_role;
 GRANT SELECT,INSERT ON allin_private.v2_subscription_verified_events TO service_role;
 GRANT USAGE,SELECT ON SEQUENCE allin_private.v2_subscription_verified_events_id_seq TO service_role;
+GRANT EXECUTE ON FUNCTION public.v2_billing_claim_trial_checkout(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.v2_billing_claim_paid_checkout(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.v2_billing_register_pending_checkout(uuid,uuid,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.v2_billing_finalize_checkout(uuid,uuid,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.v2_billing_lookup_checkout(text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.v2_billing_apply_current_subscription_event(uuid,text,text,text,timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_claim_paid_checkout_attempt(
   uuid,uuid,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_claim_trial_checkout_attempt(
@@ -534,4 +552,52 @@ BEGIN
   END IF;
 END
 $cascade$;
+
+-- Review-only public bridge: a normal user cannot execute any of these
+-- exposed-schema functions, while only service_role can mutate same ledger.
+INSERT INTO auth.users(id) VALUES('00000000-0000-0000-0000-000000000013');
+INSERT INTO public.v2_profiles(user_id) VALUES('00000000-0000-0000-0000-000000000013');
+SET ROLE service_role;
+DO $bridge$
+DECLARE a uuid; r text; st text; eligible boolean; lookup_owner uuid;
+BEGIN
+  SELECT attempt_id,status,trial_eligible INTO a,st,eligible
+    FROM public.v2_billing_claim_trial_checkout(
+      '00000000-0000-0000-0000-000000000013');
+  IF a IS NULL OR st <> 'eligible_reserved' OR NOT eligible THEN
+    RAISE EXCEPTION 'Service-only public trial bridge failed';
+  END IF;
+  SELECT public.v2_billing_register_pending_checkout(
+    a,'00000000-0000-0000-0000-000000000013','cs_bridge_13') INTO r;
+  IF r <> 'pending' THEN RAISE EXCEPTION 'Bridge pending: %',r; END IF;
+  SELECT owner_id INTO lookup_owner FROM public.v2_billing_lookup_checkout('cs_bridge_13');
+  IF lookup_owner IS DISTINCT FROM '00000000-0000-0000-0000-000000000013'::uuid THEN
+    RAISE EXCEPTION 'Bridge owner lookup changed owner';
+  END IF;
+  BEGIN
+    PERFORM public.v2_billing_finalize_checkout(
+      a,'00000000-0000-0000-0000-000000000002','cs_bridge_13','sub_bridge_13');
+    RAISE EXCEPTION 'Bridge finalized foreign account';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  SELECT public.v2_billing_finalize_checkout(
+    a,'00000000-0000-0000-0000-000000000013','cs_bridge_13','sub_bridge_13') INTO r;
+  IF r <> 'finalized' THEN RAISE EXCEPTION 'Bridge finalize: %',r; END IF;
+  SELECT public.v2_billing_apply_current_subscription_event(
+    '00000000-0000-0000-0000-000000000013',
+    'sub_bridge_13','evt_bridge_13','paid','2027-01-01 UTC') INTO r;
+  IF r <> 'applied' THEN RAISE EXCEPTION 'Bridge event: %',r; END IF;
+  SELECT public.v2_billing_apply_current_subscription_event(
+    '00000000-0000-0000-0000-000000000013',
+    'sub_bridge_13','evt_bridge_13','paid','2027-01-01 UTC') INTO r;
+  IF r <> 'duplicate' THEN RAISE EXCEPTION 'Bridge replay: %',r; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM allin_private.v2_subscription_purchases
+    WHERE owner_id='00000000-0000-0000-0000-000000000013'
+      AND provider_subscription_id='sub_bridge_13' AND revision=1 AND phase='paid'
+  ) THEN RAISE EXCEPTION 'Bridge failed to persist original owner and revision'; END IF;
+END
+$bridge$;
+RESET ROLE;
+
 SELECT 'PASS ALL-252 isolated PostgreSQL SQL candidate replay' AS outcome;
