@@ -85,6 +85,9 @@ BEGIN
        'allin_private.v2_confirm_pending_subscription_checkout(uuid,uuid,text,text,text,text)',
        'EXECUTE') OR
        has_function_privilege(r,
+       'allin_private.v2_bind_verified_native_subscription(uuid,text,text,text,text,text,timestamptz)',
+       'EXECUTE') OR
+       has_function_privilege(r,
        'allin_private.v2_bind_confirmed_subscription_purchase(uuid)', 'EXECUTE') OR
        has_function_privilege(r,
        'allin_private.v2_finalize_verified_subscription_checkout(uuid,uuid,text,text,text,text)',
@@ -131,6 +134,8 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_register_pending_subscription_checkou
   uuid,uuid,uuid,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_confirm_pending_subscription_checkout(
   uuid,uuid,text,text,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION allin_private.v2_bind_verified_native_subscription(
+ uuid,text,text,text,text,text,timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_bind_confirmed_subscription_purchase(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_finalize_verified_subscription_checkout(
   uuid,uuid,text,text,text,text) TO service_role;
@@ -650,6 +655,75 @@ BEGIN
 
 END
 $bridge$;
+RESET ROLE;
+
+
+-- Native store receipt already independently verified by a trusted worker:
+-- bind its immutable subscription ID to the authenticated V2 owner.
+INSERT INTO auth.users(id) VALUES
+ ('00000000-0000-0000-0000-000000000014'),
+ ('00000000-0000-0000-0000-000000000015');
+INSERT INTO public.v2_profiles(user_id) VALUES
+ ('00000000-0000-0000-0000-000000000014'),
+ ('00000000-0000-0000-0000-000000000015');
+SET ROLE service_role;
+DO $native_purchase$
+DECLARE r text;
+BEGIN
+  SELECT allin_private.v2_bind_verified_native_subscription(
+    '00000000-0000-0000-0000-000000000014',
+    'app_store','sandbox','123456789000014','apple_txn_14',
+    'trial','2027-01-01 UTC') INTO r;
+  IF r <> 'committed' THEN RAISE EXCEPTION 'Apple bind: %',r; END IF;
+  SELECT allin_private.v2_bind_verified_native_subscription(
+    '00000000-0000-0000-0000-000000000014',
+    'app_store','sandbox','123456789000014','apple_txn_14',
+    'trial','2027-01-01 UTC') INTO r;
+  IF r <> 'duplicate' THEN RAISE EXCEPTION 'Apple duplicate: %',r; END IF;
+  BEGIN
+    PERFORM allin_private.v2_bind_verified_native_subscription(
+      '00000000-0000-0000-0000-000000000015',
+      'app_store','sandbox','123456789000014','apple_stolen_15',
+      'paid','2027-01-01 UTC');
+    RAISE EXCEPTION 'Apple purchase transferred to other owner';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  SELECT allin_private.v2_bind_verified_native_subscription(
+    '00000000-0000-0000-0000-000000000014',
+    'google_play','sandbox','sha256:google_token_14','google_event_14',
+    'paid','2027-01-01 UTC') INTO r;
+  IF r <> 'committed' THEN RAISE EXCEPTION 'Google bind: %',r; END IF;
+  IF (SELECT count(*) FROM allin_private.v2_subscription_purchases
+       WHERE owner_id='00000000-0000-0000-0000-000000000014') <> 2 THEN
+    RAISE EXCEPTION 'Native independent purchase count changed';
+  END IF;
+  SELECT allin_private.v2_bind_verified_native_subscription(
+    '00000000-0000-0000-0000-000000000014',
+    'app_store','sandbox','123456789000014','apple_refund_14',
+    'refunded',NULL) INTO r;
+  IF r <> 'committed' THEN RAISE EXCEPTION 'Apple refund: %',r; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.v2_billing_read_owner_access(
+      '00000000-0000-0000-0000-000000000014','sandbox')
+    WHERE entitled
+  ) THEN RAISE EXCEPTION 'Independent Google access lost after Apple refund'; END IF;
+  SELECT allin_private.v2_bind_verified_native_subscription(
+    '00000000-0000-0000-0000-000000000014',
+    'google_play','sandbox','sha256:google_token_14','google_revoke_14',
+    'revoked',NULL) INTO r;
+  IF r <> 'committed' THEN RAISE EXCEPTION 'Google revoke: %',r; END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.v2_billing_read_owner_access(
+      '00000000-0000-0000-0000-000000000014','sandbox')
+    WHERE entitled OR access_until IS NOT NULL
+  ) THEN RAISE EXCEPTION 'Native revoked account still entitled'; END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.v2_billing_read_owner_access(
+      '00000000-0000-0000-0000-000000000014','production')
+    WHERE entitled
+  ) THEN RAISE EXCEPTION 'Native sandbox purchase leaked production'; END IF;
+END
+$native_purchase$;
 RESET ROLE;
 
 SELECT 'PASS ALL-252 isolated PostgreSQL SQL candidate replay' AS outcome;
