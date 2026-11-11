@@ -107,3 +107,9 @@ test('authoritative trial claim serializes account and enforces cross-provider o
   assert.match(sql,/trial_unavailable/);
   assert.match(sql,/revoke all on function allin_private\.v2_claim_trial_checkout_attempt/);
 });
+
+test('active checkout unique constraint defends against privileged direct duplicates',()=>{
+  assert.match(sql,/create unique index v2_subscription_one_active_checkout_per_owner_idx/);
+  assert.match(sql,/on allin_private\.v2_subscription_checkout_attempts\(owner_id\)/);
+  assert.match(sql,/where state in \('reserved','pending'\)/);
+});
