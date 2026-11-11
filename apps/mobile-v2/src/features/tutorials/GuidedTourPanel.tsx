@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/tokens';
-import { advanceGuide, guideProgress, initialGuidePosition, rewindGuide, type GuidedStep } from './profileGuide';
+import { advanceGuide, guideProgress, initialGuidePosition, rewindGuide, type GuidedStep, type GuidePosition } from './profileGuide';
 
-type Props = { title: string; steps: readonly GuidedStep[]; onExit: () => void };
+type Props = { title: string; steps: readonly GuidedStep[]; onExit: () => void; onPositionChange?: (position:GuidePosition) => void };
 /** Reusable in-screen tutorial controller. It never interacts with domain actions. */
-export function GuidedTourPanel({ title, steps, onExit }: Props) {
+export function GuidedTourPanel({ title, steps, onExit, onPositionChange }: Props) {
   const [position, setPosition] = useState(initialGuidePosition);
+  useEffect(() => { onPositionChange?.(position); }, [position, onPositionChange]);
   if (!steps.length) return null;
   const current = guideProgress(position, steps.length);
   const step = steps[current.index];
@@ -17,8 +18,8 @@ export function GuidedTourPanel({ title, steps, onExit }: Props) {
         <Text style={styles.link}>Exit</Text>
       </Pressable>
     </View>
-    <Text accessibilityRole="header" style={styles.heading}>{current.done ? 'Guide complete' : step.title}</Text>
-    <Text accessibilityLiveRegion="polite" style={styles.body}>
+    <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={styles.heading}>{current.done ? 'Guide complete' : step.title}</Text>
+    <Text style={styles.body}>
       {current.done ? 'You can use the real controls when you are ready. This guide did not change any of your data.' : step.body}
     </Text>
     <View style={styles.row}>
