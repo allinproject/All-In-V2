@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { useAccessGate } from '../../src/auth/AccessGateProvider';
@@ -13,6 +13,9 @@ import {
 } from '../../src/features/training/sportsPreferences';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
+import { GuidedTourPanel } from '../../src/features/tutorials/GuidedTourPanel';
+import { SPORTS_GUIDE_STEPS, sportsGuideTarget, type SportsGuideTarget } from '../../src/features/tutorials/sportsGuide';
+import type { GuidePosition } from '../../src/features/tutorials/profileGuide';
 
 type SettingsSnapshot = { version?: number; settings?: unknown };
 function record(value: unknown): Record<string, unknown> {
@@ -31,6 +34,8 @@ export default function SportsRoute() {
 function SportsOwnerRoute() {
   const { user, loading: authLoading } = useAuth();
   const gate = useAccessGate();
+  const { tutorial } = useLocalSearchParams<{tutorial?:string}>();
+  const router = useRouter();
   const ownerId = user?.id ?? null;
   const [draft, setDraft] = useState<SportsPreferences>({ primaryFocus: '', currentSports: [] });
   const [settingsVersion, setSettingsVersion] = useState<number | null>(null);
@@ -40,6 +45,20 @@ function SportsOwnerRoute() {
   const [notice, setNotice] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const busy = useRef(false);
+  const scroller=useRef<ScrollView>(null);
+  const targets=useRef<Partial<Record<SportsGuideTarget,number>>>({});
+  const activeTarget=useRef<SportsGuideTarget|null>(null);
+  const [highlighted,setHighlighted]=useState<SportsGuideTarget|null>(null);
+  const onGuidePosition=useCallback((position:GuidePosition)=>{
+    const target=sportsGuideTarget(position);
+    activeTarget.current=target;
+    setHighlighted(target);
+    if(target){const y=targets.current[target];if(y!==undefined)scroller.current?.scrollTo({y:Math.max(0,y-16),animated:true});}
+  },[]);
+  const onTargetLayout=useCallback((target:SportsGuideTarget)=>(event:LayoutChangeEvent)=>{
+    targets.current[target]=event.nativeEvent.layout.y;
+    if(activeTarget.current===target)scroller.current?.scrollTo({y:Math.max(0,event.nativeEvent.layout.y-16),animated:true});
+  },[]);
   const pendingSave = useRef<{ version: number; patch: string; id: string } | null>(null);
 
   const readSettings = useCallback(async (isCurrent: () => boolean, preserveDraft: boolean) => {
@@ -117,7 +136,9 @@ function SportsOwnerRoute() {
   if (authLoading || gate.status !== 'ready' || !ownerId) return <Redirect href="/" />;
 
   return <SafeAreaView style={styles.safe}>
-    <ScrollView contentContainerStyle={styles.content}>
+    {tutorial==='sports' && !loading && settingsVersion!==null ? <GuidedTourPanel key={ownerId} title="Sports & Interests guide"
+      steps={SPORTS_GUIDE_STEPS} onExit={()=>router.replace('/profile/tutorials')} onPositionChange={onGuidePosition}/> : null}
+    <ScrollView ref={scroller} contentContainerStyle={styles.content}>
       <Link href="/profile" asChild><Pressable accessibilityRole="button" style={styles.back}><Text style={styles.gold}>‹ Profile</Text></Pressable></Link>
       <Text accessibilityRole="header" style={styles.title}>Sports & Interests</Text>
       <Text style={styles.helper}>Personalize your training experience. You can always explore other activities.</Text>
@@ -126,7 +147,7 @@ function SportsOwnerRoute() {
       {!loading && settingsVersion === null ?
         <Pressable style={styles.save} accessibilityRole="button" onPress={() => setReload(n => n + 1)}><Text style={styles.saveText}>Retry loading</Text></Pressable> : null}
       {!loading && settingsVersion !== null ? <>
-        <View style={styles.card}>
+        <View onLayout={onTargetLayout('focus')} style={[styles.card,highlighted==='focus'&&styles.tourTarget]}>
           <Text style={styles.heading}>Training Focus</Text>
           <Text style={styles.helper}>What are you prioritizing right now? Optional. Choosing a focus never restricts other activities.</Text>
           <View style={styles.chips}>{SPORTS_FOCUS_OPTIONS.map(option => <Chip
@@ -136,7 +157,7 @@ function SportsOwnerRoute() {
             <Text style={styles.gold}>Clear Training Focus</Text>
           </Pressable> : null}
         </View>
-        <View style={styles.card}>
+        <View onLayout={onTargetLayout('activities')} style={[styles.card,highlighted==='activities'&&styles.tourTarget]}>
           <Text style={styles.heading}>Active Activities</Text>
           <Text style={styles.helper}>Select everything you currently do. You can always start any supported activity, selected or not.</Text>
           <View style={styles.chips}>{SPORTS_ACTIVITY_OPTIONS.map(option => <Chip
@@ -146,8 +167,8 @@ function SportsOwnerRoute() {
             disabled={saving} onPress={() => edit(setStartingFromZero)} />
         </View>
         {notice ? <Text accessibilityRole="text" style={styles.gold}>{notice}</Text> : null}
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving, busy: saving }} disabled={saving}
-          style={[styles.save, saving && styles.dim]} onPress={() => void save()}>
+        <Pressable onLayout={onTargetLayout('save')} accessibilityRole="button" accessibilityState={{ disabled: saving, busy: saving }} disabled={saving}
+          style={[styles.save, saving && styles.dim, highlighted==='save'&&styles.tourTarget]} onPress={() => void save()}>
           <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save Preferences'}</Text>
         </Pressable>
       </> : null}
@@ -170,6 +191,7 @@ const styles = StyleSheet.create({
   title: { color: colors.warmWhite, fontSize: 28, fontWeight: '800' },
   helper: { color: colors.mutedText, fontSize: 14, lineHeight: 21 },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 18, padding: 18, gap: 12 },
+  tourTarget:{borderColor:colors.goldSoft,borderWidth:2},
   heading: { color: colors.warmWhite, fontSize: 19, fontWeight: '800' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   chip: { paddingVertical: 10, paddingHorizontal: 13, borderColor: colors.border, borderWidth: 1, backgroundColor: colors.surfaceRaised, borderRadius: 999 },
