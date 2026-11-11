@@ -10,6 +10,18 @@ BEGIN
  SELECT count(*) INTO n FROM public.v2_completed_activities WHERE user_id=owner_id;
  IF n<>1 THEN RAISE EXCEPTION 'Missing populated activity fixture'; END IF;
 END $pre$;
+-- A second athlete with an unrelated completed activity must survive
+-- the first athlete's account deletion. This is a populated isolation check.
+INSERT INTO auth.users(id)
+VALUES ('22222222-2222-4222-8222-222222222222')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.v2_completed_activities (
+ id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,status
+) VALUES (
+ 'd2222222-2222-4222-8222-222222222222',
+ '22222222-2222-4222-8222-222222222222',
+ 'running','manual_entry','2026-11-11','America/Chicago','manual_only','completed'
+);
 -- Historical plan data MUST remain immutable while the Auth owner exists.
 DO $history$
 BEGIN
@@ -104,5 +116,12 @@ BEGIN
    IF n<>0 THEN RAISE EXCEPTION 'Deleted owner retained % rows in %.%',
      n,r.schema_name,r.table_name; END IF;
  END LOOP;
- RAISE NOTICE 'PASS ALL-251: populated Training/Completed Activity owner graph fully cascades';
+ IF NOT EXISTS (
+   SELECT 1 FROM auth.users
+   WHERE id='22222222-2222-4222-8222-222222222222'
+ ) OR (SELECT count(*) FROM public.v2_completed_activities
+       WHERE id='d2222222-2222-4222-8222-222222222222'
+         AND user_id='22222222-2222-4222-8222-222222222222')<>1
+ THEN RAISE EXCEPTION 'Deleting first owner damaged second athlete activity'; END IF;
+ RAISE NOTICE 'PASS ALL-251: populated Training/Completed Activity owner graph fully cascades without affecting another athlete';
 END $post$;
