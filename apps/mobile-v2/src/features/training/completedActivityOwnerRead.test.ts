@@ -47,7 +47,7 @@ test('foreign owner row, wrong activity ID and canceled view fail closed',async(
 test('unregistered metric, sport mismatch and conflicting duplicate codes fail closed',()=>{
  const a=base();
  assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],code:'fake'}]},'owner-A','activity-1'),/definition/);
- assert.throws(()=>canonicalActivityToScreenInput({...a,sport:'strength'},'owner-A','activity-1'),/definition/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,sport:'strength',sportSubtype:null},'owner-A','activity-1'),/definition/);
  assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[a.metrics[0],a.metrics[0]]},'owner-A','activity-1'),/Conflicting/);
 });
 test('unverified measurements are not mislabeled validated, rejected source never displays',()=>{
