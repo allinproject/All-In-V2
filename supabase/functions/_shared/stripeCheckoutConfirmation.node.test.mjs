@@ -15,7 +15,8 @@ const item=Object.freeze({quantity:1,price:{id:priceId,product:productId,
   currency:'usd',unit_amount:999,type:'recurring',
   recurring:{interval:'month',interval_count:1}}});
 const sub=Object.freeze({object:'subscription',id:'sub_test_a',
-  livemode:false,customer:'cus_test_a',status:'trialing',items:{data:[item]}});
+  livemode:false,customer:'cus_test_a',status:'trialing',
+  trial_start:1794400000,trial_end:1795004800,items:{data:[item]}});
 const base=()=>({expectedOwnerId:'owner_a',checkoutAttempt:attempt,
   retrieveCheckoutSession:async()=>session,retrieveSubscription:async()=>sub,
   approvedPriceId:priceId,approvedProductId:productId,expectedLiveMode:false});
@@ -86,4 +87,18 @@ test('provider outages and missing verifier fail closed without owner binding',a
     'provider_unavailable');
   assert.equal((await run({retrieveSubscription:null})).status,'invalid_attempt');
   assert.equal((await run({expectedLiveMode:true})).status,'invalid_attempt');
+});
+
+test('trial must last seven days; no unapproved long trial or missing dates',async()=>{
+  for (const patch of [
+    {trial_start:null},
+    {trial_end:null},
+    {trial_end:sub.trial_start+30*86400},
+    {trial_end:sub.trial_start+6*86400},
+  ]) {
+    assert.equal((await run({retrieveSubscription:async()=>({...sub,...patch})})).status,
+      'unapproved_trial');
+  }
+  assert.equal((await run({retrieveSubscription:async()=>({...sub,status:'active',
+    trial_start:null,trial_end:null})})).status,'confirmed_for_binding_transaction');
 });
