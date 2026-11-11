@@ -399,3 +399,21 @@ Training's terminal finish transaction should produce **exactly one** immutable 
 
 **Before migration:** ALL-222/246/243 must choose and approve the durable outbox vs synchronous same-transaction handoff mechanism, sequence/uniqueness constraints and exact source dedupe, cancellation/recovery and delivery retries, least-privilege worker/RLS grants and bounded retention/export/deletion. `CompletionHandoff` is a reviewable typed compatibility target, **not an authorization to deploy DDL**. The mobile client checks are defense in depth, not substitutes for SQL authorization.
 
+
+## 11. Source reconciliation policy checkpoint — 2026-11-11
+
+**Reusable policy implementation, not a deployed consumer:** `apps/mobile-v2/src/features/training/completedActivitySourceReconciliation.ts` is a pure decision function used to specify and test approved-in-principle safety behavior; the future ALL-243 backend remains authoritative. It consumes owner-verified source candidates, not device self-assertions or a client-accepted session claim. It must **not** be used as a persistent uniqueness guarantee: PostgreSQL composite keys, server checks and transactions are still required.
+
+The decision vocabulary deliberately differentiates:
+- `exact_replay`: same owner/provider/source-kind/exact external record ID, same source revision and fingerprint, same certified session link, and one unambiguous canonical activity
+- `revision_review`: identical external source identity but changed revision, payload fingerprint, or certified session link; keep original measurements and reconcile through authorized correction/version workflow
+- `attach_certified_session`: distinct provider source identity with a **server-certified** exact common Training-session link and a single existing canonical activity target; safe to propose attachment for the canonical backend, not automatically accept client assertions
+- `needs_review`: conflicting canonical IDs, mismatched certified session links, or any overlapping-source candidates without certified exact identity; **never** merge solely on similar sport/start time/distance/route
+- `new_activity_candidate`: no matching exact source, certified same-session linkage or overlapping candidates; backend must still validate identity and write atomically before declaring a new activity
+
+The candidate list supplied by the owner must be bounded and scoped to **the same source key or plausibly overlapping activity window**. It must not be the user's entire workout history or every independent new workout would get stuck in review. The owner must preserve candidate-query coverage and reject ambiguous matches, not let the client choose the winner.
+
+The policy's returned `activityId` is only a linkage proposal. No result is a persisted activity without server transaction acknowledgement. The `ready` receipt from §10 is the only navigation-enabling state.
+
+**Still blocked:** schema approval, indexed uniqueness, account-isolated RLS, race-safe consumer, provider-specific match tolerance, exact Training session certification, conflict/resolution audit, privacy-safe source raw-data lifecycle and two-session PostgreSQL race tests. Source attachments with partial/unknown timing must retain review state until sufficient evidence arrives.
+
