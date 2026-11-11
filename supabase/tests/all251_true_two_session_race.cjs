@@ -26,6 +26,18 @@ if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname) ||
 }
 const lockFor = userId => 'v2-delete-request:' + userId;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+// Verify a *real separate backend* is waiting for an advisory lock. A delay
+// alone cannot prove concurrency if a driver serialized requests.
+async function waitForLockWait(observer, waitingPid, description) {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const result = await observer.query(
+      "select wait_event_type,wait_event from pg_stat_activity where pid=$1", [waitingPid]);
+    if (result.rows[0]?.wait_event_type === 'Lock' &&
+        result.rows[0]?.wait_event === 'advisory') return;
+    await sleep(100);
+  }
+  throw Error('No independently blocked advisory-lock session observed: ' + description);
+}
 async function connect() {
   const client = new Client({ connectionString: target, connectionTimeoutMillis: 5000 });
   await client.connect();
@@ -42,6 +54,23 @@ async function run() {
   const requests = [randomUUID(), randomUUID()];
   let originalGate = null;
   try {
+    assert.notEqual(winner.processID, loser.processID, 'Must use independent Postgres backends');
+    assert.notEqual(admin.processID, winner.processID, 'Observer must use separate Postgres backend');
+    // Never change a populated database's processing gate, even if the URL
+    // appears disposable. Keep this test strictly confined to empty fixtures.
+    const preflight = await admin.query(`
+      select current_database() as db,
+        (select count(*)::int from auth.users) as auth_users,
+        (select count(*)::int from allin_private.v2_account_deletion_requests) as requests,
+        (select count(*)::int from allin_private.v2_account_deletion_execution_audit) as audits,
+        (select count(*)::int from storage.buckets) as buckets`);
+    const env = preflight.rows[0];
+    assert.match(env.db, /(?:_test|_isolated)$/, 'Database name must be disposable');
+    for (const key of ['auth_users','requests','audits','buckets'])
+      assert.equal(env[key], 0, 'Refusing to touch nonempty test database: ' + key);
+    await admin.query("set statement_timeout='8000ms'");
+    await winner.query("set statement_timeout='8000ms'");
+    await loser.query("set statement_timeout='8000ms'");
     const gate = await admin.query('select execution_enabled from allin_private.v2_account_deletion_processor_config where singleton=true');
     assert.equal(gate.rowCount, 1);
     originalGate = gate.rows[0].execution_enabled;
@@ -70,8 +99,8 @@ async function run() {
     let settled = false;
     const cancellation = loser.query('select public.v2_cancel_account_deletion_request($1,$2)', [users[0],requests[0]])
       .then(value => { settled = true; return {value}; }, error => {settled = true; return {error};});
-    await sleep(175);
-    assert.equal(settled, false, 'Cancellation should block behind processing claim lock');
+    await waitForLockWait(admin, loser.processID, 'cancel following claim');
+    assert.equal(settled, false, 'Cancellation must remain blocked behind claim lock');
     await winner.query('COMMIT');
     const cancelled = await cancellation;
     assert.equal(cancelled.error?.code, '42501', 'Cancellation must reject a claimed request');
@@ -89,8 +118,8 @@ async function run() {
     settled = false;
     const claim = loser.query('select public.v2_claim_account_deletion_for_processing($1,$2)', [users[1],requests[1]])
       .then(value => {settled = true;return {value};}, error => {settled = true;return {error};});
-    await sleep(175);
-    assert.equal(settled, false, 'Claim should block behind cancellation lock');
+    await waitForLockWait(admin, loser.processID, 'claim following cancel');
+    assert.equal(settled, false, 'Claim must remain blocked behind cancellation lock');
     await winner.query('COMMIT');
     const processed = await claim;
     assert.equal(processed.error?.code, '42501', 'Claim must reject cancelled request');
@@ -100,6 +129,8 @@ async function run() {
     await rollbackQuietly(winner);
     await rollbackQuietly(loser);
     // Clean up ONLY synthetic fixture users. Auth FK cascades profile/request records.
+    // A rollback of a claimed transaction cannot leave durable processing.
+    // A committed claim leaves audit evidence that is cleared by exact owner.
     try {
       for (const id of users) {
         await admin.query('delete from auth.users where id=$1', [id]);
