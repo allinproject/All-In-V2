@@ -45,7 +45,7 @@ begin
        ]))
        or (n.nspname='allin_private' and c.relname=any(array[
          'v2_training_action_receipts','v2_training_completion_outbox',
-         'v2_training_plan_accept_receipts'
+         'v2_training_plan_accept_receipts','v2_account_export_requests_candidate'
        ]))
      )
  ) then
