@@ -163,6 +163,12 @@ function OwnedProfileScreen() {
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Guidance, explanations, plan-change reviews, and tone</Text>
+              <Link href="/profile/health-conditions" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}>
+                  <Text style={styles.buttonText}>Health Conditions</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.muted}>Optional health considerations; secure saving is not connected yet</Text>
             </View>
             <View onLayout={onGuideAnchorLayout("help")} style={[styles.card, highlightedTarget==="help" && styles.guideTarget]}>
               <Text style={styles.section}>Help</Text>
