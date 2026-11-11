@@ -1,0 +1,49 @@
+name: V2 Indoor Weekly Competition PostgreSQL contract (no deploy)
+
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - 'docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql'
+      - 'scripts/test-v2-weekly-competition-postgres.psql'
+      - '.github/workflows/v2-weekly-competition-postgres.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-weekly-competition-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-only:
+    name: PostgreSQL 17 competition schema and ownership replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: weekly_competition_contract
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d weekly_competition_contract"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGUSER: postgres
+      PGDATABASE: weekly_competition_contract
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replay candidate and owner/privacy constraints in disposable Postgres
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" mkdir -p /tmp/allin/scripts /tmp/allin/docs/architecture/sql
+          docker cp docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql"
+          docker cp scripts/test-v2-weekly-competition-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-weekly-competition-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-weekly-competition-postgres.psql
