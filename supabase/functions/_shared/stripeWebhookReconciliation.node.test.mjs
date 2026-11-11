@@ -4,12 +4,18 @@ import {webcrypto} from 'node:crypto';
 import {reconcileStripeSandboxWebhook as reconcile} from './stripeWebhookReconciliation.mjs';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 const enc=new TextEncoder(),secret='whsec_mock1234',now=1794410000;
+const priceId='price_1UaDovRBJdOnJBog5swb8zpS';
+const productId='prod_VbQgPefruseFHU';
 const sub={id:'sub_test_1',object:'subscription',livemode:false,
-  customer:'cus_test_1',status:'active'};
+  customer:'cus_test_1',status:'active',
+  items:{data:[{quantity:1,current_period_end:now+86400*30,
+    price:{id:priceId,product:productId,currency:'usd',unit_amount:999,
+      type:'recurring',recurring:{interval:'month',interval_count:1}}}]}};
 const checkout={id:'cs_test_1',object:'checkout.session',livemode:false,
   subscription:'sub_test_1'};
 const base=()=>({
   webhookSecrets:[secret],nowSeconds:now,
+  approvedPriceId:priceId,approvedProductId:productId,
   retrieveCheckoutSession:async()=>checkout,
   retrieveSubscription:async()=>sub,
   commitAuthoritativeReconciliation:async()=> 'committed',
@@ -86,4 +92,14 @@ test('signed unrelated events ignored but unimplemented invoice events retry',as
     {status:200,code:'ignored'});
   assert.deepEqual(await reconcile({...base(),...await signed('invoice.paid','in_test_1')}),
     {status:503,code:'unsupported_event'});
+});
+
+test('wrong price never reaches trusted entitlement persistence',async()=>{
+  let calls=0;
+  const r=await reconcile({...base(),...await signed(),
+    approvedPriceId:'price_wrong',
+    commitAuthoritativeReconciliation:async()=>{calls++;return 'committed';}});
+  assert.equal(r.status,503);
+  assert.equal(r.code,'unverified_provider_state');
+  assert.equal(calls,0);
 });
