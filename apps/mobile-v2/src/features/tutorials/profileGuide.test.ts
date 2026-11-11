@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PROFILE_GUIDE_VERSION, PROFILE_GUIDE_STEPS,initialGuidePosition,
-  guideProgress,advanceGuide,rewindGuide,exitGuide,
+  guideProgress,advanceGuide,rewindGuide,exitGuide,profileGuideTarget,
 } from './profileGuide.ts';
 
 test('Profile walkthrough has distinct steps about current real controls',()=>{
-  assert.equal(PROFILE_GUIDE_VERSION,1);
+  assert.equal(PROFILE_GUIDE_VERSION,2);
   assert.equal(new Set(PROFILE_GUIDE_STEPS.map(s=>s.id)).size,PROFILE_GUIDE_STEPS.length);
   assert.ok(PROFILE_GUIDE_STEPS.length>=3);
   assert.ok(PROFILE_GUIDE_STEPS.every(step=>step.title&&step.body&&step.target));
@@ -29,4 +29,11 @@ test('corrupt step indexes are clamped and empty guide is rejected',()=>{
   assert.deepEqual(guideProgress({index:999,done:false},3),{index:2,done:false});
   assert.deepEqual(guideProgress({index:-9,done:false},3),{index:0,done:false});
   assert.throws(()=>guideProgress(initialGuidePosition(),0),/at least one/);
+});
+
+test('every Profile tour step points to a distinct real control or section',()=>{
+  assert.deepEqual(PROFILE_GUIDE_STEPS.map(s=>s.target),['account','sports','kitchen','coach','help','legal']);
+  assert.equal(profileGuideTarget(initialGuidePosition()),'account');
+  assert.equal(profileGuideTarget({index:2,done:false}),'kitchen');
+  assert.equal(profileGuideTarget({index:5,done:true}),null);
 });
