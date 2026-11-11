@@ -43,6 +43,16 @@
 
 **Critical review still needed before deployment:** verified caller auth model/secrets and isolated deployment environment, end-to-end Auth Admin result contract, actual worker exception handling and retry strategy, true concurrent request/cancel/claim test, signed-in 2-account app tests, Storage/provider cleanup expansion as V2 gains these domains, audit retention and privacy notices, sign-out/session behavior, legal/founder approval and external iPhone/TestFlight acceptance. Do not consider an undeployed function production-accepted merely because pure policy and SQL tests pass.
 
+## 2026-11-11 — Deletion orchestration failure-path hardening
+
+The staged worker's claim, Auth deletion, Auth absence readback, completion receipt and generic failure audit have been extracted from the Edge request handler into the pure injectable [execution module](../../supabase/functions/v2-account-deletion-worker/execution.ts). The [Edge handler](../../supabase/functions/v2-account-deletion-worker/index.ts) maps its result to the HTTP response. A deletion is attempted **at most once** after an exact matching `processing` claim receipt; rejected, thrown or mismatched claims cannot trigger an Auth deletion. An unknown HTTP 404 does **not** establish a deleted Auth user: absence requires the specific `user_not_found` API error code **and** status 404. If the Admin API returns an ambiguous network error, the account still exists, the absence check fails or the audit completion receipt is invalid, the worker requires manual recovery. It never sends a second destructive request.
+
+[Eight locally executed Node 22 unit tests](../../supabase/functions/v2-account-deletion-worker/execution.test.mjs) passed: normal completion, failed/thrown/mismatched claims, ambiguous delete response, unrelated 404 from Auth lookup, user still found, database completion error, malformed completion receipt, and failure-audit write error. Added the execution test alongside the original policy suite in the V2 `test:deletion-worker` script. This is **mocked orchestration**, not proof of live Auth Admin/Edge execution or a production build.
+
+[Supabase function configuration](../../supabase/config.toml) explicitly specifies `verify_jwt = true` for the staged worker, in addition to its internal long-secret worker token and its two default-off activation switches. **Do not deploy or enable the function until the exact service-to-Edge JWT authentication path, secret provisioning and secure triggering mechanism have been exercised in an isolated environment.**
+
+**Remaining blocker:** manual recovery from uncertain Auth deletion is not yet an accepted operational procedure. A missing Auth account with a failed audit cannot be retried via the normal claim path (by design); operator recovery must first verify all data/Storage/provider cleanup and preserve an approved minimal audit before recording completion. No automatic retry should be added to work around this safeguard. Verify signed-in token revocation, full Expo typecheck, device, genuine two-account and real two-session concurrency tests.
+
 ## The actual deletion processor must still do all of the following
 
 1. Trusted server-side authentication and authorization; never expose service key/admin deletion to mobile clients. No silent scheduled claims or broad user enumerations.
