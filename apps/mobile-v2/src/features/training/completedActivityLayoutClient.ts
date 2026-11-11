@@ -1,8 +1,8 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import type {Database} from '../../types/database.types';
-import {assertV2SessionOwner,readV2OwnedProfileState} from '../../auth/accessGateClient';
+import {assertV2SessionOwner,readV2OwnedProfileState} from '../../auth/accessGateClient.ts';
 import {completedActivityLayoutPatch,readCompletedActivityLayouts,
- type CompletedActivityLayouts} from './completedActivityLayouts';
+ type CompletedActivityLayouts} from './completedActivityLayouts.ts';
 
 export type CompletedActivityLayoutSnapshot={layouts:CompletedActivityLayouts;version:number};
 const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
