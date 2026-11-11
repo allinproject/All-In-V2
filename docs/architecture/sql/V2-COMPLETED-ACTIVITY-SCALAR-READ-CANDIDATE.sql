@@ -32,6 +32,7 @@ BEGIN
   JOIN public.v2_activity_metric_definitions d
    ON d.metric_code=m.metric_code AND d.definition_version=m.definition_version
   WHERE m.activity_id=p_activity_id AND m.user_id=p_user_id
+    AND m.segment_id IS NULL
     AND d.status='published' AND v_activity.sport=ANY(d.sport_scope)
  ), grouped AS (
   SELECT metric_code,definition_version,canonical_unit,
@@ -71,6 +72,7 @@ BEGIN
   JOIN public.v2_activity_metric_definitions d
    ON d.metric_code=m.metric_code AND d.definition_version=m.definition_version
   WHERE m.activity_id=p_activity_id AND m.user_id=p_user_id
+    AND m.segment_id IS NULL
    AND d.status='published' AND v_activity.sport=ANY(d.sport_scope)
  ), grouped AS (
   SELECT metric_code,definition_version,
