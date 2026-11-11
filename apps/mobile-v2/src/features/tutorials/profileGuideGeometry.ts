@@ -2,7 +2,7 @@ import type { ProfileGuideTarget } from './profileGuide';
 
 /** Scroll positions are measured against the ScrollView content, not the device screen. */
 export type GuideLayoutRegistry = {
-  sections: Partial<Record<'account' | 'personalize' | 'help' | 'legal', number>>;
+  sections: Partial<Record<'account' | 'personalize' | 'nutrition' | 'help' | 'legal', number>>;
   children: Partial<Record<'sports' | 'kitchen' | 'coach', number>>;
 };
 
@@ -32,7 +32,7 @@ function nestedOffset(
   registry: GuideLayoutRegistry,
   target: 'sports' | 'kitchen' | 'coach',
 ): number | null {
-  const parent = registry.sections.personalize;
+  const parent = target === 'kitchen' ? registry.sections.nutrition : registry.sections.personalize;
   const child = registry.children[target];
   if (typeof parent !== 'number' || typeof child !== 'number') return null;
   return parent + child;
