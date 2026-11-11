@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
 import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +8,8 @@ import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
 import { deviceLocalToday, shouldRefreshTodayOnAppState, todayTrainingDestination } from '../src/features/today/todayEntry';
+import { combineCalendarReads } from '../src/features/training/trainingCalendarReadModel';
+import { summarizeTodayTraining } from '../src/features/today/todayTrainingCard';
 
 /**
  * Today is the one existing /home entry point.
@@ -39,6 +41,16 @@ function HomeOwnerScreen() {
     return () => listener.remove();
   }, []);
   const trainingDestination = todayTrainingDestination(localDay) ?? '/train';
+  // Consume exactly the Train calendar read contract; no separate Today writer.
+  // Both sources remain unavailable until their canonical backend owners are live.
+  const trainingRead = useMemo(() => combineCalendarReads({
+    ownerId: user?.id ?? '',
+    fromDate: localDay ?? '',
+    throughDate: localDay ?? '',
+    planned: { status: 'unavailable' },
+    completed: { status: 'unavailable' },
+  }), [user?.id, localDay]);
+  const trainingCard = summarizeTodayTraining(trainingRead, localDay);
 
   async function handleSignOut() {
     if (!signOutGuard.current.tryEnter()) return;
@@ -79,11 +91,11 @@ function HomeOwnerScreen() {
 
         <View style={styles.hero}>
           <Text style={styles.sectionLabel}>TODAY'S TRAINING</Text>
-          <Text style={styles.heroTitle}>Training plan not connected yet</Text>
-          <Text style={styles.help}>Your accepted workout will appear here when the canonical Training reader is connected. Nothing is being marked as a rest day.</Text>
+          <Text style={styles.heroTitle}>{trainingCard.title}</Text>
+          <Text style={styles.help}>{trainingCard.detail}</Text>
           <Link href={trainingDestination} asChild>
             <Pressable accessibilityRole="button" style={styles.primaryAction}>
-              <Text style={styles.primaryActionText}>Open Training Calendar</Text>
+              <Text style={styles.primaryActionText}>{trainingCard.actionLabel}</Text>
             </Pressable>
           </Link>
         </View>
