@@ -41,6 +41,18 @@ test('complete candidate snapshot still routes exact replay through original can
  assert.equal(reconcileCertifiedActivitySource(a,{...s,candidates:[{identity:a,canonicalActivityId:'completed-1'}]}).decision,'exact_replay');
 });
 
+test('foreign candidate data is denied even with unsupported provider or unfinished cursor',()=>{
+ const a={...source(),provider:'garmin'};
+ const foreign={identity:{...a,ownerId:'owner-B'},canonicalActivityId:'foreign-activity'};
+ for(const patch of [{complete:false},{nextCursor:'more'},{}]){
+  assert.throws(()=>reconcileCertifiedActivitySource(a,{
+   ...snapshot(a),...patch,candidates:[foreign],
+  }),/Cross-account/);
+ }
+ assert.throws(()=>reconcileCertifiedActivitySource(a,{
+  ...snapshot(a),candidates:null as unknown as CanonicalSourceCandidateSnapshot['candidates'],
+ }),/Cross-account/);
+});
 test('canonical SQL provider and kind names gate the certified owner reconciliation',()=>{
  const a=source();
  for(const patch of [
