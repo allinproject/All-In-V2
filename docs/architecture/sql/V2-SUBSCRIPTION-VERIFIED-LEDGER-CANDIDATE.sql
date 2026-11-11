@@ -856,3 +856,107 @@ end;
 $$;
 revoke all on function public.v2_billing_read_owner_access(uuid,text)
  from public,anon,authenticated;
+
+
+-- ALL-252: STAGED native App Store / Google Play owner-preserving writer.
+-- TRUST PRECONDITION: caller has independently verified Apple's signed JWS
+-- and current subscription status or Google's authenticated SubscriptionV2
+-- plus original V2 owner binding. This SQL cannot validate store cryptography.
+-- Provider subscription ID is originalTransactionId (Apple) or server-only
+-- SHA-256 token identity (Google), NEVER raw Play purchase token.
+-- Service-role only; no client RPC grant or service role EXECUTE before review.
+create or replace function allin_private.v2_bind_verified_native_subscription(
+  p_owner_id uuid,p_provider text,p_environment text,
+  p_subscription_id text,p_provider_event_id text,
+  p_phase text,p_access_until timestamptz
+)
+returns text
+language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_purchase allin_private.v2_subscription_purchases%rowtype;
+  v_attempt uuid;
+  v_apply text;
+  v_checkout_id text;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'native billing service only' using errcode='42501';
+  end if;
+  if p_owner_id is null or p_provider not in ('app_store','google_play') or
+     p_environment not in ('sandbox','production') or
+     p_subscription_id is null or length(p_subscription_id) not between 1 and 220 or
+     p_provider_event_id is null or length(p_provider_event_id) not between 1 and 256 or
+     p_phase not in ('trial','paid','grace','canceling','billing_retry',
+                     'expired','refunded','revoked') or
+     (p_phase in ('trial','paid','grace','canceling') and
+      (p_access_until is null or p_access_until<=pg_catalog.now())) or
+     (p_phase not in ('trial','paid','grace','canceling') and p_access_until is not null)
+  then
+    raise exception 'invalid verified native purchase' using errcode='22023';
+  end if;
+  if not exists (select 1 from public.v2_profiles
+                 where user_id=p_owner_id) then
+    raise exception 'native subscription owner does not exist' using errcode='42501';
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('trial:' || p_owner_id::text,0));
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      p_provider || ':' || p_environment || ':' || p_subscription_id,0));
+  select * into v_purchase from allin_private.v2_subscription_purchases
+    where provider=p_provider and environment=p_environment
+      and provider_subscription_id=p_subscription_id for update;
+  if found then
+    if v_purchase.owner_id <> p_owner_id then
+      raise exception 'native purchase belongs to another owner' using errcode='42501';
+    end if;
+  else
+    -- Check the same immutable subscription identity in the original owner
+    -- checkout table, then insert confirmed provenance and purchase atomically.
+    v_checkout_id := 'native:' || p_subscription_id;
+    v_attempt:=pg_catalog.gen_random_uuid();
+    insert into allin_private.v2_subscription_checkout_attempts(
+      attempt_id,owner_id,provider,environment,provider_checkout_id,
+      provider_subscription_id,offer_kind,state,verified_at
+    ) values (
+      v_attempt,p_owner_id,p_provider,p_environment,v_checkout_id,
+      p_subscription_id,'paid','server_confirmed',pg_catalog.now()
+    );
+    insert into allin_private.v2_subscription_purchases(
+      owner_id,checkout_attempt_id,provider,environment,provider_subscription_id
+    ) values (p_owner_id,v_attempt,p_provider,p_environment,p_subscription_id);
+  end if;
+  -- A duplicate verified notification is deduplicated by provider event ID.
+  -- Locally allocate the next monotonic revision under the SAME locks.
+  select * into v_purchase from allin_private.v2_subscription_purchases
+   where provider=p_provider and environment=p_environment
+     and provider_subscription_id=p_subscription_id for update;
+  if exists (
+    select 1 from allin_private.v2_subscription_verified_events e
+      where e.provider=p_provider and e.environment=p_environment
+        and e.provider_event_id=p_provider_event_id
+  ) then
+    if not exists (
+      select 1 from allin_private.v2_subscription_verified_events e
+       where e.purchase_id=v_purchase.id and e.provider=p_provider
+        and e.environment=p_environment and e.provider_event_id=p_provider_event_id
+    ) then
+      raise exception 'native provider event identity collision' using errcode='23505';
+    end if;
+    return 'duplicate';
+  end if;
+  if v_purchase.revision=9223372036854775807 then
+    raise exception 'native event revision exhausted' using errcode='22003';
+  end if;
+  v_apply:=allin_private.v2_apply_verified_subscription_event(
+    p_owner_id,p_provider,p_environment,p_subscription_id,
+    p_provider_event_id,v_purchase.revision+1,p_phase,p_access_until);
+  if v_apply not in ('applied','duplicate') then
+    raise exception 'native purchase event was not committed' using errcode='23514';
+  end if;
+  return case when v_apply='duplicate' then 'duplicate' else 'committed' end;
+end;
+$$;
+revoke all on function allin_private.v2_bind_verified_native_subscription(
+  uuid,text,text,text,text,text,timestamptz
+) from public,anon,authenticated;
