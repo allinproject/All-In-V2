@@ -48,11 +48,18 @@ test('distinct source without overlapping candidates creates new-activity candid
  const result=reconcileActivitySource(source(),[]);
  assert.deepEqual(result,{decision:'new_activity_candidate',activityId:null,reason:'distinct_source_no_verified_link'});
 });
-test('SQL canonical provider name is not silently aliased to a mismatched external source',()=>{
+test('different provider namespaces stay distinct; only certified session can link them',()=>{
  const official=source({provider:'apple_healthkit',sourceRecordId:'hk-91'});
  const unrecognized=source({provider:'healthkit',sourceRecordId:'hk-91'});
  assert.notEqual(sourceIdentityKey(official),sourceIdentityKey(unrecognized));
- assert.equal(reconcileActivitySource(unrecognized,[linked(official)]).decision,'needs_review');
+ // Raw reconciliation recognizes a genuinely certified common session; the
+ // owner-certified adapter separately rejects unsupported provider aliases.
+ assert.deepEqual(reconcileActivitySource(unrecognized,[linked(official)]),{
+  decision:'attach_certified_session',activityId:'activity-1',reason:'same_certified_session',
+ });
+ assert.equal(reconcileActivitySource({
+  ...unrecognized,certifiedSessionInstanceId:null,
+ },[linked(official)]).decision,'needs_review');
 });
 test('provider external IDs remain exact and tuple-safe',()=>{
  const a=source({sourceRecordId:'id|segment'});
