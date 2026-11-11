@@ -62,6 +62,16 @@ export async function verifyGooglePlaySubscription({
   // If there is evidence of an active free trial, distinguish trial from paid.
   const trial=active&&state==='SUBSCRIPTION_STATE_ACTIVE'&&
     line.offerPhase?.freeTrial!=null;
+  let identity;
+  try {
+    const raw=new TextEncoder().encode('allin365:google_play:'+purchaseToken);
+    const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',raw));
+    identity='sha256:'+Array.from(digest,x=>x.toString(16).padStart(2,'0')).join('');
+  }catch{return {status:'unverified_provider_state'}}
+  // A changed linkedPurchaseToken requires a separate explicit
+  // account-preserving token-transfer transaction. Never silently bind it.
+  if(result.linkedPurchaseToken)
+    return {status:'linked_purchase_reconciliation_required'};
   return {
     status:'verified_for_owner_binding',
     provider:'google_play',
@@ -72,6 +82,7 @@ export async function verifyGooglePlaySubscription({
     providerProductId:approvedProductId,
     // Stable provider purchase identity must be derived server-side from
     // trusted transaction lineage; NOT blindly from an order ID or token.
-    providerPurchaseIdentityPending:true,
+    providerSubscriptionId:identity,
+    providerPurchaseIdentityPending:false,
   };
 }
