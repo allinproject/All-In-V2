@@ -2,7 +2,8 @@
  * Only produces a candidate. ALL-237 owns permission, quiet hours, push
  * budgets, durable decision ledger, delivery and device token registration.
  */
-import type {GearItem} from './personalGear.ts';
+import type {GearItem,PersonalGear} from './personalGear.ts';
+import {deriveGearMileage,type CanonicalGearAssignment} from './completedActivityGearMileage.ts';
 import type {NotificationCandidate} from '../notifications/notificationPolicy.ts';
 export function shoeMileageAlertCandidate(
  ownerId:string,shoe:GearItem,verifiedTotalKm:number,nowIso:string,
@@ -18,4 +19,22 @@ export function shoeMileageAlertCandidate(
   materialRevision:'shoe-lifespan-target-km:'+milestone,priority:'actionable',
   scheduledFor:nowIso,expiresAt:new Date(Date.parse(nowIso)+7*86400000).toISOString(),
   sourceStatus:'active',userResponse:'none',actionableNow:true};
+}
+
+/** Source-ready bridge: compute totals from the existing verified complete
+ * activity ledger, then propose one notification per shoe and selected target.
+ * Real push dispatch remains with the existing ALL-237 notification owner.
+ */
+export function shoeMileageCandidatesFromActivities(
+ ownerId:string,gear:PersonalGear,assignments:readonly CanonicalGearAssignment[],
+ completeHistory:boolean,nowIso:string,
+):NotificationCandidate[]{
+ const totals=deriveGearMileage(ownerId,gear,assignments,completeHistory);
+ const totalById=new Map(totals.map(t=>[t.gearId,t.totalDistanceKm]));
+ return gear.items.flatMap(item=>{
+  const distance=totalById.get(item.id);
+  if(distance===undefined)return [];
+  const candidate=shoeMileageAlertCandidate(ownerId,item,distance,nowIso);
+  return candidate?[candidate]:[];
+ });
 }
