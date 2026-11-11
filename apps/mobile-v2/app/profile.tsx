@@ -113,6 +113,12 @@ function OwnedProfileScreen() {
                 </Pressable>
               </Link>
               <Text style={styles.muted}>Training Focus and Active Activities</Text>
+              <Link href="/profile/kitchen" asChild>
+                <Pressable accessibilityRole="button" style={styles.button}>
+                  <Text style={styles.buttonText}>Kitchen</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.muted}>Home equipment, work reheating, and meal-prep constraints</Text>
             </View>
             <View style={styles.card}>
               <Text style={styles.section}>Legal acceptance</Text>
