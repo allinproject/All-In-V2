@@ -43,7 +43,7 @@ export function scrubCrashEvent<T extends {
       if (frame.filename && (frame.filename.includes('?') ||
           frame.filename.includes('://') ||
           frame.filename.includes(String.fromCharCode(92)) ||
-          frame.filename.startsWith('/Users/') || frame.filename.startsWith('/home/')) {
+          frame.filename.startsWith('/Users/') || frame.filename.startsWith('/home/'))) {
         delete frame.filename;
       }
       delete frame.context_line;
