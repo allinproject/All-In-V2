@@ -29,7 +29,8 @@ function OwnedHealthConditions(){
     try {
       const input=section==='conditions'?conditionInput:limitationInput;
       const id='health-draft-'+(++nextId.current);
-      setDraft(old=>addHealthFact(old,section,input,id));
+      const next=addHealthFact(draft,section,input,id);
+      setDraft(next);
       if(section==='conditions')setConditionInput('');else setLimitationInput('');
       setError(null);
     }catch(cause){
