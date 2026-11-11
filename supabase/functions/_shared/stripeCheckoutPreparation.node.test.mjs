@@ -16,13 +16,15 @@ const base=()=>({
   cancelUrl:'https://allin365.app/billing/cancel',
   approvedReturnOrigin:'https://allin365.app',
   createCheckoutSession:async()=>session,
+  reserveCheckoutAttempt:async()=> 'reserved',
   registerPendingCheckout:async()=> 'pending',
 });
 const check=patch=>prepare({...base(),...patch});
 
 test('creates only an owner-bound $9.99 monthly seven-day trial request',async()=>{
-  let request=null, record=null;
+  let request=null, record=null, reservation=null;
   const r=await check({
+    reserveCheckoutAttempt:async v=>{reservation=v;return 'reserved';},
     createCheckoutSession:async v=>{request=v;return session;},
     registerPendingCheckout:async v=>{record=v;return 'pending';},
   });
@@ -35,6 +37,10 @@ test('creates only an owner-bound $9.99 monthly seven-day trial request',async()
     client_reference_id:attemptId,
     success_url:'https://allin365.app/billing/success',
     cancel_url:'https://allin365.app/billing/cancel',
+  });
+  assert.deepEqual(reservation,{
+    attemptId,ownerId:owner,authenticatedOwnerId:owner,
+    provider:'stripe_web',environment:'sandbox',
   });
   assert.deepEqual(record,{
     attemptId,ownerId:owner,authenticatedOwnerId:owner,
@@ -107,4 +113,27 @@ test('never reveals checkout URL if pending row is unavailable or rejected',asyn
 test('provider outages never fake a checkout URL',async()=>{
   const r=await check({createCheckoutSession:async()=>{throw Error('Stripe down');}});
   assert.deepEqual(r,{status:'provider_unavailable'});
+});
+
+test('durable reservation must precede Stripe; any failed reservation cannot create a checkout',async()=>{
+  const sequence=[];
+  const good=await check({
+    reserveCheckoutAttempt:async()=>{sequence.push('reserve');return 'reserved';},
+    createCheckoutSession:async()=>{sequence.push('stripe');return session;},
+    registerPendingCheckout:async()=>{sequence.push('pending');return 'pending';},
+  });
+  assert.equal(good.status,'pending_checkout_ready');
+  assert.deepEqual(sequence,['reserve','stripe','pending']);
+  for (const reserveCheckoutAttempt of [
+    async()=>{throw Error('database offline');},
+    async()=> 'identity_collision',
+  ]) {
+    let creates=0;
+    const r=await check({reserveCheckoutAttempt,
+      createCheckoutSession:async()=>{creates++;return session;}});
+    assert.notEqual(r.status,'pending_checkout_ready');
+    assert.equal(creates,0);
+  }
+  assert.equal((await check({reserveCheckoutAttempt:async()=> 'already_reserved'})).status,
+    'pending_checkout_ready');
 });
