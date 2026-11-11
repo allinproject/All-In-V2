@@ -1,0 +1,75 @@
+\set ON_ERROR_STOP on
+-- ALL-246 isolated plan acceptance tests: never production data.
+DO $roles$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+END $roles$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql
+DO $qa$
+DECLARE
+ u uuid:='11111111-1111-4111-8111-111111111111';
+ outsider uuid:='22222222-2222-4222-8222-222222222222';
+ p uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ r1 uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ r2 uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ act uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ res jsonb;
+BEGIN
+ INSERT INTO auth.users VALUES(u),(outsider);
+ INSERT INTO public.v2_training_plans(id,user_id,plan_kind,status)
+ VALUES(p,u,'race','draft');
+ INSERT INTO public.v2_training_plan_revisions
+ (id,plan_id,user_id,revision_number,source_kind,status)
+ VALUES(r1,p,u,1,'coach_proposal','candidate'),
+       (r2,p,u,2,'athlete_authored','candidate');
+ INSERT INTO public.v2_training_revision_days
+ (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
+ VALUES('12121212-1212-4212-8212-121212121212',r1,p,u,'2026-11-16','America/Chicago','planned',0),
+       ('13131313-1313-4313-8313-131313131313',r2,p,u,'2026-11-16','America/Chicago','recovery',0);
+ BEGIN
+   PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+      outsider,p,r1,act,1);
+   RAISE EXCEPTION 'Cross-owner candidate accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ res:=allin_private.v2_training_accept_plan_revision_candidate(u,p,r1,act,1);
+ IF res->>'version'<>'2' OR res->>'replayed'<>'false' THEN
+   RAISE EXCEPTION 'First acceptance failed'; END IF;
+ IF (SELECT active_revision_id FROM public.v2_training_plans WHERE id=p)<>r1
+ OR (SELECT status FROM public.v2_training_plan_revisions WHERE id=r1)<>'accepted'
+ THEN RAISE EXCEPTION 'Accepted revision not current'; END IF;
+ res:=allin_private.v2_training_accept_plan_revision_candidate(u,p,r1,act,1);
+ IF res->>'replayed'<>'true' THEN RAISE EXCEPTION 'Exact acceptance retry duplicated'; END IF;
+ BEGIN
+   PERFORM allin_private.v2_training_accept_plan_revision_candidate(u,p,r2,act,1);
+   RAISE EXCEPTION 'Same action used for different revision';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+   PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+    u,p,r2,'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',1);
+   RAISE EXCEPTION 'Stale plan version was accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ res:=allin_private.v2_training_accept_plan_revision_candidate(
+  u,p,r2,'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',2);
+ IF res->>'version'<>'3' THEN RAISE EXCEPTION 'Second accepted revision failed'; END IF;
+ IF (SELECT status FROM public.v2_training_plan_revisions WHERE id=r1)<>'superseded'
+   OR (SELECT status FROM public.v2_training_plan_revisions WHERE id=r2)<>'accepted'
+   OR (SELECT count(*) FROM public.v2_training_plan_revisions
+      WHERE plan_id=p AND status='accepted')<>1
+ THEN RAISE EXCEPTION 'Old historical revision not preserved'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+   u,p,r1,'ffffffff-ffff-4fff-8fff-ffffffffffff',3);
+  RAISE EXCEPTION 'Superseded revision resurrected';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ IF has_function_privilege('authenticated',
+ 'allin_private.v2_training_accept_plan_revision_candidate(uuid,uuid,uuid,uuid,bigint)','EXECUTE')
+ THEN RAISE EXCEPTION 'Untrusted client can accept a plan directly'; END IF;
+ RAISE NOTICE 'PASS ALL-246 plan acceptance: owner, revision/version CAS, replay and historical preservation';
+END $qa$;
