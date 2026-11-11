@@ -14,6 +14,7 @@ import { todayEnergyGlance } from '../src/features/today/todayEnergyGlance';
 import { todayFoodLog } from '../src/features/today/todayFoodLog';
 import { todayWellnessGlance } from '../src/features/today/todayWellnessGlances';
 import { todayKitchenDue } from '../src/features/today/todayKitchenDue';
+import { todayFuelDestination } from '../src/features/today/todayFuelNavigation';
 
 /**
  * Today is the one existing /home entry point.
@@ -45,6 +46,8 @@ function HomeOwnerScreen() {
     return () => listener.remove();
   }, []);
   const trainingDestination = todayTrainingDestination(localDay) ?? '/train';
+  const dailyDestination = todayFuelDestination(localDay, 'daily') ?? '/fuel';
+  const foodLogDestination = todayFuelDestination(localDay, 'food-log') ?? '/fuel';
   // Consume exactly the Train calendar read contract; no separate Today writer.
   // Both sources remain unavailable until their canonical backend owners are live.
   const trainingRead = useMemo(() => combineCalendarReads({
@@ -119,7 +122,7 @@ function HomeOwnerScreen() {
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Daily Extended</Text>
-            <Link href="/fuel" asChild>
+            <Link href={dailyDestination} asChild>
               <Pressable accessibilityRole="button" accessibilityLabel="View daily nutrition details" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View more ›</Text>
               </Pressable>
@@ -136,8 +139,8 @@ function HomeOwnerScreen() {
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Food Log</Text>
-            <Link href="/fuel" asChild>
-              <Pressable accessibilityRole="button" style={styles.inlineAction}>
+            <Link href={foodLogDestination} asChild>
+              <Pressable accessibilityRole="button" accessibilityLabel="Open this day's food log" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View log ›</Text>
               </Pressable>
             </Link>
