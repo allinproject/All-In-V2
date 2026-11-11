@@ -25,6 +25,7 @@ test('one canonical owner read preserves measured zero, omits unknown and keeps 
  const data=await readOwnedCompletedActivity('owner-A','activity-1',async()=> 'owner-A',
   async()=>base());
  assert.equal(data.sport,'outdoor_run');
+ assert.equal(data.terrain,'road');
  assert.equal(data.metrics.length,1);
  assert.equal(data.metrics[0].value,'0');
  assert.equal(data.metrics[0].provenance,'device');
