@@ -38,6 +38,12 @@ export type CompletedActivityCanonicalReader=(args:{activityId:string;expectedOw
 export type CurrentOwnerReader=()=>Promise<string|null>;
 const code=(x:unknown):x is string=>typeof x==='string'&&x.length>0&&x.length<=150&&/^[a-z0-9][a-z0-9._:-]*$/i.test(x);
 const text=(x:unknown,max=300):x is string=>typeof x==='string'&&x.trim().length>0&&x.length<=max;
+const qualities=new Set(['trusted','partial','unverified','low_quality','rejected']);
+const kinds=new Set(['source_measured','provider_derived','user_reported','allin_derived','estimated']);
+const structuredKinds=new Set(['route','splits','laps','intervals','heart_rate_series','power_series',
+ 'cadence_series','elevation_series','speed_series','strength_sets','swim_sets','machine_series',
+ 'sport_legs','transitions','other']);
+
 function assertCurrent(isCurrent:()=>boolean){
  if(!isCurrent())throw new Error('Completed Activity view is no longer active.');
 }
@@ -63,7 +69,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
   throw new Error('Canonical activity evidence exceeds read limits.');
  const sources=new Map<string,CanonicalActivitySource>();
  for(const source of raw.sources){
-  if(!code(source.id)||!text(source.provider,100)||sources.has(source.id))
+  if(!code(source.id)||!text(source.provider,100)||!qualities.has(source.quality)||sources.has(source.id))
    throw new Error('Invalid or duplicate canonical source.');
   sources.set(source.id,source);
  }
@@ -72,7 +78,9 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
  const definitions=new Map<string,CanonicalMetricDefinition>();
  for(const def of raw.definitions){
   if(!code(def.code)||!Number.isSafeInteger(def.version)||def.version<1||!text(def.displayName,120)||
-   !Array.isArray(def.sportScope)||!Array.isArray(def.measurementKinds))
+   !Array.isArray(def.sportScope)||!def.sportScope.length||!def.sportScope.every(code)||
+   !Array.isArray(def.measurementKinds)||!def.measurementKinds.length||
+   !def.measurementKinds.every(kind=>kinds.has(kind)))
    throw new Error('Invalid metric registry definition.');
   const id=def.code+':'+def.version;
   if(definitions.has(id))throw new Error('Duplicate metric registry definition.');
@@ -82,7 +90,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
  const seenCodes=new Set<string>();
  for(const m of raw.metrics){
   if(!code(m.code)||!Number.isSafeInteger(m.definitionVersion)||m.definitionVersion<1||
-   !text(m.sourceId)||!sources.has(m.sourceId))
+   !text(m.sourceId)||!sources.has(m.sourceId)||!qualities.has(m.quality)||!kinds.has(m.measurementKind))
    throw new Error('Unverifiable metric source or definition.');
   const definition=definitions.get(m.code+':'+m.definitionVersion);
   if(!definition||!(definition.sportScope.includes(raw.sport)||definition.sportScope.includes(display.sport)||definition.sportScope.includes('all'))||
@@ -94,7 +102,8 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
   if(m.quality==='rejected'||source.quality==='rejected')continue;
   // Null is unknown, but a source-supported measured zero ("0") is legitimate.
   if(m.displayValue===null)continue;
-  if(!text(m.displayValue,120))throw new Error('Invalid source-backed display value.');
+  if(!text(m.displayValue,120)||/^(?:nan|[-+]?infinity|null|undefined)$/i.test(m.displayValue.trim()))
+   throw new Error('Invalid source-backed display value.');
   // Do not promote unverified/low-quality measurements into validated facts.
   if(m.quality==='unverified'||m.quality==='low_quality'||
    source.quality==='unverified'||source.quality==='low_quality')continue;
@@ -106,7 +115,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
  for(const section of raw.sections??[]){
   const source=sources.get(section.sourceId);
   if(!source||source.quality!=='trusted'||!code(section.key)||!text(section.title,120)||
-   !Number.isSafeInteger(section.count)||section.count<1)
+   !Number.isSafeInteger(section.count)||section.count<1||!structuredKinds.has(section.kind))
    throw new Error('Structured activity evidence is not verifiable.');
   sections.push({key:section.key,kind:section.kind,title:section.title,source:source.provider,count:section.count});
  }
