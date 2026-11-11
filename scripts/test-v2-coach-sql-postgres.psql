@@ -1,8 +1,13 @@
 \set ON_ERROR_STOP on
 -- ALL-217 — disposable PostgreSQL 17, Coach owner SQL replay.
 -- Must be executed ONLY in dedicated empty allin_coach_test database.
-select case when current_database()='allin_coach_test' then 1
-  else 1/0 end as disposable_database_guard;
+do $guard$
+begin
+ if current_database()<>'allin_coach_test' then
+  raise exception 'Refusing Coach candidate outside isolated allin_coach_test';
+ end if;
+end;
+$guard$;
 
 BEGIN;
 create schema auth;
