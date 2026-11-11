@@ -42,7 +42,7 @@ export function scrubCrashEvent<T extends {
       delete frame.module;
       if (frame.filename && (frame.filename.includes('?') ||
           frame.filename.includes('://') ||
-          frame.filename.includes('\\\\') ||
+          frame.filename.includes(String.fromCharCode(92)) ||
           /(?:^|\\/)Users\\/|(?:^|\\/)home\\//.test(frame.filename))) {
         delete frame.filename;
       }
