@@ -318,6 +318,44 @@ $$;
 revoke all on function allin_private.v2_bind_confirmed_subscription_purchase(uuid)
   from public, anon, authenticated;
 
+-- Single service-only transaction for verified checkout confirmation + binding.
+-- The caller MUST have independently verified provider checkout/subscription
+-- and original owner. Invoker privileges and existing safeguards are retained.
+create or replace function allin_private.v2_finalize_verified_subscription_checkout(
+  p_attempt_id uuid, p_owner_id uuid, p_provider text, p_environment text,
+  p_checkout_id text, p_subscription_id text
+)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $
+declare
+  v_confirmation text;
+  v_binding text;
+begin
+  if current_user <> 'service_role' then
+    raise exception 'checkout finalization requires service role' using errcode='42501';
+  end if;
+  select allin_private.v2_confirm_pending_subscription_checkout(
+    p_attempt_id,p_owner_id,p_provider,p_environment,p_checkout_id,p_subscription_id)
+    into v_confirmation;
+  if v_confirmation not in ('confirmed','already_confirmed') then
+    raise exception 'checkout confirmation failed' using errcode='23514';
+  end if;
+  select allin_private.v2_bind_confirmed_subscription_purchase(p_attempt_id)
+    into v_binding;
+  if v_binding not in ('bound','already_bound') then
+    raise exception 'purchase binding failed' using errcode='23514';
+  end if;
+  return case when v_confirmation='already_confirmed' and v_binding='already_bound'
+              then 'already_finalized' else 'finalized' end;
+end;
+$;
+revoke all on function allin_private.v2_finalize_verified_subscription_checkout(
+  uuid,uuid,text,text,text,text
+) from public,anon,authenticated;
+
 -- Privileged service-only transaction. Strictly store verified facts only:
 -- no client grants and no exposed RPC. New purchase binding requires a trusted
 -- checkout/restore authorization and immutable prebinding provenance recorded
