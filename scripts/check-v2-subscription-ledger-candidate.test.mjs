@@ -35,7 +35,7 @@ test('private tables enforce RLS and no direct web-client access',()=>{
   assert.match(sql,/alter table allin_private\.v2_subscription_verified_events enable row level security/);
   assert.match(sql,/revoke all on allin_private\.v2_subscription_purchases from public, anon, authenticated/);
   assert.match(sql,/revoke all on allin_private\.v2_subscription_verified_events from public, anon, authenticated/);
-  assert.match(sql,/auth\.role\(\) is distinct from 'service_role'/);
+  assert.match(sql,/current_user <> 'service_role'/);
   assert.match(sql,/security invoker/);
 });
 
@@ -43,4 +43,10 @@ test('paid access is explicitly bounded and retry is not access',()=>{
   assert.match(sql,/phase in \('trial','paid','grace','canceling'\)/);
   assert.match(sql,/then p_access_until else null end/);
   assert.match(sql,/phase not in \('trial','paid','grace','canceling'\) or access_until is not null/);
+});
+
+test('webhook writer can never claim an unbound provider purchase', () => {
+  assert.match(sql,/if not found then\s+raise exception 'subscription purchase is not prebound/);
+  assert.doesNotMatch(sql,/if not found then\s+insert into allin_private\.v2_subscription_purchases/);
+  assert.match(sql,/purchase-binding workflow BEFORE this function can apply an event/);
 });
