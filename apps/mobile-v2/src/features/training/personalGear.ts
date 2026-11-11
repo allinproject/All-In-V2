@@ -26,8 +26,8 @@ export function parsePersonalGear(settings:unknown):PersonalGear {
   const r=object(x),kind=(r.kind==='shoes'||r.kind==='bikes'||r.kind==='other'?r.kind:'other') as GearKind;
   const use=typeof r.use==='string'?r.use:'general';
   return {id:typeof r.id==='string'?r.id:'',name:typeof r.name==='string'?r.name.trim().slice(0,100):'',
-   kind,use:kind==='shoes'&&['road','trail','mixed'].includes(use)?use:
-     kind==='bikes'&&['outdoor','indoor'].includes(use)?use:'general',
+   kind,use:(kind==='shoes'&&['road','trail','mixed'].includes(use)?use:
+     kind==='bikes'&&['outdoor','indoor'].includes(use)?use:'general') as GearItem['use'],
    distanceKm:typeof r.distanceKm==='number'&&Number.isFinite(r.distanceKm)&&r.distanceKm>=0&&r.distanceKm<=10000000?r.distanceKm:0,
    status:r.status==='retired'?'retired' as const:'active' as const,
    reminderKm:typeof r.reminderKm==='number'&&Number.isFinite(r.reminderKm)&&r.reminderKm>0&&r.reminderKm<=10000000?r.reminderKm:null};
