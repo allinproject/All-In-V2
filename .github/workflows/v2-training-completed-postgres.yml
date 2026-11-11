@@ -31,6 +31,7 @@ on:
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql'
       - 'scripts/test-v2-completed-scalar-read-postgres.psql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql'
       - 'scripts/test-v2-completed-segments-postgres.psql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-STRENGTH-SETS-CANDIDATE.sql'
       - 'scripts/test-v2-completed-strength-sets-postgres.psql'
@@ -199,6 +200,7 @@ jobs:
           docker exec "$PG_CONTAINER" createdb -U "$PGUSER" completed_segments
           docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql"
           docker cp scripts/test-v2-completed-segments-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-completed-segments-postgres.psql"
+          docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d completed_segments -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-completed-segments-postgres.psql
       - name: Verify source-backed strength exercise sets in disposable PostgreSQL
         env:
