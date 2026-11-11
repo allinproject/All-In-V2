@@ -28,7 +28,7 @@ export function prepareV2AccountExport(value: unknown, expectedOwnerId: string):
   }
   const json = JSON.stringify(snapshot, null, 2);
   if (!json || json.length > V2_EXPORT_MAX_CHARS) {
-    throw new Error('This export exceeds the temporary file size limit. Contact support for a larger export.');
+    throw new Error('This export is too large for a temporary file. Contact support for a larger export.');
   }
   return json;
 }
