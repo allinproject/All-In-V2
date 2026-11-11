@@ -148,21 +148,25 @@ function HomeOwnerScreen() {
           {foodLog.visible.length > 0 ? (
             <View style={styles.foodPhotoRow}>
               {foodLog.visible.map(row => (
-                <View key={row.id} style={styles.foodTile}>
-                  {row.photoUri ? (
-                    <Image
-                      source={{ uri: row.photoUri }}
-                      style={styles.foodPhoto}
-                      accessibilityLabel={row.label}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.foodPhotoFallback}>
-                      <Text style={styles.foodFallbackText} numberOfLines={2}>{row.label}</Text>
-                    </View>
-                  )}
-                  <Text style={styles.foodTileLabel} numberOfLines={1}>{row.label}</Text>
-                </View>
+                <Link key={row.id} href={foodLogDestination} asChild>
+                  <Pressable accessibilityRole="button"
+                    accessibilityLabel={`View ${row.label} in this day's Food Log`}
+                    style={styles.foodTile}>
+                    {row.photoUri ? (
+                      <Image
+                        source={{ uri: row.photoUri }}
+                        style={styles.foodPhoto}
+                        accessibilityLabel={row.label}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.foodPhotoFallback}>
+                        <Text style={styles.foodFallbackText} numberOfLines={2}>{row.label}</Text>
+                      </View>
+                    )}
+                    <Text style={styles.foodTileLabel} numberOfLines={1}>{row.label}</Text>
+                  </Pressable>
+                </Link>
               ))}
             </View>
           ) : null}
