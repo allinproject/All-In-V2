@@ -13,6 +13,8 @@ on:
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-community-sql-guard.test.mjs'
       - 'scripts/test-v2-community-sql-postgres.psql'
+      - 'scripts/test-v2-community-writer-postgres.psql'
+      - 'docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql'
       - 'apps/mobile-v2/src/features/tutorials/**'
       - 'apps/mobile-v2/src/features/profile/**'
       - 'apps/mobile-v2/src/features/training/**'
@@ -49,6 +51,8 @@ on:
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-community-sql-guard.test.mjs'
       - 'scripts/test-v2-community-sql-postgres.psql'
+      - 'scripts/test-v2-community-writer-postgres.psql'
+      - 'docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql'
       - 'apps/mobile-v2/src/features/tutorials/**'
       - 'apps/mobile-v2/src/features/profile/**'
       - 'apps/mobile-v2/src/features/training/**'
@@ -167,7 +171,9 @@ jobs:
           docker exec "$POSTGRES_CONTAINER_ID" mkdir -p /tmp/allin/scripts /tmp/allin/docs/architecture/sql
           docker cp scripts/test-v2-community-sql-postgres.psql "$POSTGRES_CONTAINER_ID:/tmp/allin/scripts/test-v2-community-sql-postgres.psql"
           docker cp docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql "$POSTGRES_CONTAINER_ID:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql"
-          docker exec "$POSTGRES_CONTAINER_ID" psql -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-sql-postgres.psql
+          docker cp docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql "$POSTGRES_CONTAINER_ID:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql"
+          docker cp scripts/test-v2-community-writer-postgres.psql "$POSTGRES_CONTAINER_ID:/tmp/allin/scripts/test-v2-community-writer-postgres.psql"
+          docker exec "$POSTGRES_CONTAINER_ID" psql -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-writer-postgres.psql
       - name: Verify subscription review candidate in separate disposable database
         env:
           POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
