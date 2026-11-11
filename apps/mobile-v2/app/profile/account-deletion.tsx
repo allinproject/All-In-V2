@@ -9,13 +9,13 @@ import { assertV2SessionOwner } from '../../src/auth/accessGateClient';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
 
-type RequestStatus = 'none' | 'requested' | 'processing' | 'completed' | 'rejected';
+type RequestStatus = 'none' | 'requested' | 'processing' | 'completed' | 'rejected' | 'cancelled';
 type RequestSnapshot = { status: RequestStatus; requestId: string | null; requestedAt: string | null };
 
 function parseRequest(value: unknown): RequestSnapshot {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Deletion request status is unavailable.');
   const raw = value as Record<string, unknown>;
-  const allowed = ['none', 'requested', 'processing', 'completed', 'rejected'];
+  const allowed = ['none', 'requested', 'processing', 'completed', 'rejected', 'cancelled'];
   if (!allowed.includes(raw.status as string)) throw new Error('Deletion request status is invalid.');
   if (raw.status !== 'none' && (typeof raw.request_id !== 'string' || typeof raw.requested_at !== 'string')) {
     throw new Error('Deletion request receipt is incomplete.');
@@ -44,6 +44,7 @@ function OwnedAccountDeletionScreen() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<RequestSnapshot | null>(null);
   const [reviewing, setReviewing] = useState(false);
+  const [cancelReviewing, setCancelReviewing] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [retry, setRetry] = useState(0);
 
@@ -64,6 +65,7 @@ function OwnedAccountDeletionScreen() {
     setStatus(null);
     setError(null);
     setReviewing(false);
+    setCancelReviewing(false);
     setConfirmation('');
     void readCurrent(() => active && mounted.current).catch(cause => {
       if (active && mounted.current) setError(cause instanceof Error ? cause.message : 'Could not load deletion request.');
@@ -74,7 +76,7 @@ function OwnedAccountDeletionScreen() {
   }, [owner, authLoading, gate.status, retry, readCurrent]));
 
   async function submitRequest() {
-    if (inFlight.current || saving || !owner || !reviewing || confirmation !== 'DELETE MY ACCOUNT' || status?.status !== 'none') return;
+    if (inFlight.current || saving || !owner || !reviewing || confirmation !== 'DELETE MY ACCOUNT' || !['none', 'rejected', 'cancelled'].includes(status?.status ?? '')) return;
     inFlight.current = true;
     setSaving(true);
     setError(null);
@@ -107,12 +109,45 @@ function OwnedAccountDeletionScreen() {
     }
   }
 
+  async function cancelRequest() {
+    const requestId = status?.requestId;
+    if (inFlight.current || saving || !owner || !requestId || status?.status !== 'requested' || !cancelReviewing) return;
+    inFlight.current = true;
+    setSaving(true);
+    setError(null);
+    try {
+      await assertV2SessionOwner(supabase, owner);
+      const { data, error: cancelError } = await supabase.rpc('v2_cancel_account_deletion_request', {
+        p_expected_user_id: owner,
+        p_expected_request_id: requestId,
+      });
+      if (cancelError) throw cancelError;
+      await assertV2SessionOwner(supabase, owner);
+      const receipt = parseRequest(data);
+      if (receipt.status !== 'cancelled' || receipt.requestId !== requestId) {
+        throw new Error('Cancellation status requires review.');
+      }
+      if (mounted.current) {
+        setStatus(receipt);
+        setCancelReviewing(false);
+      }
+    } catch (cause) {
+      // Cancellation might have committed despite a lost response: reconcile first.
+      try { await readCurrent(() => mounted.current); } catch { /* No automatic retry. */ }
+      if (mounted.current) setError(cause instanceof Error ? cause.message : 'Cancellation status uncertain. Reload before retrying.');
+    } finally {
+      inFlight.current = false;
+      if (mounted.current) setSaving(false);
+    }
+  }
+
   if (!authLoading && !user) return <Redirect href="/sign-in" />;
   if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
   if (gate.status === 'onboarding_required') return <Redirect href="/onboarding-required" />;
   if (authLoading || gate.status !== 'ready' || !user) return <Redirect href="/" />;
 
   const activeRequest = status && status.status !== 'none';
+  const canRequest = status?.status === 'none' || status?.status === 'cancelled' || status?.status === 'rejected';
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -141,9 +176,32 @@ function OwnedAccountDeletionScreen() {
             <Text style={styles.body}>Your request is recorded. Your account and data have not been erased by this screen.</Text>
             {status.requestedAt ? <Text selectable style={styles.meta}>Requested: {status.requestedAt}</Text> : null}
             {status.requestId ? <Text selectable style={styles.meta}>Request ID: {status.requestId}</Text> : null}
+            {status.status === 'requested' ? (
+              cancelReviewing ? (
+                <>
+                  <Text style={styles.body}>Cancel this pending request? Cancellation is only allowed before processing starts. A newer request cannot be cancelled with this request ID.</Text>
+                  <Pressable accessibilityRole="button"
+                    accessibilityState={{ disabled: saving, busy: saving }} disabled={saving}
+                    style={styles.button} onPress={() => void cancelRequest()}>
+                    <Text style={styles.buttonText}>{saving ? 'Checking cancellation…' : 'Confirm cancellation'}</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" disabled={saving} style={styles.button}
+                    onPress={() => setCancelReviewing(false)}>
+                    <Text style={styles.buttonText}>Keep deletion request</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Pressable accessibilityRole="button" disabled={saving} style={styles.button}
+                  onPress={() => setCancelReviewing(true)}>
+                  <Text style={styles.buttonText}>Cancel pending deletion request</Text>
+                </Pressable>
+              )
+            ) : null}
+            {status.status === 'cancelled' ? <Text style={styles.body}>This request was cancelled before processing. You can submit a new request below if needed.</Text> : null}
+            {status.status === 'rejected' ? <Text style={styles.body}>This request was not accepted for processing. You can submit a new request below if needed.</Text> : null}
           </View>
         ) : null}
-        {!loading && status?.status === 'none' && !error ? (
+        {!loading && canRequest && !error ? (
           <View style={styles.card}>
             {!reviewing ? (
               <Pressable accessibilityRole="button" style={styles.button} onPress={() => setReviewing(true)}>
