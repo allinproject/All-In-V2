@@ -39,6 +39,7 @@ test('the pending checkout belongs to authenticated account, not session metadat
   assert.equal((await run({expectedOwnerId:'victim'})).status,'invalid_attempt');
   assert.equal((await run({checkoutAttempt:{...attempt,ownerId:'other'}})).status,'invalid_attempt');
   assert.equal((await run({checkoutAttempt:{...attempt,state:'client_confirmed'}})).status,'invalid_attempt');
+  assert.equal((await run({checkoutAttempt:{...attempt,attemptId:''}})).status,'invalid_attempt');
 });
 
 test('incomplete, unpaid and wrong-mode checkout never confirms purchase',async()=>{
