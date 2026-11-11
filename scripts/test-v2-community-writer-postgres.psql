@@ -1,0 +1,190 @@
+-- Disposable PostgreSQL execution test for the review-only Community writer.
+\set ON_ERROR_STOP on
+\ir test-v2-community-sql-postgres.psql
+
+-- Simulate Auth JWT identity only inside the isolated test database.
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
+$$;
+
+\ir ../docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql
+
+DO $scope$
+BEGIN
+  IF has_function_privilege(
+    'authenticated', 'public.v2_community_relationship_write(uuid,uuid,text,bigint,uuid,text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Unapproved Community writer exposed to authenticated role';
+  END IF;
+  IF has_function_privilege(
+    'anon', 'public.v2_community_relationship_write(uuid,uuid,text,bigint,uuid,text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Community writer exposed to anon role';
+  END IF;
+END
+$scope$;
+
+-- First replay removed one athlete; recreate two canonical live identities.
+INSERT INTO auth.users (id)
+VALUES ('00000000-0000-0000-0000-000000000001');
+INSERT INTO public.v2_profiles(user_id)
+VALUES ('00000000-0000-0000-0000-000000000001');
+
+SELECT set_config('request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000001', false);
+
+DO $exercise$
+DECLARE
+  v_result jsonb;
+  v_replay jsonb;
+  h text := repeat('a',64);
+BEGIN
+  -- New pair begins at version 1.
+  v_result := public.v2_community_relationship_write(
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    'request_follow', 1,
+    '20000000-0000-0000-0000-000000000001', h
+  );
+  IF v_result->>'version' <> '2' OR v_result->>'replayed' <> 'false' THEN
+    RAISE EXCEPTION 'Private follow request not created/versioned correctly';
+  END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM allin_private.v2_community_follows
+    WHERE follower_id = '00000000-0000-0000-0000-000000000001'
+      AND followed_id = '00000000-0000-0000-0000-000000000002'
+      AND state = 'pending'
+  ) THEN
+    RAISE EXCEPTION 'Pending request was not persisted';
+  END IF;
+
+  v_replay := public.v2_community_relationship_write(
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    'request_follow', 1,
+    '20000000-0000-0000-0000-000000000001', h
+  );
+  IF v_replay->>'version' <> '2' OR v_replay->>'replayed' <> 'true' THEN
+    RAISE EXCEPTION 'Exact replay did not recover original result';
+  END IF;
+
+  BEGIN
+    PERFORM public.v2_community_relationship_write(
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      'request_follow', 1,
+      '20000000-0000-0000-0000-000000000001', repeat('b',64)
+    );
+    RAISE EXCEPTION 'Changed payload with reused action ID accepted';
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM public.v2_community_relationship_write(
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      'block', 1,
+      '20000000-0000-0000-0000-000000000002', h
+    );
+    RAISE EXCEPTION 'Stale CAS accepted';
+  EXCEPTION WHEN serialization_failure THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM public.v2_community_relationship_write(
+      '00000000-0000-0000-0000-000000000002',
+      '00000000-0000-0000-0000-000000000001',
+      'block', 2,
+      '20000000-0000-0000-0000-000000000003', h
+    );
+    RAISE EXCEPTION 'Foreign actor identity accepted';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END
+$exercise$;
+
+-- User 2 approves the *incoming* request using the same pair revision.
+SELECT set_config('request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000002', false);
+
+DO $approve$
+DECLARE
+  v_result jsonb;
+BEGIN
+  v_result := public.v2_community_relationship_write(
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000001',
+    'approve_request', 2,
+    '20000000-0000-0000-0000-000000000004', repeat('c',64)
+  );
+  IF v_result->>'version' <> '3' THEN
+    RAISE EXCEPTION 'Incoming request approval did not advance revision';
+  END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM allin_private.v2_community_follows
+    WHERE follower_id = '00000000-0000-0000-0000-000000000001'
+      AND followed_id = '00000000-0000-0000-0000-000000000002'
+      AND state = 'approved' AND approved_at IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'Approved follower state is missing';
+  END IF;
+END
+$approve$;
+
+-- Block revokes both follower directions, denies future actions.
+SELECT set_config('request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000001', false);
+
+DO $blocking$
+DECLARE
+  v_result jsonb;
+BEGIN
+  v_result := public.v2_community_relationship_write(
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    'block', 3,
+    '20000000-0000-0000-0000-000000000005', repeat('d',64)
+  );
+  IF v_result->>'version' <> '4' THEN
+    RAISE EXCEPTION 'Block did not advance revision';
+  END IF;
+  IF EXISTS(
+    SELECT 1 FROM allin_private.v2_community_follows
+    WHERE (follower_id = '00000000-0000-0000-0000-000000000001'
+       AND followed_id = '00000000-0000-0000-0000-000000000002')
+       OR (follower_id = '00000000-0000-0000-0000-000000000002'
+       AND followed_id = '00000000-0000-0000-0000-000000000001')
+  ) THEN
+    RAISE EXCEPTION 'Follow relationship survived block';
+  END IF;
+
+  BEGIN
+    PERFORM public.v2_community_relationship_write(
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      'request_follow', 4,
+      '20000000-0000-0000-0000-000000000006', repeat('e',64)
+    );
+    RAISE EXCEPTION 'Follow request while blocked accepted';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+
+  PERFORM public.v2_community_relationship_write(
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    'unblock', 4,
+    '20000000-0000-0000-0000-000000000007', repeat('f',64)
+  );
+  IF EXISTS (
+    SELECT 1 FROM allin_private.v2_community_blocks
+    WHERE blocker_id = '00000000-0000-0000-0000-000000000001'
+      AND blocked_id = '00000000-0000-0000-0000-000000000002'
+  ) THEN
+    RAISE EXCEPTION 'Unblock did not remove owned block';
+  END IF;
+END
+$blocking$;
+
+\echo PASS: Community writer replay, owner authorization, private request, approval, block, stale CAS and no direct API EXECUTE.
