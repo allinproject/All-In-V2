@@ -98,7 +98,7 @@ returns text
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 declare
   v_attempt allin_private.v2_subscription_checkout_attempts%rowtype;
 begin
@@ -141,7 +141,7 @@ begin
   );
   return 'pending';
 end;
-$;
+$$;
 revoke all on function allin_private.v2_register_pending_subscription_checkout(
   uuid,uuid,uuid,text,text,text
 ) from public, anon, authenticated;
@@ -158,7 +158,7 @@ returns text
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 declare
   v_attempt allin_private.v2_subscription_checkout_attempts%rowtype;
 begin
@@ -201,7 +201,7 @@ begin
    where attempt_id=p_attempt_id and state='pending';
   return 'confirmed';
 end;
-$;
+$$;
 revoke all on function allin_private.v2_confirm_pending_subscription_checkout(
   uuid,uuid,text,text,text,text
 ) from public, anon, authenticated;
