@@ -10,7 +10,7 @@
 const uuid=value=>typeof value==='string'&&
   /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
 
-export function createCheckoutTrustAdapters({authGetUser,claimPrivateTrial}={}){
+export function createCheckoutTrustAdapters({authGetUser,claimPrivateTrial,claimPrivatePaid}={}){
   if(typeof authGetUser!=='function'||typeof claimPrivateTrial!=='function')
     return null;
   return Object.freeze({
@@ -21,6 +21,29 @@ export function createCheckoutTrustAdapters({authGetUser,claimPrivateTrial}={}){
       if(response?.error||!uuid(response?.data?.user?.id))return null;
       // Ignore email, role claims and editable metadata supplied by the user.
       return {id:response.data.user.id};
+    },
+    async claimPaidAttempt({ownerId,provider,environment}={}){
+      if(!uuid(ownerId)||provider!=='stripe_web'||environment!=='sandbox'||
+         typeof claimPrivatePaid!=='function')
+        return {status:'paid_unavailable'};
+      let response;
+      try{
+        response=await claimPrivatePaid({
+          p_owner_id:ownerId,p_authenticated_owner_id:ownerId,
+          p_provider:'stripe_web',p_environment:'sandbox',
+        });
+      }catch{throw Error('paid_store_unavailable')}
+      if(response?.error||!Array.isArray(response?.data)||
+         response.data.length!==1)throw Error('paid_store_unavailable');
+      const row=response.data[0];
+      if(row?.owner_id!==ownerId)throw Error('paid_owner_mismatch');
+      if(['subscription_unresolved','checkout_unresolved',
+           'not_returning_customer'].includes(row.status))
+        return {status:row.status};
+      if(row.status!=='eligible_reserved'||!uuid(row.attempt_id)||
+         row.trial_eligible!==false)throw Error('paid_store_invalid');
+      return {status:'eligible_reserved',attemptId:row.attempt_id,
+        ownerId,trialEligible:false};
     },
     async claimEligibleAttempt({ownerId,provider,environment}={}){
       if(!uuid(ownerId)||provider!=='stripe_web'||environment!=='sandbox')
