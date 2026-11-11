@@ -36,8 +36,8 @@ CREATE TABLE public.v2_activity_segments (
 CREATE INDEX v2_activity_segments_owner_activity
  ON public.v2_activity_segments(user_id,activity_id,parent_segment_id,sequence_number);
 -- The metric's semantic owner is the same activity/athlete and one real segment.
-ALTER TABLE public.v2_activity_metric_values
- ADD COLUMN segment_id uuid;
+-- The base scalar candidate reserves nullable segment_id for global-vs-
+-- segment identity; this stage installs its same-owner FK.
 ALTER TABLE public.v2_activity_metric_values
  ADD CONSTRAINT v2_activity_metric_segment_owner_fk
  FOREIGN KEY(segment_id,activity_id,user_id)
