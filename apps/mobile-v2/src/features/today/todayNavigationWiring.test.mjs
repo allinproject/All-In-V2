@@ -48,4 +48,6 @@ test('Today never presents unavailable domain data as accepted athlete facts', (
   assert.match(home, /todayEnergyGlance\(\{ status: 'unavailable' \}/);
   assert.match(home, /todayFoodLog\(\{ status: 'unavailable' \}/);
   assert.match(home, /todayKitchenDue\(\{status:'unavailable'\}/);
+  assert.match(home, /todayWeatherGlance\\(\\{status:'unavailable'\\}/);
+  assert.match(home, /style=\\{styles.weather\\}>\\{weatherGlance.label\\}/);
 });
