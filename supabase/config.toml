@@ -30,3 +30,8 @@ verify_jwt = false
 # JWT remains required; backend also verifies current Auth.getUser.
 [functions.v2-billing-entitlement]
 verify_jwt = true
+
+# ALL-252: native StoreKit/Google Play owner verification, default OFF.
+# An authenticated Supabase JWT is mandatory; store server secrets remain private.
+[functions.v2-native-subscription-verify]
+verify_jwt = true
