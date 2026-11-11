@@ -108,3 +108,17 @@ test('visible calendar read window covers adjacent-month cells and complete Mond
  assert.equal(visibleCalendarReadRange('month','2026-02-30'),null);
  assert.equal(visibleCalendarReadRange('week','invalid'),null);
 });
+
+test('month overview keeps confirmed race visible when it would otherwise overflow',()=>{
+ const day='2027-06-05';
+ const records=[
+  {athleteLocalDate:day,kind:'running' as const,status:'planned' as const},
+  {athleteLocalDate:day,kind:'strength' as const,status:'completed' as const},
+  {athleteLocalDate:day,kind:'race' as const,status:'race' as const}
+ ];
+ const summary=monthDayMarkerSummary({status:'ready',records},day);
+ assert.deepEqual(summary.visible.map(m=>m.kind),['race','running']);
+ assert.equal(summary.additionalCount,1);
+ assert.deepEqual(records.map(m=>m.kind),['running','strength','race']);
+ assert.match(monthDayAccessibilityLabel({status:'ready',records},day),/race/i);
+});
