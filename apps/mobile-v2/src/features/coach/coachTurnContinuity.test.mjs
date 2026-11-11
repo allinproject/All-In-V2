@@ -1,0 +1,11 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {projectCoachThreadAnchors,referencesEarlierCoachTurn} from "./coachTurnContinuity.mjs";
+const row=(role,content,min,accountId="a",threadId="t")=>({role,content,accountId,threadId,createdAt:new Date(Date.UTC(2026,10,11,10,min)).toISOString()});
+const fixture=()=>({accountId:"a",threadId:"t",message:"What did you recommend last time for my run?",recentLimit:2,rows:[row("user","Long run",0),row("assistant","I recommend trying familiar fuel on the run",1),row("user","Thanks",2),row("assistant","Sure",3)]});
+test("continuity requires explicit earlier-turn reference",()=>{assert.equal(referencesEarlierCoachTurn("hello"),false);assert.equal(referencesEarlierCoachTurn("What did you recommend last time?"),true)});
+test("bounded earlier content remains conversation-only",()=>{const v=projectCoachThreadAnchors(fixture());assert.equal(v.authority,"conversation_only");assert.ok(v.anchors.some(x=>x.content.includes("recommend")));assert.ok(v.guardrail.includes("not accepted plans"))});
+test("account and thread mismatch fail closed",()=>{const a=fixture();a.rows[0].accountId="b";assert.equal(projectCoachThreadAnchors(a),null);const b=fixture();b.rows[1].threadId="other";assert.equal(projectCoachThreadAnchors(b),null)});
+test("bad chronology or missing old records fail closed",()=>{const a=fixture();a.rows.reverse();assert.equal(projectCoachThreadAnchors(a),null);const b=fixture();b.rows=b.rows.slice(-2);assert.equal(projectCoachThreadAnchors(b),null)});
+test("a non-referential question does not fetch stale anchors",()=>{const a=fixture();a.message="What should I do today?";assert.equal(projectCoachThreadAnchors(a),null)});
+test("conversation excerpts are bounded",()=>{const a=fixture();a.rows[1].content="I recommend "+("training ".repeat(300));const v=projectCoachThreadAnchors(a);assert.ok(v.anchors.every(x=>x.content.length<=900))});
