@@ -24,8 +24,12 @@ export function startCoachTurn(state, request) {
   if (!sameIdentity(state,request)) return {kind:"blocked",reason:"stale_session"};
   if (![request.threadId,request.turnId,request.clientRequestId].every(validId))
     return {kind:"blocked",reason:"missing_turn_identity"};
-  if (!Array.isArray(state.turns) || state.turns.length >= 128)
-    return {kind:"blocked",reason:"too_many_pending_turns"};
+  if (!Array.isArray(state.turns)) return {kind:"blocked",reason:"invalid_turn_state"};
+  // Completed metadata is a short-lived UI correlation cache, not durable
+  // history. Retain a bounded recent window but never block a lifetime user
+  // after 128 successfully saved messages.
+  const pendingCount=state.turns.filter(t=>t.status!=="saved_verified").length;
+  if (pendingCount >= 16) return {kind:"blocked",reason:"too_many_pending_turns"};
   const existing=state.turns.find(t=>t.clientRequestId===request.clientRequestId);
   if (existing) {
     if (existing.threadId!==request.threadId || existing.turnId!==request.turnId)
@@ -37,7 +41,10 @@ export function startCoachTurn(state, request) {
   const turn={threadId:request.threadId,turnId:request.turnId,
     clientRequestId:request.clientRequestId,status:"requested",
     responseId:null,saveReceipt:null};
-  return {kind:"updated",state:{...state,turns:[...state.turns,turn]},turn};
+  const saved=state.turns.filter(t=>t.status==="saved_verified");
+  const retainSaved=new Set(saved.slice(-64).map(t=>t.clientRequestId));
+  const retained=state.turns.filter(t=>t.status!=="saved_verified"||retainSaved.has(t.clientRequestId));
+  return {kind:"updated",state:{...state,turns:[...retained,turn]},turn};
 }
 
 /**
