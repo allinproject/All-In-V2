@@ -4,15 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { useAccessGate } from '../../src/auth/AccessGateProvider';
 import {
-  V2_TUTORIAL_CATALOG, tutorialCatalogCategories,
+  V2_TUTORIAL_CATALOG, tutorialCatalogCategories, canStartTutorial,
 } from '../../src/features/tutorials/tutorialCatalog';
 import { colors } from '../../src/theme/tokens';
 
 /**
  * V2 Help / Tutorials catalog shell.
- * No guide is currently device-validated, so do NOT render faux Start/Replay
- * buttons or store completion state. Real screen links below are exploration
- * links, not tutorials.
+ * Integrated in-screen walkthroughs may be started for early testing, but no
+ * guide is device-validated or marked release-ready. No completion persistence.
  */
 export default function TutorialsRoute() {
   const { user, loading } = useAuth();
@@ -31,15 +30,20 @@ export default function TutorialsRoute() {
       </Link>
       <Text accessibilityRole="header" style={styles.title}>Help & Tutorials</Text>
       <Text style={styles.description}>
-        Guides are being rebuilt for the new ALL IN 365. None are ready to start yet.
-        You can explore the existing screens below without changing any settings.
+        Guides are being rebuilt for the new ALL IN 365. The Profile guide is available for early testing;
+        it has not been validated on a device. Other guides are still in development.
       </Text>
       {tutorialCatalogCategories().map(category => <View style={styles.section} key={category}>
         <Text style={styles.heading}>{category}</Text>
         {V2_TUTORIAL_CATALOG.filter(t => t.category===category).map(t => <View style={styles.card} key={t.id}>
           <Text style={styles.itemTitle}>{t.title}</Text>
           <Text style={styles.description}>{t.summary}</Text>
-          <Text style={styles.status}>Tutorial coming later</Text>
+          <Text style={styles.status}>{canStartTutorial(t) ? 'Early walkthrough · device testing pending' : 'Tutorial coming later'}</Text>
+          {t.id==='profile-settings' && canStartTutorial(t) ? <Link href="/profile?tutorial=profile-settings" asChild>
+            <Pressable accessibilityRole="button" style={styles.primary}>
+              <Text style={styles.primaryLabel}>Start Profile walkthrough</Text>
+            </Pressable>
+          </Link> : null}
           {t.exploreRoute ? <Link href={t.exploreRoute} asChild>
             <Pressable accessibilityRole="button" style={styles.explore}>
               <Text style={styles.exploreLabel}>Explore current screen</Text>
@@ -47,7 +51,7 @@ export default function TutorialsRoute() {
           </Link> : null}
         </View>)}
       </View>)}
-      <Text style={styles.note}>A tutorial will become available only after its real app workflow has been tested. Exploring a screen is not the same as completing a guide.</Text>
+      <Text style={styles.note}>The early Profile walkthrough explains existing controls without changing data. It is not device-validated yet. Exploring another screen is not the same as completing a tutorial.</Text>
     </ScrollView>
   </SafeAreaView>;
 }
@@ -64,6 +68,8 @@ const styles=StyleSheet.create({
   itemTitle:{fontSize:16,fontWeight:'800',color:colors.warmWhite},
   description:{fontSize:13,lineHeight:20,color:colors.mutedText},
   status:{fontSize:12,color:colors.goldSoft,fontWeight:'700'},
+  primary:{borderRadius:10,padding:12,backgroundColor:colors.gold,alignSelf:'flex-start'},
+  primaryLabel:{color:colors.background,fontSize:13,fontWeight:'800'},
   explore:{borderWidth:1,borderColor:colors.border,borderRadius:10,padding:11,alignSelf:'flex-start'},
   exploreLabel:{fontSize:13,color:colors.warmWhite,fontWeight:'700'},
   note:{color:colors.mutedText,fontSize:12,lineHeight:19},
