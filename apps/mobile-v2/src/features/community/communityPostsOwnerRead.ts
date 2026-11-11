@@ -28,6 +28,10 @@ export function certifyCommunityPostsRead(
   response.nextCursor!==null||!Array.isArray(response.posts)||
   response.posts.length>100)
   throw new Error('Community post owner read was partial, foreign or malformed.');
+ const responseKeys=['ownerId','viewerId','complete','nextCursor','blocked','posts'];
+ if(Object.keys(response).some(k=>!responseKeys.includes(k))||
+    responseKeys.some(k=>!Object.prototype.hasOwnProperty.call(response,k)))
+  throw new Error('Community reader returned unexpected private data or missing evidence.');
  const view=evaluatePublicProfileView(viewer);
  if(response.blocked!==(view.label==='blocked'))
   throw new Error('Community block evidence was contradictory.');
@@ -36,6 +40,12 @@ export function certifyCommunityPostsRead(
  const seen=new Set<string>();
  const result:CommunityPostRow[]=[];
  for(const post of response.posts){
+  const postKeys=['id','ownerId','kind','audience','title','body',
+   'publishedAt','updatedAt'];
+  if(post&&typeof post==='object'&&
+     (Object.keys(post).some(k=>!postKeys.includes(k))||
+      postKeys.some(k=>!Object.prototype.hasOwnProperty.call(post,k))))
+   throw new Error('Community post reader transmitted unexpected private fields.');
   if(!post||!str(post.id,150)||post.ownerId!==expectedOwnerId||
    seen.has(post.id)||!['workout','food','update'].includes(post.kind)||
    !['public','followers','private'].includes(post.audience)||
