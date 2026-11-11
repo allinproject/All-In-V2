@@ -8,3 +8,8 @@ verify_jwt = true
 
 [functions.v2-search-openfoodfacts-products]
 verify_jwt = true
+
+# ALL-251: staged deletion worker. JWT required on top of private worker token.
+# No Edge Function deployed or processing gate enabled by this setting.
+[functions.v2-account-deletion-worker]
+verify_jwt = true
