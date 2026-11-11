@@ -172,6 +172,7 @@ export type Database = {
         Returns: string
       }
       v2_my_account_deletion_request: { Args: { p_expected_user_id: string }; Returns: Json }
+      v2_cancel_account_deletion_request: { Args: { p_expected_user_id: string; p_expected_request_id: string }; Returns: Json }
       v2_request_account_deletion: { Args: { p_expected_user_id: string; p_confirm: string }; Returns: Json }
       v2_my_health_considerations: { Args: { p_expected_user_id: string }; Returns: Json }
       v2_save_health_considerations: {
