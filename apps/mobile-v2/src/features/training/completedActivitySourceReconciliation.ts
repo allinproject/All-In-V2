@@ -1,6 +1,8 @@
 /** ALL-243 canonical source reconciliation decision policy, no database writes.
  * Caller must use authoritative owner-verified records. This does not authorize
  * automatic source merges; server still owns uniqueness and atomicity.
+ * The known list must contain only the owner's source-identity or potential
+ * overlapping-workout candidates, NOT the athlete's entire activity history.
  */
 export type ActivitySourceIdentity={
  ownerId:string;
@@ -66,7 +68,8 @@ export function reconcileActivitySource(
   if(sameSession.some(s=>s.canonicalActivityId!==activityId))
     return {decision:'needs_review',activityId:null,reason:'conflicting_activity_links'};
   if(sameSource.some(s=>s.identity.revision!==incoming.revision||
-   s.identity.payloadFingerprint!==incoming.payloadFingerprint))
+   s.identity.payloadFingerprint!==incoming.payloadFingerprint||
+   s.identity.certifiedSessionInstanceId!==incoming.certifiedSessionInstanceId))
    return {decision:'revision_review',activityId,reason:'source_revision_or_payload_changed'};
   return {decision:'exact_replay',activityId,reason:'same_source_same_payload'};
  }
