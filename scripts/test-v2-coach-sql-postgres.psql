@@ -54,8 +54,13 @@ create table public.v2_profiles (
 \ir ../supabase/tests/v2_coach_owner_atomic_exchange_rollback.sql
 
 -- The included fixture must have rolled back both bootstrap and draft schema.
-select case when to_regclass('public.v2_coach_threads') is null
-  and to_regclass('public.v2_coach_messages') is null
-  and to_regclass('allin_private.v2_coach_turn_claims') is null
- then 1 else 1/0 end as rollback_verified;
+do $rollback$
+begin
+ if to_regclass('public.v2_coach_threads') is not null
+   or to_regclass('public.v2_coach_messages') is not null
+   or to_regclass('allin_private.v2_coach_turn_claims') is not null then
+  raise exception 'Coach test objects remained after rollback';
+ end if;
+end;
+$rollback$;
 select 'PASS ALL-217 ISOLATED TWO-OWNER PG17 REPLAY (no concurrent backends)' as result;
