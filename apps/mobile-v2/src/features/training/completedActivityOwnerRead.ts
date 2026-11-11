@@ -110,7 +110,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    throw new Error('Structured activity evidence is not verifiable.');
   sections.push({key:section.key,kind:section.kind,title:section.title,source:source.provider,count:section.count});
  }
- return {id:raw.id,sport:display.sport,title:raw.title,completedAt:raw.completedAt,
+ return {id:raw.id,sport:display.sport,terrain:display.terrain,title:raw.title,completedAt:raw.completedAt,
   sourceLabel:primary.provider,metrics,sections};
 }
 /** Guards both ends of asynchronous read, including account switches during the request. */
