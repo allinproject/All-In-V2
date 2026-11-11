@@ -67,16 +67,18 @@ BEGIN
    RAISE EXCEPTION 'Repeated slot in revision accepted';
  EXCEPTION WHEN unique_violation THEN NULL; END;
  -- Date state must be explicit and match revision/calendar day.
+ INSERT INTO public.v2_training_session_slots(id,plan_id,user_id,slot_key)
+ VALUES('13131313-1313-4313-8313-131313131313',plan_a,owner_a,'tuesday-new');
  BEGIN
    INSERT INTO public.v2_training_revision_sessions
     (id,plan_revision_id,session_slot_id,plan_id,user_id,athlete_local_date,
      timezone,sport,session_kind,purpose,priority,intensity,intent_schema_version,intent,sort_order)
-   VALUES('77777777-7777-4777-8777-777777777777',rev_a,slot_a,plan_a,owner_a,
+   VALUES('77777777-7777-4777-8777-777777777777',rev_a,
+          '13131313-1313-4313-8313-131313131313',plan_a,owner_a,
           '2026-11-17','America/Chicago','running','easy_run',
           'No day','supporting','easy','session-intent-v1','{}',1);
    RAISE EXCEPTION 'Session without calendar day accepted';
- EXCEPTION WHEN foreign_key_violation THEN NULL;
-           WHEN unique_violation THEN NULL; END;
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
  -- A launched Training execution must bind exact owner and revision session.
  INSERT INTO public.v2_training_session_instances(
    id,user_id,revision_session_id,status,source_kind,athlete_local_date,timezone)
