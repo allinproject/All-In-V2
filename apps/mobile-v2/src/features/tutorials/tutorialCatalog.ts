@@ -18,6 +18,8 @@ export const V2_TUTORIAL_CATALOG: readonly TutorialEntry[] = [
   {id:'app-tour',title:'Welcome to ALL IN 365',category:'Getting started',summary:'Explore the real V2 app and what each area does.',readiness:'planned',exploreRoute:'/profile'},
   {id:'profile-settings',title:'Profile & Settings',category:'Profile & Settings',summary:'Personalize sports, Kitchen, Coach and your account.',readiness:'integrated',exploreRoute:'/profile'},
   {id:'sports-interests',title:'Sports & Interests',category:'Profile & Settings',summary:'Learn training focus, active activities, and explicit saving.',readiness:'integrated',exploreRoute:'/profile/sports'},
+  {id:'kitchen',title:'Kitchen',category:'Profile & Settings',summary:'Learn home equipment, work reheating, kitchen constraints and saving.',readiness:'integrated',exploreRoute:'/profile/kitchen'},
+  {id:'coach-preferences',title:'Coach Preferences',category:'Profile & Settings',summary:'Review guidance, explanations, plan-change approvals and coaching tone.',readiness:'integrated',exploreRoute:'/profile/coach-preferences'},
   {id:'weekly-routine',title:'Weekly Routine',category:'Profile & Settings',summary:'Set preferred training, shopping and meal-prep times.',readiness:'planned'},
   {id:'coach-learning',title:'What Coach Knows',category:'Profile & Settings',summary:'Review, correct and remove learned preferences.',readiness:'planned'},
   {id:'coach-conversation',title:'Working with Coach',category:'Getting started',summary:'Understand Coach guidance, memory and reviewed actions.',readiness:'planned'},
