@@ -59,6 +59,14 @@ Added the **reusable** `completedActivityScreenModel.ts` and `CompletedActivityS
 
 **Verification limits:** Node-only smoke passed; no full Expo/TypeScript/device acceptance has been evidenced for this component, and no backend/schema work occurred.
 
+## Fail-closed canonical activity read boundary — 2026-11-11
+
+Added `apps/mobile-v2/src/features/training/completedActivityOwnerRead.ts` and its Node contract tests. This consumes **only** a canonical reader's returned owner-scoped activity, metric definitions/versions, sources and structured-section descriptors. It makes **no network calls or storage writes** by itself; there is not yet a live Completed Activity query endpoint or deployed schema. The eventual ALL-243 backend reader must enforce authenticated RLS, expected owner, per-metric registry/source eligibility, numeric/unit conversion, provider deduplication and private series access. Client checks are defense in depth, **not backend authorization**.
+
+The adapter verifies expected owner and activity identity, screens the caller's active account before and after an asynchronous fetch, checks metric definition versions/sport applicability/allowed measurement kind/source link, keeps source-reported zero distinct from missing values, excludes unresolved unverified readings, and refuses duplicate metric codes that require upstream source reconciliation. It converts only **already formatted, source-attested** metric values to the existing three-tab presentation input; it cannot fabricate sensor readings or Coach analysis.
+
+Tests cover valid owner-bound reads, account switching during a request, foreign/wrong activity identities, cancelled views, invalid/missing definitions/sources, duplicate/conflicting metrics, low-quality or rejected inputs, and present-but-zero vs absent. GitHub Actions smoke run `43026872609` passed. **No actual backend RPC, deployed tables, signed-in mobile read or device verification was completed** by this slice.
+
 ## Current evidence / outstanding gaps
 
 - [x] Exact 17-sport **V1 native scalar** Overview/Details baseline is in V2 and unit-test guarded.
