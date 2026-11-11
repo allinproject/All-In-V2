@@ -15,7 +15,7 @@ const uuid=value=>typeof value==='string'&&
 
 export async function handleStripeSandboxCheckoutRequest({
   method, authorization, rawBody,
-  authenticateBearer, claimEligibleAttempt, reserveCheckoutAttempt,
+  authenticateBearer, claimEligibleAttempt, claimPaidAttempt, reserveCheckoutAttempt,
   registerPendingCheckout, createCheckoutSession,
   priceId, merchantAccountId, successUrl, cancelUrl, approvedReturnOrigin,
 }={}) {
@@ -42,16 +42,25 @@ export async function handleStripeSandboxCheckoutRequest({
   try { claim=await claimEligibleAttempt({ownerId:user.id,provider:'stripe_web',
                                         environment:'sandbox'}); }
   catch {return {status:503,code:'eligibility_unavailable'};}
-  if(claim?.status==='trial_ineligible')
-    return {status:409,code:'trial_ineligible'};
+  // A former subscriber may pay again but must NOT receive a second trial.
+  // The private paid claim must reject active or unreconciled subscriptions.
+  if(claim?.status==='trial_ineligible'){
+    if(typeof claimPaidAttempt!=='function')
+      return {status:409,code:'trial_ineligible'};
+    try{
+      claim=await claimPaidAttempt({ownerId:user.id,provider:'stripe_web',
+                                   environment:'sandbox'});
+    }catch{return {status:503,code:'eligibility_unavailable'};}
+  }
   if(claim?.status!=='eligible_reserved'||claim.ownerId!==user.id||
-     !uuid(claim.attemptId)||claim.trialEligible!==true)
+     !uuid(claim.attemptId)||typeof claim.trialEligible!=='boolean')
     return {status:503,code:'checkout_unavailable'};
 
   const outcome=await prepareStripeSandboxCheckout({
     authenticatedOwnerId:user.id,
     expectedOwnerId:user.id, attemptId:claim.attemptId,
-    trialEligible:true, priceId, expectedMerchantAccountId:merchantAccountId,
+    trialEligible:claim.trialEligible, priceId,
+    expectedMerchantAccountId:merchantAccountId,
     createCheckoutSession, reserveCheckoutAttempt, registerPendingCheckout,
     successUrl,cancelUrl,approvedReturnOrigin,
   });
