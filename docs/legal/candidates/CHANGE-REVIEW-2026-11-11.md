@@ -27,6 +27,14 @@
 - Source file: [Founder Beta Terms `founder-beta-terms-v1`](../review/founder_beta_terms-founder-beta-terms-v1.md)
 - **No change proposed to original text.** This source already states that beta participation does not authorize charges and requires separate age 18, Terms, Privacy, and Founder Beta acknowledgement. Its reviewed version should be selected independently when other documents are approved.
 
+## Verified platform and backup requirements — 2026-11-11
+
+**Important correction:** The email-based deletion wording in the V2 candidate Terms/Privacy is an interim description of a contact route, **not** sufficient to close App Store review readiness. Apple's official [5.1.1(v) account-deletion guideline](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion/) requires apps with account creation to allow deletion initiation inside the app. Apple says standard apps generally cannot require users to email support or complete a support chat to delete their account. Deliver a genuine native deletion path under existing [ALL-251](https://linear.app/allin365/issue/ALL-251/v2-profile-privacy-and-account-lifecycle-preferences-export-deletion), including deletion consequences, authentication, privacy worker/retention, owner and retry safety, and installed-device acceptance **before** app distribution that requires the Apple review gate. Policy changes cannot waive this requirement.
+
+**Backup claim:** Supabase's [database backup guide](https://supabase.com/docs/guides/platform/backups) says automatic daily backups are provided for Pro/Team/Enterprise plans, while the Free plan is not guaranteed such backups. Current V2 project billing tier, backup status and retention have **not** been verified. Keep the candidate's configuration-conditional wording; get actual dashboard evidence before any specific schedule claim. Do not buy/upgrade plans without founder authorization.
+
+**Legal review:** A human reviewer must evaluate adequacy of privacy contact-only handling prior to distributing any build, including applicable privacy law and store policies. Drafts remain candidates, not signed or published terms.
+
 ## Publication and engineering stop conditions
 
 - The live V2 legal table was empty when checked on 2026-11-11. No `v2_legal_documents` rows should be inserted, published, or backdated until final legal review and founder authorization are captured.
