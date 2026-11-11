@@ -8,6 +8,7 @@ on:
       - 'apps/mobile-v2/app/**'
       - 'apps/mobile-v2/src/auth/**'
       - 'apps/mobile-v2/src/features/cookbook/**'
+      - 'apps/mobile-v2/src/features/community/**'
       - 'apps/mobile-v2/src/features/training/**'
       - 'apps/mobile-v2/src/features/strength/**'
       - 'apps/mobile-v2/package.json'
@@ -32,6 +33,7 @@ on:
       - 'apps/mobile-v2/app/**'
       - 'apps/mobile-v2/src/auth/**'
       - 'apps/mobile-v2/src/features/cookbook/**'
+      - 'apps/mobile-v2/src/features/community/**'
       - 'apps/mobile-v2/src/features/training/**'
       - 'apps/mobile-v2/src/features/strength/**'
       - 'apps/mobile-v2/package.json'
@@ -93,6 +95,8 @@ jobs:
         run: npm run test:auth
       - name: Run Cookbook calculator tests
         run: npm run test:calculator
+      - name: Run Community and Live Props contract tests
+        run: npm run test:community
       - name: Run Training logic tests
         run: npm run test:training-logic
       - name: Run Strength exercise-science contract tests
