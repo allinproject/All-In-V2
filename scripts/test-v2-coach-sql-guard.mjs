@@ -63,6 +63,42 @@ test("exact exchange reader is owner-invoker and cannot return a partial saved p
  assert.match(replay,/Wrong assistant message ID returned a partial exchange/);
  assert.match(replay,/B read A exact Coach exchange/);
 });
+test("Coach claim ledger and fenced writer remain service-only and single-owner",()=>{
+ for(const clause of [
+   "create table allin_private.v2_coach_turn_claims",
+   "alter table allin_private.v2_coach_turn_claims enable row level security",
+   "create function public.v2_coach_claim_turn",
+   "create function public.v2_coach_finish_turn"
+ ]) assert.ok(candidate.includes(clause));
+ for(const fn of ["v2_coach_claim_turn","v2_coach_append_exchange","v2_coach_finish_turn"]){
+  const grants=candidate.split("grant execute on function public."+fn+"(");
+  assert.equal(grants.length,2,"Exactly one grant for "+fn);
+  assert.match(grants[1].split(";")[0],/to service_role/);
+  assert.doesNotMatch(grants[1].split(";")[0],/to authenticated/);
+ }
+ assert.match(candidate,/v_claim.execution_version is distinct from p_execution_version/);
+ assert.match(candidate,/v_claim.lease_expires_at<=pg_catalog.clock_timestamp/);
+ assert.match(candidate,/status='completed'/);
+});
+test("Coach lease takeover replay rejects an older producer and fingerprint changes",()=>{
+ assert.match(replay,/Expired Coach lease did not advance fence/);
+ assert.match(replay,/Stale provider appended after lease takeover/);
+ assert.match(replay,/Stale provider created canonical message rows/);
+ assert.match(replay,/Stale execution finalized newer Coach reply/);
+ assert.match(replay,/Fingerprint change accepted/);
+ assert.match(replay,/Completed request triggered new provider claim/);
+});
+test("SQL candidate contains exactly one physical owner and writer",()=>{
+ for(const name of [
+ "create table public.v2_coach_threads",
+ "create table public.v2_coach_messages",
+ "create table allin_private.v2_coach_turn_claims",
+ "create function public.v2_coach_claim_turn",
+ "create function public.v2_coach_append_exchange",
+ "create function public.v2_coach_finish_turn",
+ "create function public.v2_coach_read_exchange"
+ ]) assert.equal(candidate.split(name).length,2,"Duplicate or missing "+name);
+});
 test("rollback replay addresses two accounts, direct client write denial and atomic rollback",()=>{
  assert.match(replay,/coach-v2-a@example\.invalid/);
  assert.match(replay,/coach-v2-b@example\.invalid/);
