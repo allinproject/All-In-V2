@@ -12,7 +12,10 @@ const MAX_OBJECTS = 128;
 const MAX_OBJECT_BYTES = 16 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA = /^[0-9a-f]{64}$/;
-const COLUMN_SET = 'id,user_id,activity_id,source_id,object_path,checksum_sha256,state,quality,privacy_state,format,encoding,point_count,sample_count,starts_at,ends_at';
+const COLUMNS = Object.freeze({
+  series:'id,user_id,activity_id,source_id,object_path,checksum_sha256,state,quality,encoding,sample_count,starts_at,ends_at',
+  route:'id,user_id,activity_id,source_id,object_path,checksum_sha256,state,quality,privacy_state,format,point_count',
+});
 
 function checkOwner(ownerId) {
   if (typeof ownerId !== 'string' || !UUID.test(ownerId)) {
@@ -43,7 +46,7 @@ export function createTrainingSupabaseEvidenceAdapter({ supabase }) {
   }
   async function getRows(table,ownerId,kind) {
     const response = await supabase.from(table)
-      .select(COLUMN_SET,{count:'exact'})
+      .select(COLUMNS[kind],{count:'exact'})
       .eq('user_id',ownerId).order('id',{ascending:true}).range(0,MAX_OBJECTS);
     if (response?.error || !Array.isArray(response?.data)
       || !Number.isInteger(response?.count)
