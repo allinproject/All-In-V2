@@ -11,6 +11,7 @@ import { deviceLocalToday, shouldRefreshTodayOnAppState, todayTrainingDestinatio
 import { combineCalendarReads } from '../src/features/training/trainingCalendarReadModel';
 import { summarizeTodayTraining } from '../src/features/today/todayTrainingCard';
 import { todayEnergyGlance } from '../src/features/today/todayEnergyGlance';
+import { todayFoodLog } from '../src/features/today/todayFoodLog';
 
 /**
  * Today is the one existing /home entry point.
@@ -55,6 +56,8 @@ function HomeOwnerScreen() {
   // Read-only Fuel projection. The canonical daily Fuel owner is not connected;
   // do not invent calories or present a missing food day as zero.
   const energyGlance = todayEnergyGlance({ status: 'unavailable' }, user?.id ?? '', localDay);
+  // Canonical Fuel entries are not available yet; do not invent rows or photos.
+  const foodLog = todayFoodLog({ status: 'unavailable' }, user?.id ?? '', localDay);
 
   async function handleSignOut() {
     if (!signOutGuard.current.tryEnter()) return;
@@ -130,7 +133,14 @@ function HomeOwnerScreen() {
               </Pressable>
             </Link>
           </View>
-          <Text style={styles.help}>Today's food entries have not been loaded. Food photos will remain compact beneath the calorie summary.</Text>
+          {foodLog.visible.map(row => (
+            <View key={row.id} style={styles.foodRow}>
+              <Text style={styles.foodMeal}>{row.meal}</Text>
+              <Text style={styles.foodLabel} numberOfLines={1}>{row.label}</Text>
+            </View>
+          ))}
+          {foodLog.additionalCount > 0 ? <Text style={styles.help}>+{foodLog.additionalCount} more entries in Fuel</Text> : null}
+          <Text style={styles.help}>{foodLog.detail}</Text>
         </View>
 
         <View style={styles.card}>
@@ -181,6 +191,9 @@ const styles = StyleSheet.create({
   metric: { flex: 1, minWidth: 0, backgroundColor: colors.surfaceRaised, borderRadius: 12, padding: 10, gap: 5 },
   metricLabel: { color: colors.mutedText, fontSize: 11 },
   metricUnknown: { color: colors.warmWhite, fontSize: 22, fontWeight: '800' },
+  foodRow: { flexDirection: 'row', gap: 8, alignItems: 'center', minHeight: 28 },
+  foodMeal: { color: colors.goldSoft, fontSize: 11, minWidth: 64, textTransform: 'capitalize' },
+  foodLabel: { color: colors.warmWhite, fontSize: 13, flex: 1 },
   account: { color: colors.mutedText, fontSize: 12 },
   error: { color: colors.danger, fontSize: 13 },
   signOut: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
