@@ -1,0 +1,41 @@
+\set ON_ERROR_STOP on
+-- ALL-217 — disposable PostgreSQL 17, Coach owner SQL replay.
+-- Must be executed ONLY in dedicated empty allin_coach_test database.
+select case when current_database()='allin_coach_test' then 1
+  else 1/0 end as disposable_database_guard;
+
+BEGIN;
+create schema auth;
+create schema allin_private;
+create role anon nologin;
+create role authenticated nologin;
+create role service_role nologin bypassrls;
+grant usage on schema public,auth to authenticated;
+grant usage on schema public to anon;
+grant usage on schema public,auth,allin_private to service_role;
+
+create table auth.users (
+ id uuid primary key,
+ aud text, role text, email text unique,
+ raw_app_meta_data jsonb, raw_user_meta_data jsonb,
+ created_at timestamptz,updated_at timestamptz,
+ is_anonymous boolean
+);
+create function auth.uid() returns uuid
+language sql stable security invoker set search_path=''
+as $uid$
+ select nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
+$uid$;
+create table public.v2_profiles (
+ user_id uuid primary key references auth.users(id) on delete cascade
+);
+-- Include the canonical candidate, then run the real two-owner SQL fixture.
+\ir ../docs/architecture/sql/V2-COACH-OWNER-MIGRATION-CANDIDATE.sql
+\ir ../supabase/tests/v2_coach_owner_atomic_exchange_rollback.sql
+
+-- The included fixture must have rolled back both bootstrap and draft schema.
+select case when to_regclass('public.v2_coach_threads') is null
+  and to_regclass('public.v2_coach_messages') is null
+  and to_regclass('allin_private.v2_coach_turn_claims') is null
+ then 1 else 1/0 end as rollback_verified;
+select 'PASS ALL-217 ISOLATED TWO-OWNER PG17 REPLAY (no concurrent backends)' as result;
