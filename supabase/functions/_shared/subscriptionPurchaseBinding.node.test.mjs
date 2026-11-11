@@ -61,3 +61,7 @@ test('does not mutate trusted input facts',()=>{
   check();
   assert.equal(JSON.stringify(base()),before);
 });
+
+test('checkout attempt ID must match the database UUID format',()=>{
+  assert.equal(check({checkoutAttempt:{...checkoutAttempt,attemptId:'attempt_forged'}}).status,'unverified_purchase');
+});
