@@ -1,0 +1,94 @@
+\set ON_ERROR_STOP on
+-- ALL-243 review-only PG17 private series/route metadata replay.
+DO $roles$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+END $roles$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql
+DO $qa$
+DECLARE
+ a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ act uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ foreign_act uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ src uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ segment uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ series_path text;
+ route_path text;
+BEGIN
+ INSERT INTO auth.users VALUES(a),(b);
+ INSERT INTO public.v2_completed_activities(id,user_id,sport,activity_kind,
+ athlete_local_date,timezone,capture_kind,status) VALUES
+ (act,a,'cycling','workout','2026-11-11','America/Chicago','device_measured','needs_review'),
+ (foreign_act,b,'running','workout','2026-11-11','America/Chicago','provider_import','needs_review');
+ INSERT INTO public.v2_activity_sources(id,activity_id,user_id,provider,source_kind,
+ source_record_id,quality,source_payload_hash) VALUES
+ (src,act,a,'supported_equipment','device_session','bike-1','trusted',repeat('a',64));
+ INSERT INTO public.v2_activity_segments(id,activity_id,user_id,segment_kind,sequence_number)
+ VALUES(segment,act,a,'interval',1);
+ INSERT INTO public.v2_activity_metric_definitions(metric_code,definition_version,
+ display_name,canonical_unit,value_kind,sport_scope,measurement_kinds,
+ display_group,privacy_class,status) VALUES
+ ('power_w',1,'Power','W','numeric',ARRAY['cycling'],ARRAY['source_measured'],
+ 'power','private','published');
+ series_path:=a::text||'/'||repeat('s',64)||'/series.fit';
+ route_path:=a::text||'/'||repeat('r',64)||'/route.fit';
+ INSERT INTO public.v2_activity_series(id,activity_id,user_id,source_id,segment_id,
+ metric_code,definition_version,object_path,encoding,checksum_sha256,
+ sample_count,starts_at,ends_at,quality)
+ VALUES('00000000-0000-4000-8000-000000000001',act,a,src,segment,
+ 'power_w',1,series_path,'fit',repeat('1',64),1200,'2026-11-11 12:00+00',
+ '2026-11-11 12:20+00','trusted');
+ INSERT INTO public.v2_activity_route_objects(id,activity_id,user_id,source_id,
+ object_path,format,checksum_sha256,point_count,quality)
+ VALUES('00000000-0000-4000-8000-000000000002',act,a,src,route_path,'fit',
+ repeat('2',64),120,'trusted');
+ IF (SELECT state FROM public.v2_activity_series LIMIT 1)<>'pending'
+ OR (SELECT privacy_state FROM public.v2_activity_route_objects LIMIT 1)<>'private'
+ THEN RAISE EXCEPTION 'Object metadata was exposed as ready/public'; END IF;
+ BEGIN
+  INSERT INTO public.v2_activity_series(id,activity_id,user_id,source_id,
+   metric_code,definition_version,object_path,encoding,checksum_sha256,
+   sample_count,starts_at,ends_at,quality)
+  VALUES('00000000-0000-4000-8000-000000000003',foreign_act,b,src,
+   'power_w',1,b::text||'/'||repeat('x',64)||'/series.fit','fit',
+   repeat('3',64),10,'2026-11-11 12:00+00','2026-11-11 12:05+00','trusted');
+  RAISE EXCEPTION 'Foreign owner reused series source';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_route_objects(id,activity_id,user_id,source_id,
+   object_path,format,checksum_sha256,point_count,quality)
+  VALUES('00000000-0000-4000-8000-000000000004',act,a,src,
+   b::text||'/'||repeat('x',64)||'/route.fit','fit',repeat('4',64),10,'trusted');
+  RAISE EXCEPTION 'Foreign-owner object path accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_route_objects(id,activity_id,user_id,source_id,
+   object_path,format,checksum_sha256,point_count,quality)
+  VALUES('00000000-0000-4000-8000-000000000005',act,a,src,
+   a::text||'/../'||repeat('x',64)||'/route.fit','fit',repeat('5',64),10,'trusted');
+  RAISE EXCEPTION 'Traversal path accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_series(id,activity_id,user_id,source_id,
+   metric_code,definition_version,object_path,encoding,checksum_sha256,
+   sample_count,starts_at,ends_at,quality)
+  VALUES('00000000-0000-4000-8000-000000000006',act,a,src,
+   'power_w',1,a::text||'/'||repeat('x',64)||'/series.fit','fit',
+   repeat('6',64),0,'2026-11-11 12:00+00','2026-11-11 12:05+00','trusted');
+  RAISE EXCEPTION 'Zero sample series accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ IF has_table_privilege('authenticated','public.v2_activity_series','SELECT')
+ OR has_table_privilege('authenticated','public.v2_activity_route_objects','SELECT')
+ OR NOT(SELECT relrowsecurity FROM pg_class WHERE oid='public.v2_activity_series'::regclass)
+ THEN RAISE EXCEPTION 'Private object metadata is exposed'; END IF;
+ RAISE NOTICE 'PASS ALL-243 series/routes: same-owner evidence, opaque paths, no Storage/API exposure';
+END $qa$;
