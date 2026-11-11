@@ -40,6 +40,7 @@ export function CompletedActivityScreenContent({activity,onSaveLayout,onOpenCoac
   <Text style={styles.title} accessibilityRole="header">{model.title}</Text>
   <Text style={styles.helper}>{model.sportLabel} · {model.completedAt}</Text>
   <Text style={styles.source}>Source: {model.sourceLabel}</Text>
+  {model.terrain?<Text style={styles.helper}>Terrain: {model.terrain==='trail'?'Trail':'Road'}</Text>:null}
   <View style={styles.tabs}>{model.tabs.map(next=><Pressable key={next} accessibilityRole="tab"
     accessibilityState={{selected:tab===next}} style={[styles.tab,tab===next&&styles.selected]}
     onPress={()=>switchTab(next)}><Text style={tab===next?styles.selectedText:styles.tabText}>{next}</Text></Pressable>)}</View>
