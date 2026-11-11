@@ -14,9 +14,14 @@ test('Today preserves five-section order and four compact verified food tiles', 
   assert.match(home, /foodLog\.visible\.map\(row => \(/);
   assert.match(home, /<Link key=\{row\.id\} href=\{foodLogDestination\} asChild>/);
   assert.match(home, /accessibilityLabel=\{`View \$\{row\.label\} in this day's Food Log`\}/);
-  assert.match(home, /foodTile: \{ width: '23%', maxWidth: 88/);
+  assert.match(home, /foodTile: \{ width: '22%', maxWidth: 88/);
   assert.match(home, /source=\{\{ uri: row\.photoUri \}\}/);
   assert.match(home, /foodPhotoFallback/);
+  // Four compact 22% columns + three 8px gaps fit narrow mobile cards.
+  for (const innerWidth of [224, 240, 248, 260, 300]) {
+    assert.ok(4 * Math.min(innerWidth * 0.22, 88) + 3 * 8 <= innerWidth,
+      `four photo tiles overflow ${innerWidth}px card`);
+  }
   const model = source('./todayFoodLog.ts');
   assert.match(model, /ordered\.slice\(0, 4\)/);
   assert.match(model, /additionalCount: Math\.max\(0, ordered\.length - 4\)/);
