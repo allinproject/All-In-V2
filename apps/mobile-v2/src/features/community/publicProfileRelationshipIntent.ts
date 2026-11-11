@@ -28,6 +28,8 @@ const id=(x:unknown):x is string=>typeof x==='string'&&x.trim().length>0&&x.leng
 export function relationshipActionAvailability(s:RelationshipSnapshot):ReadonlySet<RelationshipAction>{
  if(!id(s.viewerId)||!id(s.targetOwnerId)||s.viewerId===s.targetOwnerId||
   !Number.isSafeInteger(s.version)||s.version<1||
+  typeof s.viewerBlockedTarget!=='boolean'||
+  typeof s.incomingRequestFromTarget!=='boolean'||
   !['public','private'].includes(s.targetVisibility)||
   !['self','approved_follower','follow_requested','not_following','blocked_either_way'].includes(s.relationship))
   throw new Error('Invalid certified Community relationship snapshot.');
