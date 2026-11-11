@@ -1,0 +1,94 @@
+\set ON_ERROR_STOP on
+-- ALL-243 / ALL-258 disposable PG17 strength evidence replay; no live data.
+DO $roles$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+END $roles$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-STRENGTH-SETS-CANDIDATE.sql
+DO $qa$
+DECLARE
+ u uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ act uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ other uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ source_id uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ exercise uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ block uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ set_id uuid:='ffffffff-ffff-4fff-8fff-ffffffffffff';
+BEGIN
+ INSERT INTO auth.users(id) VALUES(u),(b);
+ INSERT INTO public.v2_completed_activities(id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,status)
+ VALUES(act,u,'strength','workout','2026-11-11','America/Chicago','manual_only','needs_review'),
+ (other,b,'cycling','workout','2026-11-11','America/Chicago','device_measured','needs_review');
+ INSERT INTO public.v2_activity_sources(id,activity_id,user_id,provider,source_kind,source_record_id,quality,source_payload_hash)
+ VALUES(source_id,act,u,'manual','manual_record','lift-1','unverified',repeat('a',64));
+ INSERT INTO public.v2_activity_segments(id,activity_id,user_id,segment_kind,sequence_number,sport)
+ VALUES(block,act,u,'strength_block',1,'strength');
+ INSERT INTO public.v2_activity_segments(id,activity_id,user_id,parent_segment_id,segment_kind,sequence_number,sport)
+ VALUES(exercise,act,u,block,'strength_exercise',1,'strength');
+ INSERT INTO public.v2_activity_strength_sets(
+   id,activity_id,user_id,exercise_segment_id,source_id,set_index,set_kind,reps,
+   load_mode,quality,source_payload_hash)
+ VALUES(set_id,act,u,exercise,source_id,1,'bodyweight',12,'bodyweight','unverified',repeat('a',64));
+ -- Bodyweight reps cannot fabricate an external-load value of zero.
+ IF (SELECT load_value IS NOT NULL FROM public.v2_activity_strength_sets WHERE id=set_id)
+ THEN RAISE EXCEPTION 'Bodyweight fabricated external weight'; END IF;
+ BEGIN
+  INSERT INTO public.v2_activity_strength_sets(
+   id,activity_id,user_id,exercise_segment_id,source_id,set_index,set_kind,reps,
+   load_mode,quality,source_payload_hash)
+  VALUES('00000000-0000-4000-8000-000000000001',act,u,exercise,source_id,1,
+   'working',8,'unknown','unverified',repeat('a',64));
+  RAISE EXCEPTION 'Duplicate performed set index was accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_strength_sets(
+   id,activity_id,user_id,exercise_segment_id,source_id,set_index,set_kind,reps,
+   load_mode,quality,source_payload_hash)
+  VALUES('00000000-0000-4000-8000-000000000002',other,b,exercise,source_id,2,
+   'bodyweight',8,'bodyweight','unverified',repeat('a',64));
+  RAISE EXCEPTION 'Foreign account reused exercise/source';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_strength_sets(
+   id,activity_id,user_id,exercise_segment_id,source_id,set_index,set_kind,reps,
+   load_value,load_unit,load_mode,quality,source_payload_hash)
+  VALUES('00000000-0000-4000-8000-000000000003',act,u,exercise,source_id,2,
+   'working',8,45,'kg','bodyweight','unverified',repeat('a',64));
+  RAISE EXCEPTION 'Bodyweight workout accepted external-load measurement';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_strength_sets(
+   id,activity_id,user_id,exercise_segment_id,source_id,set_index,set_kind,reps,
+   load_value,load_unit,load_mode,quality,source_payload_hash)
+  VALUES('00000000-0000-4000-8000-000000000004',act,u,exercise,source_id,2,
+   'working',8,45,'kg','external_load','trusted',repeat('a',64));
+  RAISE EXCEPTION 'Unverified manually entered result claimed trusted source';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_strength_sets(
+   id,activity_id,user_id,exercise_segment_id,source_id,set_index,set_kind,reps,
+   load_mode,quality,source_payload_hash)
+  VALUES('00000000-0000-4000-8000-000000000005',act,u,block,source_id,2,
+   'working',8,'unknown','unverified',repeat('a',64));
+  RAISE EXCEPTION 'Block treated as an exercise segment';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ INSERT INTO public.v2_activity_strength_sets(
+   id,activity_id,user_id,exercise_segment_id,source_id,set_index,set_kind,reps,
+   load_value,load_unit,load_mode,quality,source_payload_hash)
+ VALUES('00000000-0000-4000-8000-000000000006',act,u,exercise,source_id,2,
+   'working',8,45,'kg','external_load','unverified',repeat('a',64));
+ IF (SELECT count(*) FROM public.v2_activity_strength_sets WHERE activity_id=act)<>2
+ OR NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.v2_activity_strength_sets'::regclass)
+ OR has_table_privilege('authenticated','public.v2_activity_strength_sets','SELECT')
+ THEN RAISE EXCEPTION 'Strength set ownership/recorded-result protections failed'; END IF;
+ RAISE NOTICE 'PASS ALL-243 strength sets: source provenance, unknown/bodyweight vs external load, exact exercise and owner';
+END $qa$;
