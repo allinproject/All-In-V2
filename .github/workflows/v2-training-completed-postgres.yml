@@ -60,6 +60,7 @@ on:
       - 'supabase/functions/_shared/trainingExportSupabaseStorage.node.test.mjs'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-WORKER-RPC-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-account-export-auth-session-postgres.psql'
       - 'supabase/functions/_shared/trainingExportAuthServices.mjs'
       - 'supabase/functions/_shared/trainingExportAuthServices.node.test.mjs'
@@ -298,5 +299,6 @@ jobs:
           docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_complete_integration training_export_auth
           docker cp docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql"
           docker cp docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql"
+          docker cp docs/architecture/sql/V2-ACCOUNT-EXPORT-WORKER-RPC-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-WORKER-RPC-REVIEW-CANDIDATE.sql"
           docker cp scripts/test-v2-account-export-auth-session-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-account-export-auth-session-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_auth -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-auth-session-postgres.psql
