@@ -141,6 +141,11 @@ function OwnedWeeklyRoutine(){
       <Text style={styles.saveText}>{saving==='nutrition'?'Saving…':'Save Shopping & Meal Prep'}</Text>
      </Pressable>
     </View>
+    <View style={styles.coachCard}>
+     <Text style={styles.coachHeading}>Have a more complicated schedule?</Text>
+     <Text style={styles.helper}>Rotating shifts, different workout times, or a routine that changes week to week? Just tell Coach. Coach can help personalize your routine.</Text>
+     <Text style={styles.coachPending}>Talk to Coach · Connection coming</Text>
+    </View>
     <View style={styles.card}>
      <Text style={styles.heading}>Reminders</Text>
      <Text style={styles.helper}>Shopping and meal-prep notifications will be configurable through the existing Notifications system when V2 delivery is connected. Saving a routine does not enable push alerts.</Text>
@@ -180,6 +185,9 @@ const styles=StyleSheet.create({
  helper:{color:colors.mutedText,fontSize:13,lineHeight:20},
  error:{color:colors.danger,fontSize:14},
  card:{backgroundColor:colors.surface,borderColor:colors.border,borderWidth:1,borderRadius:18,padding:17,gap:13},
+ coachCard:{backgroundColor:colors.surface,borderColor:'#38332A',borderWidth:1,borderRadius:18,padding:17,gap:10},
+ coachHeading:{color:colors.warmWhite,fontSize:16,fontWeight:'800'},
+ coachPending:{color:colors.goldSoft,fontSize:13,fontWeight:'700'},
  field:{gap:10},label:{color:colors.mutedText,fontSize:12,fontWeight:'700'},
  chips:{flexDirection:'row',flexWrap:'wrap',gap:8},
  chip:{paddingHorizontal:13,paddingVertical:10,minHeight:44,justifyContent:'center',borderRadius:999,
