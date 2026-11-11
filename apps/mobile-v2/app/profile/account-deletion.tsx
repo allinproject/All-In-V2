@@ -33,7 +33,7 @@ export default function AccountDeletionScreen() {
 }
 
 function OwnedAccountDeletionScreen() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const owner = user?.id ?? null;
   const mounted = useRef(false);
   const inFlight = useRef(false);
@@ -184,10 +184,25 @@ function OwnedAccountDeletionScreen() {
             <Text style={styles.buttonText}>Reload request status</Text>
           </Pressable>
         ) : null}
+        {!loading && error ? (
+          <Pressable accessibilityRole="button" style={styles.button} onPress={() => void signOut().catch(() => setError('Could not sign out. Try again from the sign-in screen.'))}>
+            <Text style={styles.buttonText}>Sign out</Text>
+          </Pressable>
+        ) : null}
         {!loading && activeRequest ? (
           <View style={styles.card}>
             <Text accessibilityRole="header" style={styles.heading}>Deletion request {status.status}</Text>
-            <Text style={styles.body}>Your request is recorded. Your account and data have not been erased by this screen.</Text>
+            <Text style={styles.body}>
+              {status.status === 'completed'
+                ? 'The deletion processor reports that this request is complete. You may need to sign out before using another account.'
+                : status.status === 'processing'
+                  ? 'Deletion processing has started. Cancellation is no longer available.'
+                  : status.status === 'requested'
+                    ? 'Your deletion request has been recorded. Your account has not yet been erased.'
+                    : status.status === 'cancelled'
+                      ? 'This deletion request was cancelled. Your account is unchanged.'
+                      : 'This request was rejected. Your account has not been erased.'}
+            </Text>
             {status.requestedAt ? <Text selectable style={styles.meta}>Requested: {status.requestedAt}</Text> : null}
             {status.requestId ? <Text selectable style={styles.meta}>Request ID: {status.requestId}</Text> : null}
             {status.status === 'requested' ? (
