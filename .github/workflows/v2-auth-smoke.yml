@@ -1,4 +1,4 @@
-name: V2 Node smoke (dependency-free)
+name: V2 Node and PostgreSQL smoke (no deploy)
 
 on:
   push:
@@ -12,6 +12,7 @@ on:
       - 'apps/mobile-v2/src/features/community/**'
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-community-sql-guard.test.mjs'
+      - 'scripts/test-v2-community-sql-postgres.psql'
       - 'apps/mobile-v2/src/features/tutorials/**'
       - 'apps/mobile-v2/src/features/profile/**'
       - 'apps/mobile-v2/src/features/training/**'
@@ -46,6 +47,7 @@ on:
       - 'apps/mobile-v2/src/features/community/**'
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-community-sql-guard.test.mjs'
+      - 'scripts/test-v2-community-sql-postgres.psql'
       - 'apps/mobile-v2/src/features/tutorials/**'
       - 'apps/mobile-v2/src/features/profile/**'
       - 'apps/mobile-v2/src/features/training/**'
@@ -129,3 +131,34 @@ jobs:
         run: npm run test:monitoring
       - name: Run provider cache helper tests
         run: npm run test:provider-cache
+
+  community-postgres-candidate:
+    name: PostgreSQL 17 Community privacy candidate replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: allin_community_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d allin_community_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: allin_community_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Execute candidate and verify privacy, constraints and deletion cascade
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-v2-community-sql-postgres.psql
