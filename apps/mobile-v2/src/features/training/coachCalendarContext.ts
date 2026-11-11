@@ -71,3 +71,45 @@ export function prepareCoachCalendarContext(input: CoachCalendarInput): CoachCal
     noAutomaticPlanWrite: true,
   };
 }
+
+/**
+ * ALL-231: bounded multi-event context for Coach, built ONLY from the same
+ * authenticated, revision-certified Training phase preview.
+ * This is explanatory context; never a schedule writer or source of new doses.
+ */
+import type {SeasonPhasePreview} from './multiEventPhaseOwnerPreview.ts';
+export type CoachSeasonContextResult=
+ | {kind:'blocked';reason:'missing_certified_preview'|'wrong_owner'|'stale_revision'|'invalid_season'}
+ | {kind:'ready';scope:'train_season_read_only';planRevisionId:string;snapshotVersion:string;
+    events:ReadonlyArray<{id:string;date:string;name:string;sport:string;priority:'A'|'B'|'C';demand:string}>;
+    phaseReviews:ReadonlyArray<{date:string;eventId:string;kind:string}>;
+    unresolved:ReadonlyArray<{code:string;eventIds:string[];date:string|null;message:string}>;
+    requiresAthleteApproval:true;noAutomaticPlanWrite:true;noInventedTrainingDose:true};
+export function prepareCoachSeasonContext(input:{
+ expectedOwnerId:string;authenticatedOwnerId:string|null;activePlanRevisionId:string;
+ accessGateReady:boolean;preview:SeasonPhasePreview|null|undefined;
+}):CoachSeasonContextResult{
+ if(!input?.preview||input.preview.status==='unavailable'||!input.accessGateReady)
+  return{kind:'blocked',reason:'missing_certified_preview'};
+ if(!input.expectedOwnerId||input.expectedOwnerId!==input.authenticatedOwnerId||
+    input.preview.ownerId!==input.expectedOwnerId)
+  return{kind:'blocked',reason:'wrong_owner'};
+ if(!input.activePlanRevisionId||input.preview.planRevisionId!==input.activePlanRevisionId)
+  return{kind:'blocked',reason:'stale_revision'};
+ const {draft,phases}=input.preview;
+ if(!draft.events.length||draft.events.length>20||phases.annotations.length>400||
+    draft.events.some(event=>!event.id?.trim()||!event.name?.trim()||event.name.length>160||
+      !event.sport?.trim()||event.sport.length>70)||
+    phases.annotations.some(a=>!draft.events.some(e=>e.id===a.eventId))||
+    input.preview.canWriteAcceptedPlan!==false)
+   return{kind:'blocked',reason:'invalid_season'};
+ return{kind:'ready',scope:'train_season_read_only',
+  planRevisionId:input.preview.planRevisionId,snapshotVersion:input.preview.snapshotVersion,
+  events:draft.events.map(e=>({id:e.id,date:e.date,name:e.name,sport:e.sport,priority:e.priority,demand:e.demand})),
+  phaseReviews:phases.annotations.map(p=>({date:p.date,eventId:p.eventId,kind:p.kind})),
+  unresolved:[
+   ...draft.issues.map(i=>({code:i.code,eventIds:[...i.eventIds],date:null,message:i.message})),
+   ...phases.issues.map(i=>({code:i.code,eventIds:[...i.eventIds],date:i.date,message:i.message}))
+  ],
+  requiresAthleteApproval:true,noAutomaticPlanWrite:true,noInventedTrainingDose:true};
+}
