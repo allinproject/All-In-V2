@@ -78,7 +78,7 @@ export function createAppleStoreServerAdapters({
            if(phase==='grace'){
              if(!Number.isSafeInteger(renewal.gracePeriodExpiresDate))
                throw Error('apple_grace_unverified');
-             until=Math.min(until,renewal.gracePeriodExpiresDate);
+             until=renewal.gracePeriodExpiresDate;
            }
            if(Number.isSafeInteger(transaction.revocationDate))
              throw Error('apple_revoked_current_transaction');
