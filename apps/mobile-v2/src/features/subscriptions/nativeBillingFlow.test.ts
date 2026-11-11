@@ -75,3 +75,33 @@ test('simultaneous purchase attempts cannot launch duplicate store sessions',asy
  release(iosEvidence);
  assert.equal(await first,'server_entitled');
 });
+
+test('restore with no receipts preserves wrong-account outcome after entitlement lookup',async()=>{
+ let currentOwner=owner;
+ let releaseRead;
+ const flow=createNativeBillingFlow({
+  platform:'ios',productId,
+  store:{platform:'ios',getProducts:async()=>[{id:productId}],
+   purchase:async()=>null,restore:async()=>[]},
+  server:{submitEvidence:async()=> 'verified',
+   readOwnerEntitlement:async()=>new Promise(resolve=>{releaseRead=resolve;})},
+  getAuthenticatedOwner:()=>currentOwner,
+ });
+ const restoration=flow.restore();
+ while(!releaseRead)await Promise.resolve();
+ currentOwner='00000000-0000-0000-0000-000000000002';
+ releaseRead({entitled:true});
+ assert.equal(await restoration,'wrong_account');
+});
+
+test('restore without store purchases respects canonical entitlement for same owner',async()=>{
+ const flow=createNativeBillingFlow({
+  platform:'android',productId,
+  store:{platform:'android',getProducts:async()=>[{id:productId}],
+   purchase:async()=>null,restore:async()=>[]},
+  server:{submitEvidence:async()=> 'rejected',
+   readOwnerEntitlement:async()=>({entitled:false})},
+  getAuthenticatedOwner:()=>owner,
+ });
+ assert.equal(await flow.restore(),'not_entitled');
+});
