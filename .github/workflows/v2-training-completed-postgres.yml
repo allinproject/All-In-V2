@@ -23,6 +23,8 @@ on:
       - 'scripts/test-v2-training-activity-outbox-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-START-PLANNED-WORKOUT-CANDIDATE.sql'
       - 'scripts/test-v2-training-start-planned-postgres.psql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql'
+      - 'scripts/test-v2-completed-scalar-metrics-postgres.psql'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -123,3 +125,11 @@ jobs:
           docker cp docs/architecture/sql/V2-TRAINING-START-PLANNED-WORKOUT-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-START-PLANNED-WORKOUT-CANDIDATE.sql"
           docker cp scripts/test-v2-training-start-planned-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-start-planned-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_planned_start -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-start-planned-postgres.psql
+      - name: Validate sourced metric registry and typed values in disposable DB
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" completed_scalar_metrics
+          docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql"
+          docker cp scripts/test-v2-completed-scalar-metrics-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-completed-scalar-metrics-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d completed_scalar_metrics -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-completed-scalar-metrics-postgres.psql
