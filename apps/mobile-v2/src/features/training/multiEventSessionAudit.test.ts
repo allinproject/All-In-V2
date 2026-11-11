@@ -91,3 +91,27 @@ test('foreign session rows or duplicate session IDs cannot silently become accep
  const dup=setup();dup.acceptedSessionSnapshot.records[1]={...dup.acceptedSessionSnapshot.records[1],id:'race-0'};
  assert.equal(auditCertifiedSeasonSessions(dup).status,'blocked');
 });
+
+test('strength-related muscular fatigue and running impact are distinct component checks',()=>{
+ const f=setup();
+ f.acceptedSessionSnapshot.records.push({
+  ...session('lift-fatigue','2027-04-12','supporting','moderate'),
+  intent:{...session('lift-fatigue','2027-04-12','supporting','moderate').intent,
+   sport:'strength' as const,demand:{
+    aerobic:'low' as const,mechanicalImpact:'low' as const,
+    localMuscular:'high' as const,technicalSkill:'not_applicable' as const
+   }}
+ });
+ f.acceptedSessionSnapshot.records.push({
+  ...session('impact','2027-05-30','supporting','moderate'),
+  intent:{...session('impact','2027-05-30','supporting','moderate').intent,
+   demand:{aerobic:'moderate' as const,mechanicalImpact:'high' as const,
+    localMuscular:'low' as const,technicalSkill:'not_applicable' as const}}
+ });
+ const r=auditCertifiedSeasonSessions(f);
+ assert.notEqual(r.status,'unavailable');
+ if(r.status==='unavailable')throw Error(r.reason);
+ assert.ok(r.issues.some(i=>i.code==='HIGH_LOCAL_LOAD_DURING_RECOVERY'&&i.sessionIds.includes('lift-fatigue')));
+ assert.ok(r.issues.some(i=>i.code==='HIGH_IMPACT_DURING_TAPER'&&i.sessionIds.includes('impact')));
+ assert.ok(!r.issues.some(i=>i.code==='HIGH_IMPACT_DURING_TAPER'&&i.sessionIds.includes('lift-fatigue')));
+});
