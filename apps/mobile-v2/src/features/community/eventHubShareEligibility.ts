@@ -14,8 +14,8 @@ export type EventHubShareEvidence={
   /** Explicitly approved Community publication, not an imported history row. */
   postedAfterExplicitApproval:boolean;
   postAudience:'public'|'followers'|'private';
-  /** UTC publication timestamp and canonical workout day from source owner. */
-  publishedAt:string;workoutLocalDay:string;
+  /** UTC publish instant plus server-certified event-local dates; do not infer local date from UTC. */
+  publishedAt:string;publishedLocalDay:string;workoutLocalDay:string;
   workoutSportKind:string;
   /** If user explicitly chose a group, no other group may be selected. */
   explicitlyLinkedGroupId:string|null;
@@ -41,7 +41,7 @@ const instant=(v:unknown)=>typeof v==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d
   Number.isFinite(Date.parse(v));
 function requireEvidence(e:EventHubShareEvidence,b:EventHubCandidateBatch):void{
  if(!valid(e.athleteId)||!valid(e.canonicalPostId)||!valid(e.canonicalWorkoutId)||
-  !valid(e.workoutSportKind)||!day(e.workoutLocalDay)||!instant(e.publishedAt)||
+  !valid(e.workoutSportKind)||!day(e.workoutLocalDay)||!day(e.publishedLocalDay)||!instant(e.publishedAt)||
   !['public','followers','private'].includes(e.postAudience)||
   typeof e.postedAfterExplicitApproval!=='boolean'||
   typeof e.confirmedEventDayWorkout!=='boolean'||
@@ -78,7 +78,7 @@ export function eventHubWorkoutProjection(
   if(evidence.workoutLocalDay>c.eventLocalDay)return false;
   // A post after event day is never auto-syndicated. A late reviewed
   // event-day workout needs explicit group linkage and human confirmation.
-  const afterEventDay=evidence.publishedAt.slice(0,10)>c.eventLocalDay;
+  const afterEventDay=evidence.publishedLocalDay>c.eventLocalDay;
   if(afterEventDay&&!(
    evidence.explicitlyLinkedGroupId===c.groupId&&
    evidence.workoutLocalDay===c.eventLocalDay&&
