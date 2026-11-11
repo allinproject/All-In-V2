@@ -42,6 +42,7 @@ function HomeOwnerScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.content}>
         <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
+        <Link href="/profile" asChild><Pressable accessibilityRole="button" accessibilityLabel="Open profile and account settings" style={styles.button}><Text style={styles.buttonText}>Profile & account</Text></Pressable></Link>
         <Text accessibilityRole="header" style={styles.title}>V2 foundation</Text>
         <Text style={styles.body}>Your existing account is connected and its current access and onboarding checks have passed. This is the new app shell; Coach and recipe workflows will be added as the next verified slices.</Text>
         <Text style={styles.email}>{user?.email ?? 'Loading account…'}</Text>
