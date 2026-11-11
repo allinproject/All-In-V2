@@ -81,7 +81,7 @@ export function createNativeBillingServerClient({
       // A positive projection must include its server-owned expiry. Never
       // interpret an incomplete positive response as unbounded access.
       const validExpiry=typeof payload?.accessUntil==='string'&&
-        /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$/.test(payload.accessUntil)&&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(payload.accessUntil)&&
         Number.isFinite(Date.parse(payload.accessUntil));
       if(error||changed(id)||typeof payload?.entitled!=='boolean'||
          (payload.entitled&&!validExpiry)||
