@@ -26,13 +26,16 @@ function blocked(reason) {return {status:"not_saved",reason,retryable:false};}
  * readExchange() must return canonical persisted rows scoped to same owner.
  */
 export async function persistVerifiedCoachExchange(request, adapter) {
+  // Canonical paired writer trims content. Normalize a local copy so readback
+  // uses the exact durable bytes without mutating caller-owned request state.
+  const userContent = text(request?.userContent, 12000);
+  const assistantContent = text(request?.assistantContent, 20000);
   if (!request || !adapter ||
       ![request.ownerId,request.threadId,request.clientRequestId,
         request.userMessageId,request.assistantMessageId].every(id) ||
       request.userMessageId === request.assistantMessageId ||
       !Number.isSafeInteger(request.sessionGeneration) || request.sessionGeneration < 0 ||
-      !text(request.userContent,12000) ||
-      !text(request.assistantContent,20000)) {
+      !userContent || !assistantContent) {
     return blocked("invalid_exchange");
   }
   if (!["ensureOwner","isCurrent","appendExchange","readExchange"].every(
@@ -50,8 +53,8 @@ export async function persistVerifiedCoachExchange(request, adapter) {
       clientRequestId:request.clientRequestId,
       userMessageId:request.userMessageId,
       assistantMessageId:request.assistantMessageId,
-      userContent:request.userContent,
-      assistantContent:request.assistantContent
+      userContent,
+      assistantContent
     });
     if (!current()) return blocked("stale_session");
     if (!wrote || wrote.ok !== true || wrote.threadId !== request.threadId ||
@@ -65,9 +68,10 @@ export async function persistVerifiedCoachExchange(request, adapter) {
     if (!current()) return blocked("stale_session");
     const ownerAfter = await adapter.ensureOwner();
     if (!current() || ownerAfter !== request.ownerId) return blocked("stale_session");
+    const canonicalRequest = {...request, userContent, assistantContent};
     if (!Array.isArray(rows) || rows.length !== 2 ||
-        !rows.some(row => sameExpected(request,row,"user")) ||
-        !rows.some(row => sameExpected(request,row,"assistant"))) {
+        !rows.some(row => sameExpected(canonicalRequest,row,"user")) ||
+        !rows.some(row => sameExpected(canonicalRequest,row,"assistant"))) {
       return {status:"not_saved",reason:"readback_mismatch",retryable:true};
     }
     return {
