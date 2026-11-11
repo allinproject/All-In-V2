@@ -12,7 +12,6 @@
  */
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
-const { Client } = require('pg');
 
 const marker = process.env.ALL251_ISOLATED_TEST_DB;
 const target = process.env.ALL251_TEST_DATABASE_URL;
@@ -24,6 +23,7 @@ if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname) ||
     !/(?:_test|_isolated)$/.test(decodeURIComponent(parsed.pathname).replace(/^\//, ''))) {
   throw Error('Refusing race fixture: must target loopback database named *_test or *_isolated');
 }
+const { Client } = require('pg'); // Loaded only after all non-database target guards pass.
 const lockFor = userId => 'v2-delete-request:' + userId;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 // Verify a *real separate backend* is waiting for an advisory lock. A delay
@@ -47,9 +47,18 @@ async function rollbackQuietly(client) {
   try { await client.query('ROLLBACK'); } catch { /* Retain original error. */ }
 }
 async function run() {
-  const admin = await connect();
-  const winner = await connect();
-  const loser = await connect();
+  // Connections must be closed even if opening the second or third connection fails.
+  let admin;
+  let winner;
+  let loser;
+  try {
+    admin = await connect();
+    winner = await connect();
+    loser = await connect();
+  } catch (error) {
+    await Promise.allSettled([admin?.end(), winner?.end(), loser?.end()].filter(Boolean));
+    throw error;
+  }
   const users = [randomUUID(), randomUUID()];
   const requests = [randomUUID(), randomUUID()];
   let originalGate = null;
