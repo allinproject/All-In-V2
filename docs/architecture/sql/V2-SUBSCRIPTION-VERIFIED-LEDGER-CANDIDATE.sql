@@ -54,7 +54,7 @@ revoke all on sequence allin_private.v2_subscription_verified_events_id_seq
 
 -- Privileged service-only transaction. Strictly store verified facts only:
 -- no client grants and no exposed RPC. New purchase binding requires a trusted
--- checkout/restore authorization decision made outside this function.
+-- checkout/restore authorization decision recorded in a separately reviewed\n-- purchase-binding workflow BEFORE this function can apply an event.
 create or replace function allin_private.v2_apply_verified_subscription_event(
   p_owner_id uuid,
   p_provider text,
@@ -75,7 +75,7 @@ declare
   v_event_purchase_id uuid;
 begin
   -- GRANT EXECUTE only to the service_role after independent review.
-  if auth.role() is distinct from 'service_role' then
+  if current_user <> 'service_role' then
     raise exception 'subscription writer requires service role' using errcode='42501';
   end if;
   if p_owner_id is null or p_provider not in ('app_store','google_play','stripe_web')
@@ -100,13 +100,16 @@ begin
      and provider_subscription_id=p_subscription_id
    for update;
 
+  -- Webhooks may update ONLY an already bound purchase. Creating the original
+  -- owner association belongs to a distinct audited checkout/restore workflow
+  -- that verifies both provider purchase and authenticated V2 account.
   if not found then
-    insert into allin_private.v2_subscription_purchases(
-      owner_id,provider,environment,provider_subscription_id
-    ) values (p_owner_id,p_provider,p_environment,p_subscription_id)
-    returning * into v_purchase;
-  elsif v_purchase.owner_id <> p_owner_id then
-    raise exception 'verified purchase belongs to another owner' using errcode='42501';
+    raise exception 'subscription purchase is not prebound to an account'
+      using errcode='42501';
+  end if;
+  if v_purchase.owner_id <> p_owner_id then
+    raise exception 'verified purchase belongs to another owner'
+      using errcode='42501';
   end if;
 
   -- Event ID cannot ever be reused across different subscriptions or phases.
@@ -144,7 +147,7 @@ revoke all on function allin_private.v2_apply_verified_subscription_event(
   uuid,text,text,text,text,bigint,text,timestamptz
 ) from public, anon, authenticated;
 -- Explicit service_role execute grant is a required independent release step,
--- NOT included here. Database role / auth.role() behavior must be tested.
+-- NOT included here. Effective SQL role/current_user must be tested.
 
 -- Critical acceptance remains outstanding: Auth subject existence, cross-owner
 -- read/RLS, stale-event replay, event collision, concurrent bind/refund/renewal,
