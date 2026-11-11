@@ -105,3 +105,26 @@ test('restore without store purchases respects canonical entitlement for same ow
  });
  assert.equal(await flow.restore(),'not_entitled');
 });
+
+test('finishing a verified transaction never returns prior account entitlement after switch',async()=>{
+ let currentOwner=owner;
+ let releaseFinish;
+ const store={
+  platform:'ios',
+  getProducts:async()=>[{id:productId}],
+  purchase:async()=>iosEvidence,
+  restore:async()=>[iosEvidence],
+  finishVerifiedPurchase:async()=>new Promise(resolve=>{releaseFinish=resolve;}),
+ };
+ const flow=createNativeBillingFlow({platform:'ios',productId,store,
+  server:{
+   submitEvidence:async()=> 'verified',
+   readOwnerEntitlement:async()=>({entitled:true}),
+  },getAuthenticatedOwner:()=>currentOwner,
+ });
+ const task=flow.purchase();
+ while(!releaseFinish)await Promise.resolve();
+ currentOwner='00000000-0000-0000-0000-000000000002';
+ releaseFinish();
+ assert.equal(await task,'wrong_account');
+});
