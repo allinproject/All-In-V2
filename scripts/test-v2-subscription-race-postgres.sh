@@ -83,3 +83,74 @@ END
 $verify$;
 SQL
 echo "PASS ALL-252 PostgreSQL concurrent refund versus stale paid replay"
+
+# Two distinct trusted checkout attempts try to bind the SAME provider purchase
+# to different accounts. PostgreSQL must not accept both bindings.
+docker exec -i "$cid" psql -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 <<'SQL'
+INSERT INTO auth.users (id) VALUES ('00000000-0000-0000-0000-000000000004'),
+ ('00000000-0000-0000-0000-000000000005');
+INSERT INTO public.v2_profiles (user_id) VALUES ('00000000-0000-0000-0000-000000000004'),
+ ('00000000-0000-0000-0000-000000000005');
+SQL
+
+: >"$log_a"
+: >"$log_b"
+docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_a" 2>&1 <<'SQL' &
+BEGIN;
+INSERT INTO allin_private.v2_subscription_purchases
+ (owner_id,provider,environment,provider_subscription_id)
+VALUES ('00000000-0000-0000-0000-000000000004','stripe_web','sandbox','sub_bind_race');
+\echo FIRST_BIND_HELD
+SELECT pg_sleep(3);
+COMMIT;
+SQL
+pid_a=$!
+ready=0
+for _ in $(seq 1 50); do
+  if grep -q '^FIRST_BIND_HELD$' "$log_a"; then ready=1; break; fi
+  if ! kill -0 "$pid_a" 2>/dev/null; then break; fi
+  sleep 0.1
+done
+if [[ "$ready" -ne 1 ]]; then
+  echo "First purchase owner was not bound" >&2
+  cat "$log_a" >&2
+  exit 1
+fi
+
+if docker exec -i "$cid" psql -XAt -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 >"$log_b" 2>&1 <<'SQL'
+SET lock_timeout = '7s';
+INSERT INTO allin_private.v2_subscription_purchases
+ (owner_id,provider,environment,provider_subscription_id)
+VALUES ('00000000-0000-0000-0000-000000000005','stripe_web','sandbox','sub_bind_race');
+SQL
+then
+  echo "CRITICAL: second owner claimed same provider purchase" >&2
+  cat "$log_a" "$log_b" >&2
+  exit 1
+fi
+wait "$pid_a"
+pid_a=""
+if ! grep -q 'duplicate key value violates unique constraint' "$log_b"; then
+  echo "Second owner insert failed for a reason other than unique purchase identity" >&2
+  cat "$log_a" "$log_b" >&2
+  exit 1
+fi
+
+docker exec -i "$cid" psql -U "$PGUSER" -d "$database" -v ON_ERROR_STOP=1 <<'SQL'
+DO $verify_bind$
+BEGIN
+ IF (SELECT count(*) FROM allin_private.v2_subscription_purchases
+     WHERE provider='stripe_web' AND environment='sandbox'
+       AND provider_subscription_id='sub_bind_race') <> 1 OR
+    NOT EXISTS (
+      SELECT 1 FROM allin_private.v2_subscription_purchases
+      WHERE provider='stripe_web' AND environment='sandbox'
+        AND provider_subscription_id='sub_bind_race'
+        AND owner_id='00000000-0000-0000-0000-000000000004'
+    ) THEN
+  RAISE EXCEPTION 'First bind did not remain authoritative';
+ END IF;
+END
+$verify_bind$;
+SQL
+echo "PASS ALL-252 PostgreSQL two-session first-purchase owner collision"
