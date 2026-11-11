@@ -1,0 +1,92 @@
+\set ON_ERROR_STOP on
+-- ALL-246 accepted planned workout start, isolated PostgreSQL 17 only.
+DO $roles$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+END $roles$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-START-PLANNED-WORKOUT-CANDIDATE.sql
+DO $qa$
+DECLARE
+ u uuid:='11111111-1111-4111-8111-111111111111';
+ foreign_u uuid:='22222222-2222-4222-8222-222222222222';
+ plan_id uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ rev_id uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ rev_new uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ slot_id uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ planned_id uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ execution_id uuid:='ffffffff-ffff-4fff-8fff-ffffffffffff';
+ action_id uuid:='12121212-1212-4212-8212-121212121212';
+ res jsonb;
+BEGIN
+ INSERT INTO auth.users VALUES(u),(foreign_u);
+ INSERT INTO public.v2_training_plans(id,user_id,plan_kind) VALUES(plan_id,u,'race');
+ INSERT INTO public.v2_training_plan_revisions
+  (id,plan_id,user_id,revision_number,source_kind)
+ VALUES(rev_id,plan_id,u,1,'coach_proposal'),
+       (rev_new,plan_id,u,2,'coach_proposal');
+ INSERT INTO public.v2_training_session_slots(id,plan_id,user_id,slot_key)
+ VALUES(slot_id,plan_id,u,'race-quality-ride');
+ INSERT INTO public.v2_training_revision_days(
+  id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
+ VALUES('13131313-1313-4313-8313-131313131313',
+   rev_id,plan_id,u,'2026-11-16','America/Chicago','planned',0),
+  ('14141414-1414-4414-8414-141414141414',
+   rev_new,plan_id,u,'2026-11-16','America/Chicago','planned',0);
+ INSERT INTO public.v2_training_revision_sessions(
+  id,plan_revision_id,session_slot_id,plan_id,user_id,athlete_local_date,
+  timezone,sport,session_kind,purpose,priority,intensity,intent_schema_version,intent,sort_order)
+ VALUES(planned_id,rev_id,slot_id,plan_id,u,'2026-11-16','America/Chicago',
+   'cycling','indoor_intervals','Threshold quality','key','hard','session-intent-v1','{}',0);
+ -- Cannot start while Coach proposal is still unaccepted.
+ BEGIN
+   PERFORM allin_private.v2_training_start_scheduled_candidate(
+    u,execution_id,planned_id,action_id,1,'2026-11-16 12:00+00');
+   RAISE EXCEPTION 'Unaccepted plan started workout';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+  u,plan_id,rev_id,'15151515-1515-4515-8515-151515151515',1);
+ BEGIN
+   PERFORM allin_private.v2_training_start_scheduled_candidate(
+    foreign_u,execution_id,planned_id,action_id,2,'2026-11-16 12:00+00');
+   RAISE EXCEPTION 'Foreign plan start permitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ res:=allin_private.v2_training_start_scheduled_candidate(
+  u,execution_id,planned_id,action_id,2,'2026-11-16 12:00+00');
+ IF res->>'replayed'<>'false'
+ OR (SELECT revision_session_id FROM public.v2_training_session_instances
+    WHERE id=execution_id)<>planned_id THEN
+   RAISE EXCEPTION 'Accepted plan was not linked to exact active execution'; END IF;
+ res:=allin_private.v2_training_start_scheduled_candidate(
+  u,execution_id,planned_id,action_id,2,'2026-11-16 12:00+00');
+ IF res->>'replayed'<>'true' THEN RAISE EXCEPTION 'Planned start replay duplicated'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_training_start_scheduled_candidate(
+   u,execution_id,planned_id,action_id,2,'2026-11-16 12:01+00');
+  RAISE EXCEPTION 'Changed planned start time reused action receipt';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ -- A new accepted revision must not change the historical execution binding.
+ PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+  u,plan_id,rev_new,'16161616-1616-4616-8616-161616161616',2);
+ res:=allin_private.v2_training_start_scheduled_candidate(
+  u,execution_id,planned_id,action_id,2,'2026-11-16 12:00+00');
+ IF res->>'replayed'<>'true' THEN RAISE EXCEPTION 'Historical start replay rejected'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_training_start_scheduled_candidate(
+   u,'17171717-1717-4717-8717-171717171717',planned_id,
+   '18181818-1818-4818-8818-181818181818',3,'2026-11-16 12:01+00');
+  RAISE EXCEPTION 'Old revision launched as new workout';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ IF has_function_privilege('authenticated',
+   'allin_private.v2_training_start_scheduled_candidate(uuid,uuid,uuid,uuid,bigint,timestamptz)','EXECUTE')
+ THEN RAISE EXCEPTION 'Client has private scheduled start privilege'; END IF;
+ RAISE NOTICE 'PASS ALL-246: accepted plan start identity, replay, owner and historic revision';
+END $qa$;
