@@ -32,6 +32,10 @@ export async function reconcileStripeSandboxWebhook({
      typeof commitAuthoritativeReconciliation!=='function')
     return {status:503,code:'reconciliation_unavailable'};
 
+  // Failed asynchronous checkout is never a subscription-grant signal.
+  if(signature.eventType==='checkout.session.async_payment_failed')
+    return {status:200,code:'failed_checkout_ignored'};
+
   // Handle only notifications whose subscription ID can be independently
   // resolved. Other signed notifications must remain unacknowledged until the
   // processing contract is implemented (rather than silently dropping them).
@@ -68,6 +72,7 @@ export async function reconcileStripeSandboxWebhook({
       provider:'stripe_web',environment:'sandbox',
       providerEventId:signature.eventId,
       eventType:signature.eventType,
+      sourceObjectId:signature.objectId,
       providerSubscriptionId:subscriptionId,
       currentProviderSubscription:current,
       verifiedProjection:projection,
