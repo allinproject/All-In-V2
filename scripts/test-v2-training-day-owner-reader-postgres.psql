@@ -42,6 +42,14 @@ BEGIN
  (id,plan_id,user_id,revision_number,status,source_kind) VALUES
  (r1,p1,u,1,'candidate','athlete_authored'),
  (r2,p2,u,1,'candidate','athlete_authored');
+ UPDATE public.v2_training_plan_revisions
+ SET calendar_start_date='2026-11-11',calendar_end_date='2026-11-11',
+     calendar_timezone='America/Chicago'
+ WHERE id=r1;
+ UPDATE public.v2_training_plan_revisions
+ SET calendar_start_date='2026-11-11',calendar_end_date='2026-11-12',
+     calendar_timezone='America/Chicago'
+ WHERE id=r2;
  INSERT INTO public.v2_training_session_slots(id,plan_id,user_id,slot_key)
  VALUES('30303030-3030-4030-8030-303030303030',p1,u,'bike-a'),
        ('40404040-4040-4040-8040-404040404040',p2,u,'run-b');
