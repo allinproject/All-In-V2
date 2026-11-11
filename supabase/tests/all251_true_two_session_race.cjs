@@ -105,11 +105,15 @@ async function run() {
         await admin.query('delete from auth.users where id=$1', [id]);
         await admin.query('delete from allin_private.v2_account_deletion_execution_audit where user_id=$1', [id]);
       }
-      if (originalGate !== null) {
-        await admin.query("update allin_private.v2_account_deletion_processor_config set execution_enabled=$1,change_reason='ALL-251 disposable test restored' where singleton=true", [originalGate]);
-      }
     } finally {
-      await Promise.allSettled([winner.end(), loser.end(), admin.end()]);
+      try {
+        // Restore the OFF gate EVEN IF synthetic fixture cleanup failed.
+        if (originalGate !== null) {
+          await admin.query("update allin_private.v2_account_deletion_processor_config set execution_enabled=$1,change_reason='ALL-251 disposable test restored' where singleton=true", [originalGate]);
+        }
+      } finally {
+        await Promise.allSettled([winner.end(), loser.end(), admin.end()]);
+      }
     }
   }
 }
