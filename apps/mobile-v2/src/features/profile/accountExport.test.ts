@@ -43,3 +43,19 @@ test('requires arrays for collection sections', () => {
   const value = { ...valid(), legal_acceptances: null };
   assert.throws(() => prepareV2AccountExport(value, owner), /invalid/);
 });
+
+test('fails closed for prospective Training export v2 until the app and Storage coverage are released', () => {
+  const next = {
+    ...valid(),
+    schema_version: 'v2-account-export-snapshot-v2',
+    training_activity: {
+      schema_version: 'v2-training-account-fragment-candidate-v1',
+      ownerId: owner,
+      recordCount: 1,
+      records: { 'public.v2_completed_activities': [{ user_id: owner }] },
+      privateObjectBytesIncluded: false,
+      completeUserExport: false,
+    },
+  };
+  assert.throws(() => prepareV2AccountExport(next, owner), /version is not supported/);
+});
