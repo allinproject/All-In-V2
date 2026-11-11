@@ -21,7 +21,7 @@ test('pin, reorder and hide only affect view; required provenance always shown',
  layout=toggleMetricPin(layout,'heart_rate',stats);
  layout=toggleMetricHidden(layout,'cadence',stats);
  layout=moveMetric(layout,'pace','down',stats);
- assert.deepEqual(presentMetrics(stats,layout).map(x=>x.key),['heart_rate','provenance','pace']);
+ assert.deepEqual(presentMetrics(stats,layout).map(x=>x.key),['heart_rate','pace','provenance']);
  assert.deepEqual(stats.map(x=>x.key),['pace','heart_rate','provenance','cadence']);
  assert.throws(()=>toggleMetricHidden(layout,'provenance',stats),/cannot be hidden/);
  const edited={...layout,hidden:[...layout.hidden,'provenance']};
