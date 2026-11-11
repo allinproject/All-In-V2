@@ -182,6 +182,11 @@ function OwnedProfileScreen() {
             <View onLayout={onGuideAnchorLayout("legal")} style={[styles.card, highlightedTarget==="legal" && styles.guideTarget]}>
               <Text style={styles.section}>Legal acceptance</Text>
               <Text style={styles.muted}>Accepted versions for this account</Text>
+              <Link href="/profile/legal-documents" asChild>
+                <Pressable accessibilityRole="button" accessibilityHint="Read the exact currently published Terms, Privacy Policy, and Founder Beta Terms" style={styles.button}>
+                  <Text style={styles.buttonText}>View current legal documents</Text>
+                </Pressable>
+              </Link>
               <Text style={styles.white}>Terms: {snapshot.latest_legal_acceptance?.terms_version ?? 'Not available'}</Text>
               <Text style={styles.white}>Privacy: {snapshot.latest_legal_acceptance?.privacy_version ?? 'Not available'}</Text>
               <Text style={styles.white}>Founder Beta: {snapshot.latest_legal_acceptance?.founder_beta_terms_version ?? 'Not available'}</Text>
