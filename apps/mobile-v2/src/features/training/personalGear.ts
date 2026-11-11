@@ -43,7 +43,7 @@ export function parsePersonalGear(settings:unknown):PersonalGear {
    distanceKm:typeof r.distanceKm==='number'&&Number.isFinite(r.distanceKm)&&r.distanceKm>=0&&r.distanceKm<=10000000?r.distanceKm:0,
    status:r.status==='retired'?'retired' as const:'active' as const,
    reminderKm:typeof r.reminderKm==='number'&&Number.isFinite(r.reminderKm)&&r.reminderKm>0&&r.reminderKm<=10000000?r.reminderKm:null,
-   ...(kind==='shoes'?{recommendation:parseRecommendation(r.recommendation)}:{})};
+   ...(kind==='shoes'&&'recommendation' in r?{recommendation:parseRecommendation(r.recommendation)}:{})};
  }).filter(x=>x.id&&x.name);
  const rawDefaults=object(raw.defaults),defaults=emptyPersonalGear().defaults;
  for(const key of Object.keys(defaults) as (keyof typeof defaults)[]){
