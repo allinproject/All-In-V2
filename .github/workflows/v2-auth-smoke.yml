@@ -46,6 +46,8 @@ on:
       - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
+      - 'supabase/functions/v2-stripe-sandbox-checkout/**'
+      - 'scripts/test-v2-stripe-checkout-edge-guard.test.mjs'
       - 'apps/mobile-v2/.env.example'
   pull_request:
     paths:
@@ -90,6 +92,8 @@ on:
       - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
+      - 'supabase/functions/v2-stripe-sandbox-checkout/**'
+      - 'scripts/test-v2-stripe-checkout-edge-guard.test.mjs'
       - 'apps/mobile-v2/.env.example'
   workflow_dispatch:
 
