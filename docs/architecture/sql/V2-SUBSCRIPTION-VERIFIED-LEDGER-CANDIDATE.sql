@@ -103,7 +103,7 @@ returns text
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 declare
   v_attempt allin_private.v2_subscription_checkout_attempts%rowtype;
 begin
@@ -132,7 +132,7 @@ begin
    values (p_attempt_id,p_owner_id,p_provider,p_environment,null,null,'reserved',null);
   return 'reserved';
 end;
-$;
+$$;
 revoke all on function allin_private.v2_reserve_subscription_checkout(
   uuid,uuid,uuid,text,text
 ) from public, anon, authenticated;
