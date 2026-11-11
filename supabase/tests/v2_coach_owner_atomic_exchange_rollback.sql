@@ -78,12 +78,23 @@ $b$;
 
 -- The trusted Edge host only: client never gets the service-role credential.
 set local role service_role;
+-- Trusted host obtains the canonical claim BEFORE invoking any provider.
+select public.v2_coach_claim_turn(
+ 'aa11aa11-1111-4111-8111-111111111111',
+ 'cc33cc33-3333-4333-8333-333333333333',
+ 'ee55ee55-5555-4555-8555-555555555555',
+ 'dd44dd44-4444-4444-8444-444444444444',
+ 'ff66ff66-6666-4666-8666-666666666666',
+      1,
+ repeat('a',64));
+
 select public.v2_coach_append_exchange(
  'aa11aa11-1111-4111-8111-111111111111',
  'cc33cc33-3333-4333-8333-333333333333',
  'ee55ee55-5555-4555-8555-555555555555',
  'dd44dd44-4444-4444-8444-444444444444',
  'ff66ff66-6666-4666-8666-666666666666',
+      1,
  'How should I train?',
  'Please review your accepted plan.'
 );
@@ -99,6 +110,7 @@ begin
    'ee55ee55-5555-4555-8555-555555555555',
    'dd44dd44-4444-4444-8444-444444444444',
    'ff66ff66-6666-4666-8666-666666666666',
+      1,
    'How should I train?',
    'Please review your accepted plan.');
   select updated_at into after_retry from public.v2_coach_threads
@@ -122,6 +134,7 @@ begin
       'ee55ee55-5555-4555-8555-555555555555',
       'dd44dd44-4444-4444-8444-444444444444',
       'ff66ff66-6666-4666-8666-666666666666',
+      1,
       'same request, altered payload',
       'Please review your accepted plan.');
     raise exception 'Changed request reused identity';
@@ -133,7 +146,7 @@ begin
       'cc33cc33-3333-4333-8333-333333333333',
       '11111111-1111-4111-8111-111111111111',
       '22222222-2222-4222-8222-222222222222',
-      '33333333-3333-4333-8333-333333333333','bad','bad');
+      '33333333-3333-4333-8333-333333333333',1,'bad','bad');
     raise exception 'B server writer targeted A thread';
   exception when insufficient_privilege then null;
   end;
@@ -144,11 +157,19 @@ begin
       'ee55ee55-5555-4555-8555-555555555555',
       '10101010-1010-4010-8010-101010101010',
       '20202020-2020-4020-8020-202020202020',
+      1,
       'same request moved to a different thread',
       'should not persist');
     raise exception 'A request ID was replayed into a different Coach thread';
   exception when sqlstate '22000' then null;
   end;
+  perform public.v2_coach_claim_turn(
+      'aa11aa11-1111-4111-8111-111111111111',
+      'cc33cc33-3333-4333-8333-333333333333',
+      '44444444-4444-4444-8444-444444444444',
+      '55555555-5555-4555-8555-555555555555',
+      'ff66ff66-6666-4666-8666-666666666666',
+      repeat('b',64));
   -- If assistant insertion collides with an existing ID, the newly inserted
   -- user message must roll back with the failing RPC.
   begin
@@ -158,6 +179,7 @@ begin
       '44444444-4444-4444-8444-444444444444',
       '55555555-5555-4555-8555-555555555555',
       'ff66ff66-6666-4666-8666-666666666666',
+      1,
       'Should not survive',
       'Conflicting existing assistant ID');
     raise exception 'Partial exchange unexpectedly committed';
