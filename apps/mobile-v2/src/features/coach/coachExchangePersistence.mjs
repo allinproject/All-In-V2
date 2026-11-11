@@ -31,8 +31,8 @@ export async function persistVerifiedCoachExchange(request, adapter) {
         request.userMessageId,request.assistantMessageId].every(id) ||
       request.userMessageId === request.assistantMessageId ||
       !Number.isSafeInteger(request.sessionGeneration) || request.sessionGeneration < 0 ||
-      !(request.userContent = text(request.userContent,12000)) ||
-      !(request.assistantContent = text(request.assistantContent,20000))) {
+      !text(request.userContent,12000) ||
+      !text(request.assistantContent,20000)) {
     return blocked("invalid_exchange");
   }
   if (!["ensureOwner","isCurrent","appendExchange","readExchange"].every(
