@@ -52,6 +52,9 @@ BEGIN
        has_table_privilege(r,'allin_private.v2_subscription_purchases','INSERT') OR
        has_table_privilege(r,'allin_private.v2_subscription_verified_events','INSERT') OR
        has_function_privilege(r,
+       'allin_private.v2_reserve_subscription_checkout(uuid,uuid,uuid,text,text)',
+       'EXECUTE') OR
+       has_function_privilege(r,
        'allin_private.v2_register_pending_subscription_checkout(uuid,uuid,uuid,text,text,text)',
        'EXECUTE') OR
        has_function_privilege(r,
@@ -82,6 +85,8 @@ GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_checkout_attempts TO
 GRANT SELECT,INSERT,UPDATE ON allin_private.v2_subscription_purchases TO service_role;
 GRANT SELECT,INSERT ON allin_private.v2_subscription_verified_events TO service_role;
 GRANT USAGE,SELECT ON SEQUENCE allin_private.v2_subscription_verified_events_id_seq TO service_role;
+GRANT EXECUTE ON FUNCTION allin_private.v2_reserve_subscription_checkout(
+  uuid,uuid,uuid,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_register_pending_subscription_checkout(
   uuid,uuid,uuid,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_confirm_pending_subscription_checkout(
@@ -110,6 +115,27 @@ SET ROLE service_role;
 DO $checkout_lifecycle$
 DECLARE v_result text;
 BEGIN
+  SELECT allin_private.v2_reserve_subscription_checkout(
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'stripe_web','sandbox') INTO v_result;
+  IF v_result <> 'reserved' THEN RAISE EXCEPTION 'Expected reserved: %',v_result; END IF;
+  SELECT allin_private.v2_reserve_subscription_checkout(
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'stripe_web','sandbox') INTO v_result;
+  IF v_result <> 'already_reserved' THEN RAISE EXCEPTION 'Expected reserve replay: %',v_result; END IF;
+  BEGIN
+    PERFORM allin_private.v2_reserve_subscription_checkout(
+      '10000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      '00000000-0000-0000-0000-000000000002',
+      'stripe_web','sandbox');
+    RAISE EXCEPTION 'Cross-owner reservation unexpectedly succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
   SELECT allin_private.v2_register_pending_subscription_checkout(
     '10000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001',
@@ -169,6 +195,12 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
 
+  SELECT allin_private.v2_reserve_subscription_checkout(
+    '10000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000002',
+    'stripe_web','sandbox') INTO v_result;
+  IF v_result <> 'reserved' THEN RAISE EXCEPTION 'Second reservation: %',v_result; END IF;
   SELECT allin_private.v2_register_pending_subscription_checkout(
     '10000000-0000-0000-0000-000000000002',
     '00000000-0000-0000-0000-000000000002',
