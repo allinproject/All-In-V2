@@ -34,6 +34,7 @@ on:
       - 'scripts/test-v2-completed-strength-sets-postgres.psql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql'
       - 'scripts/test-v2-completed-evidence-objects-postgres.psql'
+      - 'scripts/test-v2-training-completed-integrated-release-postgres.psql'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -176,3 +177,13 @@ jobs:
           docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql"
           docker cp scripts/test-v2-completed-evidence-objects-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-completed-evidence-objects-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d completed_evidence_objects -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-completed-evidence-objects-postgres.psql
+      - name: Replay entire candidate release graph in one disposable database
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" training_complete_integration
+          for file in docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql docs/architecture/sql/V2-TRAINING-IMMUTABLE-REVISION-GUARD-CANDIDATE.sql docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql docs/architecture/sql/V2-TRAINING-AUTH-OWNER-GATEWAY-CANDIDATE.sql docs/architecture/sql/V2-COMPLETED-ACTIVITY-SOURCE-WRITER-CANDIDATE.sql docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql docs/architecture/sql/V2-COMPLETED-ACTIVITY-STRENGTH-SETS-CANDIDATE.sql docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql docs/architecture/sql/V2-TRAINING-COMPLETION-ACK-CANDIDATE.sql docs/architecture/sql/V2-TRAINING-ACTIVITY-OUTBOX-WRITER-CANDIDATE.sql docs/architecture/sql/V2-TRAINING-START-PLANNED-WORKOUT-CANDIDATE.sql docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql; do
+            docker cp "$file" "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/$(basename "$file")"
+          done
+          docker cp scripts/test-v2-training-completed-integrated-release-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-completed-integrated-release-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_complete_integration -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-completed-integrated-release-postgres.psql
