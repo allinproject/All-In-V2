@@ -142,6 +142,12 @@ function OwnedProfileScreen() {
                   <Text style={styles.buttonText}>Legal documents</Text>
                 </Pressable>
               </Link>
+              <Link href="/profile/account-export" asChild>
+                <Pressable accessibilityRole="button" accessibilityHint="Review and share your current V2 account data as JSON text" style={styles.button}>
+                  <Text style={styles.buttonText}>Export my data</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.muted}>Share a current V2 account snapshot as JSON text. Secure file download is coming later.</Text>
               <Link href="/profile/account-deletion" asChild>
                 <Pressable accessibilityRole="button" accessibilityHint="View account deletion status and information" style={styles.button}>
                   <Text style={styles.buttonText}>Delete account</Text>
