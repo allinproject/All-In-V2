@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Redirect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
-import { assertV2SessionOwner, readV2OwnedProfileState } from '../src/auth/accessGateClient';
+import { readV2OwnedProfileState } from '../src/auth/accessGateClient';
 import { v2AuthenticatedScreenKey } from '../src/auth/authRoute';
-import { normalizeV2DisplayName, profileOwnerMatches } from '../src/auth/profileEditor';
+import { profileOwnerMatches } from '../src/auth/profileEditor';
 import { supabase } from '../src/lib/supabase';
 import { colors } from '../src/theme/tokens';
 
@@ -27,12 +27,9 @@ function OwnedProfileScreen() {
   const gate = useAccessGate();
   const ownerId = user?.id ?? null;
   const [snapshot, setSnapshot] = useState<ProfileSnapshot | null>(null);
-  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const mounted = useRef(true);
   const busy = useRef(false);
@@ -53,7 +50,6 @@ function OwnedProfileScreen() {
         const data = raw as ProfileSnapshot;
         if (!profileOwnerMatches(data.profile, ownerId)) throw new Error('Profile owner does not match your active account.');
         setSnapshot(data);
-        setDisplayName(data.profile?.display_name ?? '');
       }).catch(cause => {
         if (active && mounted.current) setError(cause instanceof Error ? cause.message : 'Could not load this account.');
       }).finally(() => {
@@ -61,37 +57,6 @@ function OwnedProfileScreen() {
       });
     return () => { active = false; };
   }, [ownerId, authLoading, gate.status, retry]);
-
-  async function saveProfile() {
-    if (!ownerId || !snapshot?.profile || busy.current) return;
-    busy.current = true;
-    setSaving(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const name = normalizeV2DisplayName(displayName);
-      await assertV2SessionOwner(supabase, ownerId);
-      // Only the existing RLS-protected owner's display_name column may change.
-      const { data, error: updateError } = await supabase
-        .from('v2_profiles')
-        .update({ display_name: name })
-        .eq('user_id', ownerId)
-        .select('user_id, display_name')
-        .single();
-      if (updateError) throw updateError;
-      if (!profileOwnerMatches(data, ownerId)) throw new Error('Profile update could not be verified for this account.');
-      await assertV2SessionOwner(supabase, ownerId);
-      if (!mounted.current) return;
-      setSnapshot(previous => previous ? { ...previous, profile: data } : null);
-      setDisplayName(data.display_name ?? '');
-      setNotice('Profile saved.');
-    } catch (cause) {
-      if (mounted.current) setError(cause instanceof Error ? cause.message : 'Could not save your profile.');
-    } finally {
-      busy.current = false;
-      if (mounted.current) setSaving(false);
-    }
-  }
 
   async function handleSignOut() {
     if (busy.current) return;
@@ -133,27 +98,12 @@ function OwnedProfileScreen() {
               <Text style={styles.label}>ACCOUNT EMAIL</Text>
               <Text style={styles.white}>{user.email ?? 'Email unavailable'}</Text>
               <Text style={styles.label}>DISPLAY NAME</Text>
-              <TextInput
-                style={styles.input}
-                accessibilityLabel="Display name"
-                placeholder="Your display name"
-                placeholderTextColor={colors.mutedText}
-                autoCapitalize="words"
-                maxLength={80}
-                value={displayName}
-                editable={!saving && !signingOut}
-                onChangeText={setDisplayName}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ disabled: saving || signingOut, busy: saving }}
-                disabled={saving || signingOut}
-                style={styles.primaryButton}
-                onPress={() => void saveProfile()}
-              >
-                <Text style={styles.primaryText}>{saving ? 'Saving…' : 'Save profile'}</Text>
-              </Pressable>
-              {notice ? <Text accessibilityRole="text" style={styles.gold}>{notice}</Text> : null}
+              <Text style={styles.white}>{snapshot.profile?.display_name || 'Not set'}</Text>
+              <Link href="/profile/edit" asChild>
+                <Pressable accessibilityRole="button" style={styles.primaryButton}>
+                  <Text style={styles.primaryText}>Edit Profile</Text>
+                </Pressable>
+              </Link>
             </View>
             <View style={styles.card}>
               <Text style={styles.section}>Legal acceptance</Text>
@@ -162,8 +112,8 @@ function OwnedProfileScreen() {
               <Text style={styles.white}>Privacy: {snapshot.latest_legal_acceptance?.privacy_version ?? 'Not available'}</Text>
               <Text style={styles.white}>Founder Beta: {snapshot.latest_legal_acceptance?.founder_beta_terms_version ?? 'Not available'}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || signingOut, busy: signingOut }}
-              disabled={saving || signingOut} style={styles.button} onPress={() => void handleSignOut()}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: signingOut, busy: signingOut }}
+              disabled={signingOut} style={styles.button} onPress={() => void handleSignOut()}>
               <Text style={styles.buttonText}>{signingOut ? 'Signing out…' : 'Sign out'}</Text>
             </Pressable>
           </>
@@ -185,7 +135,6 @@ const styles = StyleSheet.create({
   label: { color: colors.mutedText, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   white: { color: colors.warmWhite, fontSize: 14 },
   muted: { color: colors.mutedText, fontSize: 13 },
-  input: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, borderColor: colors.border, color: colors.warmWhite, backgroundColor: colors.surfaceRaised },
   primaryButton: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gold },
   primaryText: { color: colors.background, fontWeight: '800' },
   button: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderColor: colors.border, borderWidth: 1, backgroundColor: colors.surfaceRaised },
