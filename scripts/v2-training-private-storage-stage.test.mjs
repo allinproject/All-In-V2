@@ -169,3 +169,18 @@ test('checks entire evidence snapshot before any download, including duplicate p
   assert.equal(f.calls.some(x=>x.startsWith('download')),false);
  }
 });
+
+test('rejects malformed request IDs and evidence quality downgrade during retrieval',async()=>{
+ const f=fixture();
+ await assert.rejects(stageTrainingPrivateStorageExport({
+  requestId:'------------------------------------',services:f.services,
+ }),/configuration/);
+ let read=0;
+ const changed=fixture({listEvidence:async()=>{
+  read++;
+  return {ownerId:owner,series:[{...row(),quality:read===1?'trusted':'unverified'}],routes:[]};
+ }});
+ await assert.rejects(stageTrainingPrivateStorageExport({
+  requestId,services:changed.services,
+ }),/changed/);
+});
