@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, Redirect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Link, Redirect, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
@@ -27,7 +27,7 @@ function OwnedSubscriptionBillingScreen() {
   const [status, setStatus] = useState<'checking' | 'entitled' | 'not_entitled' | 'unavailable'>('checking');
   const [retry, setRetry] = useState(0);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!ownerId || authLoading || gate.status !== 'ready') return;
     let active = true;
     setStatus('checking');
@@ -41,7 +41,7 @@ function OwnedSubscriptionBillingScreen() {
       if (active) setStatus('unavailable');
     });
     return () => { active = false; };
-  }, [ownerId, authLoading, gate.status, retry]);
+  }, [ownerId, authLoading, gate.status, retry]));
 
   if (!authLoading && !user) return <Redirect href="/sign-in" />;
   if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
@@ -67,9 +67,9 @@ function OwnedSubscriptionBillingScreen() {
           <Text style={styles.heading}>Account access</Text>
           {status === 'checking' ? <ActivityIndicator color={colors.gold} accessibilityLabel="Checking subscription status" /> :
             <Text accessibilityRole="alert" style={styles.body}>{description}</Text>}
-          {status === 'unavailable' ? (
+          {status !== 'checking' ? (
             <Pressable style={styles.button} accessibilityRole="button" onPress={() => setRetry(n => n + 1)}>
-              <Text style={styles.buttonText}>Retry status</Text>
+              <Text style={styles.buttonText}>Refresh subscription status</Text>
             </Pressable>
           ) : null}
         </View>
