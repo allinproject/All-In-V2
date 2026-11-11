@@ -1,4 +1,4 @@
-import { navigation } from '../theme/tokens';
+import { navigation } from '../theme/tokens.ts';
 
 export const v2TabRoutes = ['/home', '/fuel', '/train', '/community', '/coach'] as const;
 
