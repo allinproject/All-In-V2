@@ -67,8 +67,13 @@ export function projectCompletedActivityDetail(input:{
  const firstOrder=new Map(baseline.map((label,index)=>[label,index]));
  const ordered=[...supplied].sort((a,b)=>
   (firstOrder.get(a.label)??Number.MAX_SAFE_INTEGER)-(firstOrder.get(b.label)??Number.MAX_SAFE_INTEGER));
- const summary=ordered.filter(x=>overviewKeys.has(x.label));
- const overview=presentMetrics(summary,input.overviewLayout??{order:[],pinned:[],hidden:[]});
+ const overviewLayout=input.overviewLayout??{order:[],pinned:[],hidden:[]};
+ // Overview defaults to the V1 summary, but a user may promote ANY genuine
+ // source-backed metric from Details by pinning it. Merely rearranging the
+ // customization inventory must not flood Overview with all Details fields.
+ const promoted=new Set(overviewLayout.pinned);
+ const summary=ordered.filter(x=>overviewKeys.has(x.label)||promoted.has(x.key));
+ const overview=presentMetrics(summary,overviewLayout);
  const detailsLayout=input.detailsLayout??{order:[],pinned:[],hidden:[]};
  const details=presentMetrics(ordered,detailsLayout);
  const hiddenMetricKeys=ordered.filter(x=>!details.some(y=>y.key===x.key)).map(x=>x.key);
