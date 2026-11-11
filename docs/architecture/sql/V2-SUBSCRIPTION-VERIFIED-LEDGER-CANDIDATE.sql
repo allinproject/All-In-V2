@@ -509,6 +509,9 @@ begin
   if current_user <> 'service_role' then
     raise exception 'checkout finalization requires service role' using errcode='42501';
   end if;
+  -- Match trial/paid claim lock order: account before checkout/provider.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('trial:' || p_owner_id::text,0));
   select allin_private.v2_confirm_pending_subscription_checkout(
     p_attempt_id,p_owner_id,p_provider,p_environment,p_checkout_id,p_subscription_id)
     into v_confirmation;
@@ -566,6 +569,10 @@ begin
     raise exception 'invalid verified subscription fact' using errcode='22023';
   end if;
 
+  -- Serialize provider renewals/cancellations against owner-level trial and
+  -- paid checkout claims so an active subscription cannot race a new sale.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('trial:' || p_owner_id::text,0));
   -- Prevent two services racing to bind the same external purchase differently.
   -- Hash collision causes unnecessary serialization, not an ownership bypass.
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
