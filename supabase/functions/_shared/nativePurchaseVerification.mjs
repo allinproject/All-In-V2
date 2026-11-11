@@ -15,7 +15,8 @@ const uuid=v=>typeof v==='string'&&
 export async function verifyNativePurchaseForBinding({
  platform,authenticatedOwnerId,rawEvidence,
  appleConfig,verifyAppleSignedJws,verifyAppleCurrentStatus,
- googleConfig,fetchGoogleSubscription,googleAccountPepper,
+ googleConfig,fetchGoogleSubscription,acknowledgeGoogleSubscription,
+ googleAccountPepper,
  findBoundOwner,commitOwnerBoundPurchase,nowMs,
 }={}){
  if(!uuid(authenticatedOwnerId)||!rawEvidence||
@@ -57,7 +58,8 @@ export async function verifyNativePurchaseForBinding({
          current.accessUntil<=nowMs))||
       (!allowed.includes(current.phase)&&current.accessUntil!==null))
      return {status:'verification_unavailable'};
-   proof={...proof,phase:current.phase,accessUntil:current.accessUntil};
+   proof={...proof,phase:current.phase,accessUntil:current.accessUntil,
+     latestTransactionId:current.latestTransactionId};
  }else if(platform==='android'){
    if(typeof fetchGoogleSubscription!=='function')
      return {status:'verification_unavailable'};
@@ -75,6 +77,27 @@ export async function verifyNativePurchaseForBinding({
      expectedObfuscatedAccountId:hashed,
      fetchSubscription:fetchGoogleSubscription,nowMs,
    });
+   if(proof.status==='acknowledgement_required' &&
+      typeof acknowledgeGoogleSubscription==='function'){
+     // The provider's current record has already matched account, SKU and
+     // base plan. Acknowledge using the trusted service API, then re-fetch
+     // current state; a failed acknowledgement cannot grant access.
+     try {
+       await acknowledgeGoogleSubscription({
+         packageName:googleConfig?.packageName,
+         purchaseToken:rawEvidence.purchaseToken,
+       });
+       proof=await verifyGooglePlaySubscription({
+         packageName:googleConfig?.packageName,
+         expectedPackageName:googleConfig?.packageName,
+         purchaseToken:rawEvidence.purchaseToken,
+         approvedProductId:googleConfig?.productId,
+         approvedBasePlanId:googleConfig?.basePlanId,
+         expectedObfuscatedAccountId:hashed,
+         fetchSubscription:fetchGoogleSubscription,nowMs,
+       });
+     } catch {return {status:'acknowledgement_required'};}
+   }
    if(proof.status!=='verified_for_owner_binding')
      return {status:proof.status==='acknowledgement_required'?
        'acknowledgement_required':'verification_unavailable'};
@@ -91,9 +114,24 @@ export async function verifyNativePurchaseForBinding({
  if(existing!=null&&existing!==authenticatedOwnerId)
    return {status:'purchase_owned_by_another_account'};
  try {
+   // Deterministic provider-event identity makes retries idempotent without
+   // storing Google tokens or accepting client-assigned revisions.
+   let eventMaterial;
+   if(platform==='ios'){
+     const currentId=proof.latestTransactionId??proof.providerTransactionId;
+     if(typeof currentId!=='string'||!/^[0-9]{1,24}$/.test(currentId))
+       return {status:'verification_unavailable'};
+     eventMaterial='apple:'+currentId+':'+proof.phase+':'+proof.accessUntil;
+   }else{
+     eventMaterial='google:'+subscriptionId+':'+proof.phase+':'+proof.accessUntil;
+   }
+   const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',
+     new TextEncoder().encode(eventMaterial)));
+   const providerEventId='native_'+Array.from(digest,
+     b=>b.toString(16).padStart(2,'0')).join('');
    const committed=await commitOwnerBoundPurchase({
      ownerId:authenticatedOwnerId,provider,
-     providerSubscriptionId:subscriptionId,
+     providerSubscriptionId:subscriptionId,providerEventId,
      phase:proof.phase,accessUntil:proof.accessUntil,
      verificationSource:'provider_current',
    });
