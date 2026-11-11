@@ -99,6 +99,9 @@ export function createOpenIapStoreAdapter({
       await connect();
       const context=await checkedContext();
       if(!products.length)await this.getProducts([id]);
+      // Product discovery may outlive the originating account session.
+      // Never open a store purchase with a stale appAccountToken/owner hash.
+      if(getOwner()!==context.ownerId)throw Error('owner_changed');
       let request:unknown;
       if(platform==='ios'){
         request={type:'subs',request:{apple:{
@@ -127,6 +130,10 @@ export function createOpenIapStoreAdapter({
         const timer=setTimeout(()=>complete(null,Error('native_purchase_timeout')),timeoutMs);
         try{
           success=api.purchaseUpdatedListener(p=>{
+            if(getOwner()!==context.ownerId){
+              complete(null,Error('owner_changed'));
+              return;
+            }
             const result=normalize(p);
             if(result)complete(result);
           });
