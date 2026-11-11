@@ -102,3 +102,7 @@ test('trial must last seven days; no unapproved long trial or missing dates',asy
   assert.equal((await run({retrieveSubscription:async()=>({...sub,status:'active',
     trial_start:null,trial_end:null})})).status,'confirmed_for_binding_transaction');
 });
+
+test('checkout verifier rejects non-UUID attempt identifiers',async()=>{
+  assert.equal((await run({checkoutAttempt:{...attempt,attemptId:'attempt_forged'}})).status,'invalid_attempt');
+});
