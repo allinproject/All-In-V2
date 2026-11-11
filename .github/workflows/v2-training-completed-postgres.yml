@@ -12,6 +12,8 @@ on:
       - 'scripts/test-v2-training-session-writer-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-AUTH-OWNER-GATEWAY-CANDIDATE.sql'
       - 'scripts/test-v2-training-auth-gateway-postgres.psql'
+      - 'docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql'
+      - 'scripts/test-v2-training-plan-calendar-postgres.psql'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -71,3 +73,11 @@ jobs:
           docker cp docs/architecture/sql/V2-TRAINING-AUTH-OWNER-GATEWAY-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-AUTH-OWNER-GATEWAY-CANDIDATE.sql"
           docker cp scripts/test-v2-training-auth-gateway-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-auth-gateway-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d auth_gateway_contract -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-auth-gateway-postgres.psql
+      - name: Replay canonical Training plan and calendar in disposable DB
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" training_plan_calendar
+          docker cp docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql"
+          docker cp scripts/test-v2-training-plan-calendar-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-training-plan-calendar-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_plan_calendar -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-plan-calendar-postgres.psql
