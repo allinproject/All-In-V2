@@ -3,7 +3,6 @@ import { Link, Redirect, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
-import { useAccessGate } from '../../src/auth/AccessGateProvider';
 import { v2AuthenticatedScreenKey } from '../../src/auth/authRoute';
 import { assertV2SessionOwner } from '../../src/auth/accessGateClient';
 import { supabase } from '../../src/lib/supabase';
@@ -35,7 +34,6 @@ export default function AccountDeletionScreen() {
 
 function OwnedAccountDeletionScreen() {
   const { user, loading: authLoading } = useAuth();
-  const gate = useAccessGate();
   const owner = user?.id ?? null;
   const mounted = useRef(false);
   const inFlight = useRef(false);
@@ -60,7 +58,7 @@ function OwnedAccountDeletionScreen() {
   }, [owner]);
 
   useFocusEffect(useCallback(() => {
-    if (!owner || authLoading || gate.status !== 'ready') return;
+    if (!owner || authLoading) return;
     mounted.current = true;
     let active = true;
     setLoading(true);
@@ -75,7 +73,7 @@ function OwnedAccountDeletionScreen() {
       if (active && mounted.current) setLoading(false);
     });
     return () => { active = false; mounted.current = false; };
-  }, [owner, authLoading, gate.status, retry, readCurrent]));
+  }, [owner, authLoading, retry, readCurrent]));
 
   async function submitRequest() {
     if (inFlight.current || saving || !owner || !reviewing || confirmation !== 'DELETE MY ACCOUNT' || !['none', 'rejected', 'cancelled'].includes(status?.status ?? '')) return;
@@ -160,9 +158,7 @@ function OwnedAccountDeletionScreen() {
   }
 
   if (!authLoading && !user) return <Redirect href="/sign-in" />;
-  if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
-  if (gate.status === 'onboarding_required') return <Redirect href="/onboarding-required" />;
-  if (authLoading || gate.status !== 'ready' || !user) return <Redirect href="/" />;
+  if (authLoading || !user) return <Redirect href="/" />;
 
   const activeRequest = status && status.status !== 'none';
   const canRequest = status?.status === 'none' || status?.status === 'cancelled' || status?.status === 'rejected';
