@@ -46,12 +46,15 @@ BEGIN
   AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%'
     OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%'
         OR c.relname='v2_account_export_requests_candidate')
-  AND NOT EXISTS(
-    SELECT 1 FROM pg_catalog.pg_constraint fk
-    WHERE fk.conrelid=c.oid
-      AND fk.confrelid='auth.users'::regclass
-      AND fk.contype='f' AND fk.confdeltype='c'
-      AND fk.conkey=ARRAY[a.attnum]::smallint[]
+  AND (
+    NOT a.attnotnull
+    OR NOT EXISTS(
+      SELECT 1 FROM pg_catalog.pg_constraint fk
+      WHERE fk.conrelid=c.oid
+        AND fk.confrelid='auth.users'::regclass
+        AND fk.contype='f' AND fk.confdeltype='c'
+        AND fk.conkey=ARRAY[a.attnum]::smallint[]
+    )
   );
  IF missing IS NOT NULL THEN
    RAISE EXCEPTION 'ALL-251 deletion preflight: missing direct Auth cascade: %',missing;
@@ -87,6 +90,26 @@ BEGIN
  END IF;
 END $wrong_fk$;
 DROP TABLE public.v2_activity_owner_fk_negative_probe;
+-- A nullable owner column is unsafe even when it has an exact Auth FK.
+-- PostgreSQL permits NULL FK values and those rows evade Auth teardown.
+CREATE TABLE public.v2_activity_nullable_owner_negative_probe (
+ user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE
+);
+DO $nullable_owner$
+BEGIN
+ IF NOT EXISTS(
+   SELECT 1 FROM pg_catalog.pg_class c
+   JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+   JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+   WHERE n.nspname='public'
+     AND c.relname='v2_activity_nullable_owner_negative_probe'
+     AND a.attname='user_id' AND NOT a.attnotnull
+ ) THEN
+   RAISE EXCEPTION 'Nullable owner was incorrectly accepted as deletion-safe';
+ END IF;
+END $nullable_owner$;
+DROP TABLE public.v2_activity_nullable_owner_negative_probe;
+
 
 -- The integrated fixture uses a minimal v2_profiles mock with NO cascade.
 -- Profile deletion is covered by ALL-251 separately; remove mock profile
