@@ -31,19 +31,32 @@ export async function executeDeletionOnce(request: WorkerRequest, services: Dele
   catch { return 'claim_not_accepted'; }
   if (claim.error || !matchingReceipt(claim.data, 'processing', request)) return 'claim_not_accepted';
 
+  // A transport timeout or failed delete response does not prove whether the
+  // destructive call committed. Never repeat it. Make one read-only Auth lookup
+  // regardless of the delete response, and only complete after definitive absence.
   let reason: FailureReason = 'auth_delete_failed';
   try {
-    const deleted = await services.deleteAuthUser(request.user_id);
-    if (!deleted.error) {
-      reason = 'auth_verify_failed';
-      const observed = await services.inspectAuthUser(request.user_id);
-      if (confirmedAbsent(observed.error)) {
-        reason = 'completion_failed';
+    await services.deleteAuthUser(request.user_id);
+  } catch {
+    // Ambiguous network result: read-only verification below, no second delete.
+  }
+
+  try {
+    const observed = await services.inspectAuthUser(request.user_id);
+    if (confirmedAbsent(observed.error)) {
+      reason = 'completion_failed';
+      try {
         const completed = await services.complete(request);
         if (!completed.error && matchingReceipt(completed.data, 'completed', request)) return 'completed';
+      } catch {
+        // Completion response may also be uncertain; operator review required.
       }
+    } else {
+      reason = 'auth_verify_failed';
     }
-  } catch { /* Ambiguous network response: do not retry a destructive operation. */ }
+  } catch {
+    reason = 'auth_verify_failed';
+  }
 
   // If Auth deletion succeeded but final receipt failed, a retained failed audit
   // requires a separate operator recovery. Never claim success or delete twice.
