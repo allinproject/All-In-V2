@@ -53,3 +53,14 @@ test('relationship identity disagreement fails closed',()=>{
  assert.throws(()=>evaluatePublicProfileView(viewer({viewerId:'athlete-A',relationship:'approved_follower'})),/relationship/);
  assert.throws(()=>evaluatePublicProfileView(viewer({viewerId:'athlete-B',relationship:'self'})),/relationship/);
 });
+
+test('signed-out viewer may see permitted public identity but cannot follow or interact',()=>{
+ const v=evaluatePublicProfileView(viewer({
+  viewerId:null,profileVisibility:'public',relationship:'not_following',
+ }));
+ assert.equal(v.canViewIdentity,true);
+ assert.equal(v.canFollowDirectly,false);
+ assert.equal(v.canRequestToFollow,false);
+ assert.equal(v.canInteract,false);
+ assert.equal(canViewProfilePost('public',v),true);
+});
