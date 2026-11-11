@@ -5,6 +5,7 @@ on:
     branches: [integration/v2-foundation]
     paths:
       - 'docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql'
       - 'scripts/test-v2-weekly-competition-postgres.psql'
       - '.github/workflows/v2-weekly-competition-postgres.yml'
   workflow_dispatch:
@@ -45,5 +46,6 @@ jobs:
         run: |
           docker exec "$PG_CONTAINER" mkdir -p /tmp/allin/scripts /tmp/allin/docs/architecture/sql
           docker cp docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql"
+          docker cp docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql"
           docker cp scripts/test-v2-weekly-competition-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-weekly-competition-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-weekly-competition-postgres.psql
