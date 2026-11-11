@@ -29,6 +29,9 @@ DECLARE
  v_revision public.v2_training_plan_revisions%ROWTYPE;
  v_receipt allin_private.v2_training_plan_accept_receipts%ROWTYPE;
  v_next_version bigint;
+ v_first_day date;
+ v_last_day date;
+ v_day_count bigint;
 BEGIN
  IF p_user_id IS NULL OR p_plan_id IS NULL OR p_revision_id IS NULL
     OR p_action_id IS NULL OR p_expected_plan_version IS NULL
@@ -63,6 +66,22 @@ BEGIN
     WHERE plan_revision_id=p_revision_id AND plan_id=p_plan_id AND user_id=p_user_id)
  THEN RAISE EXCEPTION 'Cannot accept a revision without explicit day state'
      USING ERRCODE='22023'; END IF;
+ -- Explicit revision days must cover every date BETWEEN the earliest
+ -- and latest submitted day. The table's unique(revision_id,date) makes
+ -- count equal to span length iff there is no missing interior day.
+ -- This does not establish the athlete-selected plan START or goal/race END:
+ -- authoritative boundaries must be checked by the later accepted owner
+ -- contract before this candidate can be deployed.
+ SELECT min(athlete_local_date),max(athlete_local_date),count(*)
+ INTO v_first_day,v_last_day,v_day_count
+ FROM public.v2_training_revision_days
+ WHERE plan_revision_id=p_revision_id AND plan_id=p_plan_id
+   AND user_id=p_user_id;
+ IF v_first_day IS NULL OR v_last_day IS NULL
+    OR v_day_count<>(v_last_day-v_first_day+1)::bigint THEN
+   RAISE EXCEPTION 'Candidate calendar has missing dates between explicit plan days'
+     USING ERRCODE='22023';
+ END IF;
  -- A candidate calendar cannot schedule a workout on a declared rest or
  -- unavailable day. Also reject timezone drift between the canonical day and
  -- its session; otherwise Today and activity date projections can disagree.
