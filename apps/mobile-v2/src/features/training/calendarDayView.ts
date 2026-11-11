@@ -93,7 +93,12 @@ export function monthDayMarkerSummary(evidence: CalendarEvidence<CalendarWorkout
       ? record.kind === record.status
       : !['rest','recovery','unavailable','race','review_required'].includes(record.kind))
   );
-  return { kind: 'known', visible: valid.slice(0, 2), additionalCount: Math.max(0, valid.length - 2) };
+  // Canonical event dates take precedence in the two-line month grid.
+  // Keep the remaining items and overflow count; this is a display-only order.
+  const ordered = valid.map((item,index)=>({item,index}))
+    .sort((a,b)=>Number(b.item.kind==='race')-Number(a.item.kind==='race')||a.index-b.index)
+    .map(x=>x.item);
+  return { kind: 'known', visible: ordered.slice(0, 2), additionalCount: Math.max(0, ordered.length - 2) };
 }
 export function workoutMarkersForDay(
   evidence: CalendarEvidence<CalendarWorkoutMarker>,
