@@ -1,0 +1,79 @@
+/**
+ * ALL-217 — trusted Coach host exchange orchestration (source-only).
+ * No deployed Edge endpoint or client service key. The server, never the
+ * request body, supplies verifyUser, providerGenerate, claims and owner RPCs.
+ * Requires durable pre-provider claim with execution fencing.
+ */
+import {persistVerifiedCoachExchange} from "../../../apps/mobile-v2/src/features/coach/coachExchangePersistence.mjs";
+import {decodeCoachAppendReceipt,decodeCoachExchangeRows} from "../../../apps/mobile-v2/src/features/coach/coachOwnerWire.mjs";
+
+const uuid=x=>typeof x==="string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(x);
+const validText=(s,max)=>typeof s==="string" && s.trim().length>0 && s.trim().length<=max;
+const blocked=reason=>({status:"blocked",reason});
+
+/**
+ * verifyUser(token) MUST perform server-side JWT verification; not merely
+ * decode a JWT. claimTurn and finishClaim are canonical durable fenced RPCs.
+ * appendPair is a service-role-only canonical RPC; readPair returns exact
+ * owner/request-tagged persisted rows from v2_coach_read_exchange.
+ * No dependencies are accepted from a public JSON body.
+ */
+export async function executeCoachServerExchange(request,deps){
+ if(!request||!deps||!validText(request.bearerToken,10000)||
+    ![request.ownerId,request.threadId,request.clientRequestId,
+      request.userMessageId,request.assistantMessageId].every(uuid)||
+    new Set([request.clientRequestId,request.userMessageId,request.assistantMessageId]).size!==3||
+    typeof request.requestFingerprint!=="string"||
+    !/^[a-f0-9]{64}$/.test(request.requestFingerprint)||
+    !validText(request.userContent,12000)||
+    Object.hasOwn(request,"assistantContent"))return blocked("invalid_or_untrusted_request");
+ if(!["verifyUser","claimTurn","providerGenerate","appendPair","readPair","finishClaim"].every(
+    key=>typeof deps[key]==="function"))return blocked("trusted_host_unavailable");
+ const owner=async()=>{
+  const result=await deps.verifyUser(request.bearerToken);
+  return result && typeof result==="object"?result.id:result;
+ };
+ try{
+  if(await owner()!==request.ownerId)return blocked("authentication_mismatch");
+  const claim=await deps.claimTurn({
+   ownerId:request.ownerId,threadId:request.threadId,
+   clientRequestId:request.clientRequestId,requestFingerprint:request.requestFingerprint,
+   userMessageId:request.userMessageId,assistantMessageId:request.assistantMessageId});
+  if(await owner()!==request.ownerId)return blocked("authentication_changed");
+  // In-progress/replay/failed/rate-limited claims MUST NEVER invoke provider.
+  if(claim?.action!=="claimed")return blocked("claim_not_granted");
+  if(!Number.isSafeInteger(claim.executionVersion)||claim.executionVersion<1)
+   return blocked("unfenced_claim");
+  const output=await deps.providerGenerate({ownerId:request.ownerId,
+   threadId:request.threadId,clientRequestId:request.clientRequestId,
+   userContent:request.userContent.trim()});
+  if(!output||!validText(output.message,20000))return blocked("provider_output_invalid");
+  if(await owner()!==request.ownerId)return blocked("authentication_changed");
+  const input={ownerId:request.ownerId,threadId:request.threadId,
+   clientRequestId:request.clientRequestId,userMessageId:request.userMessageId,
+   assistantMessageId:request.assistantMessageId,userContent:request.userContent,
+   assistantContent:output.message,sessionGeneration:0};
+  const result=await persistVerifiedCoachExchange(input,{
+   isCurrent:()=>true, // Host re-verifies token at every async boundary.
+   ensureOwner:owner,
+   appendExchange:async value=>decodeCoachAppendReceipt(await deps.appendPair({
+    ...value,executionVersion:claim.executionVersion}),value),
+   readExchange:async(ownerId,threadId,userMessageId,assistantMessageId)=>
+    decodeCoachExchangeRows(await deps.readPair({
+     ownerId,threadId,clientRequestId:request.clientRequestId,
+     userMessageId,assistantMessageId}),input)
+  });
+  if(result.status!=="saved_verified")return blocked("save_unverified");
+  if(await owner()!==request.ownerId)return blocked("authentication_changed");
+  const finish=await deps.finishClaim({
+   ownerId:request.ownerId,threadId:request.threadId,
+   clientRequestId:request.clientRequestId,
+   assistantMessageId:request.assistantMessageId,
+   executionVersion:claim.executionVersion});
+  if(finish?.completed!==true)return blocked("completion_unverified");
+  return {status:"saved_verified",message:output.message.trim(),receipt:result.receipt};
+ }catch{
+  // No invented success, even on ambiguous network writes.
+  return blocked("trusted_host_failed");
+ }
+}
