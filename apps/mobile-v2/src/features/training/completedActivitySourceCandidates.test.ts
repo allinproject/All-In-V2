@@ -40,3 +40,19 @@ test('complete candidate snapshot still routes exact replay through original can
  const s=snapshot(a);
  assert.equal(reconcileCertifiedActivitySource(a,{...s,candidates:[{identity:a,canonicalActivityId:'completed-1'}]}).decision,'exact_replay');
 });
+
+test('canonical SQL provider and kind names gate the certified owner reconciliation',()=>{
+ const a=source();
+ for(const patch of [
+  {provider:'healthkit'},{provider:'garmin'},{provider:'coros'},
+  {sourceKind:'fit_file'}
+ ]){
+  const incoming={...a,...patch};
+  assert.deepEqual(reconcileCertifiedActivitySource(incoming,snapshot(incoming)),{
+   decision:'needs_review',activityId:null,reason:'unsupported_provider_namespace',
+  });
+ }
+ const health={...a,provider:'apple_healthkit'};
+ assert.equal(reconcileCertifiedActivitySource(health,snapshot(health)).decision,
+  'new_activity_candidate');
+});
