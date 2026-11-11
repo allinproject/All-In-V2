@@ -13,6 +13,7 @@ CREATE TABLE allin_private.v2_community_posts (
   -- ownership contracts. Do not create independent workout/meal records here.
   source_id uuid,
   body text NOT NULL DEFAULT '' CHECK (length(body)<=4000),
+  post_version bigint NOT NULL DEFAULT 1 CHECK (post_version>=1),
   published_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT community_post_source_kind CHECK (
