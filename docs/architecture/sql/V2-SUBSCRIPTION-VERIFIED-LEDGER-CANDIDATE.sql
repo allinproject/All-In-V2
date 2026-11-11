@@ -802,3 +802,25 @@ end;
 $$;
 revoke all on function public.v2_billing_verify_checkout_reservation(uuid,uuid)
  from public,anon,authenticated;
+
+
+-- Find the immutable owner of an ALREADY BOUND Stripe subscription.
+-- Provider webhook metadata, customer email, and client owner IDs are never
+-- consulted. This exposed-schema RPC is available ONLY to trusted service_role.
+create or replace function public.v2_billing_lookup_purchase(p_subscription_id text)
+returns table(owner_id uuid,provider_subscription_id text,revision bigint,phase text)
+language plpgsql security invoker set search_path = ''
+as $$
+begin
+  if current_user <> 'service_role' then
+    raise exception 'billing service only' using errcode='42501';
+  end if;
+  return query
+    select p.owner_id,p.provider_subscription_id,p.revision,p.phase
+    from allin_private.v2_subscription_purchases p
+    where p.provider='stripe_web' and p.environment='sandbox'
+      and p.provider_subscription_id=p_subscription_id;
+end;
+$$;
+revoke all on function public.v2_billing_lookup_purchase(text)
+ from public,anon,authenticated;
