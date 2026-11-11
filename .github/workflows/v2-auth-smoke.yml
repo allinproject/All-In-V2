@@ -25,6 +25,7 @@ on:
       - 'apps/mobile-v2/src/features/subscriptions/**'
       - 'scripts/check-v2-subscription-ledger-candidate.test.mjs'
       - 'scripts/test-v2-subscription-sql-postgres.psql'
+      - 'scripts/test-v2-subscription-race-postgres.sh'
       - 'docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql'
       - 'apps/mobile-v2/src/monitoring/**'
       - 'apps/mobile-v2/package.json'
@@ -66,6 +67,7 @@ on:
       - 'apps/mobile-v2/src/features/subscriptions/**'
       - 'scripts/check-v2-subscription-ledger-candidate.test.mjs'
       - 'scripts/test-v2-subscription-sql-postgres.psql'
+      - 'scripts/test-v2-subscription-race-postgres.sh'
       - 'docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql'
       - 'apps/mobile-v2/src/monitoring/**'
       - 'apps/mobile-v2/package.json'
@@ -188,6 +190,10 @@ jobs:
           docker cp scripts/test-v2-subscription-sql-postgres.psql "$POSTGRES_CONTAINER_ID:/tmp/allin/scripts/test-v2-subscription-sql-postgres.psql"
           docker cp docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql "$POSTGRES_CONTAINER_ID:/tmp/allin/docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql"
           docker exec "$POSTGRES_CONTAINER_ID" psql -U "$PGUSER" -d allin_subscription_test -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-subscription-sql-postgres.psql
+      - name: Verify subscription concurrent refund replay in same disposable database
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: bash scripts/test-v2-subscription-race-postgres.sh
       - name: Verify Coach owner and request-fencing in a separate disposable database
         env:
           POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
