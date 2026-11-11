@@ -150,6 +150,65 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_finalize_verified_subscription_checko
 GRANT EXECUTE ON FUNCTION allin_private.v2_apply_verified_subscription_event(
   uuid,text,text,text,text,bigint,text,timestamptz) TO service_role;
 
+-- ALL-222: review the ACTUAL function catalog rather than a fixed list.
+-- New billing RPCs must fail this test until privileges are explicitly reviewed.
+-- Effective privileges include grants inherited through PUBLIC.
+DO $billing_privilege_inventory$
+DECLARE
+  fn record;
+  t record;
+  api_role text;
+BEGIN
+  FOR fn IN
+    SELECT p.oid, p.proname, n.nspname AS function_schema,
+           p.prosecdef, p.proconfig
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE (n.nspname='public' AND p.proname LIKE 'v2_billing_%')
+        OR (n.nspname='allin_private' AND
+            (p.proname LIKE 'v2_%subscription%' OR
+             p.proname LIKE 'v2_%checkout%'))
+  LOOP
+    IF fn.prosecdef OR fn.proconfig IS NULL OR
+       NOT ('search_path=""'=ANY(fn.proconfig)) THEN
+      RAISE EXCEPTION 'Billing RPC % (%) not pinned invoker',
+        fn.proname,fn.function_schema;
+    END IF;
+    FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF has_function_privilege(api_role,fn.oid,'EXECUTE') THEN
+        RAISE EXCEPTION 'Role % can execute billing RPC %.%',
+          api_role,fn.function_schema,fn.proname;
+      END IF;
+    END LOOP;
+    IF NOT has_function_privilege('service_role',fn.oid,'EXECUTE') THEN
+      RAISE EXCEPTION 'Service role cannot execute billing RPC %.%',
+        fn.function_schema,fn.proname;
+    END IF;
+  END LOOP;
+  FOR t IN
+    SELECT c.oid,c.relname,c.relrowsecurity
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='allin_private'
+      AND c.relkind IN ('r','p')
+      AND c.relname LIKE 'v2_subscription_%'
+  LOOP
+    IF NOT t.relrowsecurity THEN
+      RAISE EXCEPTION 'Billing table % has RLS off',t.relname;
+    END IF;
+    FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF has_table_privilege(api_role,t.oid,'SELECT') OR
+         has_table_privilege(api_role,t.oid,'INSERT') OR
+         has_table_privilege(api_role,t.oid,'UPDATE') OR
+         has_table_privilege(api_role,t.oid,'DELETE') THEN
+        RAISE EXCEPTION 'Role % can directly access billing table %',
+          api_role,t.relname;
+      END IF;
+    END LOOP;
+  END LOOP;
+END
+$billing_privilege_inventory$;
+
 SET ROLE service_role;
 DO $no_prebind$
 BEGIN
