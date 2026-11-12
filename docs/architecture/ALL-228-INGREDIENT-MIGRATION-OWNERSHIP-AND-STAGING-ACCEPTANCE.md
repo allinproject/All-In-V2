@@ -56,3 +56,20 @@ The founder explicitly directed reuse of `All-In-V2-Temporary-Staging` (`fbtgknl
 **Mandatory cleanup:** Existing November 13 temporary project deletion reminder remains. Do not extend the project or use production to finish missing tests without a fresh budget/owner decision. After any actual credentialed test, revoke role membership, disable registry, destroy password/secret and verify no reserved resources; deletion should proceed when ALL-251/ALL-228 evidence has been saved. Hosted ingredient schema remains **not present in the production V2 project**.
 
 **Migration ownership:** These installed versions are temporary-project acceptance records, **not canonical V2 application migrations**. The eventual production release still requires approved versioned files under `supabase/migrations`, collision/grant review, ALL-12 recovery acceptance and independently approved rollout.
+
+## 2026-11-12 credential provisioning gate — protected local ceremony
+
+The hosted ALL-228 test now uses **Supabase's session pooler on port 5432**, not the IPv6-only direct database address. GitHub-hosted Actions runners cannot reliably connect to the direct IPv6 endpoint without a paid IPv4 add-on. Use only the actual `[region].pooler.supabase.com` hostname copied from this temporary project's **Supabase Connect → Session pooler** settings; never guess a pooler hostname. The pooler username is `allin_ing_workload_temp_all228.fbtgknlxjyeqrxemskbl`.
+
+A one-time secret-safe local helper, `scripts/provision-v2-ingredient-temp-login.py`, is committed to the integration branch. It requires locally authenticated `gh`, `psql` and Python, and `ALL228_STAGING_CA_CERT` pointing to the **trusted PEM root CA** for the Supabase database SSL chain downloaded from the project's dashboard. It prompts for the session pooler host, requests explicit temporary-project confirmation, generates a cryptographically random workload password **in memory**, stores the corresponding exact-host .pgpass entry as GitHub environment secret `ALL228_TEMP_STAGING_PGPASS_LINE` under existing `all251-temporary-staging`, and uses a separately authenticated administrative psql session with `verify-full` TLS to activate the *existing* restricted workload for **45 minutes**. It triggers the manual `.github/workflows/v2-all228-temporary-hosted-workload.yml` and never prints the password or generated SQL. No secret should be pasted into chat, committed to GitHub, or copied into Linear.
+
+Example from a trusted local checkout at `integration/v2-foundation`:
+
+```powershell
+$env:ALL228_STAGING_CA_CERT = 'C:\\secure\\supabase-temp-root-ca.pem'
+py -3 scripts/provision-v2-ingredient-temp-login.py
+```
+
+The helper asks for this temporary project's **postgres database password** using psql's interactive prompt; it does not ask for the V2 production password. If prerequisites/credentials are missing, do not fabricate values. The action is a protected **read-only authenticated capability smoke**, not a completed hosted USDA import. The workflow must report a real independent `session_user` and least-privilege grants before any further ingestion tests. Only a separately controlled server-side source writer/approved staging fixture may populate the canonical tables.
+
+The existing temporary staging role **remains DISABLED, PASSWORD NULL, with no publisher membership** until the local ceremony is actually run. Runbook prepared and source-only CI tested does not establish provisioning. After actual acceptance, revoke the workload, delete the protected environment secret, retain evidence and delete the temporary project on its scheduled November 13 cleanup. Do not extend the environment merely for this test.
