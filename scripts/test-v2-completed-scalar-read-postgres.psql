@@ -73,9 +73,13 @@ BEGIN
  OR jsonb_array_length(v->'unresolvedMetrics')<>1
  OR (v->'metrics'->0->>'metricCode')<>'avg_power_w'
  OR (v->'metrics'->0->>'quality')<>'partial'
+ OR (v->'metrics'->0->>'measurementQuality')<>'trusted'
+ OR (v->'metrics'->0->>'sourceQuality')<>'partial'
  OR (v->'metrics'->0->>'sourceCount')<>'2'
  OR (v->'metrics'->1->>'valueNumeric')<>'0'
  OR (v->'metrics'->1->>'quality')<>'partial'
+ OR (v->'metrics'->1->>'measurementQuality')<>'partial'
+ OR (v->'metrics'->1->>'sourceQuality')<>'trusted'
  OR (v->'unresolvedMetrics'->0->>'reason')<>'source_review_required'
  THEN RAISE EXCEPTION 'Agreed evidence and known-zero projection wrong: %',v; END IF;
  INSERT INTO public.v2_activity_sources
