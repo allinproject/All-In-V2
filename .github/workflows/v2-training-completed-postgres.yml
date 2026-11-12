@@ -36,6 +36,7 @@ on:
       - 'supabase/functions/_shared/certifiedDeviceIngestCanonical.test.mjs'
       - 'supabase/functions/_shared/certifiedDeviceIngestServer.test.mjs'
       - 'supabase/functions/_shared/certifiedDevicePostgresAdapter.ts'
+      - 'supabase/functions/_shared/certifiedDevicePostgresAdapter.node.test.mjs'
       - 'supabase/functions/v2-device-ingest/**'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-DEVICE-REGISTRATION-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-DEVICE-OPERATOR-CANDIDATE.sql'
@@ -285,7 +286,7 @@ jobs:
         with:
           node-version: '22.16.0'
       - name: Validate canonical transactional device ingestion, expiry and offline retries
-        run: node --experimental-strip-types --test supabase/functions/_shared/certifiedDeviceIngestCanonical.test.mjs supabase/functions/_shared/certifiedDeviceIngestServer.test.mjs
+        run: node --experimental-strip-types --test supabase/functions/_shared/certifiedDeviceIngestCanonical.test.mjs supabase/functions/_shared/certifiedDeviceIngestServer.test.mjs supabase/functions/_shared/certifiedDevicePostgresAdapter.node.test.mjs
 
   completed-segment-regression:
     name: ALL-243 isolated segment owner and invalidation regression (PG17)
