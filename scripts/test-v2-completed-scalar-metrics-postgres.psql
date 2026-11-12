@@ -29,9 +29,9 @@ BEGIN
  VALUES(ride,a,'cycling','workout','2026-11-11','America/Chicago','device_measured','needs_review'),
  (run,b,'running','workout','2026-11-11','America/Chicago','provider_import','needs_review');
  INSERT INTO public.v2_activity_sources(
- id,activity_id,user_id,provider,source_kind,source_record_id,quality,source_payload_hash)
- VALUES(src,ride,a,'supported_equipment','device_session','trainer-42','trusted',repeat('a',64)),
- (run_src,run,b,'apple_watch','workout_record','watch-run','partial',repeat('b',64));
+ id,activity_id,user_id,provider,source_kind,source_record_id,quality,source_payload_hash,source_device_ref)
+ VALUES(src,ride,a,'supported_equipment','device_session','trainer-42','trusted',repeat('a',64),'paired-trainer-42'),
+ (run_src,run,b,'apple_watch','workout_record','watch-run','partial',repeat('b',64),'other-device');
  INSERT INTO public.v2_activity_metric_definitions(
  metric_code,definition_version,display_name,canonical_unit,value_kind,
  sport_scope,measurement_kinds,display_group,privacy_class,status)
