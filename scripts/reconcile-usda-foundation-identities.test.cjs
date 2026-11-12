@@ -17,7 +17,7 @@ p='scripts/reconcile-usda-foundation-identities.py'
 s=importlib.util.spec_from_file_location('usda_reconcile',p)
 m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 foods=[{'fdcId':11,'description':'Chicken breast, cooked','dataType':'Foundation'},
-       {'fdcId':12,'description':'Apple, raw','dataType':'Foundation'},
+       {'fdcId':12,'description':'Chicken breast, roasted','dataType':'Foundation'},
        {'fdcId':13,'description':'Chicken breast','dataType':'Foundation'}]
 profiles=[{'source_profile_key':'cooked','source_label':'Chicken breast, cooked','source_aliases':[]},
           {'source_profile_key':'raw','source_label':'Chicken breast, raw','source_aliases':['Chicken breast']}]
