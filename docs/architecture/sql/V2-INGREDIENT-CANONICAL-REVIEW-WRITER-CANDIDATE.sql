@@ -4,7 +4,7 @@
 -- Assumes the table definitions in the existing physical ERD, not a parallel catalog.
 -- PostgreSQL-backed actor identity is session_user from a separately authenticated
 -- dedicated DB login, NEVER a JWT claim, caller UUID, service_role key, or GUC.
--- Review roles have NOLOGIN and no membership until explicit ops approval.
+-- Review roles have NOLOGIN and no application/workload membership until explicit ops approval.\n-- Supabase PostgreSQL may auto-grant administrative membership to the role creator\n-- (postgres, INHERIT FALSE/SET FALSE). That is NOT a workload grant, but audit it.
 
 DO $$
 BEGIN
@@ -12,7 +12,7 @@ BEGIN
     CREATE ROLE allin_v2_ingredient_reviewer NOLOGIN NOINHERIT NOBYPASSRLS;
   END IF;
 END $$;
--- Release-only capability. No grant is made here, and no client can grant it.
+-- Release-only capability. No application/workload grant is made here.\n-- Supabase may grant the creating administrator non-inheriting membership;\n-- the function still denies postgres by session_user. Audit role membership.
 -- A production migration and external owner release approval are separate.
 DO $$
 BEGIN
@@ -329,5 +329,5 @@ REVOKE ALL ON FUNCTION allin_private.v2_review_ingredient_profile_status(uuid,in
   FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION allin_private.v2_review_ingredient_profile_status(uuid,integer,text,text,text,uuid)
   TO allin_v2_ingredient_reviewer;
--- Intentionally NO GRANT of role membership to ANY login. No API route.
+-- Intentionally NO application/workload role membership grants. No API route.\n-- The managed PostgreSQL administrator may have role-creator membership.
 -- This candidate MUST NEVER be directly deployed before owner approval.
