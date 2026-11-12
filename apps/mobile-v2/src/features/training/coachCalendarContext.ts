@@ -38,15 +38,16 @@ export function prepareCoachCalendarContext(input: CoachCalendarInput): CoachCal
   if (!input.authenticatedOwnerId) return { kind: 'blocked', reason: 'signed_out' };
   if (!input.expectedOwnerId || input.expectedOwnerId !== input.authenticatedOwnerId) return { kind: 'blocked', reason: 'wrong_owner' };
   if (!input.accessGateReady) return { kind: 'blocked', reason: 'access_gate_required' };
-  if (!validAthleteLocalDate(input.selectedDay)) return { kind: 'blocked', reason: 'invalid_day' };
+  if (!validAthleteLocalDate(input.selectedDay) || !['week', 'month'].includes(input.view))
+    return { kind: 'blocked', reason: 'invalid_day' };
   if (!Array.isArray(input.sessions)) return { kind: 'blocked', reason: 'sessions_unverified' };
-  if (input.sessions.some(session => session.ownerId !== input.expectedOwnerId)) return { kind: 'blocked', reason: 'session_owner_mismatch' };
+  if (input.sessions.some(session => session && session.ownerId !== input.expectedOwnerId)) return { kind: 'blocked', reason: 'session_owner_mismatch' };
   const ids = new Set<string>();
   for (const session of input.sessions) {
-    if (!session.id || ids.has(session.id) || !validAthleteLocalDate(session.athleteLocalDate)
+    if (!session || typeof session.id !== 'string' || !session.id.trim() || ids.has(session.id) || !validAthleteLocalDate(session.athleteLocalDate)
       || !['planned', 'completed', 'missed', 'cancelled'].includes(session.status)
       || !V2_ACTIVITY_SPORTS.some(sport => sport === session.sport)
-      || (session.planRevisionId !== null && !session.planRevisionId.trim())) {
+      || (session.planRevisionId !== null && (typeof session.planRevisionId !== 'string' || !session.planRevisionId.trim()))) {
       return { kind: 'blocked', reason: 'invalid_session' };
     }
     ids.add(session.id);
