@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,readdirSync} from 'node:fs';
 const source=readFileSync('docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql','utf8');
 const reader=readFileSync('docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql','utf8');
 function sourceTables(text){
@@ -126,4 +126,53 @@ test('export-request history retains owner provenance without leaking Auth sessi
  assert(!projection.includes("'session_id'"),'Auth session ID may not be in portable account data');
  assert(!projection.includes('pg_catalog.to_jsonb(t)'),'Raw export-job rows leak operational fields');
  assert(projection.includes('WHERE t.user_id=$1'),'Export-request rows must remain owner-scoped');
+});
+
+const communityPosts=readFileSync('docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql','utf8');
+const foodLog=readFileSync('docs/architecture/candidates/ALL-247-food-log-first-writer.review.sql','utf8');
+const foodLifecycle=readFileSync('docs/architecture/candidates/ALL-247-food-log-lifecycle.review.sql','utf8');
+const trainingMedia=readFileSync('supabase/functions/_shared/trainingExportSupabaseStorage.mjs','utf8');
+const mediaPages=readFileSync('supabase/functions/_shared/trainingExportPrivateMediaPages.mjs','utf8');
+
+test('ALL-251 source ownership: canonical Community posts and ALL-247 food logs remain unapproved export sources',()=>{
+ assert.match(communityPosts,/CREATE TABLE allin_private\.v2_community_posts\s*\(/i);
+ assert.match(communityPosts,/owner_id uuid NOT NULL REFERENCES public\.v2_profiles\(user_id\)/i);
+ assert.match(communityPosts,/source_id uuid/);
+ assert.match(foodLog,/create table public\.v2_food_log_entries\s*\(/i);
+ assert.match(foodLog,/user_id uuid not null references auth\.users\(id\)/i);
+ assert.match(foodLog,/create table allin_private\.v2_food_log_write_actions\s*\(/i);
+ assert.match(foodLifecycle,/add column deleted_at timestamptz/i);
+ // Source models have not approved a photo object ownership contract.
+ for(const candidate of [communityPosts,foodLog,foodLifecycle]){
+  assert(!/\bobject_path\b|\bstorage_bucket\b|\bphoto_bucket\b/i.test(candidate),
+   'New media ownership requires an exact ALL-251 export contract, not implicit inclusion');
+ }
+ for(const candidate of [source,reader]){
+  assert(candidate.includes("'v2_food_%'"),'ALL-247 food owner history must fail closed');
+  assert(candidate.includes("'owner_id'"),'Community posts owner_id must fail closed');
+  assert(candidate.includes('v2_community_posts')===false,
+   'Community posts cannot enter the reviewed export registry without explicit approval');
+  assert(candidate.includes("'complete',false")||candidate.includes("'complete_user_export',false")||
+   candidate.includes('complete_user_export',false)===true,
+   'Check the whole-account readiness before adding an export source');
+ }
+});
+
+test('ALL-251 private media remains Training-only until explicit Community, Nutrition and Progress references exist',()=>{
+ assert.match(trainingMedia,/v2-private-workout-objects/);
+ assert.match(mediaPages,/collection!=='private_media'/);
+ assert.match(mediaPages,/kind:'series'/);
+ assert.match(mediaPages,/kind:'route'/);
+ for(const candidate of [trainingMedia,mediaPages]){
+  assert(!/v2-private-(?:community|nutrition|progress)-/i.test(candidate),
+    'A new photo bucket must not be silently treated as Training media');
+ }
+ const migrations=readdirSync('supabase/migrations').filter(x=>x.endsWith('.sql'));
+ // Review candidates do NOT establish a deployed private-photo source.
+ for(const file of migrations){
+  const sql=readFileSync('supabase/migrations/'+file,'utf8');
+  assert(!/CREATE TABLE\s+(?:public|allin_private)\.v2_(?:community_posts|food_log_entries|progress_photos)\b/i.test(sql),
+   'Source now migrated: reconcile ALL-251 source ownership before whole-account export');
+ }
+ assert(reader.includes("'complete',false"),'Unapproved domain must keep inventory incomplete');
 });
