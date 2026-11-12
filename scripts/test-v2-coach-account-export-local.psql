@@ -48,7 +48,7 @@ BEGIN
      pg_catalog.quote_literal(c.relname)
    )=0;
  RAISE NOTICE 'Uncovered owner tables in canonical export (fail closed): %',
-   pg_catalog.coalesce(v_missing,'none');
+   coalesce(v_missing,'none');
 END $export_coverage$;
 
 SET LOCAL ROLE authenticated;
