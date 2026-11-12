@@ -12,8 +12,6 @@ INSERT INTO auth.sessions(id,user_id,not_after) VALUES
   '22222222-2222-4222-8222-222222222222',now()+interval '1 day'),
  ('33333333-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   '11111111-1111-4111-8111-111111111111',now()-interval '1 day');
-UPDATE public.v2_activity_sources SET source_device_ref='paired-trainer-42'
- WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 \i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-DEVICE-REGISTRATION-CANDIDATE.sql
 INSERT INTO allin_private.v2_device_registrations_candidate
  (id,user_id,device_ref,provider,certified_at,attestation_kind,attestation_reference_hash)
