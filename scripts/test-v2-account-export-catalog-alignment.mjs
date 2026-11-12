@@ -264,3 +264,27 @@ test('Community indirect Auth deletion cascade requires both canonical foreign-k
  assert(reader.includes("WHERE p.owner_id=$1"),
   'Community export must use the same exact owner key as cascade');
 });
+
+test('ALL-251 review-only deletion graph scanner remains private and release-blocking',()=>{
+ const graph=readFileSync(
+  'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql','utf8');
+ const claim=readFileSync(
+  'supabase/migrations/20261111123939_v2_deletion_claim_fail_closed_storage_and_owner_coverage.sql','utf8');
+ const completion=readFileSync(
+  'supabase/migrations/20261111130824_v2_deletion_completion_verify_auth_sessions_and_owner_rows.sql','utf8');
+ for(const value of ["'owner_id'","'athlete_id'","'actor_id'","'follower_id'",
+   "'followed_id'","'blocker_id'","'blocked_id'","'profile_id'"]){
+   assert(graph.includes(value),'Missing owner or relationship column '+value);
+ }
+ assert.match(graph,/WITH RECURSIVE cascade_reachable/);
+ assert.match(graph,/f\.confdeltype='c'/);
+ assert.match(graph,/relationship_or_actor_retention_policy_required/);
+ assert.match(graph,/unreviewed_storage_bucket_cleanup/);
+ assert.match(graph,/audit_retention_policy_required/);
+ assert.match(graph,/REVOKE ALL ON FUNCTION allin_private\.v2_deletion_owner_graph_gaps_review\(\)/);
+ assert.match(claim,/execution_enabled=true/);
+ assert.match(claim,/if exists\(select 1 from storage\.buckets\)/i);
+ assert.match(completion,/if exists\(select 1 from storage\.buckets\)/i);
+ assert(!claim.includes('v2_deletion_owner_graph_gaps_review'),
+  'Review scanner cannot be represented as an installed deletion-claim release gate');
+});
