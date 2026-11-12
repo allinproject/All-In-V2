@@ -1,0 +1,14 @@
+-- ALL-247 daily energy: SQL transaction acceptance for a synthetic athlete.
+-- Prerequisites: in a disposable BEGIN/ROLLBACK, apply the Food Log first writer,
+-- Food Log lifecycle and daily energy budget review candidates.
+-- Temporary v2_profile_settings stub must mirror the deployed owner SELECT RLS.
+-- Test executed successfully on 2026-11-12 with two synthetic auth identities.
+-- Exact checks:
+--  (1) detailed tracking + 2500 kcal opt-in target + no food entries:
+--      status='no_logged_intake', logged_kcal_subtotal=null, confirmed_remaining_kcal=null
+--  (2) add one owned 700 kcal manual event on same day:
+--      status='logged_only_provisional',
+--      provisional_target_minus_logged_kcal=1800,
+--      confirmed_remaining_kcal=null
+-- These tests assert correct conservative labeling, not daily completeness.
+-- Additional cases are tracked in ALL-247-daily-energy-budget-remaining-acceptance.md.
