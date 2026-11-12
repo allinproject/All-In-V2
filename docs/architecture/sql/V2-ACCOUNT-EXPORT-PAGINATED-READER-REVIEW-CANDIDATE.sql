@@ -251,6 +251,22 @@ BEGIN
     ' JOIN allin_private.v2_subscription_purchases t ON t.id=e.purchase_id'||
     ' WHERE t.owner_id=$1 ORDER BY e.purchase_id,e.revision LIMIT $2 OFFSET $3';
   ELSE RAISE EXCEPTION 'Unknown billing export projection' USING ERRCODE='42501'; END IF;
+ ELSIF p_collection='food.my_entries' THEN
+  -- REVIEW-ONLY / NOT REGISTERED: ALL-247 owner-visible consumed events
+  -- including deleted tombstones and revisions are portable history.
+  -- Do not apply the active-day user-facing RLS filter here: this trusted
+  -- owner/session/request-gated export must not silently erase old events.
+  -- Never export the private write-action fingerprint/replay ledger.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''id'',e.id,''user_id'',e.user_id,'||
+    '''consumed_at'',e.consumed_at,''local_date'',e.local_date,'||
+    '''timezone_name'',e.timezone_name,''meal_slot'',e.meal_slot,'||
+    '''label'',e.label,''quantity'',e.quantity,''unit'',e.unit,'||
+    '''kcal'',e.kcal,''nutrition_source'',e.nutrition_source,'||
+    '''revision'',e.revision,''created_at'',e.created_at,'||
+    '''updated_at'',e.updated_at,''deleted_at'',e.deleted_at) '||
+    'FROM public.v2_food_log_entries e '||
+    'WHERE e.user_id=$1 ORDER BY e.consumed_at,e.id LIMIT $2 OFFSET $3';
  ELSIF p_collection='community.my_posts' THEN
   -- REVIEW-ONLY / NOT REGISTERED: this owner-only projection is intentionally
   -- unreachable through the current inventory allowlist. Activating it
