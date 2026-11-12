@@ -87,3 +87,26 @@ test('source review lane retains highest priority over freezer-kit method',()=>{
   const r=recipe();r.source_origin=null;r.source_freezer_kit_review_only={kind:'raw_kit'};
   assert.equal(inspectRecipe(r).reviewLane,'source_identity_and_rights');
 });
+
+test('report orders source ownership before structure, freezer kit and standard work',async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'all218-priorities-'));
+  try {
+    const standard=recipe('r-standard');standard.title='Standard recipe';
+    const kit=recipe('r-kit');kit.source_freezer_kit_review_only={kind:'raw_kit'};
+    const structural=recipe('r-structure');structural.authored_ingredients_review_only=['Salt'];
+    const imported=recipe('recipe-import-source');imported.title='Imported recipe';
+    const input=path.join(dir,'recipes.ndjson');
+    fs.writeFileSync(input,[standard,kit,structural,imported].map(JSON.stringify).join('\n')+'\n');
+    const result=await triageJsonl(input,{expectedRecipes:4});
+    assert.equal(result.ok,true);
+    assert.equal(result.publicationApproved,false);
+    assert.deepEqual(result.items.map(r=>r.reviewLane),[
+      'source_identity_and_rights','ingredient_and_variant_structure',
+      'freezer_kit_method','standard_recipe_measurements'
+    ]);
+    assert.deepEqual(result.reviewLaneCounts,{
+      standard_recipe_measurements:1,freezer_kit_method:1,
+      ingredient_and_variant_structure:1,source_identity_and_rights:1
+    });
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+});
