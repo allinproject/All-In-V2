@@ -94,7 +94,10 @@ BEGIN
    AND series.state='ready' AND series.quality IN ('trusted','partial')
    AND src.quality IN ('trusted','partial');
  RETURN pg_catalog.jsonb_build_object(
-   'activityId',v_activity.id,'sport',v_activity.sport,
+   -- Certified identity/revision is required by the existing mobile
+   -- CompletedActivityScreenContent state isolation and owner reader.
+   'activityId',v_activity.id,'ownerId',v_activity.user_id,
+   'version',v_activity.version,'sport',v_activity.sport,
    'sportSubtype',v_activity.sport_subtype,
    'activityKind',v_activity.activity_kind,'status',v_activity.status,
    'localDate',v_activity.athlete_local_date,'timezone',v_activity.timezone,
