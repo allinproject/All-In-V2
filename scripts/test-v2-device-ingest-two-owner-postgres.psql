@@ -41,6 +41,12 @@ BEGIN
   RAISE EXCEPTION 'Owner A can see another athlete activity'; END IF;
  IF (SELECT count(*) FROM public.v2_activity_sources)<>1 THEN
   RAISE EXCEPTION 'Owner A can see another athlete source'; END IF;
+ -- Granting minimum UPDATE(id) for the writer's FOR UPDATE lock must NOT
+ -- permit a direct client-style row mutation: no UPDATE RLS policy exists.
+ BEGIN
+  UPDATE public.v2_completed_activities SET id=id WHERE id=ride;
+  IF FOUND THEN RAISE EXCEPTION 'Device ingest role directly updated activity'; END IF;
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN
   PERFORM allin_private.v2_device_ingest_scalar_gateway_candidate(
    repeat('1',64),repeat('2',64),b,run,run_src,
