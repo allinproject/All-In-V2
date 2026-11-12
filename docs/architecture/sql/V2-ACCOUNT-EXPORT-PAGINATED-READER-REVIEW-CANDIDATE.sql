@@ -106,7 +106,8 @@ BEGIN
      AND NOT (
        n.nspname='allin_private' AND c.relname=ANY(ARRAY[
          'v2_community_pair_revisions','v2_community_follows',
-         'v2_community_blocks','v2_community_action_receipts'
+         'v2_community_blocks','v2_community_action_receipts',
+         'v2_subscription_checkout_attempts','v2_subscription_purchases'
        ])
      )
  ) THEN RAISE EXCEPTION 'Unreviewed alternate-key owner table requires export coverage'
@@ -128,6 +129,17 @@ BEGIN
       'v2_community_action_receipts'])
  ) THEN RAISE EXCEPTION 'Community relationship inventory not approved'
     USING ERRCODE='42501'; END IF;
+ -- Billing source identity is owner_id; event receipts join by purchase_id.
+ -- Missing even one relation refuses a supposed full billing-domain export.
+ IF EXISTS (
+   SELECT 1 FROM (VALUES
+    ('allin_private.v2_subscription_checkout_attempts'),
+    ('allin_private.v2_subscription_purchases'),
+    ('allin_private.v2_subscription_verified_events')
+   ) AS required(name)
+   WHERE pg_catalog.to_regclass(required.name) IS NULL
+ ) THEN RAISE EXCEPTION 'Billing export source graph is incomplete'
+    USING ERRCODE='42501'; END IF;
  -- This ID is bound to the exact PostgreSQL snapshot and export request.
  -- It MUST NOT be recomputed using a new transaction during staging.
  v_snapshot:=pg_catalog.md5(p_owner::text||':'||p_request::text||':'||
@@ -142,6 +154,9 @@ BEGIN
       UNION ALL SELECT 'community.incoming_follow_requests'
       UNION ALL SELECT 'community.outgoing_blocks'
       UNION ALL SELECT 'community.my_action_receipts'
+      UNION ALL SELECT 'billing.checkout_attempts'
+      UNION ALL SELECT 'billing.purchases'
+      UNION ALL SELECT 'billing.verified_events'
     ) AS ordered),
   'ownerTableCount',pg_catalog.cardinality(v_expected),
   'snapshotIsRepeatableRead',true,
@@ -185,6 +200,31 @@ BEGIN
     '''id'',u.id,''email'',u.email,''created_at'',u.created_at,'||
     '''last_sign_in_at'',u.last_sign_in_at) FROM auth.users u '||
     'WHERE u.id=$1 ORDER BY u.id LIMIT $2 OFFSET $3';
+ ELSIF p_collection LIKE 'billing.%' THEN
+  IF p_collection='billing.checkout_attempts' THEN
+   v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''attemptId'',t.attempt_id,''provider'',t.provider,'||
+    '''environment'',t.environment,''offerKind'',t.offer_kind,'||
+    '''state'',t.state,''verifiedAt'',t.verified_at)'||
+    ' FROM allin_private.v2_subscription_checkout_attempts t'||
+    ' WHERE t.owner_id=$1 ORDER BY t.attempt_id LIMIT $2 OFFSET $3';
+  ELSIF p_collection='billing.purchases' THEN
+   v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''purchaseId'',t.id,''checkoutAttemptId'',t.checkout_attempt_id,'||
+    '''provider'',t.provider,''environment'',t.environment,'||
+    '''phase'',t.phase,''revision'',t.revision,'||
+    '''accessUntil'',t.access_until,''updatedAt'',t.updated_at)'||
+    ' FROM allin_private.v2_subscription_purchases t'||
+    ' WHERE t.owner_id=$1 ORDER BY t.id LIMIT $2 OFFSET $3';
+  ELSIF p_collection='billing.verified_events' THEN
+   v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''purchaseId'',e.purchase_id,''provider'',e.provider,'||
+    '''environment'',e.environment,''revision'',e.revision,'||
+    '''acceptedAt'',e.accepted_at)'||
+    ' FROM allin_private.v2_subscription_verified_events e'||
+    ' JOIN allin_private.v2_subscription_purchases t ON t.id=e.purchase_id'||
+    ' WHERE t.owner_id=$1 ORDER BY e.purchase_id,e.revision LIMIT $2 OFFSET $3';
+  ELSE RAISE EXCEPTION 'Unknown billing export projection' USING ERRCODE='42501'; END IF;
  ELSIF p_collection LIKE 'community.%' THEN
   v_schema:='allin_private';
   IF p_collection='community.outgoing_follows' THEN
