@@ -42,7 +42,7 @@ END $restored$;
 
 SET ROLE service_role;
 DO $access$
-DECLARE r text;
+DECLARE r text; claim_status text;
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
        '77777777-7777-4777-8777-777777777777','sandbox') WHERE entitled)
@@ -59,6 +59,18 @@ BEGIN
   'restore_backup_apple_A','restore_backup_refund_apple_A','refunded',NULL) INTO r;
  IF r<>'duplicate' THEN
    RAISE EXCEPTION 'Restored immutable event not idempotent: %',r;
+ END IF;
+ -- Returning subscribers must not regain a seven-day trial merely because
+ -- the canonical purchase ledger was restored from backup.
+ SELECT status INTO claim_status FROM public.v2_billing_claim_trial_checkout(
+   '77777777-7777-4777-8777-777777777777');
+ IF claim_status<>'trial_ineligible' THEN
+   RAISE EXCEPTION 'Restore reopened owner A trial eligibility: %',claim_status;
+ END IF;
+ SELECT status INTO claim_status FROM public.v2_billing_claim_trial_checkout(
+   '88888888-8888-4888-8888-888888888888');
+ IF claim_status<>'trial_ineligible' THEN
+   RAISE EXCEPTION 'Restore reopened owner B trial eligibility: %',claim_status;
  END IF;
  -- A new event after restore must allocate a fresh identity and revision.
  -- This catches a custom-format backup that restores rows but loses the
