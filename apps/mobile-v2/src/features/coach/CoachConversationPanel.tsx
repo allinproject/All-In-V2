@@ -18,12 +18,14 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
  const [notice,setNotice]=useState<string|null>(null);
  const [revision,setRevision]=useState(0);
  const mounted=useRef(true),saving=useRef(false);
+ const historyEpoch=useRef(0);
  const candidate=useRef<string|null>(null);
  if(candidate.current===null)candidate.current=secureId();
  const retry=useRef<{text:string;command:CoachSendCommand}|null>(null);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;retry.current=null}},[]);
  useEffect(()=>{
   let current=true;
+  const epoch=++historyEpoch.current;
   setThread(null);setMessages(null);setOlderCursor(null);setLoadingOlder(false);
   if(!V2_COACH_READ_ENABLED||!candidate.current){
    setNotice(offline);return()=>{current=false};
@@ -41,35 +43,37 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
    if(history.status!=='ready'){setNotice(offline);return;}
    setMessages([...history.messages].reverse());
    setOlderCursor(history.nextCursor);
-   setNotice(history.hasMore?'Showing recent saved history. Older paging is pending.':null);
+   setNotice(history.hasMore?'Showing recent saved history. Load older messages above.':null);
   })().catch(()=>{if(current&&mounted.current)setNotice(offline)})
    .finally(()=>{if(current&&mounted.current)setBusy(false)});
-  return()=>{current=false};
+  return()=>{current=false;if(historyEpoch.current===epoch)historyEpoch.current++};
  },[ownerId,revision]);
  const loadOlder=()=>{
   if(!thread||!olderCursor||loadingOlder||busy)return;
   const capturedCursor=olderCursor,capturedThread=thread;
+  const capturedEpoch=historyEpoch.current;
   setLoadingOlder(true);
   const client=createCoachOwnerClient(coachServicesForSupabase(supabase),
-   ownerId,()=>mounted.current);
+   ownerId,()=>mounted.current&&historyEpoch.current===capturedEpoch);
   void client.history(capturedThread,capturedCursor).then(page=>{
-   if(!mounted.current)return;
+   if(!mounted.current||historyEpoch.current!==capturedEpoch)return;
    if(page.status!=='ready'){
     setNotice('Older saved Coach history could not be verified.');
     return;
    }
-   setMessages(previous=>{
-    if(!previous)return previous;
-    const known=new Set(previous.map(m=>m.id));
-    if(page.messages.some(m=>known.has(m.id))){
-     setNotice('Coach history changed during paging. Refresh to reconcile.');
-     return previous;
-    }
-    return [...page.messages].reverse().concat(previous);
-   });
+   const known=new Set(messages.map(m=>m.id));
+   if(page.messages.some(m=>known.has(m.id))){
+    setNotice('Coach history changed during paging. Refresh to reconcile.');
+    return;
+   }
+   setMessages(previous=>previous?[...page.messages].reverse().concat(previous):previous);
    setOlderCursor(page.nextCursor);
-  }).catch(()=>{if(mounted.current)setNotice('Older history is unavailable.')})
-   .finally(()=>{if(mounted.current)setLoadingOlder(false)});
+  }).catch(()=>{
+   if(mounted.current&&historyEpoch.current===capturedEpoch)
+    setNotice('Older history is unavailable.');
+  }).finally(()=>{
+   if(mounted.current&&historyEpoch.current===capturedEpoch)setLoadingOlder(false);
+  });
  };
  const send=()=>{
   if(!V2_COACH_SEND_ENABLED||!V2_COACH_READ_ENABLED||!thread||!messages||
@@ -89,7 +93,7 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
   void client.send(command).then(r=>{
    if(!mounted.current)return;
    if(r.status==='saved'){
-    retry.current=null;setDraft('');setRevision(v=>v+1);
+    retry.current=null;setDraft('');historyEpoch.current++;setRevision(v=>v+1);
    }else setNotice('Save not confirmed. Retry unchanged or refresh saved messages.');
   }).catch(()=>{if(mounted.current)setNotice('Coach reply could not be verified.')})
    .finally(()=>{saving.current=false;if(mounted.current)setBusy(false)});
@@ -114,7 +118,7 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
   {notice&&messages!==null?<Text style={styles.notice}>{notice}</Text>:null}
   {V2_COACH_READ_ENABLED&&thread?<Pressable accessibilityRole="button"
    accessibilityLabel="Refresh saved Coach history" disabled={busy}
-   onPress={()=>setRevision(v=>v+1)}>
+   onPress={()=>{historyEpoch.current++;setRevision(v=>v+1)}}>
    <Text style={styles.link}>Refresh saved messages</Text></Pressable>:null}
   {V2_COACH_SEND_ENABLED&&V2_COACH_READ_ENABLED&&thread&&messages?
    <View style={styles.compose}>
