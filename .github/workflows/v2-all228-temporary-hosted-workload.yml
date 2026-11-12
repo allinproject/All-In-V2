@@ -2,6 +2,11 @@ name: ALL-228 temporary ingredient workload login acceptance (manual only)
 
 on:
   workflow_dispatch:
+    inputs:
+      session_pooler_host:
+        description: 'Exact session pooler hostname from temporary Supabase Connect panel (no password)'
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -19,10 +24,10 @@ jobs:
     env:
       ALL228_ALLOW_HOSTED_INGEST_SMOKE: '1'
       ALL228_TEMP_STAGING_PROJECT_REF: fbtgknlxjyeqrxemskbl
-      PGHOST: db.fbtgknlxjyeqrxemskbl.supabase.co
+      PGHOST: ${{ inputs.session_pooler_host }}
       PGPORT: '5432'
       PGDATABASE: postgres
-      PGUSER: allin_ing_workload_temp_all228
+      PGUSER: allin_ing_workload_temp_all228.fbtgknlxjyeqrxemskbl
       PGSSLMODE: verify-full
       PGSSLROOTCERT: /etc/ssl/certs/ca-certificates.crt
     steps:
@@ -40,7 +45,7 @@ jobs:
             echo "::error::ALL228_TEMP_STAGING_PGPASS_LINE has not been provisioned; no login attempted"
             exit 1
           fi
-          # The secret is a single .pgpass record matching exact PGHOST:PGPORT:PGDATABASE:PGUSER.
+          # The secret is a single .pgpass record for THIS session pooler host/user.
           printf '%s\n' "$ALL228_TEMP_STAGING_PGPASS_LINE" > "$RUNNER_TEMP/all228.pgpass"
           chmod 600 "$RUNNER_TEMP/all228.pgpass"
       - name: Verify real independent workload login and fail-closed permissions
