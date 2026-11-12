@@ -374,6 +374,17 @@ BEGIN
    RAISE EXCEPTION 'Unreviewed alternate-key table % bypassed paginated inventory',v_name;
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   EXECUTE 'RESET ROLE';
+  -- The older inline Profile export must fail on exactly the same future
+  -- owner tables. Checking only the service paginated reader is insufficient.
+  EXECUTE 'SET LOCAL ROLE authenticated';
+  PERFORM pg_catalog.set_config('request.jwt.claim.sub',
+   '91111111-9111-4111-8111-911111111111',true);
+  BEGIN
+   PERFORM public.v2_export_my_account_snapshot(
+    '91111111-9111-4111-8111-911111111111');
+   RAISE EXCEPTION 'Unreviewed alternate-key table % bypassed inline account snapshot',v_name;
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  EXECUTE 'RESET ROLE';
   EXECUTE pg_catalog.format('DROP TABLE allin_private.%I',v_name);
  END LOOP;
  RAISE NOTICE 'PASS ALL-251: Nutrition/Progress/gear/Community owner-key tables force export review';
