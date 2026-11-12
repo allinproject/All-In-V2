@@ -1,0 +1,54 @@
+\set ON_ERROR_STOP on
+-- ALL-222: isolated local Supabase ONLY, after the two committed pre-upgrade
+-- owner fixtures but before final candidate installation. Exercise PostgreSQL
+-- transactional DDL rollback without touching any linked/remote database.
+-- Both candidate SQL files MUST be copied into this file's local directory.
+BEGIN;
+\ir V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql
+\ir V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql
+
+DO $installed$
+BEGIN
+  IF to_regclass('allin_private.v2_subscription_checkout_attempts') IS NULL OR
+     to_regclass('allin_private.v2_subscription_purchases') IS NULL OR
+     to_regclass('allin_private.v2_subscription_verified_events') IS NULL THEN
+    RAISE EXCEPTION 'Billing schema did not install before rollback rehearsal';
+  END IF;
+  IF to_regprocedure('public.v2_billing_commit_verified_native(uuid,text,text,text,text,text,timestamptz)') IS NULL OR
+     NOT has_function_privilege('service_role',
+       'public.v2_billing_commit_verified_native(uuid,text,text,text,text,text,timestamptz)',
+       'EXECUTE') OR
+     has_function_privilege('authenticated',
+       'public.v2_billing_commit_verified_native(uuid,text,text,text,text,text,timestamptz)',
+       'EXECUTE') THEN
+    RAISE EXCEPTION 'Pre-rollback billing RPC security differs from candidate';
+  END IF;
+END $installed$;
+ROLLBACK;
+
+-- The candidate's schema, RPCs, ACL additions and sequence must disappear.
+-- Existing foundation accounts remain durable and unchanged by DDL rollback.
+DO $restored$
+DECLARE
+  owner_a constant uuid := '55555555-5555-4555-8555-555555555555';
+  owner_b constant uuid := '66666666-6666-4666-8666-666666666666';
+BEGIN
+  IF to_regclass('allin_private.v2_subscription_checkout_attempts') IS NOT NULL OR
+     to_regclass('allin_private.v2_subscription_purchases') IS NOT NULL OR
+     to_regclass('allin_private.v2_subscription_verified_events') IS NOT NULL OR
+     to_regclass('allin_private.v2_subscription_verified_events_id_seq') IS NOT NULL OR
+     to_regprocedure('public.v2_billing_commit_verified_native(uuid,text,text,text,text,text,timestamptz)') IS NOT NULL OR
+     to_regprocedure('public.v2_billing_read_owner_access(uuid,text)') IS NOT NULL THEN
+    RAISE EXCEPTION 'Transactional billing schema rollback retained an object';
+  END IF;
+  IF (SELECT count(*) FROM public.v2_profiles
+        WHERE (user_id=owner_a AND display_name='Billing Upgrade A') OR
+              (user_id=owner_b AND display_name='Billing Upgrade B')) <> 2 OR
+     (SELECT count(*) FROM public.v2_profile_settings
+        WHERE user_id IN (owner_a,owner_b) AND version=1) <> 2 OR
+     (SELECT count(*) FROM public.v2_onboarding_progress
+        WHERE user_id IN (owner_a,owner_b) AND version=1) <> 2 THEN
+    RAISE EXCEPTION 'Transactional billing rollback damaged pre-existing account state';
+  END IF;
+  RAISE NOTICE 'PASS ALL-222: review billing DDL and grants fully rolled back, populated foundation preserved';
+END $restored$;
