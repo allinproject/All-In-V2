@@ -104,6 +104,22 @@ BEGIN
   RAISE EXCEPTION 'Revocation mismatch'; END IF;
  RAISE NOTICE 'PASS ALL-243 revoke, audit, idempotence and cross-owner denial';
 END $revoke$;
+-- Even the restricted registrar cannot rewrite a consumed challenge or
+-- make a revoked device active again; neither has a client-accessible path.
+DO $immutability$
+BEGIN
+ BEGIN
+  UPDATE allin_private.v2_device_pairing_challenges_candidate
+   SET consumed_at=NULL WHERE id='aaaaaaaa-1111-4111-8111-111111111111';
+  RAISE EXCEPTION 'Consumed challenge could be reopened';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  UPDATE allin_private.v2_device_registrations_candidate SET revoked_at=NULL
+   WHERE id='aaaaaaaa-2222-4222-8222-222222222222';
+  RAISE EXCEPTION 'Certified device could be un-revoked';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ RAISE NOTICE 'PASS ALL-243 immutable consumed challenge and device revocation';
+END $immutability$;
 RESET ROLE;
 DO $privileged_audit$
 BEGIN
