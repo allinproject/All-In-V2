@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {editableFoodDay,prepareFoodReplacement,newFoodActionId} from './fuelFoodDetail.ts';
+import {editableFoodDay,prepareFoodReplacement,newFoodActionId,foodActionIdFromNative} from './fuelFoodDetail.ts';
 
 const a='11111111-1111-4111-8111-111111111111';
 const b='22222222-2222-4222-8222-222222222222';
@@ -108,4 +108,13 @@ test('secure id constructor generates RFC 4122 version 4 when available',()=>{
  if(id===null)return; // devices without secure entropy fail closed
  assert.match(id,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
  assert.notEqual(id,newFoodActionId());
+});
+
+test('native Expo UUID boundary accepts secure UUIDv4 only',()=>{
+ const uuid='4c98a3d6-7cb4-4e64-981f-a004fb384a60';
+ assert.equal(foodActionIdFromNative(()=>uuid),uuid);
+ assert.equal(foodActionIdFromNative(()=>uuid.toUpperCase()),uuid);
+ assert.equal(foodActionIdFromNative(()=>''),null);
+ assert.equal(foodActionIdFromNative(()=>'00000000-0000-1000-8000-000000000000'),null);
+ assert.equal(foodActionIdFromNative(()=>{throw new Error('native module missing');}),null);
 });
