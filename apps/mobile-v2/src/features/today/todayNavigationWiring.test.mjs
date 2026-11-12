@@ -46,7 +46,15 @@ test('Today never presents unavailable domain data as accepted athlete facts', (
   assert.match(home, /planned: \{ status: 'unavailable' \}/);
   assert.match(home, /completed: \{ status: 'unavailable' \}/);
   assert.match(home, /todayEnergyGlance\(\{ status: 'unavailable' \}/);
-  assert.match(home, /todayFoodLog\(\{ status: 'unavailable' \}/);
+  // ALL-247 may display a complete verified owner day only when the explicit
+  // read flag and access gate allow it. Before launch, failure remains unknown.
+  assert.match(home, /todayFoodLog\\(foodEvidence,/);
+  assert.match(home, /!V2_FUEL_DAY_READ_ENABLED \\|\\| gate\\.status !== 'ready'/);
+  assert.match(home, /setFoodEvidence\\(\\{status:'unavailable'\\}\\)/);
+  assert.match(home, /readOwnedFuelDay\\(supabase,user\\.id,localDay,/);
+  const client = source('../fuel/fuelOwnerFoodClient.ts');
+  assert.match(client, /EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED === 'true'/);
+  assert.match(client, /await services\\.authenticateOwner\\(\\)/);
   assert.match(home, /todayKitchenDue\(\{status:'unavailable'\}/);
   assert.ok(home.includes("todayWeatherGlance({status:'unavailable'}"));
   assert.ok(home.includes('{weatherGlance.label}'));
