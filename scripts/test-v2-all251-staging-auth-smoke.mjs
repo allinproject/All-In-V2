@@ -188,21 +188,85 @@ try{
   const bDay=await reader(bToken,b.id,day);
   assert.equal(bDay.status,200,'Other owner cannot read own day');
   assert.equal((await bDay.json()).entries?.length,0,'A food leaked into B day');
-  acceptanceStep='ALL247 owner delete';
-  const deleted=await rpc('v2_food_log_mutate_manual',{
+  acceptanceStep='ALL247 edit food';
+  const edited=await rpc('v2_food_log_mutate_manual',{
+   p_expected_user_id:a.id,p_action_id:randomUUID(),p_entry_id:entryId,
+   p_expected_revision:1,p_operation:'edit',
+   p_consumed_at:food.p_consumed_at,p_local_date:day,
+   p_timezone_name:food.p_timezone_name,p_meal_slot:food.p_meal_slot,
+   p_label:'ALL247 edited food',p_quantity:1,p_unit:'serving',
+   p_kcal:350,p_nutrition_source:'user_entered',
+  },aToken);
+  assert.equal(edited.status,200,'Authorized food edit rejected');
+  assert.equal((await edited.json()).revision,2,'Edit did not advance revision');
+  const afterEdit=await reader(aToken,a.id,day);
+  assert.equal(afterEdit.status,200,'Edited food day unavailable');
+  const editSnapshot=await afterEdit.json();
+  assert.equal(editSnapshot.entries?.[0]?.label,'ALL247 edited food');
+  assert.notEqual(editSnapshot.sourceRevision,first.sourceRevision,'Edit revision unchanged');
+
+  acceptanceStep='ALL247 stale edit denial';
+  const stale=await rpc('v2_food_log_mutate_manual',{
    p_expected_user_id:a.id,p_action_id:randomUUID(),p_entry_id:entryId,
    p_expected_revision:1,p_operation:'delete',
   },aToken);
+  assert([400,409,422].includes(stale.status),'Stale revision deleted newer entry');
+
+  acceptanceStep='ALL247 cross-account deletion denial';
+  const foreignDelete=await rpc('v2_food_log_mutate_manual',{
+   p_expected_user_id:a.id,p_action_id:randomUUID(),p_entry_id:entryId,
+   p_expected_revision:2,p_operation:'delete',
+  },bToken);
+  assert([400,401,403].includes(foreignDelete.status),'Other account deleted owner food');
+
+  acceptanceStep='ALL247 move meal to another day';
+  const movedDay='2026-11-13';
+  const moveActionId=randomUUID();
+  const moveArgs={
+   p_expected_user_id:a.id,p_action_id:moveActionId,p_entry_id:entryId,
+   p_expected_revision:2,p_operation:'move',
+   p_consumed_at:'2026-11-13T18:00:00Z',p_local_date:movedDay,
+   p_timezone_name:'America/Chicago',p_meal_slot:'dinner',
+   p_label:'ALL247 edited food',p_quantity:1,p_unit:'serving',
+   p_kcal:350,p_nutrition_source:'user_entered',
+  };
+  const moved=await rpc('v2_food_log_mutate_manual',moveArgs,aToken);
+  assert.equal(moved.status,200,'Authorized meal move rejected');
+  assert.equal((await moved.json()).revision,3,'Move did not advance revision');
+  const movedRetry=await rpc('v2_food_log_mutate_manual',moveArgs,aToken);
+  assert.equal(movedRetry.status,200,'Exact move retry was rejected');
+  assert.equal((await movedRetry.json()).replayed,true,'Move retry re-applied action');
+  const oldDay=await reader(aToken,a.id,day);
+  assert.equal(oldDay.status,200,'Original Food day read failed after move');
+  const oldSnapshot=await oldDay.json();
+  assert.equal(oldSnapshot.entries?.length,0,'Meal retained on old date');
+  const newDay=await reader(aToken,a.id,movedDay);
+  assert.equal(newDay.status,200,'New Food day read failed after move');
+  const newSnapshot=await newDay.json();
+  assert.equal(newSnapshot.entries?.length,1,'Moved meal not present on new date');
+  assert.equal(newSnapshot.entries[0].revision,3);
+  assert.equal(newSnapshot.entries[0].meal_slot,'dinner');
+  assert.notEqual(oldSnapshot.sourceRevision,first.sourceRevision,'Old date did not change');
+
+  acceptanceStep='ALL247 owner delete and exact replay';
+  const deleteArgs={
+   p_expected_user_id:a.id,p_action_id:randomUUID(),p_entry_id:entryId,
+   p_expected_revision:3,p_operation:'delete',
+  };
+  const deleted=await rpc('v2_food_log_mutate_manual',deleteArgs,aToken);
   assert.equal(deleted.status,200,'Owner could not delete synthetic Food Log entry');
+  assert.equal((await deleted.json()).revision,4,'Delete did not advance revision');
+  const deleteRetry=await rpc('v2_food_log_mutate_manual',deleteArgs,aToken);
+  assert.equal(deleteRetry.status,200,'Exact delete retry not accepted');
+  assert.equal((await deleteRetry.json()).replayed,true,'Delete retry re-applied');
   acceptanceStep='ALL247 post-delete day read';
-  const after=await reader(aToken,a.id,day);
+  const after=await reader(aToken,a.id,movedDay);
   assert.equal(after.status,200,'Food Log day unavailable after delete');
   const final=await after.json();
   assert.equal(final.complete,true);
   assert.equal(final.entries?.length,0,'Deleted food was still visible');
-  assert.notEqual(final.sourceRevision,first.sourceRevision,'Food Log revision not updated');
-  process.stdout.write('ALL247 delete and revision passed\n');
-  process.stdout.write('PASS: hosted Food Log owner add/replay/read/delete; anon and foreign owner denied\n');
+  assert.notEqual(final.sourceRevision,newSnapshot.sourceRevision,'Food Log revision not updated');
+  process.stdout.write('PASS: hosted Food Log add/edit/move/delete; revisions, replay, both days and owner isolation\n');
  }
 
  acceptanceStep='ALL251 disabled download route';
