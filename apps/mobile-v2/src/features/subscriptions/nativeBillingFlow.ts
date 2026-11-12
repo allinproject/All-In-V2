@@ -35,7 +35,7 @@ export type NativeBillingServer=Readonly<{
   readOwnerEntitlement:(ownerId:string)=>Promise<{entitled:boolean}>;
 }>;
 
-const uuid=(v:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
+const uuid=(v:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
 const product=(v:string)=>typeof v==='string'&&/^[A-Za-z0-9_.-]{3,180}$/.test(v);
 
 export function createNativeBillingFlow(input:{
