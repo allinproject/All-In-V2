@@ -81,7 +81,7 @@ BEGIN
  pb:=public.v2_account_export_page_review_candidate(b,sb,rb,'food.my_entries',NULL,25);
  -- Aggregate the two independently validated JSONB page arrays without
  -- relying on an overloaded concatenation expression in PL/pgSQL.
- SELECT pg_catalog.coalesce(pg_catalog.jsonb_agg(part.item ORDER BY part.page_number,part.ordinality),'[]'::jsonb)
+ SELECT COALESCE(pg_catalog.jsonb_agg(part.item ORDER BY part.page_number,part.ordinality),'[]'::jsonb)
  INTO all_rows
  FROM (
   SELECT 1 AS page_number, x.item, x.ordinality
