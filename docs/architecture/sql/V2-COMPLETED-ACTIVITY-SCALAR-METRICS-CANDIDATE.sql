@@ -93,16 +93,20 @@ BEGIN
   OR p_source_payload_hash !~ '^[0-9a-f]{64}$' THEN
   RAISE EXCEPTION 'Invalid scalar metric evidence' USING ERRCODE='22023';
  END IF;
- -- Serialize owner-scoped ingest, not arbitrary UI display projection.
+ -- Serialize scalar ingest for this owner without granting UPDATE to the
+ -- read-and-append device capability. Uniqueness, FK ownership, and the
+ -- transaction-scoped owner lock arbitrate retries and concurrent appends.
+ -- Other activity/source lifecycle writers must honor this same lock before
+ -- changing state/evidence; that cross-writer race is a release gate.
  PERFORM pg_catalog.pg_advisory_xact_lock(
    pg_catalog.hashtextextended('v2-metric:'||p_user_id::text,0));
  SELECT * INTO v_activity FROM public.v2_completed_activities
-  WHERE id=p_activity_id AND user_id=p_user_id FOR UPDATE;
+  WHERE id=p_activity_id AND user_id=p_user_id;
  IF NOT FOUND OR v_activity.status='invalidated' THEN
   RAISE EXCEPTION 'Activity missing or not owned' USING ERRCODE='42501'; END IF;
  SELECT * INTO v_source FROM public.v2_activity_sources
   WHERE id=p_source_id AND user_id=p_user_id
-    AND activity_id=p_activity_id FOR SHARE;
+    AND activity_id=p_activity_id;
  IF NOT FOUND OR v_source.quality='rejected' THEN
   RAISE EXCEPTION 'Rejected or cross-owner source' USING ERRCODE='42501'; END IF;
  -- The source must match the evidence hash; no arbitrary user value
@@ -138,7 +142,7 @@ BEGIN
  SELECT * INTO v_existing FROM public.v2_activity_metric_values
    WHERE activity_id=p_activity_id AND user_id=p_user_id
      AND segment_id IS NULL AND source_id=p_source_id AND metric_code=p_metric_code
-     AND definition_version=p_definition_version FOR UPDATE;
+     AND definition_version=p_definition_version;
  IF FOUND THEN
   IF v_existing.id<>p_value_id OR
     v_existing.measurement_kind<>p_measurement_kind OR
