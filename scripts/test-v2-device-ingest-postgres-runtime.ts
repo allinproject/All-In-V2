@@ -4,7 +4,7 @@
  */
 import postgres from 'npm:postgres@3.4.7';
 import assert from 'node:assert/strict';
-import {createCertifiedDevicePostgresAdapter} from
+import {createCertifiedDevicePostgresAdapter,type TransactionalSql} from
  '../supabase/functions/_shared/certifiedDevicePostgresAdapter.ts';
 import {signInternalDeviceEnvelope,ingestVerifiedDeviceEnvelopeTransactional}
  from '../supabase/functions/_shared/certifiedDeviceIngestServer.ts';
@@ -37,7 +37,7 @@ const payload={verifiedByProviderAdapter:true as const,
 const operator=postgres(dbUrl,{max:1,prepare:false,connect_timeout:5});
 const admin=postgres(adminUrl,{max:1,prepare:false,connect_timeout:5});
 const backend=createCertifiedDevicePostgresAdapter({
- db:operator,
+ db:operator as unknown as TransactionalSql,
  auth:{getUser:async token=>token===bearer?{id:owner}:null},
  readVerifiedTokenClaims:token=>token===bearer?{
   sessionId:session,expiresAtMs:now+600000}:null,
