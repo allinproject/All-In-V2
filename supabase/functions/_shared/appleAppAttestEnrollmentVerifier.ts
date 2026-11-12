@@ -77,9 +77,13 @@ export function inspectAppleAppAttestation(input:{
   a.readUInt32BE(33)!==0)
   throw Error('Wrong App Attest app identity, flags or counter');
  const guid=a.slice(37,53);
- const expectedGuid=input.environment==='sandbox'?
-  Buffer.from('appattestdevelop'):Buffer.concat([Buffer.from('appattest'),Buffer.alloc(7)]);
- if(!same(guid,expectedGuid)||a.readUInt16BE(53)!==32)
+ // Apple documents 'appattestsandbox' for sandbox; earlier App Attest
+ // examples also used 'appattestdevelop'. Neither is accepted in production.
+ const validGuid=input.environment==='sandbox'?
+  [Buffer.from('appattestsandbox'),Buffer.from('appattestdevelop')]
+   .some(expected=>same(guid,expected)):
+  same(guid,Buffer.concat([Buffer.from('appattest'),Buffer.alloc(7)]));
+ if(!validGuid||a.readUInt16BE(53)!==32)
   throw Error('App Attest environment or credential length mismatch');
  const id=Buffer.from(input.keyId,'base64url');
  if(id.length!==32||!same(a.slice(55,87),id))
