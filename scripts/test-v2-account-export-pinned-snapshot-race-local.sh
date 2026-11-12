@@ -25,8 +25,8 @@ INSERT INTO allin_private.v2_account_export_requests_candidate
  ('$request','$owner','$session','approved',now()+interval '1 hour');
 INSERT INTO public.v2_coach_threads(id,user_id) VALUES ('$thread','$owner');
 INSERT INTO public.v2_coach_messages
- (user_id,thread_id,role,content,client_action_id)
- VALUES ('$owner','$thread','user','before-snapshot',gen_random_uuid());
+ (id,user_id,thread_id,role,content,client_request_id)
+ VALUES (gen_random_uuid(),'$owner','$thread','user','before-snapshot',gen_random_uuid());
 SQL
 # Session A begins a read-only RR transaction and pins its snapshot before B.
 docker exec -e PGAPPNAME=all251_pinned_export -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 >"$work/a.out" 2>&1 <<SQL &
@@ -65,8 +65,8 @@ fi
 # B writes while A's snapshot remains open.
 pg >"$work/b.out" 2>&1 <<SQL &
 INSERT INTO public.v2_coach_messages
- (user_id,thread_id,role,content,client_action_id)
- VALUES ('$owner','$thread','user','inserted-after-snapshot',gen_random_uuid());
+ (id,user_id,thread_id,role,content,client_request_id)
+ VALUES (gen_random_uuid(),'$owner','$thread','user','inserted-after-snapshot',gen_random_uuid());
 SQL
 pid_b=$!
 wait "$pid_b" || { cat "$work/b.out"; exit 1; }
