@@ -55,6 +55,8 @@ export function createOpenIapStoreAdapter({
 }):NativeStoreAdapter&{finishVerifiedPurchase:(e:NativePurchaseEvidence)=>Promise<void>} {
   let connected=false,products:readonly OpenIapProduct[]=[];
   const unfinished=new Map<string,{purchase:OpenIapPurchase;ownerId:string}>();
+  // Store acknowledgments must not race across simultaneous verification paths.
+  const finishing=new Set<string>();
   const connect=async()=>{
     if(!connected)connected=await api.initConnection();
     if(!connected)throw Error('native_store_not_ready');
@@ -165,9 +167,15 @@ export function createOpenIapStoreAdapter({
       const key=evidenceKey(e),pending=unfinished.get(key);
       if(!pending)throw Error('native_transaction_not_found');
       if(getOwner()!==pending.ownerId)throw Error('owner_changed');
-      await api.finishTransaction({purchase:pending.purchase,isConsumable:false});
-      if(getOwner()!==pending.ownerId)throw Error('owner_changed');
-      unfinished.delete(key);
+      if(finishing.has(key))throw Error('native_transaction_in_progress');
+      finishing.add(key);
+      try{
+        await api.finishTransaction({purchase:pending.purchase,isConsumable:false});
+        // A successful store acknowledgement must not be replayed, even if
+        // the app session changes while the native call is finishing.
+        unfinished.delete(key);
+        if(getOwner()!==pending.ownerId)throw Error('owner_changed');
+      }finally{finishing.delete(key)}
     },
   };
 }
