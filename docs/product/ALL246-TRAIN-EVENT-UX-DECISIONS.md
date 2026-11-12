@@ -172,7 +172,14 @@
 - Use the existing ALL-245 Watch and established onboarding UX ownership rather than a second tutorial/identity workflow. Track completion/dismissal per appropriate athlete/device version without repeated interruption after reinstalls or sessions, with user control. Ensure accessibility, offline availability, battery-conscious design and actual Watch hardware tests.
 - This is an approved product/UX direction, not evidence of live native tutorials, phone/Watch sync or hardware acceptance.
 
-## 23. Scope and implementation safeguards
+## 23. Apple Watch Ultra Action button — manual segment marker (founder guidance 2026-11-12)
+- On Apple Watch Ultra models with a configurable Action button assigned to the ALL IN 365 workout app, **press Action during an active single-sport workout to mark a segment/lap**—matching the low-friction native Apple Workout behavior familiar to the founder. Apple documents third-party `StartWorkoutIntent` plus a donated next-action `AppIntent` for active-session segment marking; actual native integration still needs compilation, entitlement/configuration checks and hardware testing.
+- Append a distinct idempotent manual segment boundary to the **same canonical active activity** without pausing, resetting or ending it. Provide a short haptic confirmation and optionally a brief completed-lap summary when source-backed. Segment markers, automatically computed splits, planned interval advances and **multisport Next Sport** are separate semantic actions; **Action/Mark Segment must not silently advance the sport or prescribed interval**.
+- Keep the **on-screen Mark Segment** control on the right-swipe Controls page (and accessible alternatives) for non-Ultra watches or Action buttons assigned elsewhere. No assumption that every Watch model or third-party app has access to the physical button.
+- The onboarding/watch help tutorial should explain physical Action button configuration and segment use only if supported, and how to access the on-screen fallback. Accidental presses need auditable correction without losing GPS/HR samples. Preserve system-privileged controls and avoid conflicting hardware button assignments.
+- This is a founder-approved behavior/design requirement for existing Watch and Training owners, not a completed implementation or physical device acceptance.
+
+## 24. Scope and implementation safeguards
 - These are **founder-approved product directions**. V1 Route Builder has substantial actual code; full V2 mapping/route builder is **not yet confirmed integrated**. Calendar and other partial V2 screens may be mounted but must be checked against the corrected UX.
 - Keep one canonical Training/active-session/completed-activity/event/route owner. All Coach changes are proposals and require athlete acceptance where material. Preserve source-quality/missing≠zero, privacy, export/deletion, RLS and idempotent writes.
 - **No production migration, grants, app deployment, opening signup, automatic EventHub publication or sharing are authorized by this document.**
