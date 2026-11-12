@@ -15,6 +15,12 @@ export const recoveryDomains=Object.freeze([
  {name:'private_media',tables:[],kind:'storage'},
  {name:'auth_configuration',tables:[],kind:'configuration'}
 ]);
+export function findUntrackedRecoveryTables(actualTables=[]) {
+ const declared=new Set(recoveryDomains.flatMap(domain=>domain.tables));
+ return [...new Set(actualTables)].filter(table=>
+  /^(?:public|allin_private)\.v2_[a-z0-9_]+$/.test(table) && !declared.has(table)
+ ).sort();
+}
 export function assessRecoveryCoverage({presentTables=[],verifiedTables=[],verifiedExternal=[],actualTables=[]}={}){
  const present=new Set(presentTables),verified=new Set(verifiedTables),external=new Set(verifiedExternal);
  const result=recoveryDomains.map(domain=>{
