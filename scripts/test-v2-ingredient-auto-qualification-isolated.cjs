@@ -16,7 +16,7 @@ function input(){
  const payload_utf8=JSON.stringify({provider:'usda_fdc',dataType:'Foundation',fdcId:2644285,
    basis_quantity:100,basis_unit:'g',
    foodNutrients:[nutrient(2048,115,'kcal'),nutrient(1003,6.91),
-     nutrient(1005,19.8),nutrient(1004,1.27)]});
+     nutrient(1005,19.8),nutrient(1004,1.27),nutrient(1093,218,'mg')]});
  const digest=createHash('sha256').update(payload_utf8).digest('hex');
  return {profileId:PROFILE,expectedRevision:1,sourceProfileKey:key,digest,
    candidates:[{source_profile_key:key,canonical_name:'Black beans, canned drained',
@@ -64,10 +64,12 @@ async function setup({withEnergyEvidence=true,archiveDigest='dd414cc9f1a132626ba
 
  await db.exec("INSERT INTO public.v2_nutrient_definitions(code,display_name,canonical_unit,launch_core,is_published) VALUES"+
    "('energy_kcal','Energy','kcal',true,true),('protein_g','Protein','g',true,true),"+
-   "('carbohydrate_g','Carbohydrate','g',true,true),('total_fat_g','Fat','g',true,true);");
+   "('carbohydrate_g','Carbohydrate','g',true,true),('total_fat_g','Fat','g',true,true),"+
+   "('sodium_mg','Sodium','mg',false,true);");
  await db.exec("INSERT INTO public.v2_ingredient_profile_nutrients(profile_id,nutrient_code,amount) VALUES"+
    "('"+PROFILE+"','energy_kcal',115),('"+PROFILE+"','protein_g',6.91),"+
-   "('"+PROFILE+"','carbohydrate_g',19.8),('"+PROFILE+"','total_fat_g',1.27);");
+   "('"+PROFILE+"','carbohydrate_g',19.8),('"+PROFILE+"','total_fat_g',1.27),"+
+   "('"+PROFILE+"','sodium_mg',218);");
  // Privileged source-release fixture, NOT a caller-provided energy claim.
  if(withEnergyEvidence)await db.exec("INSERT INTO allin_private.v2_ingredient_source_energy_evidence"+
    "(source_record_id,source_payload_sha256,archive_sha256,fdc_nutrient_id,energy_kcal,source_review_reference)"+
