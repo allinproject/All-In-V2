@@ -160,6 +160,15 @@ begin
    where user_id=a and id='14141414-1414-4414-8414-141414141414') THEN
   RAISE EXCEPTION 'Failed multi-line receipt partially applied';
  END IF;
+ -- Deleting a Pantry lot must retain historical receipt evidence.
+ delete from public.v2_kitchen_pantry_lots
+  where user_id=a and id='99999999-9999-4999-8999-999999999999';
+ IF NOT EXISTS(
+  select 1 from public.v2_kitchen_purchase_receipt_lines
+   where user_id=a and receipt_id=rid
+    and food_source_id='apple' and purchased_quantity=4
+    and pantry_lot_id is null
+ ) THEN RAISE EXCEPTION 'Pantry lot deletion lost receipt history'; END IF;
  IF (select state from public.v2_kitchen_shopping_manual_lines
    where user_id=a and id='11111111-1111-4111-8111-111111111111')<>'in_cart'
  THEN RAISE EXCEPTION 'Purchase silently rewrote manual Shopping state'; END IF;
