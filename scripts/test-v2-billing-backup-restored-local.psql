@@ -1,0 +1,89 @@
+\set ON_ERROR_STOP on
+-- ALL-222 / ALL-266: after local pg_dump, destructive deletion (local ONLY),
+-- and pg_restore of the three synthetic subscription tables. No real receipts.
+DO $restored$
+DECLARE
+  owner_a constant uuid := '77777777-7777-4777-8777-777777777777';
+  owner_b constant uuid := '88888888-8888-4888-8888-888888888888';
+BEGIN
+ IF (SELECT count(*) FROM allin_private.v2_subscription_checkout_attempts)<>3 OR
+    (SELECT count(*) FROM allin_private.v2_subscription_purchases)<>3 OR
+    (SELECT count(*) FROM allin_private.v2_subscription_verified_events)<>4 THEN
+  RAISE EXCEPTION 'Billing dump/restore lost purchase or immutable event rows';
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
+       WHERE owner_id=owner_a AND provider='app_store' AND environment='sandbox'
+         AND provider_subscription_id='restore_backup_apple_A'
+         AND phase='refunded' AND access_until IS NULL AND revision=2)
+    OR NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
+       WHERE owner_id=owner_a AND provider='google_play' AND environment='sandbox'
+         AND provider_subscription_id='sha256:restore_backup_google_A'
+         AND phase='paid' AND revision=1)
+    OR NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
+       WHERE owner_id=owner_b AND provider='google_play' AND environment='sandbox'
+         AND provider_subscription_id='sha256:restore_backup_google_B'
+         AND phase='trial' AND revision=1) THEN
+  RAISE EXCEPTION 'Billing recovery changed original purchase ownership/phase';
+ END IF;
+ IF (SELECT count(*) FROM allin_private.v2_subscription_verified_events
+       WHERE provider_event_id IN('restore_backup_event_apple_A',
+          'restore_backup_refund_apple_A','restore_backup_event_google_A',
+          'restore_backup_event_google_B'))<>4 THEN
+  RAISE EXCEPTION 'Backup restore lost provider event provenance';
+ END IF;
+ IF has_schema_privilege('anon','allin_private','USAGE') OR
+    has_schema_privilege('authenticated','allin_private','USAGE') OR
+    has_table_privilege('authenticated','allin_private.v2_subscription_purchases','SELECT') OR
+    has_function_privilege('authenticated',
+      'public.v2_billing_read_owner_access(uuid,text)','EXECUTE') THEN
+  RAISE EXCEPTION 'Billing restore unexpectedly widened client permissions';
+ END IF;
+END $restored$;
+
+SET ROLE service_role;
+DO $access$
+DECLARE r text;
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+       '77777777-7777-4777-8777-777777777777','sandbox') WHERE entitled)
+    OR NOT EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+       '88888888-8888-4888-8888-888888888888','sandbox') WHERE entitled)
+    OR EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+       '77777777-7777-4777-8777-777777777777','production') WHERE entitled)
+    OR EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+       '88888888-8888-4888-8888-888888888888','production') WHERE entitled) THEN
+   RAISE EXCEPTION 'Restored entitlements leaked across environment or vanished';
+ END IF;
+ SELECT public.v2_billing_commit_verified_native(
+  '77777777-7777-4777-8777-777777777777','app_store','sandbox',
+  'restore_backup_apple_A','restore_backup_refund_apple_A','refunded',NULL) INTO r;
+ IF r<>'duplicate' THEN
+   RAISE EXCEPTION 'Restored immutable event not idempotent: %',r;
+ END IF;
+ BEGIN
+  PERFORM public.v2_billing_commit_verified_native(
+   '88888888-8888-4888-8888-888888888888','app_store','sandbox',
+   'restore_backup_apple_A','restore_stolen_owner_event','paid','2027-12-01 UTC');
+  RAISE EXCEPTION 'Restored purchase identity could be stolen by another owner';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $access$;
+RESET ROLE;
+
+-- This CI-only recovery does not retain synthetic users, sensitive tokens or
+-- backup artifacts. Auth cascade must remove all restored private records.
+DELETE FROM auth.users WHERE id IN
+ ('77777777-7777-4777-8777-777777777777',
+  '88888888-8888-4888-8888-888888888888');
+DO $cleanup$
+BEGIN
+ IF EXISTS(SELECT 1 FROM allin_private.v2_subscription_checkout_attempts)
+    OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases)
+    OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_verified_events)
+    OR EXISTS(SELECT 1 FROM public.v2_profiles
+       WHERE user_id IN('77777777-7777-4777-8777-777777777777',
+         '88888888-8888-4888-8888-888888888888')) THEN
+  RAISE EXCEPTION 'Restored synthetic billing fixture failed account cleanup';
+ END IF;
+ RAISE NOTICE 'PASS ALL-222: local PostgreSQL pg_dump/pg_restore preserves billing events, owner isolation and entitlement';
+END $cleanup$;
