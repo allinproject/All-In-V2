@@ -80,3 +80,20 @@ test('malformed or forged season evidence is rejected before reaching Coach',()=
  phase.phases.annotations.push({date:'2027-02-30',kind:'taper_review',eventId:'goal',priority:'A'});
  assert.equal(prepareCoachSeasonContext({...input(),preview:phase}).kind,'blocked');
 });
+
+test('blocked phase review and malformed issue evidence never reach Coach',()=>{
+ const blocked=preview();
+ if(blocked.status==='unavailable')throw Error('bad fixture');
+ blocked.status='blocked';
+ assert.deepEqual(prepareCoachSeasonContext({...input(),preview:blocked}),{kind:'blocked',reason:'invalid_season'});
+ const oversized=preview();
+ if(oversized.status==='unavailable')throw Error('bad fixture');
+ oversized.phases.issues=Array.from({length:101},()=>({
+  code:'REVIEW',message:'Requires review',eventIds:['goal'],date:null
+ })) as typeof oversized.phases.issues;
+ assert.equal(prepareCoachSeasonContext({...input(),preview:oversized}).kind,'blocked');
+ const foreign=preview();
+ if(foreign.status==='unavailable')throw Error('bad fixture');
+ foreign.draft.issues.push({code:'UNTRUSTED',message:'Unknown event',eventIds:['other']});
+ assert.equal(prepareCoachSeasonContext({...input(),preview:foreign}).kind,'blocked');
+});
