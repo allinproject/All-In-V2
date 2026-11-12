@@ -88,8 +88,8 @@ export function projectVerifiedKitchenWeek(
  const weekEnd=new Date(week.weekStart+'T00:00:00Z');
  weekEnd.setUTCDate(weekEnd.getUTCDate()+6);
  const throughDate=weekEnd.toISOString().slice(0,10);
- if(pantrySnapshot.asOfDate>week.weekStart)
-  throw Error('Pantry snapshot is newer than start of planned week; refresh plan evidence.');
+ if(pantrySnapshot.asOfDate>throughDate)
+  throw Error('Pantry snapshot is later than the planned week; cannot reconstruct prior stock.');
  const {available,excludedLotIds}=reviewedPantryAvailability(
   pantrySnapshot,week.ownerId,throughDate,
  );
