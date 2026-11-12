@@ -10,6 +10,8 @@ on:
       - 'docs/architecture/sql/V2-EVENTHUB-OWNER-EVENT-PLAN-READER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-EVENTHUB-MEMBERSHIP-WRITER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-EVENTHUB-EVENT-VERSION-GUARD-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
+      - 'scripts/test-v2-community-privacy-local-postgres.psql'
       - 'scripts/test-v2-eventhub-version-guard-local-postgres.psql'
       - 'scripts/test-v2-eventhub-membership-writer-local-postgres.psql'
       - 'scripts/test-v2-eventhub-owner-reader-local-postgres.psql'
@@ -256,6 +258,16 @@ jobs:
           docker cp scripts/test-v2-eventhub-version-guard-local-postgres.psql "$db_container:/tmp/v2-eventhub-version-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-version.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-version-qa.psql
+      - name: Replay existing Community privacy candidate with two owner isolation
+        run: |
+          set -euo pipefail
+          # Existing ALL-244 proposal only; local disposable Auth/Profile.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql "$db_container:/tmp/v2-community-privacy.sql"
+          docker cp scripts/test-v2-community-privacy-local-postgres.psql "$db_container:/tmp/v2-community-privacy-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-community-privacy.sql
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-community-privacy-qa.psql
       - name: Validate Coach conversation persistence and cross-owner isolation in disposable DB
         run: |
           set -euo pipefail
