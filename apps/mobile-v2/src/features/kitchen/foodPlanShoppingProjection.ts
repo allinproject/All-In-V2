@@ -42,7 +42,8 @@ export function projectFoodPlanShopping(input:{
   if(!occurrence||!identity(occurrence.id)||ids.has(occurrence.id)
    ||!identity(occurrence.sourceId)||!exactDate(occurrence.localDate)
    ||!slots.has(occurrence.mealSlot)||!['food','recipe'].includes(occurrence.kind)
-   ||!Number.isSafeInteger(occurrence.servings)||occurrence.servings<=0
+   ||!Number.isFinite(occurrence.servings)||occurrence.servings<=0
+   ||(occurrence.kind==='recipe'&&!Number.isSafeInteger(occurrence.servings))
    ||!Array.isArray(occurrence.requirements))
    throw Error('Malformed or duplicate planned occurrence.');
   ids.add(occurrence.id);
