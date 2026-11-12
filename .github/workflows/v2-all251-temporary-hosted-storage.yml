@@ -2,6 +2,11 @@ name: ALL-251 temporary hosted Storage acceptance (manual only)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - integration/v2-foundation
+    paths:
+      - .github/workflows/v2-all251-temporary-hosted-storage.yml
 
 permissions:
   contents: read
@@ -23,7 +28,7 @@ jobs:
       ALL251_HOSTED_PROJECT_REF: fbtgknlxjyeqrxemskbl
       ALL251_HOSTED_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
       ALL251_HOSTED_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
-      ALL251_HOSTED_PUBLISHABLE_KEY: ${{ secrets.ALL251_TEMP_STAGING_PUBLISHABLE_KEY }}
+      ALL251_HOSTED_PUBLISHABLE_KEY: ${{ secrets.ALL251_TEMP_STAGING_PUBLISHABLE_KEY || 'sb_publishable_KxiqTVkZkWh1NUQhEMq_3A_594QKycX' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,6 +42,8 @@ jobs:
       - name: Run existing encrypted private Storage acceptance with synthetic files
         run: node scripts/test-v2-account-export-real-local-storage.mjs
 
-# MANUAL ONLY. This workflow never touches live V2, V1 or deploys an Edge
+# Temporary self-file-only push trigger for an integration-branch staging run.
+# Remove push trigger after acceptance; no production/main changes.
+# MANUAL DISPATCH ALSO AVAILABLE. This workflow never touches live V2, V1 or deploys an Edge
 # function. Do not configure secrets belonging to either existing live project.
 # Remove this temporary workflow and the dedicated project after acceptance.
