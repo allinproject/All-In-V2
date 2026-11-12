@@ -45,8 +45,11 @@ export function createAccountExportKeyLease({readApprovedRequestKeyLease,unwrapD
      ||after.kmsKeyId!==lease.kmsKeyId
      ||after.wrappedDataKey!==lease.wrappedDataKey
      ||after.keyVersion!==lease.keyVersion
-     ||Date.parse(after.expiresAt??'')<=clock())
+     ||Date.parse(after.expiresAt??'')<=clock()){
+    // Do not leave a decrypted data key reachable after a failed gate.
+    bytes.fill(0);
     throw Error('Account export key lease changed during unwrap');
+   }
    return bytes;
   },
  });
