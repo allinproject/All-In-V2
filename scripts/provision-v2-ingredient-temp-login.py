@@ -5,7 +5,7 @@ From a trusted computer, after authenticating gh and obtaining the TEMPORARY
 Supabase project's postgres database password:
   python scripts/provision-v2-ingredient-temp-login.py
 
-Requires psql and gh on PATH. Prompts for admin password in psql's own TTY.
+Requires psql and gh on PATH. Python prompts securely using getpass;\npsql stdin is reserved for SQL, not for interactive password input.
 Generates a fresh cryptographic workload password in memory; stores only an
 exact-project .pgpass record in the existing protected GitHub environment.
 Neither password nor generated SQL is displayed or written to disk.
@@ -14,6 +14,7 @@ This intentionally cannot provision production. Expires the workload registry
 after 45 minutes; the project's deletion is separately scheduled.
 """
 import os
+import getpass
 import secrets
 import shutil
 import subprocess
@@ -96,14 +97,25 @@ def provision():
         "END IF; END $gate$;\n"
         "COMMIT;\n"
     )
+    # psql cannot read an interactive -W password from stdin when SQL is
+    # supplied through subprocess.run(input=sql). Read from the local console
+    # first and pass only to the child process environment, never CLI args,
+    # script text, GitHub or a plaintext file.
     command = ["psql", "-X", "-v", "ON_ERROR_STOP=1",
                "-h", host, "-p", "5432", "-U", "postgres." + PROJECT,
-               "-d", "postgres", "-W", "-q", "-f", "-"]
+               "-d", "postgres", "-w", "-q", "-f", "-"]
+    admin_password = getpass.getpass("TEMP project database password (hidden): ")
+    if not admin_password:
+        raise RuntimeError("Empty temporary database password refused")
+    child_env = {**env, "PGPASSWORD": admin_password}
+    del admin_password
     try:
-        print("psql will prompt for this TEMP project admin database password.")
-        subprocess.run(command, input=sql, text=True, env=env,
-                       check=True, stdout=subprocess.DEVNULL,
-                       stderr=subprocess.DEVNULL)
+        try:
+            subprocess.run(command, input=sql, text=True, env=child_env,
+                           check=True, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL)
+        finally:
+            child_env.pop("PGPASSWORD", None)
     except Exception:
         # Do not leave a future hosted workflow with a stale usable secret.
         subprocess.run(["gh", "secret", "delete", SECRET_NAME, "--env", ENVIRONMENT,
