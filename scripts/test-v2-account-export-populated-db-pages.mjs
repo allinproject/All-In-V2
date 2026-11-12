@@ -16,15 +16,24 @@ const sourceId='84444444-8444-4444-8444-844444444444';
 function fromDb(path){
  return readFileSync(path,'utf8').trim().split('\n').filter(Boolean).map(line=>JSON.parse(line));
 }
-const a1=fromDb(process.argv[2]),a2=fromDb(process.argv[3]),b=fromDb(process.argv[4]);
-assert.equal(a1.length,100);
-assert.equal(a2.length,90);
+const aPages=process.argv.slice(2,6).map(fromDb),b=fromDb(process.argv[6]);
+assert.deepEqual(aPages.map(p=>p.length),[50,50,50,40],
+ 'canonical Coach reader requires four complete keyset pages');
 assert.equal(b.length,2);
-const keys=new Set([...a1,...a2].map(x=>x.message_id));
+const allRows=aPages.flat();
+const keys=new Set(allRows.map(x=>x.message_id));
 assert.equal(keys.size,190,'auth RLS pages duplicated records');
-assert([...a1,...a2].every(x=>x.message_content.includes('representative-coach-history-')));
-assert(b.every(x=>x.message_content.startsWith('Owner B private history')));
-const rows=[...a1,...a2].map(row=>({...row,user_id:owner}));
+assert(allRows.every(x=>x.content.includes('representative-coach-history-')));
+assert(b.every(x=>x.content.startsWith('Owner B private history')));
+assert(allRows.every(x=>x.user_id===owner),'Coach reader emitted foreign owner');
+assert(b.every(x=>x.user_id===other),'Owner B result owner mismatch');
+for(let i=1;i<allRows.length;i++){
+ const a=allRows[i-1],next=allRows[i];
+ assert(a.created_at>next.created_at ||
+   (a.created_at===next.created_at && a.message_id>next.message_id),
+   'canonical keyset page order must be strictly descending');
+}
+const rows=allRows;
 const collection='coach_messages';
 const key=randomBytes(32),pages=new Map();
 let manifest=null,authorized=true,authChecks=0;
@@ -75,4 +84,4 @@ authorized=false;
 await assert.rejects(createLargeAccountDownloadResponse({
  requestId,collections:[collection],services,
 }),/revoked/);
-console.log('PASS ALL-251: 190 real authenticated PostgreSQL Coach messages across two RPC pages, encrypted streaming, integrity and owner isolation (domain-scoped representative evidence)');
+console.log('PASS ALL-251: 190 real authenticated PostgreSQL Coach messages across four canonical RPC pages, encrypted streaming, integrity and owner isolation (domain-scoped representative evidence)');
