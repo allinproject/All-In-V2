@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildCompletedActivityScreenModel} from './completedActivityScreenModel.ts';
+import {buildCompletedActivityScreenModel,completedActivityViewKey} from './completedActivityScreenModel.ts';
 const metric=(key:string,label:string,value:string)=>({key,label,value,source:'canonical-source',provenance:'device' as const});
 test('V1 Overview Details Coach tabs are fixed and all supplied stats stay in Details',()=>{
  const model=buildCompletedActivityScreenModel({
@@ -61,4 +61,18 @@ test('no activity with missing title/source or unsupported sport is accepted',()
  assert.throws(()=>buildCompletedActivityScreenModel({
   id:'a',sport:'mystery',title:'Run',completedAt:'date',sourceLabel:'Source',metrics:[],
  }),/not recognized/);
+});
+
+test('completed activity view identity resets drafts on owner, workout and corrected revision',()=>{
+ const base={id:'activity-A',ownerId:'owner-A',revision:3,sport:'outdoor_run',
+  title:'Run',completedAt:'2026-11-12T02:00:00Z',sourceLabel:'Watch',metrics:[]};
+ const key=completedActivityViewKey(base);
+ assert.equal(completedActivityViewKey({...base}),key);
+ assert.notEqual(completedActivityViewKey({...base,id:'activity-B'}),key);
+ assert.notEqual(completedActivityViewKey({...base,ownerId:'owner-B'}),key);
+ assert.notEqual(completedActivityViewKey({...base,revision:4}),key);
+ assert.notEqual(completedActivityViewKey({...base,sourceLabel:'Imported'}),key);
+ const canonical=buildCompletedActivityScreenModel(base);
+ assert.equal(canonical.id,'activity-A');
+ assert.deepEqual(canonical.tabs,['Overview','Details','Coach']);
 });
