@@ -108,12 +108,25 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   // Simulate a separately approved future release only for RLS select testing.
   // The actual controlled SQL writer has already rejected this transition.
   await db.exec("UPDATE public.v2_ingredient_nutrition_profiles SET review_status='calculation_ready' WHERE id='"+actorProfile+"'");
+  // Additional isolated rows deliberately attempt to cross the publication
+  // scope. Superseded source links, wildcard aliases and mismatched conversion
+  // states must remain hidden even when the profile itself becomes visible.
+  await db.exec("INSERT INTO public.v2_ingredient_source_records(id,ingredient_id,provider,source_data_type,external_record_id,source_description,source_quality,source_license,mapping_status,payload_sha256) VALUES('99999999-9999-4999-8999-999999999999','11111111-1111-4111-8111-111111111111','usda_fdc','Foundation','999000','superseded test source','reviewed_foundation_source','CC0','mapped',repeat('c',64))");
+  await db.exec("INSERT INTO public.v2_ingredient_profile_sources(profile_id,source_record_id,evidence_role) VALUES('"+actorProfile+"','99999999-9999-4999-8999-999999999999','superseded')");
+  await db.exec("INSERT INTO public.v2_ingredient_aliases(id,ingredient_id,normalized_alias,locale,preparation_state,alias_kind,resolution_scope,status) VALUES('99999999-9999-4999-8999-999999999998','11111111-1111-4111-8111-111111111111','beans','en',null,'common_name','exact','active')");
+  await db.exec("INSERT INTO public.v2_ingredient_measure_conversions(id,ingredient_id,profile_id,preparation_state,from_quantity,from_unit,result_grams,conversion_kind,review_status) VALUES('99999999-9999-4999-8999-999999999997','11111111-1111-4111-8111-111111111111','"+actorProfile+"','raw',1,'cup',130,'household_density','reviewed'),('99999999-9999-4999-8999-999999999996','11111111-1111-4111-8111-111111111111','"+actorProfile+"','cooked_drained',1,'cup',130,'household_density','reviewed')");
+  await db.exec("UPDATE public.v2_nutrient_definitions SET is_published=false WHERE code='sodium_mg'");
   await db.exec('SET SESSION AUTHORIZATION authenticated');
   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_nutrition_profiles')).rows[0].n,1);
-  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_profile_nutrients')).rows[0].n,5);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_profile_nutrients')).rows[0].n,4);
   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_source_records')).rows[0].n,1);
   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_profile_sources')).rows[0].n,1);
   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_aliases')).rows[0].n,1);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_measure_conversions')).rows[0].n,1);
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  await db.exec("UPDATE public.v2_nutrient_definitions SET is_published=true WHERE code='sodium_mg'");
+  await db.exec('SET SESSION AUTHORIZATION authenticated');
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_profile_nutrients')).rows[0].n,5);
   await db.exec('SET SESSION AUTHORIZATION postgres');
  }finally{await db.close()}
 });
