@@ -66,3 +66,63 @@ The inventory deliberately returns complete:false. No production migration, Stor
 - The paginated inventory retains exact equality against the existing 42-table owner allowlist and adds fail-closed classification of meal, pantry, macro, body, equipment, race, achievement and personal-record families. Alternate owner columns including `account_id`, `profile_id` and `athlete_user_id` cannot bypass review merely by omitting `user_id`.
 - The existing rollback-only SQL and Node registry tests enumerate representative future schemas and require denial until a domain owner extends **this same canonical registry** with a privacy/retention contract. Do **not** create placeholder user tables in production to satisfy the audit.
 - The SQL read-only inventory must continue returning `complete:false` until explicit Community, Storage and legal scope decisions plus staged end-to-end tests are accepted. No production migration, Edge activation or bucket creation was authorized in this slice.
+
+
+## Step-3 authoritative inventory checkpoint — 2026-11-12
+
+**Verified source of live truth:** a read-only `pg_catalog` relation/owner-column
+inspection against live V2 Supabase `xarhuczrtzuiljmtdaeu` (no DDL or data
+changes). The currently installed V2 schema has **nine directly user-owned
+relations**: `public.v2_profiles`, `public.v2_profile_settings`,
+`public.v2_onboarding_progress`, `public.v2_legal_acceptances`,
+`allin_private.v2_health_considerations`,
+`allin_private.v2_profile_settings_actions`,
+`allin_private.v2_onboarding_actions`,
+`allin_private.v2_account_deletion_requests`, and
+`allin_private.v2_account_deletion_execution_audit`.
+No Storage buckets are installed in live V2. Other current V2 relations
+include reference/legal documents, provider cache and deletion-processor
+configuration, which are **not** directly owner-scoped history.
+
+**Proposed larger graph is not deployed:** the existing review-only paginated
+reader requires **42** exact direct-owner relations and eight additional
+Auth/Community/Billing projections (50 collections total). It must not
+interpret missing proposed tables as empty histories or assert release
+completeness against the 9-table live foundation. The canonical inventory
+continues reporting `complete=false`.
+
+**Safeguard parity fixed:** the inline snapshot now applies the same full
+future-domain family and alternate owner-column guards as the canonical
+paginated reader, including meal, pantry, macro, body, equipment, race,
+personal-record and achievement families, plus account/profile/athlete-user
+ownership keys. A Node regression test requires exact guard parity on every
+change; adding a new family to one reader without the other fails CI.
+
+**Owner-visible export-request history:** the paginated export now uses an
+explicit owner-scoped projection for
+`allin_private.v2_account_export_requests_candidate`. It includes owner,
+request ID, status and timestamps, excluding internal `session_id` rather
+than exporting a raw operational request row. A regression test rejects
+accidental raw serialization.
+
+**Remaining independent acceptance gates:**
+- Private Storage: exactly enumerate and export byte-for-byte media files,
+  including future Community, Nutrition and Progress photos, with strict
+  ownership and third-party privacy; current Training media-only audit is
+  insufficient
+- Community: preserve actor-visible actions and incoming-request block
+  redaction; shared pair CAS state and incoming blocks remain private;
+  Community posts/media need their own approved source projections
+- Billing: provider identifiers and receipt secrets remain redacted, with
+  purchase-join and account ownership checks
+- New domain schemas: Nutrition/recipes/meal prep, goals/progress/PRs,
+  equipment/shoes/bikes, races and other owner or actor fields must be added
+  when introduced; do not create placeholder source tables for export tests
+- Provider-side KMS, full hosted private media staging, authenticated download
+  and physical-device acceptance are not complete; legal/retention review
+  has not authorized a whole-account completion claim
+
+This checkpoint does not change live database grants, schema, production
+behavior, temporary staging deployment, or user sign-up. Never set
+`complete=true` or enable the default-off export function on the strength
+of catalog-parity tests alone.
