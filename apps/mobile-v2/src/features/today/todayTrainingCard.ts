@@ -40,7 +40,7 @@ export function summarizeTodayTraining(
   }
   const scheduled = sections.scheduled.records;
   const completedKnown = sections.completed.status === 'ready';
-  const completedCount = completedKnown ? sections.completed.records.length : 0;
+  const completedCount = sections.completed.status === 'ready' ? sections.completed.records.length : 0;
   const plannedCount = scheduled.filter(item => item.state === 'planned').length;
   const explicitRest = scheduled.some(item => item.state === 'rest');
   const explicitRecovery = scheduled.some(item => item.state === 'recovery');
