@@ -32,6 +32,9 @@ on:
       - 'scripts/test-v2-device-ingest-rls-guard.mjs'
       - 'scripts/test-v2-device-ingest-two-owner-postgres.psql'
       - 'scripts/test-v2-device-ingest-invalidation-race.sh'
+      - 'supabase/functions/_shared/certifiedDeviceIngestServer.ts'
+      - 'supabase/functions/_shared/certifiedDeviceIngestCanonical.test.mjs'
+      - 'supabase/functions/_shared/certifiedDeviceIngestServer.test.mjs'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql'
       - 'scripts/test-v2-completed-scalar-metrics-postgres.psql'
@@ -232,6 +235,18 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/test-v2-device-ingest-invalidation-race.sh
+
+  authenticated-device-ingest-contract:
+    name: ALL-243 authenticated device ingest transaction contracts (Node)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Validate canonical transactional device ingestion, expiry and offline retries
+        run: node --experimental-strip-types --test supabase/functions/_shared/certifiedDeviceIngestCanonical.test.mjs supabase/functions/_shared/certifiedDeviceIngestServer.test.mjs
 
   completed-segment-regression:
     name: ALL-243 isolated segment owner and invalidation regression (PG17)
