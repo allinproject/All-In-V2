@@ -77,3 +77,52 @@ export function assessIndependentRecoveryEvidence(evidence={}) {
  if(Number.isFinite(cutoff)&&Number.isFinite(t1)&&cutoff>t1) missing.push('validSnapshotCutoff');
  return {accepted:missing.length===0,missing};
 }
+
+/**
+ * Independent LOGICAL recovery acceptance, separate from provider physical
+ * backup acceptance. This is an evidence-shape gate, not an attestation:
+ * reviewers must independently verify every artifact and test result.
+ * Source data and secrets must never be included in this object.
+ */
+export function assessIndependentLogicalRecoveryEvidence(evidence={}) {
+ const isText=v=>typeof v==='string'&&v.trim().length>0;
+ const isUtc=v=>isText(v)&&/^\\d{4}-\\d\\d-\\d\\dT.*(?:Z|\\+00:00)$/.test(v)&&Number.isFinite(Date.parse(v));
+ const nonNegative=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
+ const checks=[
+  ['recoveryMethod',v=>v==='independent_logical'],
+  ['sourceProjectRef',isText],
+  ['backupArtifactDigest',v=>typeof v==='string'&&/^[a-f0-9]{64}$/i.test(v)],
+  ['backupCutoffUtc',isUtc],
+  ['backupStartedUtc',isUtc],
+  ['backupCompletedUtc',isUtc],
+  ['restoreStartedUtc',isUtc],
+  ['restoreVerifiedUtc',isUtc],
+  ['isolatedTargetId',isText],
+  ['preImportOutboundIsolationVerified',v=>v===true],
+  ['unsafeSqlAndScheduledJobsExcluded',v=>v===true],
+  ['sourceAtCutoffManifestVerified',v=>v===true],
+  ['deployedDomainsReconciled',v=>v===true],
+  ['authDatabaseAndSignInRecovered',v=>v===true],
+  ['authProviderConfigurationRecreated',v=>v===true],
+  ['privateStorageInventoryAndBytesRecovered',v=>v===true],
+  ['rlsAndCrossOwnerDenialsPassed',v=>v===true],
+  ['allPresentOwnerDataDigestsMatch',v=>v===true],
+  ['measuredRpoSeconds',nonNegative],
+  ['measuredRtoSeconds',nonNegative],
+  ['backupArtifactDestroyedOrSecured',v=>v===true],
+  ['evidenceReviewed',v=>v===true],
+  ['founderAcceptedLogicalRecoveryScope',v=>v===true]
+ ];
+ const missing=checks.filter(([k,valid])=>!valid(evidence[k])).map(([k])=>k);
+ if(isText(evidence.sourceProjectRef)&&evidence.sourceProjectRef===evidence.isolatedTargetId)
+  missing.push('independentTarget');
+ const cutoff=Date.parse(evidence.backupCutoffUtc);
+ const start=Date.parse(evidence.backupStartedUtc);
+ const backed=Date.parse(evidence.backupCompletedUtc);
+ const restore=Date.parse(evidence.restoreStartedUtc);
+ const verified=Date.parse(evidence.restoreVerifiedUtc);
+ if([cutoff,start,backed,restore,verified].every(Number.isFinite)&&
+    !(start<=cutoff&&cutoff<=backed&&backed<=restore&&restore<=verified))
+  missing.push('consistentBackupAndRecoveryTimeline');
+ return {accepted:missing.length===0,missing};
+}
