@@ -48,7 +48,7 @@ LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=''
 AS $gateway$
 DECLARE v_result jsonb;
 BEGIN
- IF pg_catalog.current_user <> 'allin_v2_device_ingest' THEN
+ IF current_user <> 'allin_v2_device_ingest' THEN
   RAISE EXCEPTION 'Private ingest principal required' USING ERRCODE='42501';
  END IF;
  IF p_nonce_hash IS NULL OR p_nonce_hash !~ '^[0-9a-f]{64}$'
