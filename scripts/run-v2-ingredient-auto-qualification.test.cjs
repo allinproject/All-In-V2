@@ -141,7 +141,9 @@ test('hosted preflight rejects uninstalled schema, postgres and unsafe privilege
   energy_attestations:true,review_writer:true,energy_writer:true,
   reviewer_role:true,publisher_role:true,login_least_privileged:true,
   reviewer_member:true,profiles_rls_enabled:true,
-  publisher_member:false,login_public_create:false
+  publisher_member:false,login_public_create:false,
+  login_direct_profile_write:false,login_private_audit_read:false,
+  login_review_execute:true,login_energy_execute:true
  };
  const client=rows=>({query:async sql=>{
   assert.equal(sql,HOSTED_READINESS_SQL);
@@ -158,7 +160,9 @@ test('hosted preflight rejects uninstalled schema, postgres and unsafe privilege
   {ingredients:false},{review_writer:false},{energy_attestations:false},
   {login:'postgres'},{login_least_privileged:false},
   {reviewer_member:false},{profiles_rls_enabled:false},
-  {login_public_create:true},{effective_role:'postgres'},
+  {login_public_create:true},{login_direct_profile_write:true},
+  {login_private_audit_read:true},{login_review_execute:false},
+  {login_energy_execute:false},{effective_role:'postgres'},
   {publisher_member:true}
  ]) {
   await assert.rejects(checkHostedIngestReadiness(client([{...valid,...change}])),
