@@ -58,3 +58,32 @@ test('complete candidate count yields triage report but never publication approv
     assert.equal(result.reviewFlagCounts.image_rights_review,1);
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('routes legacy merged records to source identity review regardless of origin marker',()=>{
+  const r=recipe('recipe-396');r.title='[Merged] BBQ Chicken Quesadilla — legacy #379';
+  const item=inspectRecipe(r);
+  assert.equal(item.reviewLane,'source_identity_and_rights');
+  assert(item.reasons.includes('legacy_merge_identity_review'));
+  assert.equal(item.publicationApproved,false);
+});
+test('routes imported-source recipe to ownership review without inferring license',()=>{
+  const r=recipe('recipe-import-example');r.title='Imported dish';
+  const item=inspectRecipe(r);
+  assert.equal(item.reviewLane,'source_identity_and_rights');
+  assert(item.reasons.includes('external_import_provenance_review'));
+  assert.equal(item.publicationApproved,false);
+});
+test('routes variant structure work separately from standard measurement review',()=>{
+  const r=recipe();r.source_variants_review_only=[{id:'partial'}];
+  const item=inspectRecipe(r);
+  assert.equal(item.reviewLane,'ingredient_and_variant_structure');
+});
+test('routes freezer kit to method review when source identity and structure are complete',()=>{
+  const r=recipe();r.source_freezer_kit_review_only={kind:'raw_kit'};
+  const item=inspectRecipe(r);
+  assert.equal(item.reviewLane,'freezer_kit_method');
+});
+test('source review lane retains highest priority over freezer-kit method',()=>{
+  const r=recipe();r.source_origin=null;r.source_freezer_kit_review_only={kind:'raw_kit'};
+  assert.equal(inspectRecipe(r).reviewLane,'source_identity_and_rights');
+});
