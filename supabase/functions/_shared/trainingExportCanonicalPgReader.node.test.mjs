@@ -103,7 +103,7 @@ test('private media and Storage catalog are read through the same pinned snapsho
    }]};
    if(sql.includes('FROM public.v2_activity_series'))return {rows:[
     {kind:'series',user_id:owner,object_path:owner+'/a'.repeat(64)+'/series.fit',
-     checksum_sha256:'b'.repeat(64)},
+     checksum_sha256:'b'.repeat(64),state:'ready',privacy_state:null},
    ]};
    throw Error('Unapproved media SQL');
   },
@@ -122,6 +122,8 @@ test('private media and Storage catalog are read through the same pinned snapsho
   assert.equal(objects.totalCount,1);
   assert.equal(objects.paths[0],refs.series[0].object_path);
   assert.equal(refs.routes.length,0);
+  assert.equal(refs.series[0].state,'ready');
+  assert.equal(refs.series[0].privacy_state,null);
   const audit=await auditOwnerPrivateMediaCoverage({
     ownerId:owner,requestId,
     listBucketCatalog:scoped.listBucketCatalog,
