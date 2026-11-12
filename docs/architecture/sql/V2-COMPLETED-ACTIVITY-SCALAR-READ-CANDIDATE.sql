@@ -61,7 +61,11 @@ BEGIN
       WHERE r.metric_code=g.metric_code AND r.definition_version=g.definition_version LIMIT 1)
  ) ORDER BY g.metric_code,g.definition_version),'[]'::jsonb)
  INTO v_values FROM grouped g
- WHERE g.low_confidence_count=0 AND g.distinct_fact_count=1;
+ WHERE g.low_confidence_count=0 AND g.distinct_fact_count=1
+   -- Two published versions for the same semantic code are not one
+   -- reconciled canonical metric, even if their recorded numbers agree.
+   AND (SELECT count(DISTINCT r.definition_version) FROM rows r
+        WHERE r.metric_code=g.metric_code)=1;
  WITH rows AS (
   SELECT m.metric_code,m.definition_version,
    CASE WHEN m.quality=s.quality THEN m.quality ELSE 'unverified' END AS quality,
@@ -75,19 +79,22 @@ BEGIN
     AND m.segment_id IS NULL
    AND d.status='published' AND v_activity.sport=ANY(d.sport_scope)
  ), grouped AS (
-  SELECT metric_code,definition_version,
+  SELECT metric_code,MIN(definition_version) AS definition_version,
+   COUNT(DISTINCT definition_version) AS version_count,
    COUNT(*) FILTER(WHERE quality NOT IN ('trusted','partial')) AS low_confidence,
    COUNT(DISTINCT pg_catalog.jsonb_build_array(
       value_numeric,value_text,value_boolean,measurement_kind)) AS fact_count
-  FROM rows GROUP BY metric_code,definition_version
+  FROM rows GROUP BY metric_code
  )
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-    'metricCode',metric_code,'definitionVersion',definition_version,
-    'reason',CASE WHEN low_confidence>0 THEN 'source_review_required'
+    'metricCode',metric_code,
+    'definitionVersion',CASE WHEN version_count=1 THEN definition_version ELSE NULL END,
+    'reason',CASE WHEN version_count>1 THEN 'conflicting_versions'
+                  WHEN low_confidence>0 THEN 'source_review_required'
                   ELSE 'conflicting_sources' END
  ) ORDER BY metric_code,definition_version),'[]'::jsonb)
  INTO v_conflicts FROM grouped
- WHERE low_confidence>0 OR fact_count<>1;
+ WHERE version_count>1 OR low_confidence>0 OR fact_count<>1;
  RETURN pg_catalog.jsonb_build_object(
   'activityId',p_activity_id,'metrics',v_values,'unresolvedMetrics',v_conflicts,
   'coverage','source_backed_partial_registry');
