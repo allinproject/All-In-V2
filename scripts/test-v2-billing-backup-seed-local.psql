@@ -25,8 +25,36 @@ END $seed$;
 
 SET ROLE service_role;
 DO $events$
-DECLARE r text;
+DECLARE r text; attempt uuid; claim_status text;
 BEGIN
+ -- A real service-only Stripe web checkout precedes native store activity.
+ -- The restored data must retain the original server-owned checkout ID,
+ -- prevent a repeat trial, and match its verified purchase/event.
+ SELECT status,attempt_id INTO claim_status,attempt
+   FROM public.v2_billing_claim_trial_checkout(
+     '77777777-7777-4777-8777-777777777777');
+ IF claim_status<>'eligible_reserved' OR attempt IS NULL THEN
+   RAISE EXCEPTION 'Initial Stripe test trial claim failed: %',claim_status;
+ END IF;
+ SELECT public.v2_billing_register_pending_checkout(
+   attempt,'77777777-7777-4777-8777-777777777777','cs_restore_backup_A')
+   INTO r;
+ IF r<>'pending' THEN
+   RAISE EXCEPTION 'Stripe pending checkout not recorded: %',r;
+ END IF;
+ SELECT public.v2_billing_finalize_checkout(
+   attempt,'77777777-7777-4777-8777-777777777777',
+   'cs_restore_backup_A','sub_restore_backup_A') INTO r;
+ IF r<>'finalized' THEN
+   RAISE EXCEPTION 'Stripe verified checkout not finalized: %',r;
+ END IF;
+ SELECT public.v2_billing_apply_current_subscription_event(
+   '77777777-7777-4777-8777-777777777777',
+   'sub_restore_backup_A','evt_restore_backup_stripe_A',
+   'trial','2027-12-01 UTC') INTO r;
+ IF r<>'applied' THEN
+   RAISE EXCEPTION 'Stripe original trial event not committed: %',r;
+ END IF;
  SELECT public.v2_billing_commit_verified_native(
  '77777777-7777-4777-8777-777777777777','app_store','sandbox',
  'restore_backup_apple_A','restore_backup_event_apple_A','paid',
@@ -51,9 +79,9 @@ RESET ROLE;
 
 DO $verify$
 BEGIN
- IF (SELECT count(*) FROM allin_private.v2_subscription_checkout_attempts)<>3 OR
-    (SELECT count(*) FROM allin_private.v2_subscription_purchases)<>3 OR
-    (SELECT count(*) FROM allin_private.v2_subscription_verified_events)<>4 THEN
+ IF (SELECT count(*) FROM allin_private.v2_subscription_checkout_attempts)<>4 OR
+    (SELECT count(*) FROM allin_private.v2_subscription_purchases)<>4 OR
+    (SELECT count(*) FROM allin_private.v2_subscription_verified_events)<>5 THEN
    RAISE EXCEPTION 'Unexpected backup fixture ledger cardinality';
  END IF;
  IF NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
@@ -64,5 +92,13 @@ BEGIN
      WHERE owner_id='88888888-8888-4888-8888-888888888888' AND
        provider='google_play' AND phase='trial' AND revision=1)
  THEN RAISE EXCEPTION 'Other account trial missing before backup'; END IF;
- RAISE NOTICE 'PASS ALL-222: two owner billing backup seed 3 purchases/4 events';
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_checkout_attempts
+     WHERE owner_id='77777777-7777-4777-8777-777777777777'
+       AND provider='stripe_web' AND environment='sandbox'
+       AND provider_checkout_id='cs_restore_backup_A'
+       AND provider_subscription_id='sub_restore_backup_A'
+       AND offer_kind='trial' AND state='server_confirmed') THEN
+   RAISE EXCEPTION 'Stripe original verified checkout provenance missing';
+ END IF;
+ RAISE NOTICE 'PASS ALL-222: two owner billing backup seed 4 purchases/5 events including Stripe';
 END $verify$;
