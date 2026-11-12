@@ -44,6 +44,8 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   await db.exec('SET SESSION AUTHORIZATION anon');
   await denied(db,'SELECT * FROM public.v2_ingredients','42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
+  // External FDC identities cannot be mapped twice to two catalog rows.
+  await denied(db,"INSERT INTO public.v2_ingredient_source_records(id,ingredient_id,provider,source_data_type,external_record_id,source_description,source_quality,source_license,mapping_status,payload_sha256) VALUES('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111','usda_fdc','Foundation','2644285','duplicate source','foundation','CC0','mapped',repeat('d',64))",'23505');
   await db.exec('SET SESSION AUTHORIZATION ingredient_attacker');
   await denied(db,call(1,'needs_review',k1),'42501');
   await denied(db,"UPDATE public.v2_ingredient_nutrition_profiles SET review_status='calculation_ready'",'42501');
@@ -127,6 +129,12 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   await db.exec("UPDATE public.v2_nutrient_definitions SET is_published=true WHERE code='sodium_mg'");
   await db.exec('SET SESSION AUTHORIZATION authenticated');
   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_profile_nutrients')).rows[0].n,5);
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  // Disabling an operator in the private registry immediately revokes review
+  // capability; existing audit history must remain available to operators only.
+  await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET enabled=false WHERE login_role='ingredient_reviewer_a'");
+  await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await denied(db,call(3,'retired',k3),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
  }finally{await db.close()}
 });
