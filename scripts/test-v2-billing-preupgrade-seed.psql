@@ -1,0 +1,39 @@
+\set ON_ERROR_STOP on
+-- ALL-222 / ALL-266. Disposable local Supabase ONLY.
+-- Run AFTER real foundation migrations but BEFORE review-only billing DDL.
+-- These users intentionally remain committed across the candidate upgrade,
+-- unlike the subsequent rollback-only billing transaction.
+DO $preupgrade$
+DECLARE
+  owner_a constant uuid := '55555555-5555-4555-8555-555555555555';
+  owner_b constant uuid := '66666666-6666-4666-8666-666666666666';
+BEGIN
+  IF to_regclass('public.v2_profiles') IS NULL OR
+     to_regclass('public.v2_profile_settings') IS NULL OR
+     to_regclass('public.v2_onboarding_progress') IS NULL THEN
+    RAISE EXCEPTION 'Committed V2 account foundation is missing';
+  END IF;
+  IF to_regclass('allin_private.v2_subscription_purchases') IS NOT NULL OR
+     to_regclass('allin_private.v2_subscription_checkout_attempts') IS NOT NULL THEN
+    RAISE EXCEPTION 'Billing candidate already exists before preupgrade seed';
+  END IF;
+  IF EXISTS (SELECT 1 FROM auth.users WHERE id IN (owner_a,owner_b)) THEN
+    RAISE EXCEPTION 'Preupgrade seed owner collision';
+  END IF;
+  INSERT INTO auth.users(id,raw_user_meta_data)
+  VALUES
+    (owner_a,pg_catalog.jsonb_build_object('display_name','Billing Upgrade A')),
+    (owner_b,pg_catalog.jsonb_build_object('display_name','Billing Upgrade B'));
+  IF (SELECT count(*) FROM public.v2_profiles
+      WHERE (user_id=owner_a AND display_name='Billing Upgrade A') OR
+            (user_id=owner_b AND display_name='Billing Upgrade B')) <> 2 THEN
+    RAISE EXCEPTION 'Preupgrade Auth trigger did not preserve both profiles';
+  END IF;
+  IF (SELECT count(*) FROM public.v2_profile_settings
+      WHERE user_id IN (owner_a,owner_b) AND version=1) <> 2 OR
+     (SELECT count(*) FROM public.v2_onboarding_progress
+      WHERE user_id IN (owner_a,owner_b) AND version=1) <> 2 THEN
+    RAISE EXCEPTION 'Preupgrade account settings/onboarding rows missing';
+  END IF;
+  RAISE NOTICE 'PASS ALL-222: two populated V2 accounts exist before billing candidate';
+END $preupgrade$;
