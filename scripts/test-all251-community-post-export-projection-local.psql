@@ -175,7 +175,8 @@ BEGIN
  THEN RAISE EXCEPTION 'Reviewer graph scanner exposed to clients'; END IF;
  RAISE NOTICE 'PASS ALL-251 graph review: Community Auth chain proven, unknown owner and relationship policy gaps flagged, no client API';
 END $graph$;
-DELETE FROM storage.buckets WHERE id='all251-disposable-unknown-media';
+-- The synthetic bucket is removed by the transaction-wide ROLLBACK;
+-- Storage forbids direct SQL deletion and its API is intentionally not used.
 DROP TABLE allin_private.v2_all251_unreviewed_owner_probe;
 DROP TABLE allin_private.v2_all251_unreviewed_pair_probe;
 
