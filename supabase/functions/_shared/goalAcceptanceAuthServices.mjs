@@ -6,7 +6,7 @@
  * The private SQL writer remains inaccessible to app and service roles until
  * an audited gateway can enforce Auth session + review in one transaction.
  */
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[0-9a-f]{64}$/;
 const TOKEN=/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const MAX_BEARER=4096,MAX_REVIEW_AGE_MS=15*60*1000;
