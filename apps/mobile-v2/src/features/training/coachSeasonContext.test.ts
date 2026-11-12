@@ -97,3 +97,10 @@ test('blocked phase review and malformed issue evidence never reach Coach',()=>{
  foreign.draft.issues.push({code:'RECOVERY_REVIEW',severity:'review',message:'Unknown event',eventIds:['other']});
  assert.equal(prepareCoachSeasonContext({...input(),preview:foreign}).kind,'blocked');
 });
+
+test('malformed event objects cannot crash issue-reference validation',()=>{
+ const malformed=preview();
+ if(malformed.status==='unavailable')throw Error('bad fixture');
+ malformed.draft.events[0]=null as unknown as typeof malformed.draft.events[number];
+ assert.deepEqual(prepareCoachSeasonContext({...input(),preview:malformed}),{kind:'blocked',reason:'invalid_season'});
+});
