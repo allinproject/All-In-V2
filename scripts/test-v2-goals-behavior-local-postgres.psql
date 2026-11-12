@@ -45,7 +45,7 @@ BEGIN
     id,user_id,goal_id,goal_revision_id,behavior_description
   ) VALUES('44444444-4444-4444-8444-444444444444',b,g1,r1,'Foreign target');
   RAISE EXCEPTION 'Cross-account behavior target allowed';
- EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ EXCEPTION WHEN foreign_key_violation OR insufficient_privilege THEN NULL; END;
  BEGIN
   INSERT INTO public.v2_goal_revision_behavior_targets(
     id,user_id,goal_id,goal_revision_id,behavior_description,
