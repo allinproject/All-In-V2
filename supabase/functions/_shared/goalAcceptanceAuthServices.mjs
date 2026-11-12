@@ -70,7 +70,8 @@ export async function prepareAndCommitGoalApproval({
  const fresh=await authClient.auth.getUser(bearerToken);
  if(fresh?.error||fresh?.data?.user?.id!==ownerId)fail();
  const args=Object.freeze({
-  p_user_id:ownerId,p_session_id:claims.sessionId,p_goal_id:intent.goalId,
+  p_user_id:ownerId,p_session_id:claims.sessionId,p_review_id:intent.reviewId,
+  p_goal_id:intent.goalId,
   p_candidate_id:intent.revisionId,p_action_id:intent.actionId,
   p_expected_version:intent.expectedVersion,
   p_payload_sha256:proof.sha256
