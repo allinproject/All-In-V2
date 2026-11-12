@@ -37,14 +37,20 @@ SELECT json_build_object(
  'login_schema_create',has_schema_privilege(session_user,'public','CREATE') OR has_schema_privilege(session_user,'allin_private','CREATE'),
  'reviewer_schema_create',has_schema_privilege(current_user,'public','CREATE') OR has_schema_privilege(current_user,'allin_private','CREATE'),
  'login_privileged',EXISTS(SELECT 1 FROM pg_roles WHERE rolname=session_user AND (rolsuper OR rolcreaterole OR rolcreatedb OR rolreplication OR rolbypassrls)),
- 'reviewer_privileged',EXISTS(SELECT 1 FROM pg_roles WHERE rolname=current_user AND (rolsuper OR rolcreaterole OR rolcreatedb OR rolreplication OR rolbypassrls))
+ 'reviewer_privileged',EXISTS(SELECT 1 FROM pg_roles WHERE rolname=current_user AND (rolsuper OR rolcreaterole OR rolcreatedb OR rolreplication OR rolbypassrls)),
+ 'login_admin_role_member',EXISTS (
+   SELECT 1 FROM pg_roles r
+   WHERE (r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication OR r.rolbypassrls
+     OR r.rolname IN ('postgres','service_role','pg_read_all_data','pg_write_all_data','pg_execute_server_program','pg_read_server_files','pg_write_server_files'))
+     AND pg_has_role(session_user,r.oid,'member')
+ )
 )::text;
 ROLLBACK;`;
 }
 function checkProof(proof){
  for(const field of ['session_matches_expected','role_matches_reviewer','reviewer_membership','review_function_execute'])
    if(proof?.[field]!==true)throw new Error('Reviewer acceptance failed: '+field);
- for(const field of ['athlete_profile_write','private_audit_read','login_direct_profile_write','login_private_audit_read','login_schema_create','reviewer_schema_create','login_privileged','reviewer_privileged'])
+ for(const field of ['athlete_profile_write','private_audit_read','login_direct_profile_write','login_private_audit_read','login_schema_create','reviewer_schema_create','login_privileged','reviewer_privileged','login_admin_role_member'])
    if(proof?.[field]!==false)throw new Error('Excessive reviewer privilege: '+field);
  return {ok:true,connection:'verified-dedicated-session',reviewerFunction:'execute-only',directWrites:false,auditReads:false};
 }
