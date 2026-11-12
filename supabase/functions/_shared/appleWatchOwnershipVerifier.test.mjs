@@ -46,7 +46,7 @@ async function fixture(){
  };
  const backend={
   resolveUser:async token=>token===bearer?{
-   ownerId:owner,sessionId,expiresAtMs:now+500000}:null,
+   ownerId:owner,sessionId:session,expiresAtMs:now+500000}:null,
   withEvidenceTransaction:async (_id,fn)=>{
    const count=state.lastCount;
    try{
@@ -65,12 +65,12 @@ async function fixture(){
   },
  };
  async function packet(counter=1){
-  const watchBody=watchChallengePayload({challengeId,ownerId:owner,sessionId,deviceRef});
+  const watchBody=watchChallengePayload({challengeId,ownerId:owner,sessionId:session,deviceRef});
   const signedWatch=new Uint8Array(await crypto.subtle.sign({
    name:'ECDSA',hash:'SHA-256'},watch.privateKey,watchBody));
   const signatureHash=hex(await sha(signedWatch));
   const phonePayload=phoneAppAssertionPayload({
-   challengeId,ownerId:owner,sessionId,deviceRef,watchSignatureHash:signatureHash,
+   challengeId,ownerId:owner,sessionId:session,deviceRef,watchSignatureHash:signatureHash,
   });
   const hash=await sha(encoder.encode(appId));
   const authData=new Uint8Array(37);
