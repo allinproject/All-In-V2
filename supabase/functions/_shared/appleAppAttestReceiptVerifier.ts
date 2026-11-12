@@ -137,6 +137,8 @@ export const appleAppAttestReceiptService:VerifiedAppleReceiptService={
   if(envelope.contentType!==ContentInfo.SIGNED_DATA)
    throw Error('Apple receipt is not signed CMS data');
   const cms=new SignedData({schema:envelope.content});
+  if(cms.encapContentInfo.eContentType!=='1.2.840.113549.1.7.1')
+   throw Error('Unexpected Apple receipt CMS content type');
   if(cms.signerInfos.length!==1||!cms.encapContentInfo.eContent)
    throw Error('Apple receipt must have one attached signer');
   const appleRoot=Certificate.fromBER(Uint8Array.from(APPLE_APP_ATTEST_ROOT_DER).buffer as ArrayBuffer);
