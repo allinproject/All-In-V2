@@ -129,3 +129,37 @@ print(json.dumps({'flags':[row['identity_evidence_disagreement'] for row in r['r
  assert.deepEqual(result.flags,[false,false]);
  assert.equal(result.count,0);
 });
+
+test('conflicting V1 explicit FDC ID and official URL cannot become verified source evidence',()=>{
+ const code=`import importlib.util,json
+s=importlib.util.spec_from_file_location('usda_reconcile','scripts/reconcile-usda-foundation-identities.py')
+m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+foods=[{'fdcId':5,'description':'Named banana','dataType':'Foundation'},
+ {'fdcId':6,'description':'Other food','dataType':'Foundation'}]
+profiles=[{'source_profile_key':'mismatch','source_label':'Unrelated','source_aliases':[],
+ 'source_fdc_id':5,'source_url':'https://fdc.nal.usda.gov/food-details/6/nutrients'}]
+r=m.reconcile(foods,profiles,2,1)
+print(json.dumps({'refs':r['summary']['directFdcSourceReferencePairs'],
+ 'conflicts':r['summary']['conflictingV1SourceReferenceProfiles'],
+ 'keys':r['conflictingV1SourceReferenceKeys'],'approved':r['publicationApproved']}))`;
+ const result=runPython(code);
+ assert.equal(result.refs,0);
+ assert.equal(result.conflicts,1);
+ assert.deepEqual(result.keys,['mismatch']);
+ assert.equal(result.approved,false);
+});
+
+test('boolean FDC IDs cannot masquerade as USDA source identities',()=>{
+ const code=`import importlib.util,json
+s=importlib.util.spec_from_file_location('usda_reconcile','scripts/reconcile-usda-foundation-identities.py')
+m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+foods=[{'fdcId':1,'description':'Other food','dataType':'Foundation'}]
+profiles=[{'source_profile_key':'bad','source_label':'Different','source_aliases':[],
+ 'source_fdc_id':True,'source_url':None}]
+r=m.reconcile(foods,profiles,1,1)
+print(json.dumps({'refs':r['summary']['directFdcSourceReferencePairs'],
+ 'conflicts':r['summary']['conflictingV1SourceReferenceProfiles']}))`;
+ const result=runPython(code);
+ assert.equal(result.refs,0);
+ assert.equal(result.conflicts,0);
+});
