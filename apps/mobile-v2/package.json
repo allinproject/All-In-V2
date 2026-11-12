@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "main": "expo-router/entry",
   "scripts": {
+    "lint": "node ../../scripts/lint-v2-source.mjs",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
