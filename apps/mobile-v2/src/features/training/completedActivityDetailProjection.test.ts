@@ -14,6 +14,44 @@ test('details preserves every supplied metric, including extended measurements o
  assert.deepEqual(p.additionalMetricKeys,['run.zone2']);
  assert.deepEqual(p.sections.map(x=>x.key),['splits','hr']);
 });
+test('recovered V1 advanced metric families remain in Details for all 17 display sports',()=>{
+ // Synthetic *already owner-authorized* evidence; verifies display retention,
+ // not sensor acquisition, backend registry publication or sport comparability.
+ const cases=[
+  ['outdoor_run','run.gct.balance','Ground contact time balance','51%'],
+  ['walk','walk.steps','Steps','4500'],
+  ['hike','hike.vertical.speed','Vertical speed','450 m/h'],
+  ['ruck','ruck.pack.weight','Pack weight','20 lb'],
+  ['outdoor_ride','ride.platform.center.offset','Platform center offset','7 mm'],
+  ['indoor_trainer','trainer.torque.effectiveness','Torque effectiveness','75%'],
+  ['treadmill','treadmill.incline','Incline','5%'],
+  ['strength','strength.estimated.1rm','Estimated 1RM','100 kg'],
+  ['swim','swim.stroke.rate','Stroke rate','32 spm'],
+  ['pool_swim','pool.swolf','SWOLF','35'],
+  ['open_water_swim','water.temperature','Water temperature','18 C'],
+  ['elliptical','machine.resistance','Resistance','8'],
+  ['stairs','stairs.machine.level','Machine level','9'],
+  ['hiit','hiit.rounds.reps','Rounds + reps','5 + 14'],
+  ['yoga_mobility','yoga.pose.duration','Pose duration','60 s'],
+  ['hybrid','hybrid.transition.duration','Transition duration','2 min'],
+  ['other','other.recorded.metric','Recorded source metric','2'],
+ ] as const;
+ for(const [sport,key,label,value] of cases){
+  const evidence:MetricEvidence={key,label,value,source:'verified fixture',
+   provenance:sport==='strength'?'estimated':'device',quality:'partial',sourceQuality:'trusted'};
+  const model=projectCompletedActivityDetail({sport,metrics:[evidence]});
+  assert.equal(model.details.length,1,sport);
+  assert.equal(model.details[0].key,key,sport);
+  assert.equal(model.details[0].quality,'partial',sport);
+  assert.equal(model.details[0].sourceQuality,'trusted',sport);
+  // Non-default fields still appear within Details and never produce fake
+  // unrelated sport data. Overview remains V1-priority unless pinned.
+  assert.equal(model.details.some(x=>x.key!==key),false,sport);
+  const absent=projectCompletedActivityDetail({sport,metrics:[]});
+  assert.equal(absent.details.length,0,sport);
+ }
+});
+
 test('no fabricated metrics and no unsupported structures when missing',()=>{
  const p=projectCompletedActivityDetail({sport:'pool_swim',metrics:[fact('swim.distance','Distance','1000 m')]});
  assert.deepEqual(p.details.map(x=>x.key),['swim.distance']);
