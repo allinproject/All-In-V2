@@ -10,6 +10,22 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM pg_catalog.pg_roles WHERE rolname='allin_v2_device_ingest') THEN
   CREATE ROLE allin_v2_device_ingest NOLOGIN NOINHERIT NOBYPASSRLS;
  END IF;
+ IF EXISTS(
+  SELECT 1 FROM pg_catalog.pg_roles
+  WHERE rolname='allin_v2_device_ingest'
+    AND (rolcanlogin OR rolinherit OR rolsuper OR rolcreatedb
+      OR rolcreaterole OR rolreplication OR rolbypassrls)
+ ) THEN
+  RAISE EXCEPTION 'Device ingest principal must retain restricted role attributes';
+ END IF;
+ IF EXISTS(
+  SELECT 1 FROM pg_catalog.pg_auth_members m
+  JOIN pg_catalog.pg_roles ingest_role
+    ON ingest_role.rolname='allin_v2_device_ingest'
+  WHERE m.roleid=ingest_role.oid OR m.member=ingest_role.oid
+ ) THEN
+  RAISE EXCEPTION 'Device ingest principal must have no role memberships';
+ END IF;
 END $role$;
 -- No membership grants to authenticator, service_role, anon or authenticated.
 GRANT USAGE ON SCHEMA allin_private TO allin_v2_device_ingest;
