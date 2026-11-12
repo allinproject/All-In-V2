@@ -7,6 +7,7 @@
 import {createHash} from 'node:crypto';
 import {appAttestChallengeData,inspectAppleAppAttestation}
  from './appleAppAttestEnrollmentVerifier.ts';
+import {appleAppAttestReceiptService} from './appleAppAttestReceiptVerifier.ts';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const validApp=/^[A-Z0-9]{10}\.[a-zA-Z0-9.-]{3,180}$/;
 export type AppleEnrollmentSession={ownerId:string;sessionId:string;expiresAtMs:number};
@@ -117,4 +118,14 @@ export async function completeAppAttestEnrollment(
    receiptHash:receipt.receiptSha256,leafHash:review.leafFingerprint,
   });
  });
+}
+
+/** Preferred trusted-server entry point: a client cannot choose the receipt
+ * verifier or skip CMS. No public HTTP route is enabled by this function. */
+export function completeVerifiedAppleAppAttestEnrollment(
+ bearer:string,input:{challengeId:string;keyId:string;attestationObjectB64url:string},
+ backend:AppAttestEnrollmentBackend,nowMs:number,
+):Promise<'enrolled'>{
+ return completeAppAttestEnrollment(
+  bearer,input,backend,appleAppAttestReceiptService,nowMs);
 }
