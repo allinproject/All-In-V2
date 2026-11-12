@@ -5,6 +5,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {createClient} from "npm:@supabase/supabase-js@2.118.0";
 import {createCoachSupabaseDependencies} from "../_shared/coachSupabasePersistence.mjs";
 import {handleCoachRuntimeRequest} from "../_shared/coachRuntimeIngress.mjs";
+import {createCoachArmedRuntime} from "../_shared/coachArmedRuntime.mjs";
 
 const disabled=()=>new Response(JSON.stringify({code:"coach_disabled"}),{
  status:503,headers:{"content-type":"application/json",
@@ -30,13 +31,33 @@ Deno.serve(async(req:Request)=>{
     global:{headers:{Authorization:auth}},
     auth:{persistSession:false,autoRefreshToken:false}
   });
-  // The canonical owner read adapter has no permission to execute a model.
-  // This inert server-only dependency satisfies the shared interface without
-  // introducing any service key into the read-only release candidate.
+  // The model is separately armed. A deployed read-only endpoint can NEVER
+  // start a charged model call without this explicit second release gate.
+  const sendArmed=Deno.env.get("ALLIN_V2_COACH_SEND_ARMED")==="true";
+  let armed=null;
+  if(sendArmed){
+    const serviceKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")??"";
+    const apiKey=Deno.env.get("ALLIN_V2_COACH_PROVIDER_SECRET")??"";
+    const model=Deno.env.get("ALLIN_V2_COACH_REVIEWED_MODEL")??"";
+    const inputUsdPerMillion=Number(Deno.env.get("ALLIN_V2_COACH_INPUT_USD_PER_MILLION"));
+    const outputUsdPerMillion=Number(Deno.env.get("ALLIN_V2_COACH_OUTPUT_USD_PER_MILLION"));
+    if(!serviceKey||!apiKey||!model||
+       !Number.isFinite(inputUsdPerMillion)||!Number.isFinite(outputUsdPerMillion))
+      return disabled();
+    const serverClient=createClient(url,serviceKey,{
+      auth:{persistSession:false,autoRefreshToken:false}
+    });
+    try{
+      armed=createCoachArmedRuntime({userClient,serverClient,
+        bearerToken:m[1],apiKey,model,inputUsdPerMillion,outputUsdPerMillion});
+    }catch{return disabled()}
+  }
+  // Without SEND_ARMED, the no-privilege object is deliberately incapable
+  // of claiming a turn, saving a response, or invoking a model.
   const noPrivilegedWriter={
     rpc:async()=>{throw new Error("coach_provider_not_armed")}
   };
-  const deps=createCoachSupabaseDependencies({
+  const deps=armed??createCoachSupabaseDependencies({
     userClient,serverClient:noPrivilegedWriter,bearerToken:m[1],
     providerGenerate:async()=>{throw new Error("coach_provider_not_armed")}
   });
@@ -46,6 +67,6 @@ Deno.serve(async(req:Request)=>{
     readTranscriptPage:deps.readTranscriptPage,
     // Sending remains unavailable until server-only provider controls,
     // authenticated canonical context, and spend policy are accepted.
-    executeExchange:async()=>({status:"blocked",reason:"coach_provider_not_armed"})
+    executeExchange:armed?armed.executeExchange:async()=>({status:"blocked",reason:"coach_provider_not_armed"})
   },{enabled:true});
 });
