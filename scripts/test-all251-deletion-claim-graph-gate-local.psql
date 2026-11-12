@@ -1,0 +1,108 @@
+\set ON_ERROR_STOP on
+-- ALL-251: isolated, rollback-only test of the REVIEW-ONLY claim/completion
+-- override. Never apply to hosted Supabase or enable a destructive worker.
+BEGIN;
+\ir V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql
+\ir V2-ACCOUNT-DELETION-CLAIM-COMPLETION-GRAPH-GATE-REVIEW.sql
+
+DO $baseline$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+   WHERE reason='audit_retention_policy_required')
+ THEN RAISE EXCEPTION 'Unapproved durable deletion-audit retention was not detected'; END IF;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_processor_config
+  WHERE execution_enabled=true)
+ THEN RAISE EXCEPTION 'Destructive deletion worker unexpectedly enabled'; END IF;
+ IF has_function_privilege('authenticated',
+  'allin_private.v2_deletion_assert_approved_coverage_review()','EXECUTE')
+ OR has_function_privilege('anon',
+  'allin_private.v2_deletion_assert_approved_coverage_review()','EXECUTE')
+ THEN RAISE EXCEPTION 'Review release gate exposed to clients'; END IF;
+END $baseline$;
+
+CREATE TABLE allin_private.v2_all251_unapproved_owner_gate (
+ id uuid PRIMARY KEY, owner_id uuid NOT NULL
+);
+CREATE TABLE allin_private.v2_all251_unapproved_relationship_gate (
+ id uuid PRIMARY KEY, lower_user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE
+);
+DO $deny_graph$
+DECLARE reason text;
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_deletion_assert_approved_coverage_review();
+  RAISE EXCEPTION 'Unknown owner/relationship was not denied';
+ EXCEPTION WHEN insufficient_privilege THEN
+  GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
+  IF reason NOT LIKE '%no_verified_auth_cascade_path%'
+   AND reason NOT LIKE '%relationship_or_actor_retention_policy_required%'
+  THEN RAISE EXCEPTION 'Unexpected gate reason %',reason; END IF;
+ END;
+END $deny_graph$;
+DROP TABLE allin_private.v2_all251_unapproved_owner_gate;
+DROP TABLE allin_private.v2_all251_unapproved_relationship_gate;
+
+DO $audit_block$
+DECLARE reason text;
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_deletion_assert_approved_coverage_review();
+  RAISE EXCEPTION 'Unapproved audit retention was not denied';
+ EXCEPTION WHEN insufficient_privilege THEN
+  GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
+  IF reason NOT LIKE '%audit_retention_policy_required%'
+  THEN RAISE EXCEPTION 'Unexpected audit release gate: %',reason; END IF;
+ END;
+END $audit_block$;
+
+-- Temporarily open only the DATABASE test switch to verify BOTH real
+-- privileged function bodies use the review gate. No Auth user is deleted.
+UPDATE allin_private.v2_account_deletion_processor_config
+ SET execution_enabled=true, change_reason='ALL-251 isolated graph integration test'
+ WHERE singleton=true AND execution_enabled=false;
+INSERT INTO auth.users(id) VALUES
+ ('c8111111-1111-4111-8111-111111111111');
+INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+ VALUES ('c8111111-1111-4111-8111-111111111111',
+         'c8222222-2222-4222-8222-222222222222','requested');
+
+DO $claim_rejection$
+DECLARE reason text;
+BEGIN
+ BEGIN
+  PERFORM public.v2_claim_account_deletion_for_processing(
+   'c8111111-1111-4111-8111-111111111111',
+   'c8222222-2222-4222-8222-222222222222');
+  RAISE EXCEPTION 'Unapproved owner graph claim unexpectedly passed';
+ EXCEPTION WHEN insufficient_privilege THEN
+  GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
+  IF reason NOT LIKE '%audit_retention_policy_required%'
+   THEN RAISE EXCEPTION 'Review claim failed for wrong reason: %',reason; END IF;
+ END;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_requests
+   WHERE user_id='c8111111-1111-4111-8111-111111111111'
+    AND status='requested')
+ OR EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_execution_audit
+    WHERE request_id='c8222222-2222-4222-8222-222222222222')
+ THEN RAISE EXCEPTION 'Denied claim wrote state despite coverage failure'; END IF;
+END $claim_rejection$;
+-- Isolated synthetic Auth deletion only; real worker still not deployed/armed.
+DELETE FROM auth.users WHERE id='c8111111-1111-4111-8111-111111111111';
+
+DO $completion_rejection$
+DECLARE reason text;
+BEGIN
+ BEGIN
+  PERFORM public.v2_record_account_deletion_completion(
+   'c8111111-1111-4111-8111-111111111111',
+   'c8222222-2222-4222-8222-222222222222');
+  RAISE EXCEPTION 'Unapproved owner graph completion unexpectedly passed';
+ EXCEPTION WHEN insufficient_privilege THEN
+  GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
+  IF reason NOT LIKE '%audit_retention_policy_required%'
+   THEN RAISE EXCEPTION 'Review completion failed for wrong reason: %',reason; END IF;
+ END;
+ RAISE NOTICE 'PASS ALL-251 review-only claim and completion deny unapproved audit retention; owner graph rejects unknown relationships; no state written';
+END $completion_rejection$;
+
+ROLLBACK;
