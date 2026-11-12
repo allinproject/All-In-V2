@@ -196,6 +196,12 @@ def main():
         # Reuse the original source-specific immutable energy evidence.
         # Real PostgreSQL TCP SCRAM authentication, distinct from admin and
         # athlete roles; check actual session_user and activated reviewer role.
+        wrong_password=run(["psql","-X","-q","-v","ON_ERROR_STOP=1","-At",
+                            "-h","127.0.0.1","-p","5432","-U",workload,"-d",db,
+                            "-c","SELECT 1"],env={**os.environ,
+                            "PGPASSWORD":"INTENTIONALLY-WRONG-TEST-PASSWORD"},check=False)
+        require(wrong_password.returncode!=0,
+                "incorrect TCP password unexpectedly authenticated")
         proof_session = client(workload, "SELECT session_user||':'||current_user")
         require(proof_session.returncode == 0 and proof_session.stdout.strip() ==
                 workload+":allin_v2_ingredient_reviewer",
@@ -247,6 +253,9 @@ def main():
                                "'Revoked machine must not replay attestation')")
         require(revoked_workload.returncode!=0 and "unauthorized" in revoked_workload.stderr,
                 "revoked workload retained writer access")
+        admin(f"REVOKE allin_v2_ingredient_reviewer FROM {ident(workload)}")
+        require(client(workload,"SELECT 1").returncode!=0,
+                "revoked role membership still allowed SET ROLE")
         # No PostgreSQL role or password persists outside this disposable runner.
         # The rest of the eight-food native multi-session acceptance continues.
         profile, source, digest, _ = rows[0]
@@ -426,7 +435,9 @@ def main():
                 op_locker.wait(timeout=10)
             require(int(admin("SELECT count(*) FROM allin_private.v2_ingredient_operator_credential_events").stdout.strip())>=4,
                     "credential lifecycle changes were not audited")
-            print(json.dumps({"database":"ephemeral localhost native PostgreSQL 15",
+            server_version=admin("SHOW server_version").stdout.strip()
+            print(json.dumps({"database":"ephemeral localhost native PostgreSQL",
+                              "serverVersion":server_version,
                               "fixtureFoods":len(rows),"independentConnections":2,
                               "competingCAS":"one-success-one-stale",
                               "sourceMutationRace":"blocked-until-commit-and-rejected",
