@@ -139,11 +139,19 @@ export function createOpenIapStoreAdapter({
             const result=normalize(p,context.ownerId);
             if(result)complete(result);
           });
+          // A native module may synchronously replay a queued transaction
+          // during listener registration, before the handle is assigned.
+          if(finished){success.remove();return}
           error=api.purchaseErrorListener(err=>{
             if(err?.code==='user-cancelled'||err?.code==='E_USER_CANCELLED')
               complete(null);
             else complete(null,Error('native_purchase_failed'));
           });
+          if(finished){error.remove();success.remove();return}
+          if(getOwner()!==context.ownerId){
+            complete(null,Error('owner_changed'));
+            return;
+          }
           void api.requestPurchase(request).catch(()=>
             complete(null,Error('native_purchase_launch_failed')));
         }catch{complete(null,Error('native_purchase_listener_failed'))}
