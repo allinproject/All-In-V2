@@ -8,6 +8,8 @@ on:
       - 'docs/architecture/sql/V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-REVISION-ACCEPTANCE-WRITER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-GOALS-OWNER-SNAPSHOT-READER-CANDIDATE.sql'
+      - 'scripts/test-v2-goals-owner-snapshot-local-postgres.psql'
       - 'scripts/test-v2-goals-acceptance-local-postgres.psql'
       - 'scripts/test-v2-goals-acceptance-race-local.sh'
       - 'scripts/test-v2-goals-owner-local-postgres.psql'
@@ -282,6 +284,10 @@ jobs:
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-acceptance.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-acceptance-qa.psql
           bash scripts/test-v2-goals-acceptance-race-local.sh "$db_container"
+          docker cp docs/architecture/sql/V2-GOALS-OWNER-SNAPSHOT-READER-CANDIDATE.sql "$db_container:/tmp/v2-goals-owner-reader.sql"
+          docker cp scripts/test-v2-goals-owner-snapshot-local-postgres.psql "$db_container:/tmp/v2-goals-owner-reader-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-reader.sql
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-reader-qa.psql
       - name: Seed populated V2 owner accounts before billing candidate upgrade
         run: |
           set -euo pipefail
