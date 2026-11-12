@@ -8,6 +8,22 @@ on:
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-IMMUTABLE-REVISION-GUARD-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-AUTH-OWNER-GATEWAY-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SOURCE-WRITER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-STRENGTH-SETS-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-COMPLETION-ACK-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-ACTIVITY-OUTBOX-WRITER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-START-PLANNED-WORKOUT-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql'
   workflow_dispatch:
 
 permissions:
@@ -85,6 +101,75 @@ jobs:
             THEN RAISE EXCEPTION 'Unreviewed candidate client grants'; END IF;
             RAISE NOTICE 'PASS: 18 real foundation migrations + owner identity/calendar DDL';
           END $check$;
+          SQL
+      - name: Replay full canonical Training and Completed Activity candidate graph
+        run: |
+          set -euo pipefail
+          # Review-only DDL on a disposable Supabase local DB, never a remote target.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-TRAINING-IMMUTABLE-REVISION-GUARD-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-AUTH-OWNER-GATEWAY-CANDIDATE.sql \
+            docs/architecture/sql/V2-COMPLETED-ACTIVITY-SOURCE-WRITER-CANDIDATE.sql \
+            docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql \
+            docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql \
+            docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql \
+            docs/architecture/sql/V2-COMPLETED-ACTIVITY-STRENGTH-SETS-CANDIDATE.sql \
+            docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-COMPLETION-ACK-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-ACTIVITY-OUTBOX-WRITER-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-START-PLANNED-WORKOUT-CANDIDATE.sql \
+            docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql \
+            docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql \
+            docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
+          done
+          docker exec -i "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          DO $gate$
+          DECLARE
+            v_count integer;
+          BEGIN
+            SELECT count(*) INTO v_count
+            FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname IN ('public','allin_private')
+              AND (c.relname LIKE 'v2_training_%'
+                   OR c.relname='v2_completed_activities'
+                   OR c.relname LIKE 'v2_activity_%'
+                   OR c.relname LIKE 'v2_indoor_weekly_%')
+              AND c.relkind IN ('r','p');
+            IF v_count < 15 THEN
+              RAISE EXCEPTION 'Canonical candidate graph incomplete: % tables',v_count;
+            END IF;
+            IF EXISTS(
+              SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+              WHERE n.nspname IN ('public','allin_private')
+                AND (c.relname LIKE 'v2_training_%'
+                     OR c.relname='v2_completed_activities'
+                     OR c.relname LIKE 'v2_activity_%'
+                     OR c.relname LIKE 'v2_indoor_weekly_%')
+                AND c.relkind IN ('r','p') AND NOT c.relrowsecurity
+            ) THEN RAISE EXCEPTION 'Candidate table with RLS disabled'; END IF;
+            IF EXISTS(
+              SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+              WHERE n.nspname IN ('public','allin_private')
+                AND (c.relname LIKE 'v2_training_%'
+                     OR c.relname='v2_completed_activities'
+                     OR c.relname LIKE 'v2_activity_%'
+                     OR c.relname LIKE 'v2_indoor_weekly_%')
+                AND c.relkind IN ('r','p')
+                AND (has_table_privilege('anon',c.oid,'INSERT,UPDATE,DELETE')
+                     OR has_table_privilege('authenticated',c.oid,'INSERT,UPDATE,DELETE'))
+            ) THEN RAISE EXCEPTION 'Unsafe candidate direct client write grants'; END IF;
+            IF NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+                WHERE n.nspname='allin_private'
+                  AND p.proname='v2_training_create_activity_from_outbox_candidate')
+            THEN RAISE EXCEPTION 'Training-to-Activity outbox writer absent'; END IF;
+            RAISE NOTICE 'PASS: full canonical candidate graph on real local 18-migration Supabase foundation';
+          END $gate$;
           SQL
       - name: Stop local Supabase services
         if: always()
