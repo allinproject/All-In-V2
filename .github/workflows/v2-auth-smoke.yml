@@ -14,6 +14,7 @@ on:
       - 'scripts/test-v2-kitchen-plan-candidate.test.mjs'
       - 'scripts/test-v2-kitchen-plan-postgres.psql'
       - 'docs/architecture/sql/V2-KITCHEN-PANTRY-SHOPPING-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-KITCHEN-PURCHASE-PANTRY-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-kitchen-pantry-shopping-postgres.psql'
       - 'apps/mobile-v2/src/features/fuel/**'
       - 'apps/mobile-v2/src/features/community/**'
@@ -94,6 +95,7 @@ on:
       - 'scripts/test-v2-kitchen-plan-candidate.test.mjs'
       - 'scripts/test-v2-kitchen-plan-postgres.psql'
       - 'docs/architecture/sql/V2-KITCHEN-PANTRY-SHOPPING-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-KITCHEN-PURCHASE-PANTRY-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-kitchen-pantry-shopping-postgres.psql'
       - 'apps/mobile-v2/src/features/fuel/**'
       - 'apps/mobile-v2/src/features/community/**'
@@ -337,6 +339,7 @@ jobs:
           docker exec "$POSTGRES_CONTAINER_ID" createdb -U "$PGUSER" allin_kitchen_inventory_test
           docker cp scripts/test-v2-kitchen-pantry-shopping-postgres.psql "$POSTGRES_CONTAINER_ID:/tmp/allin/scripts/test-v2-kitchen-pantry-shopping-postgres.psql"
           docker cp docs/architecture/sql/V2-KITCHEN-PANTRY-SHOPPING-OWNER-CANDIDATE.sql "$POSTGRES_CONTAINER_ID:/tmp/allin/docs/architecture/sql/V2-KITCHEN-PANTRY-SHOPPING-OWNER-CANDIDATE.sql"
+          docker cp docs/architecture/sql/V2-KITCHEN-PURCHASE-PANTRY-WRITER-CANDIDATE.sql "$POSTGRES_CONTAINER_ID:/tmp/allin/docs/architecture/sql/V2-KITCHEN-PURCHASE-PANTRY-WRITER-CANDIDATE.sql"
           docker exec "$POSTGRES_CONTAINER_ID" psql -U "$PGUSER" -d allin_kitchen_inventory_test -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-kitchen-pantry-shopping-postgres.psql
       - name: Verify subscription review candidate in separate disposable database
         env:
