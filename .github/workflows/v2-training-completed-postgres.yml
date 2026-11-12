@@ -81,6 +81,8 @@ on:
       - 'scripts/check-v2-applied-migration-integrity.test.mjs'
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'scripts/test-v2-foundation-training-overlay-postgres.psql'
+      - 'scripts/stage-v2-training-overlay.mjs'
+      - 'scripts/stage-v2-training-overlay.test.mjs'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -137,7 +139,7 @@ jobs:
               git fetch --no-tags --depth=1 origin "$BEFORE_SHA" >/dev/null 2>&1 || true
             fi
             if [[ -n "$BEFORE_SHA" ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
-              changed="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- supabase/migrations/ docs/architecture/sql/ scripts/test-v2-applied-foundation-local-postgres.psql scripts/test-v2-foundation-training-overlay-postgres.psql .github/workflows/v2-training-completed-postgres.yml)"
+              changed="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- supabase/migrations/ docs/architecture/sql/ scripts/test-v2-applied-foundation-local-postgres.psql scripts/test-v2-foundation-training-overlay-postgres.psql scripts/stage-v2-training-overlay.mjs scripts/stage-v2-training-overlay.test.mjs .github/workflows/v2-training-completed-postgres.yml)"
               if [[ -n "$changed" ]]; then enabled=true; else enabled=false; fi
             else
               enabled=true
@@ -166,8 +168,10 @@ jobs:
           # This phase is intentionally transactional: DDL rolls back.
           # Copy existing candidate definitions rather than maintaining
           # a competing migration schema or creating a remote database.
+          node --test scripts/stage-v2-training-overlay.test.mjs
+          node scripts/stage-v2-training-overlay.mjs /tmp/allin-v2-training-overlay-sql
           docker exec "$container" mkdir -p /tmp/allin/docs/architecture
-          docker cp docs/architecture/sql "$container:/tmp/allin/docs/architecture/sql"
+          docker cp /tmp/allin-v2-training-overlay-sql "$container:/tmp/allin/docs/architecture/sql"
           docker cp scripts/test-v2-foundation-training-overlay-postgres.psql "$container:/tmp/test-v2-foundation-training-overlay-postgres.psql"
           docker exec "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-v2-foundation-training-overlay-postgres.psql
       - name: Stop isolated Supabase database
