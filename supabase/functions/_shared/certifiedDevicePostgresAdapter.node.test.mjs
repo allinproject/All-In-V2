@@ -109,7 +109,7 @@ test('canonical SQL snapshot and nonce rollback together on source mismatch',asy
  const forged={...payload,identity:{...payload.identity,sourceRecordId:'forged'}};
  const envelope=await signInternalDeviceEnvelope(forged,now,'forged-nonce-1234567891234567',secret);
  await assert.rejects(ingestVerifiedDeviceEnvelopeTransactional(
-  envelope,adapter,bearer,secret,now),/review|required|identity/i);
+  envelope,adapter,bearer,secret,now),/registered device source denied/i);
  assert.equal(db.metric.size,0);assert.equal(db.receipt.size,0);
  assert.equal(db.rollbacks,1);
 });
