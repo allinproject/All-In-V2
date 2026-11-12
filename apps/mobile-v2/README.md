@@ -85,6 +85,17 @@ The canonical `apps/mobile-v2/package-lock.json` is already committed. Use `npm 
 
 The cheap dependency-free smoke workflow checks React/React DOM manifest compatibility on relevant pushes. The full engineering workflow also accepts an `integration/v2-foundation` push **only when its own workflow file changes**, and continues to skip draft-PR validation. One full run passed at the pinned commit above; normal source pushes do not automatically rerun this costly job. This is a source-and-JavaScript-bundle gate, not native install or production acceptance.
 
+## V2 environment and secret boundaries
+
+| Context | Supabase target | Client credentials | Deployment posture |
+| --- | --- | --- | --- |
+| Local development | Dedicated V2 project only, as listed in `.env.example` | V2 publishable key and URL only | Local Expo development; no production writes without explicit approval |
+| Hosted CI | Same V2 URL with a deliberately nonfunctional publishable placeholder | Values defined in the read-only engineering workflow; no real signing or service secrets | Installs/tests/JavaScript exports only; never a real signup or deployment |
+| Preview / beta | Must be explicitly approved as a V2-only environment before use | Publishable key and URL for the *approved* target only | **Not yet validated as an installed native build** |
+| Production | Must be separately reviewed, including database migration and signing gates | Publishable client configuration only; secrets stay on approved server/build providers | **No production release or native binary is implied by CI success** |
+
+The exact preview/production Supabase project identities, app identifiers and signing configuration are not established in this repository; never guess or borrow V1 values. For a native build, configure `ALLIN_V2_IOS_BUNDLE_ID` / `ALLIN_V2_ANDROID_PACKAGE` only from verified store registration. Sensitive providers (billing, AI, nutrition lookups and push) must use server-side credentials and authenticated service boundaries, not `EXPO_PUBLIC_*`. A Sentry DSN is public configuration, but `SENTRY_AUTH_TOKEN` is a private build secret and must never be committed, logged or exposed to the client. The V2 target guard and AST safety lint reject several classes of client misconfiguration; they do not replace review of actual build secrets, network responses, native signing or production permissions.
+
 ## First native-device acceptance (not yet run)
 
 The successful Expo `export` commands produce platform JavaScript bundles, **not installable app binaries**. Do not claim that the founder beta is installed or working based on exports alone. V2 has no committed `apps/mobile-v2/eas.json` at this checkpoint; do not fabricate an EAS build profile, signing credentials, bundle/package identifiers or a release artifact.
