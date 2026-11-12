@@ -87,6 +87,30 @@ participation remain with ALL-244/234; Goals cannot fabricate them.
 Any Goal change after preview must invalidate consent rather than
 silently change a plan. Revalidate on physical installed devices.
 
+### ALL-244 EventHub physical owner compatibility verified
+
+The **existing ALL-244 EventHub owner**, not Training, now proposes
+`V2-EVENTHUB-IDENTITY-MEMBERSHIP-PARTICIPATION-CANDIDATE.sql`,
+`V2-EVENTHUB-OWNER-EVENT-PLAN-READER-CANDIDATE.sql`,
+`V2-EVENTHUB-MEMBERSHIP-WRITER-CANDIDATE.sql` and
+`V2-EVENTHUB-EVENT-VERSION-GUARD-CANDIDATE.sql`.
+One canonical organizer event ID/version supports all sports and
+reviewed URL aliases. Group membership is **not** registration;
+participation is independent, source-attributed and owner-bound.
+A verified organizer cancellation/postponement changes event version
+and invalidates stale race-linked Training certification, never
+silently changes an accepted Training plan.
+
+[Local Supabase full replay #43192676260](https://github.com/allinproject/All-In-V2/actions/runs/43192676260)
+**SUCCESS** for V2 foundation, Goals, EventHub identity/reader/writer/version
+and the *existing* Community privacy candidate. An additional two-session
+first-join race is pending independent acceptance. See
+`docs/architecture/V2-EVENTHUB-CANONICAL-OWNER-REVIEW.md`.
+**No live EventHub migration, public group route, verified URL resolver,
+actual event registration, trusted service grant or installed app signoff
+exists.** Require those owner approvals before physically binding
+`eventId/eventVersion` into Training revisions.
+
 ## 4. Release cut acceptance (all must pass before hosted DDL)
 
 - [ ] ALL-222/243/246 sign off source identity, canonical aggregate FKs, plan revision lifecycle, metric registry and exact source/quality model.
