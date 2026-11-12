@@ -74,6 +74,49 @@ try{
     'Privileged RPC authorized nonexistent request or missing deletion gate');
  }
  process.stdout.write('PASS: hosted user RPC denies client execution and server RPC rejects missing approval\\n');
+ if(env.ALL251_TEST_REAL_APPROVAL==='true'){
+  // Synthetic real hosted owner workflow, ONLY while the canonical owner-begin
+  // RPC is temporarily granted to authenticated on this isolated staging DB.
+  const rpc=async(name,body,token=null,apiKey=key)=>request('/rest/v1/rpc/'+name,{
+   method:'POST',body,userJwt:token,apiKey,
+  });
+  const beginA=await rpc('v2_begin_account_export_candidate',
+    {p_expected_user_id:a.id},aToken,anon);
+  assert.equal(beginA.status,200,'Owner A could not start a genuine export request');
+  const opened=await beginA.json();
+  assert.equal(opened.ownerId,a.id);
+  assert.equal(opened.status,'requested');
+  assert(/^[a-f0-9-]{36}$/i.test(opened.requestId??''));
+  const again=await rpc('v2_begin_account_export_candidate',
+    {p_expected_user_id:a.id},aToken,anon);
+  assert.equal(again.status,200,'Repeat owner initiation was rejected');
+  assert.equal((await again.json()).requestId,opened.requestId,'Owner request duplicated');
+  const foreignBegin=await rpc('v2_begin_account_export_candidate',
+    {p_expected_user_id:a.id},bToken,anon);
+  assert([400,401,403].includes(foreignBegin.status),'B began export for A');
+  const before=await rpc('v2_account_export_worker_authorize_candidate',
+    {p_user_id:a.id,p_session_id:sessionId,p_request_id:opened.requestId});
+  assert([400,401,403].includes(before.status),'Unapproved request authorized');
+  const wrongSession=JSON.parse(Buffer.from(bToken.split('.')[1],'base64url').toString()).session_id;
+  const foreignApprove=await rpc('v2_account_export_worker_approve_candidate',
+    {p_user_id:a.id,p_session_id:wrongSession,p_request_id:opened.requestId});
+  assert([400,401,403].includes(foreignApprove.status),'Foreign session approved A request');
+  const approve=await rpc('v2_account_export_worker_approve_candidate',
+    {p_user_id:a.id,p_session_id:sessionId,p_request_id:opened.requestId});
+  assert.equal(approve.status,200,'Valid owner request not approved by trusted worker');
+  const result=await approve.json();
+  assert.equal(result.requestId,opened.requestId);
+  assert.equal(result.status,'approved');
+  const authorized=await rpc('v2_account_export_worker_authorize_candidate',
+    {p_user_id:a.id,p_session_id:sessionId,p_request_id:opened.requestId});
+  assert.equal(authorized.status,200,'Owner approved request not authorized');
+  assert.equal((await authorized.json()).ownerId,a.id);
+  const foreignRead=await rpc('v2_account_export_worker_authorize_candidate',
+    {p_user_id:b.id,p_session_id:wrongSession,p_request_id:opened.requestId});
+  assert([400,401,403].includes(foreignRead.status),'B authorized A approved request');
+  process.stdout.write('PASS: real hosted owner request, idempotency, service approval, exact session and foreign-owner denial\\n');
+ }
+
  for(const token of [aToken,bToken]){
   const res=await request('/functions/v1/v2-account-export-download',{
     method:'POST',userJwt:token,apiKey:anon,body:{request_id:randomUUID()}});
