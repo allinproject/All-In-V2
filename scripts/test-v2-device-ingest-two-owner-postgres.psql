@@ -64,6 +64,14 @@ BEGIN
   UPDATE public.v2_activity_sources SET captured_at=now() WHERE id=src;
   RAISE EXCEPTION 'Source capture timestamp rewrite permitted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  UPDATE public.v2_activity_sources SET source_device_ref='attacker-device' WHERE id=src;
+  RAISE EXCEPTION 'Registered device reassignment permitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  UPDATE public.v2_activity_sources SET source_revision='forged-revision' WHERE id=src;
+  RAISE EXCEPTION 'Registered source revision rewrite permitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  IF (SELECT count(*) FROM public.v2_completed_activities WHERE id=act AND user_id=a)<>1
  OR (SELECT count(*) FROM public.v2_activity_sources WHERE id=src AND user_id=a AND activity_id=act)<>1
  THEN RAISE EXCEPTION 'Guard changed canonical owner identity'; END IF;
