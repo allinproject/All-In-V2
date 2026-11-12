@@ -8,7 +8,7 @@
 import {createHash} from 'node:crypto';
 import {auditOwnerPrivateMediaCoverage} from './trainingExportSupabaseStorage.mjs';
 
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
 const CHUNK_BYTES=128*1024;
 const MAX_FILES=128;
