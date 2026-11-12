@@ -84,6 +84,38 @@ test('authentic outdoor route evidence remains allowed where the sport supports 
  }
 });
 
+test('sport-specific structured sets and transitions cannot cross activity identities',()=>{
+ const invalid=[
+  {sport:'running',sportSubtype:'road',kind:'swim_sets'},
+  {sport:'swimming',sportSubtype:'pool',kind:'strength_sets'},
+  {sport:'cycling',sportSubtype:'outdoor',kind:'transitions'},
+  {sport:'running',sportSubtype:'trail',kind:'sport_legs'},
+ ] as const;
+ for(const item of invalid){
+  const raw={...base(),sport:item.sport,sportSubtype:item.sportSubtype,metrics:[],sections:[
+   {key:'section',kind:item.kind,title:'Recorded structure',sourceId:'watch-record',count:2}]};
+  assert.throws(()=>canonicalActivityToScreenInput(raw,'owner-A','activity-1'),
+   /Structured evidence is incompatible/,item.sport+' '+item.kind);
+ }
+});
+
+test('genuine sport-specific and multisport structured evidence remain visible',()=>{
+ const allowed=[
+  {sport:'strength',sportSubtype:'gym',kind:'strength_sets'},
+  {sport:'swimming',sportSubtype:'pool',kind:'swim_sets'},
+  {sport:'multisport',sportSubtype:'triathlon',kind:'sport_legs'},
+  {sport:'multisport',sportSubtype:'triathlon',kind:'transitions'},
+  {sport:'multisport',sportSubtype:'hybrid',kind:'swim_sets'},
+  {sport:'hiit',sportSubtype:'gym',kind:'strength_sets'},
+ ] as const;
+ for(const item of allowed){
+  const raw={...base(),sport:item.sport,sportSubtype:item.sportSubtype,metrics:[],sections:[
+   {key:'section',kind:item.kind,title:'Recorded structure',sourceId:'watch-record',count:2}]};
+  assert.equal(canonicalActivityToScreenInput(raw,'owner-A','activity-1').sections?.[0].kind,
+   item.kind,item.sport+' '+item.kind);
+ }
+});
+
 test('untrusted runtime enums and ambiguous numeric placeholders fail closed',()=>{
  const a=base();
  assert.throws(()=>canonicalActivityToScreenInput({...a,sources:[{...a.sources[0],quality:'invented' as 'trusted'}]},'owner-A','activity-1'),/Invalid or duplicate canonical source/);
