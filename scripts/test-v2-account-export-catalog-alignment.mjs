@@ -114,3 +114,16 @@ test('both export paths deny newly introduced food, activity, Progress, race and
   assert(guard.includes('Unreviewed alternate-key owner table requires export coverage'));
  }
 });
+
+test('export-request history retains owner provenance without leaking Auth session identifiers',()=>{
+ const marker="ELSIF p_collection='allin_private.v2_account_export_requests_candidate' THEN";
+ const start=reader.indexOf(marker);
+ const end=reader.indexOf("\n ELSE\n  v_schema:=",start);
+ assert(start>0&&end>start,'Missing explicit export-request privacy projection');
+ const projection=reader.slice(start,end);
+ for(const required of ["'user_id'","'request_id'","'status'","'requested_at'","'expires_at'"])
+  assert(projection.includes(required),'Missing approved export metadata '+required);
+ assert(!projection.includes("'session_id'"),'Auth session ID may not be in portable account data');
+ assert(!projection.includes('pg_catalog.to_jsonb(t)'),'Raw export-job rows leak operational fields');
+ assert(projection.includes('WHERE t.user_id=$1'),'Export-request rows must remain owner-scoped');
+});
