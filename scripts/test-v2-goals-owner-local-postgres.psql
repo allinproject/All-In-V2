@@ -59,6 +59,38 @@ BEGIN
     RAISE EXCEPTION 'Cross-owner Goal revision inserted';
   EXCEPTION WHEN foreign_key_violation THEN NULL;
   END;
+  -- SQL protects the accepted revision even if a future trusted writer errs.
+  BEGIN
+    UPDATE public.v2_goal_revisions SET priority_role='secondary' WHERE id=rev_a;
+    RAISE EXCEPTION 'Published Goal revision was edited';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    DELETE FROM public.v2_goal_revisions WHERE id=rev_a;
+    RAISE EXCEPTION 'Published Goal revision was deleted while owner exists';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  -- Supersession preserves the prior snapshot while permitting a new
+  -- independently versioned accepted revision of the SAME goal.
+  UPDATE public.v2_goal_revisions SET status='superseded' WHERE id=rev_a;
+  INSERT INTO public.v2_goal_revisions(
+    id,goal_id,user_id,revision_number,status,source_kind,priority_role,accepted_at
+  ) VALUES('44444444-4444-4444-8444-444444444444',goal_a,owner_a,2,
+    'accepted','athlete_authored','primary',now());
+  UPDATE public.v2_goals
+    SET active_revision_id='44444444-4444-4444-8444-444444444444',version=2
+    WHERE id=goal_a;
+  IF (SELECT count(*) FROM public.v2_goal_revisions
+      WHERE goal_id=goal_a AND status='accepted')<>1
+  THEN RAISE EXCEPTION 'Superseding Goal revision lost current uniqueness'; END IF;
+  -- Authentic owner deletion must cascade all the first athlete's Goal
+  -- history while retaining a second athlete's independent accepted Goal.
+  DELETE FROM auth.users WHERE id=owner_a;
+  IF EXISTS(SELECT 1 FROM public.v2_goals WHERE user_id=owner_a)
+    OR EXISTS(SELECT 1 FROM public.v2_goal_revisions WHERE user_id=owner_a)
+  THEN RAISE EXCEPTION 'Deleted Goal owner retained canonical rows'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.v2_goals WHERE id=goal_c AND user_id=owner_b)
+  THEN RAISE EXCEPTION 'Unrelated athlete Goal lost during owner deletion'; END IF;
   IF EXISTS(SELECT 1 FROM pg_catalog.pg_class c
       WHERE c.oid IN ('public.v2_goals'::regclass,'public.v2_goal_revisions'::regclass)
         AND NOT c.relrowsecurity)
