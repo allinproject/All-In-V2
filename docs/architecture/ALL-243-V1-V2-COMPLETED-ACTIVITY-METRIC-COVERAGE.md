@@ -147,6 +147,14 @@ The original archived V1 registry is design-approved for `Rowing / Indoor Row` e
 
 **Still pending:** actual published metric codes/versions, compatible rower/FIT/HealthKit source acquisition, pace/500 formatting and row telemetry/provenance, authenticated detail/series readers, and installed-screen testing. This fixes a meaningful **presentation** gap, not release approval.
 
+### Activity-local customization isolation — 2026-11-12
+
+The reusable `CompletedActivityScreenContent` now mounts its local tab, editor draft, save-in-progress state and error message under a key derived from canonical `ownerId`, `id` and `revision` plus stable activity/source labels. The authenticated `completedActivityOwnerRead` now includes the verified owner and version in `CompletedActivityScreenInput`. An account change, another activity, or a corrected/revised activity therefore gets a fresh view instead of carrying an unfinished draft forward. An in-flight per-owner layout save also disables tab navigation, avoiding mismatched pane/record feedback.
+
+The existing `completedActivityScreenModel.test.ts` confirms stable same-activity identity and distinct owner/workout/revision/source identities. The existing `completedActivityOwnerRead.test.ts` verifies canonical owner/version handoff. Both suites remain registered under the existing mobile `test:auth` script; no new UI store or backend endpoint was created.
+
+**Boundary:** This is client-side state isolation, not a substitute for the existing versioned and authenticated `saveOwnedCompletedActivityLayouts` server/settings check. UI mounted/device tests and any new CI outcome remain unverified.
+
 ## Current evidence / outstanding gaps
 
 - [x] Exact 17-sport **V1 native scalar** Overview/Details baseline is in V2 and unit-test guarded.
