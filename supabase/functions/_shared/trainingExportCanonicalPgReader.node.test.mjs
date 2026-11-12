@@ -58,6 +58,11 @@ test('foreign account/request, unreviewed table and injection blocked before dat
   await assert.rejects(scoped.getCanonicalInventory({ownerId:owner,requestId:other}),/mismatch/);
   await assert.rejects(scoped.readPage({ownerId:owner,requestId,
     collection:'public.v2_messages; DROP TABLE auth.users',cursor:null,limit:25}),/Invalid/);
+  for(const collection of ['community.my_posts','food.my_entries']){
+   await assert.rejects(scoped.readPage({ownerId:owner,requestId,
+    collection,cursor:null,limit:25}),/Invalid/,
+   'Unapproved future collection must not reach privileged SQL: '+collection);
+  }
  });
  assert.equal(f.calls.length,5);
  assert.equal(f.released,true);
