@@ -18,6 +18,18 @@ export type MetricEvidence=LayoutMetric&{
  quality?:'trusted'|'partial';
  sourceQuality?:'trusted'|'partial';
 };
+/** Display-only quality warning. Never upgrades an estimated or partially
+ * verified source into a trusted sensor reading. Legacy source-only evidence
+ * has no confidence claim and therefore receives no invented quality badge. */
+export function metricEvidenceQualityNotice(metric:MetricEvidence):string|null{
+ const partialMetric=metric.quality==='partial';
+ const partialSource=metric.sourceQuality==='partial';
+ if(partialMetric&&partialSource)return 'Partial measurement and source quality';
+ if(partialMetric)return 'Partial measurement quality';
+ if(partialSource)return 'Partial source quality';
+ if(metric.provenance==='estimated')return 'Estimated value';
+ return null;
+}
 export type StructuredKind='route'|'splits'|'laps'|'intervals'|'heart_rate_series'|
  'power_series'|'cadence_series'|'elevation_series'|'speed_series'|
  'strength_sets'|'swim_sets'|'machine_series'|'sport_legs'|'transitions'|'other';
