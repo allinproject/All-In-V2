@@ -84,7 +84,9 @@ BEGIN
       WHERE r.metric_code=g.metric_code AND r.definition_version=g.definition_version LIMIT 1)
  ) ORDER BY g.metric_code,g.definition_version),'[]'::jsonb)
  INTO v_values
- FROM grouped g WHERE g.insufficient=0 AND g.facts=1;
+ FROM grouped g WHERE g.insufficient=0 AND g.facts=1
+ AND (SELECT count(DISTINCT r.definition_version) FROM rows r
+      WHERE r.metric_code=g.metric_code)=1;
  WITH rows AS (
   SELECT m.metric_code,m.definition_version,m.value_numeric,m.value_text,
    m.value_boolean,m.measurement_kind,
@@ -98,20 +100,22 @@ BEGIN
     AND m.segment_id=p_segment_id AND d.status='published'
     AND v_sport=ANY(d.sport_scope)
  ), grouped AS (
-   SELECT metric_code,definition_version,
+   SELECT metric_code,MIN(definition_version) AS definition_version,
+     count(DISTINCT definition_version) AS version_count,
      count(*) FILTER(WHERE quality NOT IN ('trusted','partial')) AS insufficient,
      count(DISTINCT pg_catalog.jsonb_build_array(
        value_numeric,value_text,value_boolean,measurement_kind)) AS facts
-   FROM rows GROUP BY metric_code,definition_version
+   FROM rows GROUP BY metric_code
  )
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
    'segmentId',p_segment_id,'metricCode',metric_code,
-   'definitionVersion',definition_version,
-   'reason',CASE WHEN insufficient>0 THEN 'source_review_required'
+   'definitionVersion',CASE WHEN version_count=1 THEN definition_version ELSE NULL END,
+   'reason',CASE WHEN version_count>1 THEN 'conflicting_versions'
+           WHEN insufficient>0 THEN 'source_review_required'
            ELSE 'conflicting_sources' END
  ) ORDER BY metric_code,definition_version),'[]'::jsonb)
  INTO v_conflicts
- FROM grouped WHERE insufficient>0 OR facts<>1;
+ FROM grouped WHERE version_count>1 OR insufficient>0 OR facts<>1;
  RETURN pg_catalog.jsonb_build_object('activityId',p_activity_id,
    'segmentId',p_segment_id,'metrics',v_values,
    'unresolvedMetrics',v_conflicts,'coverage','source_backed_segment_partial_registry');
