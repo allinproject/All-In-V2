@@ -172,3 +172,15 @@ The existing SQL tests include the two asymmetric real-evidence cases (`trusted`
 ## 5. Next smallest executable decision
 
 Obtain the **ALL-239 Goals and ALL-244 EventHub canonical owner key/version/participation contracts**, rather than adding a new Training or event schema. Then approve the first release unit and its exact FK/ACL matrix, stage versioned migrations, and rerun the complete local release acceptance. Green candidate SQL tests are necessary but not sufficient.
+
+
+## ALL-243 — Apple App Attest enrollment inspection and trust writer (2026-11-12)
+
+**Review-only staged implementation; no deployment or public enrollment:**
+
+- `supabase/functions/_shared/appleAppAttestEnrollmentVerifier.ts` pins Apple's official App Attestation Root CA, verifies the embedded X.509 intermediate and leaf signatures, certificate validity, App ID hash, environment, initial counter, credential ID against the P-256 leaf key and certificate challenge nonce. The trust root is not accepted from request data.
+- `appleAppAttestEnrollmentServer.ts` requires a live Auth-resolved user/session, one-time server challenge and a **separate trusted Apple signed-receipt verifier** before requesting the private writer. **No receipt verifier has been implemented or connected**, and no public enrollment endpoint has been created. Passing certificate inspection alone is never permission to enroll.
+- `appleAppAttestEnrollmentPostgres.ts` is the dedicated transaction adapter. The existing `V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql` has an owner/session-scoped 5-minute challenge, an atomic consumed-challenge + trusted-key insert function, a separate NOLOGIN enroller role and a distinct operator with NOINHERIT/BYPASSRLS. Neither normal clients nor the pairing registrar has the trusted-enrollment privilege.
+- `apps/mobile-v2/native/apple-watch/IPhoneAppAttestEnrollment.swift` is staged native code using `DCAppAttestService.generateKey` and `attestKey` with the server's challenge hash. It is not compiled into an iOS/watchOS target and does not provision an Apple trust record.
+
+**Hard release gates (still open):** implement and independently review Apple's signed PKCS#7/CMS receipt trust chain, Apple App ID/public key and five-minute creation-time validation, Apple sandbox/production environment separation, Apple's 2026 validation category and bundle-version extension handling, secure verifier-only key enrolment and revocation, production Team ID/bundle ID/entitlement agreement, hosted authenticated staging and a genuine Apple-issued attestation test on physical iPhone. The native watch proof remains separate: App Attest validates the companion **iPhone app instance**, not an Apple-signed hardware serial or generic Watch attestation. Rate limits, challenges/receipts retention, account export/delete, key loss/reinstall and owner switching must also pass. Explicit production migration and endpoint enablement are not approved.
