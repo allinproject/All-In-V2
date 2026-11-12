@@ -279,7 +279,9 @@ function assessAutomaticSourceEvidence(candidates,documents) {
       if(digest!==document.payload_sha256.toLowerCase())add('source_payload_sha256_mismatch');
       let parsed=null;
       try{parsed=JSON.parse(document.payload_utf8)}catch{add('unparseable_source_payload')}
-      if(parsed!==null){
+      if(parsed===null||typeof parsed!=='object'||Array.isArray(parsed))
+        add('invalid_source_payload_object');
+      else {
         if(reference?.length===1 &&
            (parsed?.provider!==reference[0].provider ||
             parsed?.dataType!==reference[0].source_data_type ||
@@ -307,7 +309,7 @@ function assessAutomaticSourceEvidence(candidates,documents) {
     calculationReady:false,publicationApproved:false,authorizedToWrite:false});
   results.sort((a,b)=>String(a.source_profile_key).localeCompare(String(b.source_profile_key)));
   return {candidateCount:candidates.length,documentCount:documents.length,
-    automaticPreflightPassed:results.length===candidates.length&&results.every(r=>r.automatedChecksPassed),
+    automaticPreflightPassed:candidates.length>0&&results.length===candidates.length&&results.every(r=>r.automatedChecksPassed),
     results,calculationReady:false,publicationApproved:false,authorizedToWrite:false};
 }
 
