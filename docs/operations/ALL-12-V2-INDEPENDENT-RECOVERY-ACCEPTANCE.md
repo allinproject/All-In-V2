@@ -63,3 +63,11 @@ Authoritative read-only V2 hosted table inventory: 12 application tables (5 publ
 5. **Release approval:** Review security/privacy/legal implications and authorize a clearly scoped release gate. No implicit production deployment, signup opening, or billing authorization.
 
 Founder-beta development and isolated testing may continue while these gates are open. **Do not mark ALL-12 Done, production recovery accepted, or hosted deployment approved based on local tests.**
+
+## 2026-11-12 — Dynamic catalog inventory gate and release decision
+
+The existing clean local Supabase replay now executes `scripts/test-all12-live-schema-inventory-local.mjs` against the actual disposable PostgreSQL catalog, rather than passing a hardcoded table list to the manifest. Any new `public.v2_*` or `allin_private.v2_*` base table missing from the recovery manifest fails the step. This checks *classification*, not complete restoration. Review its CI outcome before accepting the guard.
+
+The 12/12 foundation restore green evidence is GitHub Actions run 43290696689 (local synthetic only). It does not include full Auth credential verifier/key/config recovery, external providers, all future candidate schemas, or a hosted provider physical restore.
+
+**Release acceptance remains blocked.** No safe approved physical recovery destination or provider snapshot provenance is established. Existing temporary staging is not available for destructive reuse without separate approval. A founder risk acceptance may define a narrower beta release policy, but cannot truthfully convert local recovery into provider physical-restore evidence. Keep ALL-12 In Progress and avoid enabling destructive production operations or opening signup on the strength of this test alone.
