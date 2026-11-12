@@ -77,12 +77,45 @@ The canonical ALL-243 proposal uses sport identities such as `running`, `cycling
 
 Tested the mapping and amended owner-read/screen-model assertions (including retained Road/Trail) in GitHub smoke `43027684119` (success). **This is not a deployed schema, workout query or permission to invent a rowing screen.**
 
+## Recovered original V1 registry and gap audit — authoritative source audit (2026-11-11)
+
+**Previously missing source files recovered from the founder's personal Library, not the V1 Git tree:**
+- `ALL-IN-365-Completed-Workout-Metric-Registry-v1.md` (2026-10-28, 27 sections)
+- `ALL-IN-365-Completed-Workout-Detail-Gap-Audit-v1.md` (2026-10-28, implementation handoff)
+
+Both are design/implementation targets, **not** proof that any source adapter, charts, metrics or final UI was shipped in V1. The V1 handoff's tab names `Advanced Stats / Analysis` are superseded by the founder's later locked V2 **Details / Coach** labels; the detailed measurement requirements are **not** superseded.
+
+### Exact additional V1 coverage to preserve
+
+| Registry source family | Explicit metric/source contract beyond the basic scalar baseline | Current V2 coverage boundary |
+| --- | --- | --- |
+| Running/trail dynamics | GCT balance, vertical ratio, step-speed loss where device reports it, grade-adjusted pace with a reviewed authority/version, HR recovery from a valid capture, pace/power-zone definition snapshots | Typed metric registry proposed; actual provider capability and series mapping pending |
+| Cycling and indoor power | Left/right pedal balance, seated/standing, power phase, platform center offset, torque effectiveness, pedal smoothness/force, FTP snapshot, work (kJ), verified normalized/weighted power calculations | Native provider-specific telemetry and comparison/derived-authority contracts pending |
+| Pool swim | Actual pool length/unit, stroke context for SWOLF, swim/rest durations, sets, drills/manual lengths; do not compare different pool lengths/stroke types blindly | Typed segments proposed; measured source/quality and lap/set reader pending |
+| Outdoor/open-water swim | GPS route and quality, source-backed pace trend, strokes, water temperature where captured; no synthetic pool lengths | Evidence object/route candidate; actual private route service/quality pending |
+| Rowing (indoor/on-water) | Pace per 500m, stroke rate avg/max, supported distance per stroke/power, splits, drag factor from machine only, explicit indoor vs water context | **First-class canonical `rowing` exists but presentation currently falls back to `other`; needs approved rowing display and definition fixtures** |
+| Strength and functional/HIIT | Set type, ordered movements, rest/tempo, grouping, exercise-specific PR and estimated 1RM with method/version, score *type* (time/rounds/reps/load) | Typed sets proposed; verified PR calculation/comparable history and chart detail pending |
+| Winter sports | Alpine ski/snowboard runs, vertical/descent, speed, GPS; XC ski distance/HR/elevation/cadence/legitimate power | **V1 approved requirement absent from 15-code canonical sport CHECK; requires sport-owner decision, not accidental `other` relabeling** |
+| Team/court/racket sports | Soccer/basketball/hockey/tennis/etc. duration/effort, sourced HR and justified active movement/period/set score, avoid false precision from poor indoor GPS | **No explicit canonical taxonomy; decide stable sport identities/subtypes and source/comparison eligibility before building a dedicated detail** |
+| Universal source and charts | Measured/provider-derived/ALL IN-derived/user-reported/estimated distinctions; source and sensor quality; original units; calculation version; synchronized series and segment axes with real gaps | SQL candidates and read-only DTO are partial, **not an exhaustive metric dictionary or live chart/route ingestion** |
+
+### Granular completion gates from the recovered V1 Detail Gap Audit
+
+- [ ] Source-authoritative normalized metric dictionary and unit/calculation versions; no absent-to-zero fallback.
+- [ ] Apple Health/HealthKit supported acquisition map with exact value/source-quality eligibility; Garmin/COROS advanced vendor attributes may follow beta.
+- [ ] Bounded, privacy-safe series/route readers, legitimate gaps, downsampling and timestamp/distance-axis selection; real charts only.
+- [ ] Typed semantic auto splits, manual laps, work/rest intervals, pool lengths/sets, route segments, checkpoints and transitions.
+- [ ] Source/quality-aware planned-versus-actual, PRs/records, strength set details, multisport leg readers and Coach exact-activity evidence.
+- [ ] Real installed Overview/Details/Coach plus accessibility, compact/large phone, high text scale, dark/light, and actual user-source evidence acceptance.
+
+**Do not declare 17 scalar display baselines equivalent to complete V1 registry coverage.** The existing V2 physical owner can extend its single versioned dictionary and the same canonical activity with typed segments and private source objects. Do not create a second activity store, duplicate registry, third-party provider truth, or infer metrics from a sport label.
+
 ## Current evidence / outstanding gaps
 
 - [x] Exact 17-sport **V1 native scalar** Overview/Details baseline is in V2 and unit-test guarded.
 - [x] Reviewed V1 locked structured-stat and customization decisions; preserved in this coverage gate and existing founder-approved V2 spec.
 - [x] Reusable sport/tab layout logic and settings persistence committed to V2, with passing smoke tests in earlier slices.
-- [ ] Locate/import the separately referenced **ALL-IN-365-Completed-Workout-Metric-Registry-v1.md** and Completed Workout Detail Gap Audit (not found as paths in the authoritative V1 integration Git tree on this check). Search other sanctioned V1 project files/Linear attachments; do not assert their content from their titles.
+- [x] **Recovered and read** the named original V1 Metric Registry and Detail Gap Audit in the founder's Library (2026-10-28); preserved their measurement/sport coverage and remaining acceptance gates above. Files were not part of inspected V1 Git tree, so do not invent Git paths or confuse recovery with implementation.
 - [ ] Obtain ALL-222/ALL-243 approval for the V2 physical canonical activity/metric/storage/source model; existing V2 ERD is a **proposal**, not live database.
 - [ ] Implement complete ingest and source-backed scalar/time-series/structured metric preservation, mapping each registry key into native Details.
 - [ ] Implement actual V2 **Overview / Details / Coach** screen and connect authenticated layout editor/save (not yet live).
