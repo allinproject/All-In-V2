@@ -173,3 +173,21 @@ test('native Apple and Google purchases use one atomic owner-bound service write
   assert.match(fn,/pg_advisory_xact_lock/);
   assert.match(fn,/return 'duplicate'/);
 });
+
+test('review-only service-role grant candidate is the one replayed by PostgreSQL',()=>{
+ const grants=readFileSync(new URL('../docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql',import.meta.url),'utf8');
+ const replay=readFileSync(new URL('./test-v2-subscription-sql-postgres.psql',import.meta.url),'utf8');
+ assert.match(grants,/REVIEW ONLY/);
+ assert.match(grants,/NOT A VERSIONED MIGRATION/);
+ assert.match(replay,/\\ir \.\.\/docs\/architecture\/sql\/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE\.sql/);
+ assert.doesNotMatch(replay,/GRANT EXECUTE ON FUNCTION public\.v2_billing_/i,
+   'Service grants must not drift into duplicate test-only SQL');
+ const statements=grants.split(';').filter(s=>/\bGRANT\b/i.test(s));
+ assert.ok(statements.length>=20,'Missing service grants');
+ for(const statement of statements){
+   if(!/\bGRANT\b/i.test(statement.replace(/^--[^\n]*$/gm,'')))continue;
+   assert.match(statement,/\bTO service_role\s*$/i,
+     'All reviewed billing permissions must target service_role only');
+ }
+ assert.doesNotMatch(grants,/\bGRANT\s+(?:ALL|CREATE|DELETE|TRUNCATE|REFERENCES|TRIGGER)\b/i);
+});
