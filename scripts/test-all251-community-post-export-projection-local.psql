@@ -131,4 +131,43 @@ BEGIN
  RAISE NOTICE 'PASS ALL-251 two-owner gated Community post projection: 31 A over 2 pages, private body, B isolation, real Auth request gate, no completed export';
 END $two_owner$;
 RESET ROLE;
+-- Separate synthetic C proves the real indirect chain
+-- auth.users -> public.v2_profiles -> allin_private.v2_community_posts.
+-- No worker is enabled; deletion is local and fully rolled back.
+INSERT INTO auth.users(id) VALUES
+ ('c7111111-1111-4111-8111-111111111111');
+INSERT INTO public.v2_profiles(user_id) VALUES
+ ('c7111111-1111-4111-8111-111111111111') ON CONFLICT DO NOTHING;
+INSERT INTO allin_private.v2_community_posts
+ (id,owner_id,kind,audience,title,body)
+VALUES
+ ('c7222222-2222-4222-8222-222222222222',
+  'c7111111-1111-4111-8111-111111111111',
+  'update','private','Synthetic C private post','SYNTHETIC_C_PRIVATE');
+DO $before_delete$
+BEGIN
+ IF (SELECT count(*) FROM allin_private.v2_community_posts
+     WHERE owner_id='c7111111-1111-4111-8111-111111111111')<>1
+ OR NOT EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_processor_config
+     WHERE singleton=true AND execution_enabled=false)
+ THEN RAISE EXCEPTION 'Community cascade fixture or worker-OFF gate invalid'; END IF;
+END $before_delete$;
+DELETE FROM auth.users WHERE id='c7111111-1111-4111-8111-111111111111';
+DO $after_delete$
+BEGIN
+ IF EXISTS (SELECT 1 FROM auth.users
+     WHERE id='c7111111-1111-4111-8111-111111111111')
+ OR EXISTS (SELECT 1 FROM public.v2_profiles
+     WHERE user_id='c7111111-1111-4111-8111-111111111111')
+ OR EXISTS (SELECT 1 FROM allin_private.v2_community_posts
+     WHERE owner_id='c7111111-1111-4111-8111-111111111111')
+ OR (SELECT count(*) FROM allin_private.v2_community_posts
+     WHERE owner_id='a5111111-1111-4111-8111-111111111111')<>31
+ OR (SELECT count(*) FROM allin_private.v2_community_posts
+     WHERE owner_id='b5222222-2222-4222-8222-222222222222')<>1
+ OR NOT EXISTS (SELECT 1 FROM allin_private.v2_account_deletion_processor_config
+     WHERE singleton=true AND execution_enabled=false)
+ THEN RAISE EXCEPTION 'Community indirect Auth cascade or other-owner preservation failed'; END IF;
+ RAISE NOTICE 'PASS ALL-251 Community indirect Auth/profile/post cascade: synthetic C removed, A/B retained, deletion worker OFF';
+END $after_delete$;
 ROLLBACK;
