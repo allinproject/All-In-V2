@@ -1,7 +1,7 @@
 {
   "scope": "ALL-228 RESEARCH ONLY - no automatic identity or nutrient approval",
   "sourceArchiveSha256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579",
-  "method": "source descriptions against V1 profile labels and source aliases; deterministic lexical hints; top five candidates; no ingredient approvals",
+  "method": "source descriptions against V1 profile labels and source aliases; deterministic lexical hints; top five candidates; no ingredient approvals; additionally preserve exact FDC IDs found in V1 source URLs without making them authoritative mappings",
   "scriptBlobSha": "2604290889fa7666fd54f9d2cf24e2f18e210e1d",
   "sourceFoodCount": 424,
   "v1ProfileCount": 408,
@@ -294,7 +294,10 @@
           "stateConflict": false
         }
       ],
-      "approved": false
+      "approved": false,
+      "directV1SourceUrlReferences": [
+        "milk_cottage_2pct"
+      ]
     },
     {
       "id": 329370,
@@ -1365,7 +1368,10 @@
           "stateConflict": false
         }
       ],
-      "approved": false
+      "approved": false,
+      "directV1SourceUrlReferences": [
+        "red_onion_raw"
+      ]
     },
     {
       "id": 790646,
@@ -2800,7 +2806,10 @@
           "stateConflict": false
         }
       ],
-      "approved": false
+      "approved": false,
+      "directV1SourceUrlReferences": [
+        "cabbage_green_raw"
+      ]
     },
     {
       "id": 2346408,
@@ -3303,7 +3312,10 @@
           "stateConflict": false
         }
       ],
-      "approved": false
+      "approved": false,
+      "directV1SourceUrlReferences": [
+        "black_beans_canned_drained"
+      ]
     },
     {
       "id": 2644286,
@@ -3355,7 +3367,10 @@
           "stateConflict": false
         }
       ],
-      "approved": false
+      "approved": false,
+      "directV1SourceUrlReferences": [
+        "chickpeas_canned_drained_rinsed"
+      ]
     },
     {
       "id": 2644289,
@@ -3369,7 +3384,10 @@
           "stateConflict": false
         }
       ],
-      "approved": false
+      "approved": false,
+      "directV1SourceUrlReferences": [
+        "beans_kidney_canned_drained"
+      ]
     },
     {
       "id": 2644290,
@@ -3846,7 +3864,10 @@
           "stateConflict": false
         }
       ],
-      "approved": false
+      "approved": false,
+      "directV1SourceUrlReferences": [
+        "tomato_paste_canned_unsalted"
+      ]
     },
     {
       "id": 2685581,
@@ -3870,7 +3891,10 @@
           "stateConflict": false
         }
       ],
-      "approved": false
+      "approved": false,
+      "directV1SourceUrlReferences": [
+        "tomatoes_crushed_canned"
+      ]
     },
     {
       "id": 2685582,
@@ -5274,6 +5298,81 @@
       "exact": [],
       "suggestions": [],
       "approved": false
+    }
+  ],
+  "directSourceUrlReferenceCount": 8,
+  "directSourceUrlReferences": [
+    {
+      "fdcId": 328841,
+      "sourceProfileKey": "milk_cottage_2pct",
+      "sourceLabel": "Cottage cheese, 2 percent milkfat",
+      "sourceUrl": "https://fdc.nal.usda.gov/food-details/328841/nutrients",
+      "legacyReviewStatus": "provisional_source_reference_not_final_verified",
+      "identityApproved": false,
+      "nutritionApproved": false
+    },
+    {
+      "fdcId": 790577,
+      "sourceProfileKey": "red_onion_raw",
+      "sourceLabel": "Red onion, raw edible portion",
+      "sourceUrl": "https://fdc.nal.usda.gov/food-details/790577/nutrients",
+      "legacyReviewStatus": "source_record_transcribed",
+      "identityApproved": false,
+      "nutritionApproved": false
+    },
+    {
+      "fdcId": 2346407,
+      "sourceProfileKey": "cabbage_green_raw",
+      "sourceLabel": "Green cabbage, raw chopped",
+      "sourceUrl": "https://fdc.nal.usda.gov/food-details/2346407/nutrients",
+      "legacyReviewStatus": "source_record_transcribed",
+      "identityApproved": false,
+      "nutritionApproved": false
+    },
+    {
+      "fdcId": 2644285,
+      "sourceProfileKey": "black_beans_canned_drained",
+      "sourceLabel": "Black beans, canned drained rinsed",
+      "sourceUrl": "https://fdc.nal.usda.gov/food-details/2644285/nutrients",
+      "legacyReviewStatus": "source_record_transcribed",
+      "identityApproved": false,
+      "nutritionApproved": false
+    },
+    {
+      "fdcId": 2644288,
+      "sourceProfileKey": "chickpeas_canned_drained_rinsed",
+      "sourceLabel": "Chickpeas, canned drained rinsed",
+      "sourceUrl": "https://fdc.nal.usda.gov/food-details/2644288/nutrients",
+      "legacyReviewStatus": "source_record_transcribed",
+      "identityApproved": false,
+      "nutritionApproved": false
+    },
+    {
+      "fdcId": 2644289,
+      "sourceProfileKey": "beans_kidney_canned_drained",
+      "sourceLabel": "Kidney beans, canned drained",
+      "sourceUrl": "https://fdc.nal.usda.gov/food-details/2644289/nutrients",
+      "legacyReviewStatus": "provisional_source_reference_not_final_verified",
+      "identityApproved": false,
+      "nutritionApproved": false
+    },
+    {
+      "fdcId": 2685580,
+      "sourceProfileKey": "tomato_paste_canned_unsalted",
+      "sourceLabel": "Tomato paste, canned unsalted",
+      "sourceUrl": "https://fdc.nal.usda.gov/food-details/2685580/nutrients",
+      "legacyReviewStatus": "source_record_transcribed",
+      "identityApproved": false,
+      "nutritionApproved": false
+    },
+    {
+      "fdcId": 2685581,
+      "sourceProfileKey": "tomatoes_crushed_canned",
+      "sourceLabel": "Crushed tomatoes, canned",
+      "sourceUrl": "https://fdc.nal.usda.gov/food-details/2685581/nutrients",
+      "legacyReviewStatus": "source_record_transcribed",
+      "identityApproved": false,
+      "nutritionApproved": false
     }
   ]
 }
