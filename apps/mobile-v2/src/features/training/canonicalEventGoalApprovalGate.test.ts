@@ -88,12 +88,19 @@ test('cross-account, cursor, snapshot version and session generation fail closed
  const cases=[
   (f:ReturnType<typeof fixture>)=>{f.proofs.goalSnapshot.ownerId='other';},
   (f:ReturnType<typeof fixture>)=>{f.proofs.eventSnapshot.nextCursor='next';},
-  (f:ReturnType<typeof fixture>)=>{f.proofs.goalSnapshot.snapshotVersion='old';},
+  (f:ReturnType<typeof fixture>)=>{f.input.daySnapshot.snapshotVersion='old';},
   (f:ReturnType<typeof fixture>)=>{f.proofs.eventSnapshot.authSessionGeneration=5;},
   (f:ReturnType<typeof fixture>)=>{f.input.authenticatedOwnerId='other';},
  ];
  for(const change of cases){const f=fixture();change(f);
   assert.equal(certifySeasonAgainstGoalEventOwners(f.input,f.proofs).status,'unavailable');}
+});
+test('different valid version tokens from separate Goal, Event and Training owners are allowed',()=>{
+ const f=fixture();
+ f.proofs.goalSnapshot.snapshotVersion='goals-revision-12';
+ f.proofs.eventSnapshot.snapshotVersion='event-revision-20';
+ f.proofs.bindingSnapshot.snapshotVersion='training-binding-revision-8';
+ assert.equal(certifySeasonAgainstGoalEventOwners(f.input,f.proofs).status,'review_required');
 });
 test('undated qualitative goal can coexist without manufacturing an event',()=>{
  const f=fixture();f.proofs.goalSnapshot.goals=[...f.proofs.goalSnapshot.goals,{
