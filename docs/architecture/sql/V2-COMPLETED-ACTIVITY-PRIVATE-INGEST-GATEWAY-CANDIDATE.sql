@@ -17,6 +17,10 @@ GRANT USAGE ON SCHEMA public TO allin_v2_device_ingest;
 GRANT USAGE ON SCHEMA auth TO allin_v2_device_ingest;
 -- SECURITY INVOKER canonical writer requires exactly these existing table rights.
 GRANT SELECT ON public.v2_completed_activities TO allin_v2_device_ingest;
+-- The canonical SECURITY INVOKER scalar writer uses SELECT ... FOR UPDATE.
+-- PostgreSQL requires UPDATE privilege on at least one column to lock rows.
+-- Only grant the inert primary-key column; NO direct UPDATE RLS policy exists.
+GRANT UPDATE (id) ON public.v2_completed_activities TO allin_v2_device_ingest;
 GRANT SELECT ON public.v2_activity_sources TO allin_v2_device_ingest;
 GRANT SELECT ON public.v2_activity_metric_definitions TO allin_v2_device_ingest;
 GRANT SELECT,INSERT ON public.v2_activity_metric_values TO allin_v2_device_ingest;
