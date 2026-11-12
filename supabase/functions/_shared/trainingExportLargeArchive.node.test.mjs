@@ -1,0 +1,219 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomBytes,createHash} from 'node:crypto';
+import {stageLargeAccountExport,streamLargeAccountExport,createLargeAccountDownloadResponse} from './trainingExportLargeArchive.mjs';
+import {verifyAccountExportDownload} from './trainingExportDownloadVerifier.mjs';
+const owner='11111111-1111-4111-8111-111111111111';
+const another='22222222-2222-4222-8222-222222222222';
+const requestId='33333333-3333-4333-8333-333333333333';
+const collections=['coach_messages','completed_activities'];
+function fixture(config={}){
+ const key=randomBytes(32), stored=new Map(),events=[];let manifest=null,authCalls=0,purges=0;
+ const data=config.data??{
+  coach_messages:Array.from({length:250},(_,i)=>({id:i,owner,content:'X'.repeat(24000)})),
+  completed_activities:[{id:'activity',owner}]};
+ const services={
+  authorizeExport:async()=>{authCalls++;events.push('authorize');
+   const active=!(config.revokeAfter&&authCalls>=config.revokeAfter);
+   return {ownerId:config.owner??owner,activeSession:active,exportPermitted:active};},
+  getCanonicalInventory:async({ownerId,requestId:rid})=>({ownerId,requestId:rid,
+    snapshotId:config.changedInventory&&authCalls>=4?another:requestId,
+    collections:config.missingCollection?['coach_messages']:collections,
+    complete:true}),
+  resolveEncryptionKey:async()=>key,
+  readPage:async({ownerId,collection,cursor})=>{
+   if(config.badCursor)return {ownerId,collection,snapshotId:requestId,ownerVerified:true,rows:[{id:1}],done:false,nextCursor:'same'};
+   const start=cursor===null?0:Number(cursor),rows=data[collection]?.slice(start,start+30)??[];
+   return {ownerId:config.pageOwner??owner,collection,snapshotId:requestId,ownerVerified:true,rows,done:start+30>=data[collection].length,
+    nextCursor:start+30>=data[collection].length?null:String(start+30)};},
+  writePrivatePage:async({ownerId,requestId:rid,collection,index,sealed})=>{
+   events.push('write');stored.set(collection+'/'+index,sealed);
+   return {ownerId,requestId:rid,collection,index,stored:true};},
+  commitPrivateManifest:async({ownerId,requestId:rid,manifest:m})=>{
+   events.push('commit');manifest=m;return config.badCommit?null:{ownerId,requestId:rid,committed:true};},
+  readPrivateManifest:async()=>config.overrideManifest??manifest,
+  readPrivatePage:async({collection,index})=>{
+   events.push('read');return config.corrupt?
+    {...stored.get(collection+'/'+index),ciphertext:'AAAA'}:stored.get(collection+'/'+index);},
+  purgePrivateRequest:async()=>{purges++;stored.clear();manifest=null;return config.purgeFails?false:true;},
+ };
+ return {services,events,key,stored,get manifest(){return manifest;},
+  get purges(){return purges;},get authCalls(){return authCalls;}};
+}
+async function collect(requestId,services,collectionList=collections){
+ const chunks=[];
+ for await(const part of streamLargeAccountExport({requestId,collections:collectionList,services}))chunks.push(part);
+ return Buffer.concat(chunks).toString('utf8');
+}
+test('exports >5MB of owner history in bounded encrypted pages and streams exact records',async()=>{
+ const f=fixture();
+ const receipt=await stageLargeAccountExport({requestId,collections,services:f.services});
+ assert.equal(receipt.staged,true);
+ assert.equal(receipt.completeUserExport,true);
+ assert.equal(receipt.downloadAuthorized,false);
+ assert(receipt.pageCount>2);
+ assert(f.stored.size>2);
+ assert(!JSON.stringify(receipt).includes('X'.repeat(100)));
+ assert(!JSON.stringify(f.manifest).includes('X'.repeat(100)));
+ const output=await collect(requestId,f.services);
+ assert(Buffer.byteLength(output)>5*1024*1024);
+ const lines=output.trimEnd().split('\n').map(line=>JSON.parse(line));
+ assert.equal(lines[0].records,251);
+ assert.equal(lines.length,253);
+ assert.equal(lines[1].collection,'coach_messages');
+ assert.equal(lines.at(-2).collection,'completed_activities');
+ assert.equal(lines.at(-1).export_complete,true);
+ assert.equal(lines.at(-1).records,251);
+ assert.match(lines.at(-1).sha256,/^[a-f0-9]{64}$/);
+ const recordLines=output.trimEnd().split('\n').slice(1,-1).join('\n')+'\n';
+ assert.equal(createHash('sha256').update(recordLines).digest('hex'),
+   lines.at(-1).sha256);
+ assert(f.authCalls>receipt.pageCount+3);
+ assert.equal(f.purges,0);
+});
+test('cross-owner Auth mismatch rejects before any page reads or writes',async()=>{
+ const f=fixture({pageOwner:another});
+ await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),/Invalid canonical account export page/);
+ assert.equal(f.events.includes('write'),false);
+});
+test('staging cancellation after partial private writes purges request, never commits',async()=>{
+ const f=fixture({revokeAfter:4});
+ await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),/revoked/);
+ assert.equal(f.manifest,null);
+ assert.equal(f.stored.size,0);
+ assert.equal(f.purges,1);
+});
+test('ambiguous cleanup cannot claim success',async()=>{
+ const f=fixture({badCommit:true,purgeFails:true});
+ await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),/manual purge required/);
+ assert.equal(f.events.includes('commit'),true);
+});
+test('tampered ciphertext never yields its plaintext',async()=>{
+ const f=fixture({corrupt:true});
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ await assert.rejects(collect(requestId,f.services),/(authenticate data|page checksum|Invalid page)/i);
+});
+test('request revocation during download stops before subsequent pages',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ let checks=0;
+ const original=f.services.authorizeExport;
+ f.services.authorizeExport=async (...args)=>{
+  const r=await original(...args);
+  checks++;
+  return checks>=3?{...r,activeSession:false}:r;
+ };
+ await assert.rejects(collect(requestId,f.services),/revoked/);
+ assert(f.events.filter(x=>x==='read').length< f.manifest.pages.length);
+});
+test('incomplete manifest, wrong collection contract and invalid cursor fail closed',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ await assert.rejects(collect(requestId,f.services,['coach_messages']),/Unverified|inventory incomplete/);
+ const m={...f.manifest,pages:[...f.manifest.pages].slice(1)};
+ const spoof=fixture({data:{coach_messages:[],completed_activities:[]},overrideManifest:m});
+ await assert.rejects(collect(requestId,spoof.services),/Unverified|Incomplete|Missing/);
+ const cursor=fixture({badCursor:true});
+ await assert.rejects(stageLargeAccountExport({requestId,collections,services:cursor.services}),/Unstable/);
+ assert.equal(cursor.purges,1);
+});
+
+test('direct attachment has no signed URL, token, cache, or public CORS headers',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ const response=await createLargeAccountDownloadResponse({requestId,collections,services:f.services});
+ assert.equal(response.status,200);
+ assert.equal(response.headers.get('cache-control'),'private, no-store, max-age=0');
+ assert.equal(response.headers.get('content-type'),'application/x-ndjson; charset=utf-8');
+ assert.equal(response.headers.get('x-content-type-options'),'nosniff');
+ assert.match(response.headers.get('content-disposition'),/attachment/);
+ assert.equal(response.headers.get('access-control-allow-origin'),null);
+ const data=await response.text();
+ assert(data.length>5*1024*1024);
+ assert(!JSON.stringify([...response.headers]).includes('signed'));
+});
+test('invalid Auth or missing private manifest refuses HTTP success before headers',async()=>{
+ const f=fixture();
+ await assert.rejects(createLargeAccountDownloadResponse({
+  requestId,collections,services:f.services
+ }),/Unverified/);
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ f.services.authorizeExport=async()=>({ownerId:another,activeSession:false,exportPermitted:false});
+ await assert.rejects(createLargeAccountDownloadResponse({
+  requestId,collections,services:f.services
+ }),/revoked/);
+});
+test('revoked Auth during an attachment makes the response body fail, not a valid complete download',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ let n=0;
+ const original=f.services.authorizeExport;
+ f.services.authorizeExport=async (...args)=>{
+  n++;const current=await original(...args);
+  return n>2?{...current,activeSession:false}:current;
+ };
+ const response=await createLargeAccountDownloadResponse({requestId,collections,services:f.services});
+ await assert.rejects(response.text(),/revoked/);
+});
+
+test('a partial collection request cannot claim complete account export',async()=>{
+ const f=fixture({missingCollection:true});
+ await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),
+   /Canonical owner export inventory incomplete/);
+ assert.equal(f.events.includes('write'),false);
+});
+test('download denies mutated canonical snapshot inventory before releasing pages',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ const original=f.services.getCanonicalInventory;
+ f.services.getCanonicalInventory=async(...args)=>({...await original(...args),snapshotId:another});
+ await assert.rejects(collect(requestId,f.services),/Unverified complete account export/);
+});
+
+test('a foreign user_id row cannot enter an otherwise owner-verified page',async()=>{
+ const foreign=fixture({data:{
+  coach_messages:[{user_id:another,id:'forged',content:'Private B'}],
+  completed_activities:[],
+ }});
+ await assert.rejects(stageLargeAccountExport({
+  requestId,collections,services:foreign.services
+ }),/Invalid canonical account export page/);
+ assert.equal(foreign.events.includes('commit'),false);
+ assert.equal(foreign.purges,1);
+});
+test('missing canonical server owner proof blocks a page before encryption',async()=>{
+ const f=fixture();
+ const original=f.services.readPage;
+ f.services.readPage=async args=>({...await original(args),ownerVerified:false});
+ await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),
+  /Invalid canonical account export page/);
+ assert.equal(f.events.includes('write'),false);
+});
+
+test('independent download verifier accepts real worker stream only after exact terminal digest',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ const response=await createLargeAccountDownloadResponse({requestId,collections,services:f.services});
+ const accepted=await verifyAccountExportDownload({
+  stream:response.body,expectedOwnerId:owner,expectedCollections:collections,
+ });
+ assert.equal(accepted.verified,true);
+ assert.equal(accepted.recordCount,251);
+});
+test('interrupted real paged worker response is not a verified account export',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ const response=await createLargeAccountDownloadResponse({requestId,collections,services:f.services});
+ const reader=response.body.getReader();
+ const first=await reader.read();
+ const second=await reader.read();
+ await reader.cancel();
+ const partial=new ReadableStream({start(controller){
+  controller.enqueue(first.value);
+  controller.enqueue(second.value);
+  controller.close();
+ }});
+ await assert.rejects(verifyAccountExportDownload({
+  stream:partial,expectedOwnerId:owner,expectedCollections:collections,
+ }),/truncated|completion/);
+});

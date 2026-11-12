@@ -72,6 +72,8 @@ on:
       - 'scripts/check-v2-coach-sql-candidate.mjs'
       - 'scripts/test-v2-coach-persistence-race-local.sh'
       - 'scripts/test-v2-coach-account-export-local.psql'
+      - 'scripts/test-v2-account-export-populated-db-pages.mjs'
+      - 'scripts/test-v2-account-export-populated-db-pages.psql'
       - 'scripts/test-v2-account-deletion-worker-off-local.psql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql'
@@ -98,9 +100,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
-          version: latest
+          # Match the established Training PostgreSQL replay's v2 service
+          # contract; avoid the rate-limited "latest" release lookup.
+          version: v2.stable
       - name: Verify applied foundation SQL has not drifted
         run: |
           node --test scripts/check-v2-applied-migration-integrity.test.mjs
@@ -497,6 +501,20 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-coach-account-export-local.psql "$db_container:/tmp/v2-coach-account-export.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-coach-account-export.psql
+      - name: Verify encrypted large-history download from populated authenticated PostgreSQL Coach pages
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          docker cp scripts/test-v2-account-export-populated-db-pages.psql "$db_container:/tmp/all251-representative.psql"
+          docker exec "$db_container" psql -X -q -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/all251-representative.psql
+          docker cp "$db_container:/tmp/all251-a-page-1.jsonl" "$work/a1.jsonl"
+          docker cp "$db_container:/tmp/all251-a-page-2.jsonl" "$work/a2.jsonl"
+          docker cp "$db_container:/tmp/all251-b-page.jsonl" "$work/b.jsonl"
+          node scripts/test-v2-account-export-populated-db-pages.mjs "$work/a1.jsonl" "$work/a2.jsonl" "$work/b.jsonl"
       - name: Verify real Supabase API-role security on the complete candidate catalog
         run: |
           set -euo pipefail

@@ -130,7 +130,7 @@ test('cannot promote ambiguous canned bean aliases or yield across states',()=>{
  const clone=()=>JSON.parse(JSON.stringify(original));
  const badAlias=clone(),beans=badAlias.records.find(x=>x.source_profile_key==='beans_kidney_canned_drained');
  beans.exact_alias_candidates.push({value:'kidney beans',kind:'source_scoped_exact',preparation_state:'cooked_drained',
- selection_scope:'requires_explicit_source_form_confirmation',status:'pending_owner_acceptance'});
+ selection_scope:'requires_explicit_source_form_confirmation',status:'founder_approved_source_scoped_alias_policy'});
  assert(reviewAliasAndPreparationAcceptance(badAlias,sources).issues.some(x=>x.code==='search_only_alias_promoted_to_exact'));
  const badState=clone();badState.records[0].preparation_state='raw';
  assert(reviewAliasAndPreparationAcceptance(badState,sources).issues.some(x=>x.code==='source_identity_or_preparation_scope_mismatch'));
@@ -145,11 +145,43 @@ test('cross-source exact alias collisions, missing records and premature documen
  const clone=()=>JSON.parse(JSON.stringify(original));
  const collisions=clone(),a=collisions.records[0].exact_alias_candidates[0];
  collisions.records[1].exact_alias_candidates.push({...a,preparation_state:collisions.records[1].preparation_state});
- assert.equal(reviewAliasAndPreparationAcceptance(collisions,sources).structuralScopePassed,true); // separate preparation-state scopes
+ assert(!reviewAliasAndPreparationAcceptance(collisions,sources).issues.some(x=>x.code==='cross_source_exact_alias_collision')); // separate state scopes; still fails approved alias allowlist
  collisions.records[2].exact_alias_candidates.push({...collisions.records[1].exact_alias_candidates[0]});
  assert(reviewAliasAndPreparationAcceptance(collisions,sources).issues.some(x=>x.code==='cross_source_exact_alias_collision'));
  const missing=clone();missing.records.pop();
  assert(reviewAliasAndPreparationAcceptance(missing,sources).issues.some(x=>x.code==='incomplete_source_alias_coverage'));
  const approval=clone();approval.canonicalIdentityApproved=true;
  assert(reviewAliasAndPreparationAcceptance(approval,sources).issues.some(x=>x.code==='alias_document_claims_unapproved_authority'));
+});
+
+test('approved names and incompatible food forms cannot be broadened into aliases or targeted search',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const root=path.join(__dirname,'../docs/evidence/');
+ const original=JSON.parse(fs.readFileSync(path.join(root,'ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'),'utf8'));
+ const sources=JSON.parse(fs.readFileSync(path.join(root,'ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'),'utf8'));
+ const clone=()=>JSON.parse(JSON.stringify(original));
+ assert.equal(original.product_policy_approval.linear_comment_id,'15ed915f-973d-4deb-84ae-cfbafe97103e');
+ assert.equal(original.records.length,8);
+ assert.equal(original.records.reduce((n,r)=>n+r.exact_alias_candidates.length,0),13);
+ assert.equal(original.records.reduce((n,r)=>n+r.search_only_not_exact_aliases.length,0),20);
+ assert.equal(original.records.reduce((n,r)=>n+r.excluded_incompatible_queries.length,0),12);
+ const invalidSearch=clone();
+ invalidSearch.records.find(r=>r.source_profile_key==='red_onion_raw').search_only_not_exact_aliases.push({
+ value:'yellow onion',behavior:'search_only_requires_user_or_reviewer_form_selection'});
+ assert(reviewAliasAndPreparationAcceptance(invalidSearch,sources).issues.some(x=>x.code==='incompatible_form_reentered_targeted_search'));
+ const widened=clone();
+ widened.records.find(x=>x.source_profile_key==='red_onion_raw').search_only_not_exact_aliases.push({
+ value:'white onion',behavior:'search_only_requires_user_or_reviewer_form_selection'});
+ assert(reviewAliasAndPreparationAcceptance(widened,sources).issues.some(x=>x.code==='approved_search_only_scope_changed'));
+ const renamed=clone();
+ renamed.records.find(x=>x.source_profile_key==='beans_kidney_canned_drained').display_name='Kidney Beans';
+ assert(reviewAliasAndPreparationAcceptance(renamed,sources).issues.some(x=>x.code==='approved_display_name_state_or_exact_alias_changed'));
+ const omitted=clone();
+ omitted.records.find(x=>x.source_profile_key==='black_beans_canned_drained').excluded_incompatible_queries=[];
+ assert(reviewAliasAndPreparationAcceptance(omitted,sources).issues.some(x=>x.code==='incompatible_form_exclusion_changed'));
+ const broadExact=clone();
+ broadExact.records.find(x=>x.source_profile_key==='red_onion_raw').exact_alias_candidates.push({
+ value:'red onion',kind:'source_scoped_exact',preparation_state:'raw',
+ selection_scope:'requires_explicit_source_form_confirmation',status:'founder_approved_source_scoped_alias_policy'});
+ assert(reviewAliasAndPreparationAcceptance(broadExact,sources).issues.some(x=>x.code==='approved_display_name_state_or_exact_alias_changed'));
 });

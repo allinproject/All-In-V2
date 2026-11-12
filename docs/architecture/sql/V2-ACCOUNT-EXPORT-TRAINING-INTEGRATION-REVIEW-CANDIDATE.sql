@@ -122,6 +122,23 @@ begin
  end if;
  -- Only include this domain when its FULL reviewed candidate graph exists.
  -- Missing half a domain is not an empty export: reject it.
+ -- A new directional Community table may not have a user_id column.
+ -- Refuse to export as if complete until its privacy/ownership contract is
+ -- reviewed and integrated here (same canonical export entrypoint).
+ if exists (
+   select 1 from pg_catalog.pg_class c
+   join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+   where n.nspname='allin_private' and c.relkind in ('r','p')
+     and c.relname like 'v2_community_%'
+     and c.relname <> all(array[
+       'v2_community_visibility','v2_community_pair_revisions',
+       'v2_community_follows','v2_community_blocks',
+       'v2_community_action_receipts'
+     ])
+ ) then
+   raise exception 'Unknown directional Community table requires export review'
+     using errcode='42501';
+ end if;
  -- Directional social relations do not carry a user_id column. They MUST be
  -- reviewed as a complete group, never silently left out of owner export.
  -- Incoming *block* decisions are another actor's private information and

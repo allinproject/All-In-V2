@@ -19,8 +19,7 @@ BEGIN
   RAISE EXCEPTION 'Device ingest principal must retain restricted role attributes';
  END IF;
  IF EXISTS(
-  SELECT 1
-  FROM pg_catalog.pg_auth_members m
+  SELECT 1 FROM pg_catalog.pg_auth_members m
   JOIN pg_catalog.pg_roles ingest_role
     ON ingest_role.rolname='allin_v2_device_ingest'
   WHERE m.roleid=ingest_role.oid OR m.member=ingest_role.oid
@@ -37,11 +36,6 @@ GRANT SELECT ON public.v2_completed_activities TO allin_v2_device_ingest;
 GRANT SELECT ON public.v2_activity_sources TO allin_v2_device_ingest;
 GRANT SELECT ON public.v2_activity_metric_definitions TO allin_v2_device_ingest;
 GRANT SELECT,INSERT ON public.v2_activity_metric_values TO allin_v2_device_ingest;
--- The canonical writer locks an activity FOR UPDATE; only its id column is
--- granted, and the UPDATE policy is owner-scoped for that row-lock operation.
-GRANT UPDATE (id) ON public.v2_completed_activities TO allin_v2_device_ingest;
--- It also locks the source FOR SHARE, which has the same narrow requirement.
-GRANT UPDATE (id) ON public.v2_activity_sources TO allin_v2_device_ingest;
 -- Owner-scoped policies below require auth.uid() to match a VERIFIED user.
 -- A custom request.jwt.claims GUC is not a security credential: do not let
 -- this role become reachable through PostgREST or an untrusted SQL session.
@@ -71,17 +65,9 @@ CREATE POLICY v2_device_ingest_nonce_owner_candidate
 CREATE POLICY v2_device_ingest_activity_owner_candidate
  ON public.v2_completed_activities FOR SELECT TO allin_v2_device_ingest
  USING (user_id = (SELECT auth.uid()));
-CREATE POLICY v2_device_ingest_activity_lock_owner_candidate
- ON public.v2_completed_activities FOR UPDATE TO allin_v2_device_ingest
- USING (user_id = (SELECT auth.uid()))
- WITH CHECK (user_id = (SELECT auth.uid()));
 CREATE POLICY v2_device_ingest_source_owner_candidate
  ON public.v2_activity_sources FOR SELECT TO allin_v2_device_ingest
  USING (user_id = (SELECT auth.uid()));
-CREATE POLICY v2_device_ingest_source_lock_owner_candidate
- ON public.v2_activity_sources FOR UPDATE TO allin_v2_device_ingest
- USING (user_id = (SELECT auth.uid()))
- WITH CHECK (user_id = (SELECT auth.uid()));
 CREATE POLICY v2_device_ingest_metric_read_owner_candidate
  ON public.v2_activity_metric_values FOR SELECT TO allin_v2_device_ingest
  USING (user_id = (SELECT auth.uid()));

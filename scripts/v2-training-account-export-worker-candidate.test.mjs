@@ -23,6 +23,7 @@ function setup(options={}) {
  const events=[];
  const key=randomBytes(32);
  let envelope=null;
+ const pagedArchives=new Map();
  const authClient={auth:{getUser:async (supplied)=>{
    assert.equal(supplied,token);
    events.push('auth');
@@ -69,6 +70,12 @@ function setup(options={}) {
      assert(['v2-private-workout-objects','v2-private-account-exports'].includes(name));
      return {
        async download(objectPath){
+         if(name==='v2-private-account-exports'){
+           events.push('pagedDownload');
+           return pagedArchives.has(objectPath)?
+             {data:new Blob([pagedArchives.get(objectPath)]),error:null}:
+             {data:null,error:Error('missing')};
+         }
          assert.equal(name,'v2-private-workout-objects');
          assert.equal(objectPath,path);
          events.push('download');
@@ -78,13 +85,21 @@ function setup(options={}) {
          assert.equal(name,'v2-private-account-exports');
          assert.equal(opts.upsert,false);
          events.push('archiveUpload');
-         envelope=JSON.parse(await blob.text());
+         const raw=await blob.text();
+         envelope=JSON.parse(raw);
+         pagedArchives.set(objectPath,raw);
          return {data:{path:objectPath},error:null};
+       },
+       async list(prefix,{limit=1000,offset=0}={}){
+         const names=[...pagedArchives.keys()].filter(k=>k.startsWith(prefix+'/'))
+           .slice(offset,offset+limit).map(k=>({name:k.slice(prefix.length+1)}));
+         return {data:names,error:null};
        },
        async remove(paths){
          assert.equal(name,'v2-private-account-exports');
          events.push('archiveRemove');
          purges++;
+         for(const p of paths)pagedArchives.delete(p);
          return {data:paths.map(name=>({name})),error:null};
        },
      };
@@ -112,11 +127,22 @@ function setup(options={}) {
         expiresAt:new Date(Date.now()+3600000).toISOString()};
     }}
   :defaultPersistence;
+ const canonicalPageReader=options.largeReader?{
+   getCanonicalInventory:async({ownerId,requestId:rid})=>({
+     ownerId,requestId:rid,snapshotId:requestId,complete:true,
+     collections:['coach_messages'],
+   }),
+   readPage:async({ownerId,collection})=>({
+     ownerId,collection,snapshotId:requestId,ownerVerified:true,
+     rows:[{id:'private-record',user_id:owner,content:'Coach owner history'}],
+     done:true,nextCursor:null,
+   }),
+ }:undefined;
  const worker=createTrainingAccountExportWorkerCandidate({
    bearerToken:token,authClient,serviceClient,
-   resolveEncryptionKey:async()=>key,...selectedPersistence,
+   resolveEncryptionKey:async()=>key,...selectedPersistence,canonicalPageReader,
  });
- return {worker,events,key,get envelope(){return envelope;},
+ return {worker,events,key,pagedArchives,get envelope(){return envelope;},
    get purges(){return purges;}};
 }
 test('end-to-end disabled worker binds live owner request and encrypts checked Storage bytes',async()=>{
@@ -175,4 +201,25 @@ test('Supabase archive is removed via Storage API when session revoked after wri
  assert.equal(f.events.filter(x=>x==='archiveUpload').length,1);
  assert.equal(f.events.filter(x=>x==='archiveRemove').length,1);
  assert.equal(f.purges,1);
+});
+
+test('large history is staged and downloaded by existing trusted account worker, no URL',async()=>{
+ const f=setup({useSupabasePersistence:true,largeReader:true});
+ const result=await f.worker.stageApprovedLargeHistory(requestId);
+ assert.equal(result.completeUserExport,true);
+ assert.equal(result.downloadAuthorized,false);
+ assert.equal(result.encrypted,true);
+ assert.equal(f.pagedArchives.size,2);
+ const response=await f.worker.openApprovedLargeHistoryDownload(requestId);
+ assert.equal(response.status,200);
+ const body=await response.text();
+ assert(body.includes('Coach owner history'));
+ assert.equal(response.headers.has('access-control-allow-origin'),false);
+ assert.equal(JSON.stringify(result).includes('Coach owner history'),false);
+});
+test('large history stays unavailable until exact canonical reader and request lease are configured',async()=>{
+ const f=setup();
+ await assert.rejects(f.worker.stageApprovedLargeHistory(requestId),/not configured/);
+ await assert.rejects(f.worker.openApprovedLargeHistoryDownload(requestId),/not configured/);
+ assert.equal(f.events.some(x=>x==='pagedDownload'),false);
 });
