@@ -255,6 +255,29 @@ must be recorded before the review row can be issued. This candidate uses
 synthetic receipts solely for disposable local SQL acceptance; the
 existence of a row does **not** establish that any real user reviewed a Goal.
 
+## Private Goal review issuance proposal (2026-11-12)
+
+`docs/architecture/sql/V2-GOALS-REVIEW-ISSUANCE-CANDIDATE.sql`
+adds a review-only, **private and not granted** issuer for the *same*
+`allin_private.v2_goal_approval_reviews` ledger. It requires a live
+owner-bound Auth session, an editable Goal/revision at the expected version,
+all included behavior targets explicitly confirmed, the athlete's explicit
+confirmation flag, and an exact reviewed SHA-256 matching the current
+canonical Goal + behavior snapshot. Under row locks, it issues a bounded
+ten-minute review receipt with idempotent exact-key behavior, then the
+existing private reviewed-commit gateway uses that receipt. Mismatched
+display hashes, foreign sessions, changed action keys and revoked sessions
+are rejected. Disposable local test:
+`scripts/test-v2-goals-review-issuance-local-postgres.psql`.
+
+**Missing before production:** No Goal UI has yet proven which snapshot
+was rendered and accepted, and no audited Edge service currently issues the
+review to a verified mobile account. Even this new private issuer remains
+without client/service-role grants. The authoritative athlete preview
+display, a signed-in confirmation interaction, rate limiting, reviewed
+service-key gateway and installed app acceptance must be implemented and
+verified before approving the final migrations or activating any RPC.
+
 Validation inputs:
 `scripts/test-v2-goals-durable-review-local-postgres.psql` and existing
 `.github/workflows/v2-foundation-clean-replay.yml`. No actual hosted
