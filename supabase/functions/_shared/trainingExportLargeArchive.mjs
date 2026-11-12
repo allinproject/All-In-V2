@@ -162,3 +162,46 @@ export async function* streamLargeAccountExport({requestId,collections,services}
   yield plain; // reauthorize before each encrypted page is opened
  }
 }
+
+/**
+ * ALL-251 REVIEW ONLY: transport shell for the SAME trusted, owner-validated
+ * request. No anonymous route, no static signed URL, no service key in client.
+ * The caller must verify the bearer token and current Auth session in
+ * services.authorizeExport; release uses the same request ID as archive staging.
+ *
+ * A mid-download authorization error terminates the stream, never serves a
+ * cached plaintext file. Clients must treat an incomplete stream as failure.
+ */
+export async function createLargeAccountDownloadResponse({requestId,collections,services}){
+ if(!validId(requestId))throw Error('Exact export request required');
+ checkedCollections(collections);checkedServices(services);
+ // Start the generator before returning HTTP 200 so invalid owner/manifest
+ // cannot be turned into a successful empty download.
+ const iterator=streamLargeAccountExport({requestId,collections,services})[Symbol.asyncIterator]();
+ const first=await iterator.next();
+ if(first.done||!(first.value instanceof Uint8Array))
+   throw Error('Missing verified account export stream header');
+ let header=first.value;
+ const body=new ReadableStream({
+  async pull(controller){
+   try {
+    if(header!==null){controller.enqueue(header);header=null;return;}
+    const next=await iterator.next();
+    if(next.done){controller.close();return;}
+    controller.enqueue(next.value);
+   }catch(error){controller.error(error);}
+  },
+  async cancel(){await iterator.return?.();}
+ });
+ return new Response(body,{
+  status:200,headers:{
+   'Content-Type':'application/x-ndjson; charset=utf-8',
+   'Content-Disposition':'attachment; filename="all-in-365-account-export.ndjson"',
+   'Cache-Control':'private, no-store, max-age=0',
+   'Pragma':'no-cache',
+   'X-Content-Type-Options':'nosniff',
+   'Referrer-Policy':'no-referrer',
+   'Cross-Origin-Resource-Policy':'same-origin',
+  }
+ });
+}
