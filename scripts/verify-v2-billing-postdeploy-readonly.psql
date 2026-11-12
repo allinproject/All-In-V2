@@ -1,0 +1,103 @@
+\set ON_ERROR_STOP on
+-- ALL-222: READ-ONLY catalog acceptance for an APPROVED billing deployment.
+-- Fail closed if the owner-bound ledger is absent, clients have access, or
+-- any billing RPC bypasses invoker permissions. Never inspect receipt rows.
+-- This file NEVER creates, alters, grants, revokes or writes anything.
+BEGIN READ ONLY;
+DO $billing_postdeploy_inventory$
+DECLARE
+  fn record;
+  rel record;
+  api_role text;
+  public_rpc_count integer:=0;
+  private_rpc_count integer:=0;
+BEGIN
+  IF to_regclass('allin_private.v2_subscription_checkout_attempts') IS NULL OR
+     to_regclass('allin_private.v2_subscription_purchases') IS NULL OR
+     to_regclass('allin_private.v2_subscription_verified_events') IS NULL OR
+     to_regclass('allin_private.v2_subscription_verified_events_id_seq') IS NULL OR
+     to_regprocedure('public.v2_billing_read_owner_access(uuid,text)') IS NULL THEN
+    RAISE EXCEPTION 'Billing migration not deployed or incomplete';
+  END IF;
+
+  FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+    IF has_schema_privilege(api_role,'allin_private','USAGE') OR
+       has_schema_privilege(api_role,'allin_private','CREATE') THEN
+      RAISE EXCEPTION 'Private billing schema exposed to %',api_role;
+    END IF;
+  END LOOP;
+  IF NOT has_schema_privilege('service_role','allin_private','USAGE') THEN
+    RAISE EXCEPTION 'Billing service role cannot access private schema';
+  END IF;
+
+  FOR rel IN
+    SELECT c.oid,c.relname,c.relrowsecurity,c.relkind
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='allin_private' AND c.relname LIKE 'v2_subscription_%'
+      AND c.relkind IN ('r','p','S')
+  LOOP
+    IF rel.relkind IN ('r','p') THEN
+      IF NOT rel.relrowsecurity OR EXISTS (
+        SELECT 1 FROM pg_policy WHERE polrelid=rel.oid) THEN
+        RAISE EXCEPTION 'Billing RLS or policy mismatch on %',rel.relname;
+      END IF;
+      FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+        IF has_table_privilege(api_role,rel.oid,'SELECT') OR
+           has_table_privilege(api_role,rel.oid,'INSERT') OR
+           has_table_privilege(api_role,rel.oid,'UPDATE') OR
+           has_table_privilege(api_role,rel.oid,'DELETE') OR
+           has_table_privilege(api_role,rel.oid,'TRUNCATE') OR
+           has_table_privilege(api_role,rel.oid,'REFERENCES') OR
+           has_table_privilege(api_role,rel.oid,'TRIGGER') THEN
+          RAISE EXCEPTION 'Billing table % exposed to %',rel.relname,api_role;
+        END IF;
+      END LOOP;
+    ELSE
+      FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+        IF has_sequence_privilege(api_role,rel.oid,'USAGE') OR
+           has_sequence_privilege(api_role,rel.oid,'SELECT') OR
+           has_sequence_privilege(api_role,rel.oid,'UPDATE') THEN
+          RAISE EXCEPTION 'Billing sequence % exposed to %',rel.relname,api_role;
+        END IF;
+      END LOOP;
+    END IF;
+  END LOOP;
+
+  FOR fn IN
+    SELECT p.oid,p.proname,n.nspname AS schema_name,
+           p.prosecdef,p.proconfig
+    FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE (n.nspname='public' AND p.proname LIKE 'v2_billing_%')
+       OR (n.nspname='allin_private' AND
+           (p.proname LIKE 'v2_%subscription%' OR
+            p.proname LIKE 'v2_%checkout%'))
+  LOOP
+    IF fn.schema_name='public' THEN
+      public_rpc_count:=public_rpc_count+1;
+    ELSE
+      private_rpc_count:=private_rpc_count+1;
+    END IF;
+    IF fn.prosecdef OR fn.proconfig IS NULL OR
+       NOT ('search_path=""'=ANY(fn.proconfig)) THEN
+      RAISE EXCEPTION 'Billing RPC %.% is not pinned SECURITY INVOKER',
+        fn.schema_name,fn.proname;
+    END IF;
+    FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF has_function_privilege(api_role,fn.oid,'EXECUTE') THEN
+        RAISE EXCEPTION 'Billing RPC %.% exposed to %',
+          fn.schema_name,fn.proname,api_role;
+      END IF;
+    END LOOP;
+    IF NOT has_function_privilege('service_role',fn.oid,'EXECUTE') THEN
+      RAISE EXCEPTION 'Service role cannot execute billing RPC %.%',
+        fn.schema_name,fn.proname;
+    END IF;
+  END LOOP;
+  IF public_rpc_count<8 OR private_rpc_count<5 THEN
+    RAISE EXCEPTION 'Incomplete service-only billing RPC catalog (public %, private %)',
+      public_rpc_count,private_rpc_count;
+  END IF;
+  RAISE NOTICE 'PASS ALL-222: read-only billing RLS, ACL, private sequence and invoker catalog';
+END $billing_postdeploy_inventory$;
+COMMIT;
+SELECT 'PASS ALL-222: catalog inventory used no DDL, DML, role grants or receipt reads' AS outcome;
