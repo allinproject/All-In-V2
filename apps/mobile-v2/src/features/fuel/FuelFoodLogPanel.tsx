@@ -171,7 +171,7 @@ export function FuelFoodLogPanel({ownerId,day,accessReady}:{
    command={operation:'delete',ownerId,actionId,entryId:row.id,expectedRevision:row.revision};
    pending.current={key,command};
   }
-  void record(command,key);
+  void record(command);
  };
  const currentRows=snapshot?.entries??[];
  const today=deviceLocalToday();
