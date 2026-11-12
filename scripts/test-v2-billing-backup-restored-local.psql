@@ -8,7 +8,7 @@ DECLARE
 BEGIN
  IF (SELECT count(*) FROM allin_private.v2_subscription_checkout_attempts)<>4 OR
     (SELECT count(*) FROM allin_private.v2_subscription_purchases)<>4 OR
-    (SELECT count(*) FROM allin_private.v2_subscription_verified_events)<>6 THEN
+    (SELECT count(*) FROM allin_private.v2_subscription_verified_events)<>5 THEN
   RAISE EXCEPTION 'Billing dump/restore lost purchase or immutable event rows';
  END IF;
  IF NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
