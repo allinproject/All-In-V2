@@ -41,6 +41,15 @@ export function createCertifiedDevicePostgresAdapter(deps:{
   async runOwnerTransaction<T>(ownerId:string,work:(tx:CanonicalIngestTransaction)=>Promise<T>){
    if(!uuid(ownerId))throw Error('Invalid verified athlete owner');
    return deps.db.begin(async sql=>{
+    const operatorRole=await sql.unsafe(`
+SELECT current_user AS name,rolsuper,rolbypassrls,
+  pg_catalog.pg_has_role(current_user,'allin_v2_device_ingest','SET') AS can_set_ingest
+FROM pg_catalog.pg_roles WHERE rolname=current_user`);
+    if(operatorRole.length!==1||operatorRole[0].rolsuper!==false||
+      operatorRole[0].rolbypassrls!==false||
+      operatorRole[0].can_set_ingest!==true||
+      !String(operatorRole[0].name).startsWith('allin_v2_ingest_operator'))
+      throw Error('Dedicated least-privilege ingest operator required');
     // Serialize with lifecycle trigger and canonical scalar writer. This is a
     // *transaction-scoped* advisory lock, not a connection/session lock.
     await sql.unsafe("SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('v2-metric:'||$1,0))",[ownerId]);
@@ -64,7 +73,7 @@ JOIN public.v2_activity_sources src ON src.activity_id=act.id AND src.user_id=ac
 JOIN allin_private.v2_device_registrations_candidate reg
   ON reg.user_id=src.user_id AND reg.device_ref=src.source_device_ref
 WHERE sess.id=$1::uuid AND sess.user_id=$2::uuid
-  AND (sess.not_after IS NULL OR sess.not_after>to_timestamp($3::double precision/1000))
+  AND (sess.not_after IS NULL OR sess.not_after>pg_catalog.now())
   AND act.id=$4::uuid AND act.status<>'invalidated'
   AND src.id=$5::uuid AND src.provider=$6 AND src.source_kind=$7
   AND src.source_record_id=$8 AND src.quality<>'rejected'
@@ -93,6 +102,7 @@ INSERT INTO allin_private.v2_device_ingest_nonce_candidate
      return rows.length===1;
     };
     const writer:CanonicalIngestTransaction['writer']={
+     appendMissingMetricsOnExactSourceReplay:true,
      findCandidates:async identity=>{
       if(identity.ownerId!==ownerId||!safe(identity.sourceRecordId))
        throw Error('Invalid canonical candidate request');
