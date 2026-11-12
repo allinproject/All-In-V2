@@ -22,8 +22,8 @@ begin
  -- One MVCC statement reads all rows of the owner/day, capped by refusal.
  -- Do NOT mark the first N rows of a longer day as complete.
  with bounded as materialized (
-   select id,user_id,consumed_at,local_date,meal_slot,label,created_at,
-          deleted_at,revision,updated_at
+   select id,user_id,consumed_at,local_date,timezone_name,meal_slot,label,
+          quantity,unit,kcal,nutrition_source,created_at,deleted_at,revision,updated_at
    from public.v2_food_log_entries
    where user_id=v_actor and local_date=p_local_date and deleted_at is null
    order by consumed_at,id
@@ -34,7 +34,10 @@ begin
           pg_catalog.jsonb_build_object(
             'id',b.id,'user_id',b.user_id,
             'consumed_at',b.consumed_at,'local_date',b.local_date,
+            'timezone_name',b.timezone_name,
             'meal_slot',b.meal_slot,'label',b.label,
+            'quantity',b.quantity,'unit',b.unit,'kcal',b.kcal,
+            'nutrition_source',b.nutrition_source,
             'created_at',b.created_at,'deleted_at',b.deleted_at,
             'revision',b.revision
           ) order by b.consumed_at,b.id
