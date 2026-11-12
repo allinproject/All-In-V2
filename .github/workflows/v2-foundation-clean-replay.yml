@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/v2-foundation-clean-replay.yml'
       - 'docs/architecture/sql/V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql'
       - 'scripts/test-v2-goals-owner-local-postgres.psql'
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'scripts/test-v2-billing-local-foundation.psql'
@@ -304,8 +305,10 @@ jobs:
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
           docker cp docs/architecture/sql/V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql "$db_container:/tmp/v2-goals-owner.sql"
+          docker cp docs/architecture/sql/V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql "$db_container:/tmp/v2-goals-history.sql"
           docker cp scripts/test-v2-goals-owner-local-postgres.psql "$db_container:/tmp/v2-goals-owner-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner.sql
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-history.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-qa.psql
       - name: Stop local Supabase services
         if: always()
