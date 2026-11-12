@@ -38,6 +38,22 @@ test('customization can hide optional data but never suppress source-required fi
  assert.deepEqual(model.stats.hiddenMetricKeys,['speed']);
  assert.equal(model.customization.details.length,2);
 });
+test('Overview and Details retain partial metric and provider quality for honest UI labeling',()=>{
+ const model=buildCompletedActivityScreenModel({
+  id:'partial-activity',sport:'outdoor_run',title:'Run',completedAt:'2026-11-11T09:00:00Z',
+  sourceLabel:'Watch',metrics:[
+   {...metric('distance','Distance','8 mi'),quality:'partial',sourceQuality:'trusted'},
+   {...metric('hr','Average HR','145 bpm'),quality:'trusted',sourceQuality:'partial'},
+  ],
+ });
+ assert.equal(model.stats.details.length,2);
+ assert.equal(model.stats.overview.length,2);
+ assert.equal(model.stats.details[0].quality,'partial');
+ assert.equal(model.stats.details[1].sourceQuality,'partial');
+ assert.equal(model.stats.overview[0].quality,'partial');
+ assert.equal(model.stats.overview[1].sourceQuality,'partial');
+});
+
 test('no activity with missing title/source or unsupported sport is accepted',()=>{
  assert.throws(()=>buildCompletedActivityScreenModel({
   id:'a',sport:'outdoor_run',title:'',completedAt:'date',sourceLabel:'Source',metrics:[],
