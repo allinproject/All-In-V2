@@ -27,6 +27,12 @@ const make=(platform='ios',opts={})=>{
    getAuthenticatedOwner:()=>activeOwner,...opts}),
    setOwner:v=>{activeOwner=v;}};
 };
+test('standard five-group owner UUID is accepted, truncated four-group identity is denied',async()=>{
+ assert.equal(await make('ios').flow.purchase(),'server_entitled');
+ const malformed='00000000-0000-0000-000000000001';
+ assert.equal(await make('ios',{getAuthenticatedOwner:()=>malformed}).flow.purchase(),
+  'wrong_account');
+});
 test('iOS verified purchase needs server acceptance and fresh entitlement',async()=>{
  assert.equal(await make('ios').flow.purchase(),'server_entitled');
  assert.equal(await make('ios',{server:{
