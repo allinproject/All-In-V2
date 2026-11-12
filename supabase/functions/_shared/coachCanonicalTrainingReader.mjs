@@ -54,7 +54,9 @@ export function createCoachCanonicalTrainingReader({
       !["planned","rest","recovery","unavailable","race","review_required"].includes(day.dayState))die();
    revisions.add(day.revisionId);
   }
-  const events=d.data.plannedWorkouts.map(w=>{
+  // Planned sessions remain in plannedDay, never in completed activity
+  // history. Assigning readAt as their occurredAt was a false activity signal.
+  for(const w of d.data.plannedWorkouts){
    if(!uuid(w.sessionId)||!uuid(w.revisionId)||!revisions.has(w.revisionId)||
       !uuid(w.planId)||!date(w.localDate)||w.localDate!==localDate||
       !sports.includes(w.sport)||typeof w.purpose!=="string"||
@@ -63,11 +65,7 @@ export function createCoachCanonicalTrainingReader({
       w.intentSchemaVersion!=="session-intent-v1"||
       !w.intent||typeof w.intent!=="object"||Array.isArray(w.intent)||
       JSON.stringify(w.intent).length>32768)die();
-   return {id:w.sessionId,kind:"planned_session",sport:w.sport,
-    occurredAt:readAt,recordedAt:readAt,source:"canonical_training",
-    canonicalRef:w.revisionId,confidence:"verified",
-    summary:(w.sessionKind+": "+w.purpose).slice(0,600)};
-  });
+  }
   const completedEvents=completed.activities.map(a=>{
    if(!uuid(a?.activityId)||a.ownerId!==ownerId||
       !sports.includes(a.sport)||!date(a.localDate)||
@@ -79,6 +77,7 @@ export function createCoachCanonicalTrainingReader({
       !time(a.recordedAt))die();
    const occurredAt=a.startedAt??a.finishedAt??a.recordedAt;
    if(!time(occurredAt)||Date.parse(occurredAt)>Date.parse(readAt)||
+      Date.parse(a.recordedAt)>Date.parse(readAt)||
       Date.parse(occurredAt)>Date.parse(a.recordedAt))die();
    return {id:a.activityId,kind:a.status==="completed"?
      "completed_session":"partial_or_unreviewed_session",
@@ -114,10 +113,10 @@ export function createCoachCanonicalTrainingReader({
     status:"active",source:rule.source,updatedAt:rule.updatedAt};
   });
   if(new Set(completedEvents.map(e=>e.id)).size!==completedEvents.length||
-     new Set(events.map(e=>e.id)).size!==events.length||
+     new Set(d.data.plannedWorkouts.map(w=>w.sessionId)).size!==d.data.plannedWorkouts.length||
      new Set(restrictions.map(e=>e.id)).size!==restrictions.length)die();
   const covered=[...new Set(["running","cycling","strength",
-   ...events.map(e=>e.sport),...completedEvents.map(e=>e.sport)])];
+   ...d.data.plannedWorkouts.map(w=>w.sport),...completedEvents.map(e=>e.sport)])];
   return {ownerId,accessGateReady:true,restrictionsVerified:true,
    historyCertification:{verified:true,ownerId,
     sourceRef:"canonical-v2-training-and-completed:"+localDate,readAt},
@@ -129,6 +128,6 @@ export function createCoachCanonicalTrainingReader({
     // Never choose arbitrarily between multiple active plans.
     currentPlan:null,plannedDay,restrictions,
     coverage:covered.map(sport=>({sport,fromDate,throughDate:localDate,
-     status:"partial",missingIntervals:[]})),events:[...events,...completedEvents]}};
+     status:"partial",missingIntervals:[]})),events:completedEvents}};
  };
 }
