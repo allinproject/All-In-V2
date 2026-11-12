@@ -18,11 +18,11 @@ const literal=v=>"'"+String(v).replaceAll("'","''")+"'";
 const idp="test-idp.example";
 const shaFor=i=>String(i).padStart(64,'a');
 const query=(id,sha,rev=3)=>"SELECT allin_private.v2_attest_ingredient_energy("+literal(id)+","+rev+","+literal(sha)+",'Verified official Foundation archive and source energy') AS out";
-async function setup(){
+async function setup(options={}){
  const db=new PGlite();await db.waitReady;
  await db.exec('CREATE ROLE anon NOLOGIN;CREATE ROLE authenticated NOLOGIN;CREATE ROLE service_role NOLOGIN;');
  await db.exec(cat);await db.exec(writer);await db.exec(lifecycle);await db.exec(attestSql);
- await db.exec("CREATE ROLE energy_reviewer_a LOGIN; GRANT allin_v2_ingredient_reviewer TO energy_reviewer_a");
+ await db.exec("CREATE ROLE energy_reviewer_a LOGIN NOINHERIT; GRANT allin_v2_ingredient_reviewer TO energy_reviewer_a");
  await db.exec("INSERT INTO allin_private.v2_ingredient_review_operators(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES('energy_reviewer_a',true,'ISOLATED-ENERGY-ACTOR','test-idp.example','verified-subject-energy-a','vault-test-reference-energy-a',now()-interval '1 hour',now()+interval '1 day')");
  await db.exec("INSERT INTO public.v2_nutrient_definitions(code,display_name,canonical_unit,launch_core,is_published) VALUES('energy_kcal','Energy','kcal',true,true),('protein_g','Protein','g',true,true),('carbohydrate_g','Carbs','g',true,true),('total_fat_g','Total fat','g',true,true),('sodium_mg','Sodium','mg',false,true)");
  let rows=[];
@@ -37,7 +37,7 @@ async function setup(){
    for(const [code,amt] of nutrientRows)await db.query('INSERT INTO public.v2_ingredient_profile_nutrients(profile_id,nutrient_code,amount) VALUES($1,$2,$3)',[profile,code,amt]);
    for(const energy of [r.energy,...(r.energy.alternative?[r.energy.alternative]:[])]){
       const nid=Number(energy.code);
-      await db.query("INSERT INTO allin_private.v2_ingredient_source_energy_evidence(source_record_id,source_payload_sha256,archive_sha256,fdc_nutrient_id,energy_kcal,source_review_reference) VALUES($1,$2,$3,$4,$5,$6)",[source,digest,evidence.archiveSha256,nid,energy.kcal,'ALL-228 official pinned source test fixture']);
+      await db.query("INSERT INTO allin_private.v2_ingredient_source_energy_evidence(source_record_id,source_payload_sha256,archive_sha256,fdc_nutrient_id,energy_kcal,source_review_reference) VALUES($1,$2,$3,$4,$5,$6)",[source,digest,options.archiveSha256||evidence.archiveSha256,nid,energy.kcal,'ALL-228 official pinned source test fixture']);
    }
    rows.push({key,id:profile,source,digest,fdc:r.fdcId,energyCode:Number(r.energy.code),energy:r.energy.kcal});
  }
@@ -48,6 +48,7 @@ test('all eight verified source fixtures attest the selected USDA calorie method
  try{
   assert.equal(rows.length,8);
   await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   for(const row of rows){
    const result=(await db.query(query(row.id,row.digest))).rows[0].out;
    assert.equal(result.status,'attested');
@@ -71,6 +72,7 @@ test('stale digest, missing selected source, 2047-only and changed normalized kc
  try {
   const row=rows.find(x=>x.energyCode===2048),other=rows.find(x=>x.energyCode===1008);
   await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await assert.rejects(()=>db.query(query(row.id,'f'.repeat(64))),e=>e.code==='40001');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   // Remove preferred specific factor using test setup only. 2047 is not permitted
@@ -78,15 +80,38 @@ test('stale digest, missing selected source, 2047-only and changed normalized kc
   // so use a new test-only source record/profile rather than modifying evidence.
   await db.exec("UPDATE public.v2_ingredient_profile_nutrients SET amount=999 WHERE profile_id="+literal(row.id)+" AND nutrient_code='energy_kcal'");
   await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await assert.rejects(()=>db.query(query(row.id,row.digest)),e=>e.code==='23514');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec("UPDATE public.v2_ingredient_nutrition_profiles SET profile_revision=4 WHERE id="+literal(other.id));
   await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await assert.rejects(()=>db.query(query(other.id,other.digest)),e=>e.code==='40001');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   const source=rows[0];
   await db.exec("UPDATE public.v2_ingredient_source_records SET payload_sha256=repeat('d',64) WHERE id="+literal(source.source));
   await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await assert.rejects(()=>db.query(query(source.id,source.digest)),e=>e.code==='40001');
+ }finally{await db.close()}
+});
+
+test('USDA archive pin is mandatory even when source energy values agree',async()=>{
+ const {db,rows}=await setup({archiveSha256:'f'.repeat(64)});
+ try{
+  await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
+  await assert.rejects(()=>db.query(query(rows[0].id,rows[0].digest)),e=>e.code==='23514');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations")).rows[0].n,0);
+ }finally{await db.close()}
+});
+test('future IdP verification date never authorizes reviewer',async()=>{
+ const {db,rows}=await setup();
+ try{
+  await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET identity_verified_at=clock_timestamp()+interval '2 hours' WHERE login_role='energy_reviewer_a'");
+  await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
+  await assert.rejects(()=>db.query(query(rows[0].id,rows[0].digest)),e=>e.code==='42501');
  }finally{await db.close()}
 });
