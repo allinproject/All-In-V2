@@ -31,6 +31,7 @@ export function NativeBillingActions({
   ownerId,onVerified,
 }:{ownerId:string;onVerified:()=>void}){
   const ownerRef=useRef<string|null>(ownerId);
+  const actionInFlightRef=useRef(false);
   ownerRef.current=ownerId;
   const [runtime,setRuntime]=useState<NativeBillingRuntime|null>(null);
   const [initializing,setInitializing]=useState(true);
@@ -40,6 +41,8 @@ export function NativeBillingActions({
   useEffect(()=>{
     let active=true;
     ownerRef.current=ownerId;
+    actionInFlightRef.current=false;
+    setBusy(null);
     setRuntime(null);
     setInitializing(true);
     setMessage(null);
@@ -75,9 +78,12 @@ export function NativeBillingActions({
   },[ownerId]);
 
   const run=useCallback(async(action:Action)=>{
-    if(!nativeBillingReleaseGate.enabled||!runtime||busy)return;
+    // A ref fences two taps in the same React render before busy state updates.
+    if(!nativeBillingReleaseGate.enabled||!runtime||
+       actionInFlightRef.current||busy)return;
     const startingOwner=ownerRef.current;
     if(!startingOwner||startingOwner!==ownerId)return;
+    actionInFlightRef.current=true;
     setBusy(action);
     setMessage(null);
     try{
@@ -90,7 +96,10 @@ export function NativeBillingActions({
         setMessage('The store is unavailable. Please retry later.');
       }
     }finally{
-      if(ownerRef.current===startingOwner)setBusy(null);
+      if(ownerRef.current===startingOwner){
+        actionInFlightRef.current=false;
+        setBusy(null);
+      }
     }
   },[runtime,busy,ownerId,onVerified]);
 
