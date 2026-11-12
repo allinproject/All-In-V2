@@ -1,0 +1,41 @@
+name: V2 Ingredient restricted PostgreSQL authentication (isolated, no deploy)
+
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - 'scripts/test-v2-ingredient-native-concurrency.py'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-INGREDIENT-USDA-ENERGY-ATTESTATION-CANDIDATE.sql'
+      - 'docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'
+      - 'docs/evidence/ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'
+      - 'docs/evidence/ALL-225-USDA-EIGHT-PER-FOOD-ENERGY-DIGESTS-2026-11-12.json'
+      - '.github/workflows/v2-ingredient-native-auth.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-ingredient-native-auth-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ephemeral-authenticated-postgres:
+    name: Authenticated PostgreSQL login, USDA provenance and revocation acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start only local disposable PostgreSQL (never Supabase)
+        run: |
+          sudo service postgresql start
+          pg_isready -h 127.0.0.1 -p 5432
+          sudo -u postgres psql -At -c "SHOW server_version_num"
+      - name: Run actual restricted machine TCP sessions and eight-food isolated reconciliation
+        env:
+          ALLIN_ISOLATED_NATIVE_POSTGRES: '1'
+        run: |
+          sudo env ALLIN_ISOLATED_NATIVE_POSTGRES=1 python3 scripts/test-v2-ingredient-native-concurrency.py
