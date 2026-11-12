@@ -69,3 +69,23 @@ test("model HTTP failure never leaks private upstream body",async()=>{
  const x=setup();x.options.fetchImpl=async()=>({ok:false,status:429});
  await assert.rejects(()=>createCoachOpenAiResponsesTransport(x.options)(args),/unconfirmed/);
 });
+
+test("structured accepted workout prescriptions are sent unchanged, not summarized",async()=>{
+ let prompt="";const x=setup();x.options.fetchImpl=async(_,init)=>{
+  prompt=JSON.parse(init.body).instructions;
+  return {ok:true,json:async()=>structuredClone(answer)};
+ };
+ const fullContext={...context,plannedDay:{verified:true,localDate:"2026-11-12",
+  calendarDays:[{planId:"plan",revisionId:"rev",dayState:"planned"}],
+  sessions:[{sessionId:"session",planId:"plan",revisionId:"rev",
+   intent:{supersets:[{major:"split squat",abs:"cable crunch",rounds:3}]}}]}};
+ await createCoachOpenAiResponsesTransport(x.options)({...args,context:fullContext});
+ assert.match(prompt,/split squat/);
+ assert.match(prompt,/cable crunch/);
+ assert.match(prompt,/rounds/);
+});
+test("an input whose worst-case cost exceeds the reserved cap never reaches provider",async()=>{
+ const x=setup(),invoke=createCoachOpenAiResponsesTransport(x.options);
+ await assert.rejects(()=>invoke({...args,userContent:"x".repeat(12000)}),/unconfirmed/);
+ assert.equal(x.calls(),0);
+});
