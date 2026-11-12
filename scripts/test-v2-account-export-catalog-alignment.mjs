@@ -289,3 +289,28 @@ test('ALL-251 review-only deletion graph scanner remains private and release-blo
  assert(!claim.includes('v2_deletion_owner_graph_gaps_review'),
   'Review scanner cannot be represented as an installed deletion-claim release gate');
 });
+
+test('ALL-251 claim and completion review integration preserves both release guards',()=>{
+ const sql=readFileSync(
+  'docs/architecture/sql/V2-ACCOUNT-DELETION-CLAIM-COMPLETION-GRAPH-GATE-REVIEW.sql','utf8');
+ const claim=sql.slice(sql.indexOf('create or replace function public.v2_claim_account_deletion_for_processing('),
+   sql.indexOf('create or replace function public.v2_record_account_deletion_completion('));
+ const completion=sql.slice(sql.indexOf('create or replace function public.v2_record_account_deletion_completion('));
+ assert.match(sql,/audit_retention_policy_required/);
+ for(const fragment of [claim,completion]){
+  assert(fragment.includes('perform allin_private.v2_deletion_assert_approved_coverage_review();'),
+   'Both canonical deletion phases must enforce the graph coverage gate');
+  assert(!fragment.includes('drop table')&&!fragment.includes('delete from auth.users'),
+   'Source gate must not perform destructive actions');
+ }
+ assert(claim.includes('execution_enabled=true'),'Claim must preserve worker OFF switch');
+ assert(claim.includes('pg_advisory_xact_lock'),'Claim must preserve owner serialization');
+ assert(claim.includes("status='processing'"),'Claim must preserve processing transition');
+ assert(completion.includes('auth.sessions'),'Completion must verify session absence');
+ assert(completion.includes('v2_account_deletion_execution_audit'),
+  'Completion must preserve durable audit readback');
+ const workflow=readFileSync('.github/workflows/v2-foundation-clean-replay.yml','utf8');
+ assert(workflow.includes('test-all251-deletion-claim-graph-gate-local.psql'));
+ assert(!sql.includes('ALTER TABLE allin_private.v2_account_deletion_processor_config'),
+  'Review SQL must not arm the processor');
+});
