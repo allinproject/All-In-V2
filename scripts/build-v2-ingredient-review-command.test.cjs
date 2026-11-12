@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {buildReviewCommand,stableCanonical}=require('./build-v2-ingredient-review-command.cjs');
+const {buildReviewCommand,stableCanonical,createSupabaseReviewerDependencies}=require('./build-v2-ingredient-review-command.cjs');
 const uid='11111111-1111-4111-8111-111111111111';
 const approver='22222222-2222-4222-8222-222222222222';
 const profile='33333333-3333-4333-8333-333333333333';
@@ -95,4 +95,29 @@ test('deterministic hash does not depend on equivalent source-fact object orderi
  });
  assert.equal(a.writerCommand.p_evidence_sha256,b.writerCommand.p_evidence_sha256);
  assert.equal(stableCanonical({b:2,a:1}),stableCanonical({a:1,b:2}));
+});
+
+test('Supabase Auth getUser validates supplied bearer and private registry controls reviewer enrollment',async()=>{
+ const calls=[];
+ const authClient={auth:{getUser:async token=>{calls.push(['getUser',token]);return {data:{user:{id:uid}},error:null}}}};
+ const reviewerRegistry={findByUserId:async id=>{calls.push(['privateRegistry',id]);return deps().findReviewerAuthorization(id)}};
+ const authoritativeSourceReader={load:async (key,id)=>{calls.push(['source',key,id]);return sourceContext}};
+ const adapter=createSupabaseReviewerDependencies({authClient,reviewerRegistry,authoritativeSourceReader});
+ const r=await buildReviewCommand(request,adapter);
+ assert.equal(r.status,'prepared_review_command_only');
+ assert.deepEqual(calls[0],['getUser',request.bearerToken]);
+ assert.deepEqual(calls[1],['privateRegistry',uid]);
+ assert.deepEqual(calls[2],['source',request.sourceProfileKey,request.sourceRecordId]);
+});
+test('a failed Supabase Auth getUser response never reaches private reviewer lookup',async()=>{
+ let touched=false;
+ const adapter=createSupabaseReviewerDependencies({
+  authClient:{auth:{getUser:async()=>({data:{user:{id:uid}},error:{message:'revoked'}})}},
+  reviewerRegistry:{findByUserId:async()=>{touched=true;return null}},
+  authoritativeSourceReader:{load:async()=>sourceContext}
+ });
+ const r=await buildReviewCommand(request,adapter);
+ assert.equal(r.status,'denied');
+ assert.equal(touched,false);
+ assert.equal(r.writerCommand,null);
 });
