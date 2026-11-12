@@ -271,6 +271,14 @@ BEGIN
     'WHERE (b.blocker_id=t.follower_id AND b.blocked_id=$1) '||
     'OR (b.blocker_id=$1 AND b.blocked_id=t.follower_id)) '||
     'ORDER BY t.follower_id LIMIT $2 OFFSET $3';
+  ELSIF p_collection='community.my_action_receipts' THEN
+   -- An athlete may export their own action history, not internal pair CAS
+   -- versions, replay hashes or other person's private block decisions.
+   v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''action_id'',t.action_id,''action'',t.action,'||
+    '''target_id'',t.target_id,''created_at'',t.created_at) '||
+    'FROM allin_private.v2_community_action_receipts t '||
+    'WHERE t.actor_id=$1 ORDER BY t.created_at,t.action_id LIMIT $2 OFFSET $3';
   ELSE
    v_query:=pg_catalog.format('SELECT pg_catalog.to_jsonb(t) FROM %I.%I t '||
     'WHERE t.%I=$1 ORDER BY pg_catalog.to_jsonb(t)::text LIMIT $2 OFFSET $3',
