@@ -90,6 +90,23 @@ INSERT INTO allin_private.v2_community_follows(follower_id,followed_id,state,app
 INSERT INTO allin_private.v2_community_blocks(blocker_id,blocked_id)
  VALUES ('91111111-9111-4111-8111-911111111111',
  '92222222-9222-4222-8222-922222222222');
+-- Internal pair-CAS version is NOT exported, but each actor's own
+-- action receipt is portable; never reveal the other actor's receipt.
+INSERT INTO allin_private.v2_community_pair_revisions
+ (lower_user_id,upper_user_id,version)
+VALUES ('91111111-9111-4111-8111-911111111111',
+ '92222222-9222-4222-8222-922222222222',3);
+INSERT INTO allin_private.v2_community_action_receipts
+ (actor_id,action_id,target_id,action,expected_version,result_version,payload_sha256)
+VALUES
+ ('91111111-9111-4111-8111-911111111111',
+  'aa111111-9111-4111-8111-911111111111',
+  '92222222-9222-4222-8222-922222222222',
+  'block',1,2,repeat('a',64)),
+ ('92222222-9222-4222-8222-922222222222',
+  'aa222222-9222-4222-8222-922222222222',
+  '91111111-9111-4111-8111-911111111111',
+  'request_follow',2,3,repeat('b',64));
 -- The original inline owner snapshot and the paginated reader must
 -- agree on redacted Billing histories without exporting provider secrets.
 SET LOCAL ROLE authenticated;
@@ -399,6 +416,15 @@ BEGIN
  IF pg_catalog.jsonb_array_length(v_page->'rows')<>0 THEN
    RAISE EXCEPTION 'Another athlete private block leaked in recipient export';
  END IF;
+ v_page:=public.v2_account_export_page_review_candidate(
+   '92222222-9222-4222-8222-922222222222',
+   '94444444-9444-4444-8444-944444444444',
+   '96666666-9666-4666-8666-966666666666',
+   'community.my_action_receipts',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>1
+    OR v_page#>>'{rows,0,actor_id}'<>'92222222-9222-4222-8222-922222222222'
+    OR v_page::text LIKE '%aa111111-9111-4111-8111-911111111111%'
+ THEN RAISE EXCEPTION 'Private Community action receipt leaked across owners'; END IF;
  RAISE NOTICE 'PASS ALL-251: unknown owner/directional tables block export and incoming blocks stay private';
 END $hidden_block$;
 RESET ROLE;
