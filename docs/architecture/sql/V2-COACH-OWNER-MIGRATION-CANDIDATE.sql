@@ -8,7 +8,8 @@ create table public.v2_coach_threads (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   archived_at timestamptz,
-  unique (id,user_id)
+  unique (id,user_id),
+  constraint v2_coach_threads_one_per_owner unique (user_id)
 );
 
 create table public.v2_coach_messages (
@@ -47,11 +48,14 @@ create policy v2_coach_threads_owner_select on public.v2_coach_threads
 create policy v2_coach_messages_owner_select on public.v2_coach_messages
   for select to authenticated using ((select auth.uid())=user_id);
 
--- Exactly-one owner-bound thread creation; stable supplied UUID supports retry.
+-- Exactly one persistent owner-bound thread. Distinct device-generated IDs converge
+-- on the same canonical thread; the owner lock and unique constraint arbitrate races.
 create function public.v2_coach_create_thread(p_expected_user_id uuid,p_thread_id uuid)
 returns uuid language plpgsql security definer set search_path = ''
 as $function$
-declare v_user uuid := auth.uid(); v_existing public.v2_coach_threads%rowtype;
+declare
+  v_user uuid := auth.uid();
+  v_existing public.v2_coach_threads%rowtype;
 begin
   if v_user is null or not exists(select 1 from auth.users where id=v_user)
     or p_expected_user_id is distinct from v_user then
@@ -60,16 +64,30 @@ begin
   if p_thread_id is null then
     raise exception 'Stable thread identity required' using errcode='22023';
   end if;
+
+  -- Serialize first-open across devices even when each generated a different
+  -- candidate UUID. The unique owner constraint is a second line of defence.
   perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended('v2-coach-thread:'||p_thread_id::text,0)
+    pg_catalog.hashtextextended('v2-coach-owner-thread:'||v_user::text,0)
   );
+
   select * into v_existing from public.v2_coach_threads where id=p_thread_id;
-  if found then
-    if v_existing.user_id is distinct from v_user or v_existing.archived_at is not null then
-      raise exception 'Thread ID unavailable to this account' using errcode='42501';
-    end if;
-    return p_thread_id;
+  if found and v_existing.user_id is distinct from v_user then
+    raise exception 'Thread ID unavailable to this account' using errcode='42501';
   end if;
+  if found and v_existing.archived_at is not null then
+    raise exception 'Canonical Coach conversation is archived' using errcode='55000';
+  end if;
+
+  select * into v_existing from public.v2_coach_threads
+    where user_id=v_user for update;
+  if found then
+    if v_existing.archived_at is not null then
+      raise exception 'Canonical Coach conversation is archived' using errcode='55000';
+    end if;
+    return v_existing.id;
+  end if;
+
   insert into public.v2_coach_threads(id,user_id) values(p_thread_id,v_user);
   return p_thread_id;
 end;

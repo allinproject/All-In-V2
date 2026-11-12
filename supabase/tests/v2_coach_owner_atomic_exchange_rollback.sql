@@ -17,10 +17,23 @@ select public.v2_coach_create_thread(
  'aa11aa11-1111-4111-8111-111111111111',
  'cc33cc33-3333-4333-8333-333333333333'
 );
-select public.v2_coach_create_thread(
- 'aa11aa11-1111-4111-8111-111111111111',
- 'cc88cc88-8888-4888-8888-888888888888'
-);
+do $thread$
+declare v_canonical_thread uuid;
+begin
+  select public.v2_coach_create_thread(
+    'aa11aa11-1111-4111-8111-111111111111',
+    'cc88cc88-8888-4888-8888-888888888888'
+  ) into v_canonical_thread;
+  if v_canonical_thread is distinct from
+    'cc33cc33-3333-4333-8333-333333333333'::uuid then
+    raise exception 'second device did not resume the canonical owner thread';
+  end if;
+  if (select count(*) from public.v2_coach_threads
+      where user_id='aa11aa11-1111-4111-8111-111111111111') <> 1 then
+    raise exception 'owner A acquired more than one persistent Coach thread';
+  end if;
+end;
+$thread$;
 
 do $a$
 begin
