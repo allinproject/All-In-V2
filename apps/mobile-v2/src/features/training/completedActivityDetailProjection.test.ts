@@ -140,3 +140,23 @@ test('each non-device measurement origin remains visible beside quality in Overv
  }
  assert.equal(metricEvidenceQualityNotice({...source,provenance:'device'}),null);
 });
+
+test('rowing renders only genuine source-backed pace and stroke data, not generic metrics',()=>{
+ const row=[
+  {...fact('row.pace.500','Pace / 500 m','2:03/500m'),quality:'trusted' as const},
+  {...fact('row.stroke.rate','Stroke rate','28 spm'),quality:'trusted' as const},
+  {...fact('row.drag','Drag factor','120'),quality:'partial' as const,sourceQuality:'partial' as const},
+ ];
+ const projection=projectCompletedActivityDetail({sport:'rowing',metrics:row,sections:[
+  {key:'row-splits',kind:'splits',title:'500m splits',source:'erg',count:4},
+ ]});
+ assert.deepEqual(projection.overview.map(x=>x.key),['row.pace.500','row.stroke.rate']);
+ assert.deepEqual(projection.details.map(x=>x.key),['row.pace.500','row.stroke.rate','row.drag']);
+ assert.equal(projection.sections[0].kind,'splits');
+ assert.equal(metricEvidenceQualityNotice(projection.details[2]),
+  'Partial measurement and source quality');
+ const missing=projectCompletedActivityDetail({sport:'rowing',metrics:[]});
+ assert.deepEqual(missing.overview,[]);
+ assert.deepEqual(missing.details,[]);
+ assert.deepEqual(missing.sections,[]);
+});
