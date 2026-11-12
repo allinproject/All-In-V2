@@ -48,3 +48,24 @@ print(json.dumps({'normalized':m.normalize('  CHICKEN   Breast  '),'score':m.sim
   assert.equal(result.normalized,'chicken breast');
   assert(result.score<1);
 });
+
+test('source FDC URLs are recorded as review evidence, never automatic approval',()=>{
+  const code=`import importlib.util,json
+s=importlib.util.spec_from_file_location('usda_reconcile','scripts/reconcile-usda-foundation-identities.py')
+m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+foods=[{'fdcId':2644285,'description':'Beans, black, canned, sodium added, drained and rinsed','dataType':'Foundation'},
+       {'fdcId':42,'description':'Unrelated food','dataType':'Foundation'}]
+profiles=[{'source_profile_key':'beans','source_label':'Black beans','source_aliases':[],
+  'source_fdc_id':None,'source_url':'https://fdc.nal.usda.gov/food-details/2644285/nutrients'},
+ {'source_profile_key':'unrelated','source_label':'Other','source_aliases':[],
+  'source_fdc_id':None,'source_url':'https://fdc.nal.usda.gov/food-details/9999/nutrients'}]
+r=m.reconcile(foods,profiles,2,2)
+print(json.dumps({'refs':r['rows'][1]['direct_fdc_source_profile_keys'],
+ 'count':r['summary']['directFdcSourceReferencePairs'],
+ 'approval':r['reconciliationApproved'],'ready':r['calculationReady']}))`;
+  const r=runPython(code);
+  assert.deepEqual(r.refs,['beans']);
+  assert.equal(r.count,1);
+  assert.equal(r.approval,false);
+  assert.equal(r.ready,false);
+});
