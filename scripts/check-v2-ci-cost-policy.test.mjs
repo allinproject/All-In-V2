@@ -19,7 +19,7 @@ test('paid V2 engineering validation cannot run automatically on integration pus
   // A targeted, workflow-file-only push may validate edits to this CI
   // workflow. Ordinary integration source pushes must never run full builds.
   if (/^  push:/m.test(events)) {
-    const pushBlock=events.match(/^  push:\n([\s\S]*?)(?=^  pull_request:|^  workflow_dispatch:|^  [a-z_]+:|$)/m);
+    const pushBlock=events.match(/^  push:\n([\s\S]*?)(?=^  (?:pull_request|workflow_dispatch|schedule|repository_dispatch|workflow_run):|$)/m);
     assert.ok(pushBlock,'Engineering push trigger must be bounded');
     assert.match(pushBlock[1], /branches: \[integration\/v2-foundation\]/);
     assert.match(pushBlock[1], /paths:\n\s+- '\.github\/workflows\/v2-engineering\.yml'/);
