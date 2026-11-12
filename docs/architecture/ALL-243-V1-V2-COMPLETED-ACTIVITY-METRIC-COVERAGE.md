@@ -131,6 +131,16 @@ The existing `CompletedActivityScreenContent.tsx` now presents owner-provided qu
 
 **Boundary:** This improves the reusable UI, not the backend's authority to certify a provider sample. The Completed Activity route is still not mounted on a deployed canonical owner reader. A real device and accessibility review must confirm quality text visibility in Overview and Details before ALL-243 can be marked installed/validated; new test commits' GitHub CI outcomes have not been inspected.
 
+### Additional read-boundary and quality disclosure hardening (2026-11-12)
+
+The existing canonical owner reader now rejects SQL-incompatible scalar metric IDs above 100 characters, rejects section identity keys above the 120-character bounded display contract, and fails closed on duplicated structured-section IDs **before** passing a partial display model downstream. This prevents the reader from accepting records that a later presentation component would silently drop. The new tests cover too-long metric keys, section keys, duplicate section keys, and a valid control case.
+
+The existing Overview/Details presentation now distinguishes manual user reports, provider-derived values, ALL IN-calculated values and estimates in addition to partial-source/measurement confidence. This is a presentation label based solely on the **already certified canonical measurement kind**, not an inference from which device was the primary recorder. A device-measured metric without a confidence limitation gets no invented warning. Regression tests confirm warnings survive Details projection and remain combined with partial-confidence labels.
+
+The existing owner-route guard now also rejects GPS route sections for treadmill, Strength, Yoga and Mobility, consistent with locked V1 sport screens, in addition to pool swim, indoor trainer, elliptical and stairs. It does not prohibit source-verified outdoor running, cycling or open-water routes; route-visibility permissions and private map handling still require approved backend integration.
+
+**Boundary:** This source-level work and added tests were reviewed by GitHub readback, not executed against an installed app; the V2 backend still has no approved deployed canonical Completed Activity reader. Do not report new CI as green without inspecting its run. The previously confirmed full-history local SQL replay remains green at run 43138298262.
+
 ## Current evidence / outstanding gaps
 
 - [x] Exact 17-sport **V1 native scalar** Overview/Details baseline is in V2 and unit-test guarded.
