@@ -54,8 +54,12 @@ export function prepareCoachCertifiedCalendar(input:CoachCertifiedCalendarInput)
   });
   if(combined.status!=='ready'||combined.planned.status!=='ready'||combined.completed.status!=='ready')
     return{kind:'blocked',reason:'calendar_unavailable'};
+  const plannedById=new Map(combined.planned.records.map(p=>[p.id,p]));
+  // A completion on a different local date must NOT erase the original
+  // scheduled-day evidence before the canonical Training owner reschedules it.
   const linked=new Set(combined.completed.records
-    .filter(c=>c.plannedSessionId!==null)
+    .filter(c=>c.plannedSessionId!==null&&
+      plannedById.get(c.plannedSessionId)?.athleteLocalDate===c.athleteLocalDate)
     .map(c=>c.plannedSessionId));
   const sessions:CoachCalendarSession[]=[
     ...combined.planned.records
