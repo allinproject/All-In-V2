@@ -112,6 +112,11 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
                 if best >= 0.42:
                     suggested.append((round(best, 4), profile["source_profile_key"]))
             suggested.sort(key=lambda pair: (-pair[0], pair[1]))
+        # A matching FDC source URL and a matching label may point to
+        # different V1 source profiles. Surface that disagreement for a
+        # human reviewer; never let source priority hide conflicting evidence.
+        disagreement = bool(direct_source and exact
+                            and set(direct_source).isdisjoint(exact))
         status = ("source_fdc_reference_review" if direct_source else
                   "exact_name_review" if exact else
                   "similar_name_review" if suggested else "no_candidate")
@@ -120,6 +125,8 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
             "description": description,
             "source_data_type": food.get("dataType"),
             "status": status,
+            "identity_evidence_disagreement": disagreement,
+            "identity_evidence_disagreement_requires_review": disagreement,
             "exact_source_profile_keys": exact,
             "direct_fdc_source_profile_keys": direct_source,
             "suggestions": [
@@ -144,6 +151,8 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
             "directFdcSourceReferencePairs": sum(len(e["direct_fdc_source_profile_keys"]) for e in entries),
             "directFdcLinkedV1Profiles": len(set(
                 key for e in entries for key in e["direct_fdc_source_profile_keys"])),
+            "sourceVsExactAliasDisagreements": sum(
+                bool(e["identity_evidence_disagreement"]) for e in entries),
         },
         "method": "Unicode NFKC casefold whitespace exact label/alias; fallback token Jaccard >=0.42 top 3 review suggestions. No inferred form, synonym or nutrient equivalence.",
         "rows": entries,
