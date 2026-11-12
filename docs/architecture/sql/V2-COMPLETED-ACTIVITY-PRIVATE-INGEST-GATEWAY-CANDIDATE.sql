@@ -14,6 +14,7 @@ END $role$;
 -- No membership grants to authenticator, service_role, anon or authenticated.
 GRANT USAGE ON SCHEMA allin_private TO allin_v2_device_ingest;
 GRANT USAGE ON SCHEMA public TO allin_v2_device_ingest;
+GRANT USAGE ON SCHEMA auth TO allin_v2_device_ingest;
 -- SECURITY INVOKER canonical writer requires exactly these existing table rights.
 GRANT SELECT ON public.v2_completed_activities TO allin_v2_device_ingest;
 GRANT SELECT ON public.v2_activity_sources TO allin_v2_device_ingest;
