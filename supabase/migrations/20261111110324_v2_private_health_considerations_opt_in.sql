@@ -1,24 +1,21 @@
 
--- V2 only. Sensitive health data does not enter public profile settings or Coach context.
+-- V2 only: private, user-controlled health considerations. Never stored in generic profile settings.
 create table if not exists allin_private.v2_health_considerations (
- user_id uuid primary key references auth.users(id) on delete cascade,
- conditions jsonb not null default '[]'::jsonb,
- limitations jsonb not null default '[]'::jsonb,
- coach_opt_in boolean not null default false,
- version bigint not null default 1 check(version>=1),
- updated_at timestamptz not null default now(),
- constraint v2_health_conditions_array check(jsonb_typeof(conditions)='array'),
- constraint v2_health_limitations_array check(jsonb_typeof(limitations)='array')
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  conditions jsonb not null default '[]'::jsonb,
+  limitations jsonb not null default '[]'::jsonb,
+  coach_opt_in boolean not null default false,
+  version bigint not null default 1 check (version >= 1),
+  updated_at timestamptz not null default now(),
+  constraint v2_health_conditions_array check (jsonb_typeof(conditions)='array'),
+  constraint v2_health_limitations_array check (jsonb_typeof(limitations)='array')
 );
 alter table allin_private.v2_health_considerations enable row level security;
 revoke all on allin_private.v2_health_considerations from public,anon,authenticated,service_role;
-
-CREATE OR REPLACE FUNCTION public.v2_my_health_considerations(p_expected_user_id uuid)
- RETURNS jsonb
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+-- Only vetted RPCs may access this table. No table RLS policy and no schema usage for clients.
+create or replace function public.v2_my_health_considerations(p_expected_user_id uuid)
+returns jsonb language plpgsql stable security definer set search_path = ''
+as $$
 declare v_user uuid := auth.uid(); v_row allin_private.v2_health_considerations%rowtype;
 begin
  if v_user is null or p_expected_user_id is distinct from v_user then
@@ -28,14 +25,15 @@ begin
  if not found then return jsonb_build_object('conditions','[]'::jsonb,'limitations','[]'::jsonb,'coach_opt_in',false,'version',0); end if;
  return jsonb_build_object('conditions',v_row.conditions,'limitations',v_row.limitations,
   'coach_opt_in',v_row.coach_opt_in,'version',v_row.version);
-end;$function$;
+end;$$;
+revoke all on function public.v2_my_health_considerations(uuid) from public,anon,authenticated,service_role;
+grant execute on function public.v2_my_health_considerations(uuid) to authenticated;
 
-CREATE OR REPLACE FUNCTION public.v2_save_health_considerations(p_expected_user_id uuid, p_conditions jsonb, p_limitations jsonb, p_coach_opt_in boolean, p_expected_version bigint)
- RETURNS bigint
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+create or replace function public.v2_save_health_considerations(
+ p_expected_user_id uuid, p_conditions jsonb, p_limitations jsonb,
+ p_coach_opt_in boolean, p_expected_version bigint)
+returns bigint language plpgsql security definer set search_path = ''
+as $$
 declare v_user uuid := auth.uid(); v_row allin_private.v2_health_considerations%rowtype;
  v_next bigint;
 begin
@@ -83,11 +81,10 @@ begin
    where user_id=v_user returning version into v_next;
  end if;
  return v_next;
-end;$function$;
-revoke all on function public.v2_my_health_considerations(uuid) from public,anon,authenticated,service_role;
-grant execute on function public.v2_my_health_considerations(uuid) to authenticated;
+end;$$;
 revoke all on function public.v2_save_health_considerations(uuid,jsonb,jsonb,boolean,bigint)
  from public,anon,authenticated,service_role;
-grant execute on function public.v2_save_health_considerations(uuid,jsonb,jsonb,boolean,bigint) to authenticated;
+grant execute on function public.v2_save_health_considerations(uuid,jsonb,jsonb,boolean,bigint)
+ to authenticated;
 comment on table allin_private.v2_health_considerations is
  'Private owner-scoped health considerations; Coach access not implemented, consent is opt-in and revocable.';
