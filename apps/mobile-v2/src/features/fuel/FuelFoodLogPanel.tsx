@@ -6,7 +6,8 @@ import {supabase} from '../../lib/supabase.ts';
 import {deviceLocalToday} from '../today/todayEntry.ts';
 import {readOwnedFuelDayPayload,V2_FUEL_DAY_READ_ENABLED} from './fuelOwnerFoodClient.ts';
 import {V2_FUEL_MANUAL_WRITE_ENABLED,writeOwnedManualFood,type ManualFoodCommand} from './fuelOwnerFoodWrite.ts';
-import {editableFoodDay,newFoodActionId,prepareFoodReplacement,type EditableFoodDay,type EditableFoodRow,type FoodFormInput} from './fuelFoodDetail.ts';
+import {editableFoodDay,prepareFoodReplacement,type EditableFoodDay,type EditableFoodRow,type FoodFormInput} from './fuelFoodDetail.ts';
+import {newNativeFoodActionId} from './fuelFoodSecureNative.ts';
 
 type FuelMeal='breakfast'|'lunch'|'dinner'|'snack'|'other';
 const mealOrder:FuelMeal[]=['breakfast','lunch','dinner','snack','other'];
@@ -49,11 +50,11 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
  const [form,setForm]=useState<FoodFormInput>(()=>defaultForm(day));
  const [notice,setNotice]=useState<string|null>(null);
  const [busy,setBusy]=useState(false);
- // An installed native runtime may not expose WebCrypto getRandomValues.
+ // Native Expo Crypto may be unavailable on an incompatible installed build.
  // Block the editor BEFORE a user types a meal if action IDs cannot be
  // generated securely. Never substitute timestamps or insecure randomness.
  const [secureIdsAvailable,setSecureIdsAvailable]=useState(
-  ()=>!V2_FUEL_MANUAL_WRITE_ENABLED||newFoodActionId()!==null,
+  ()=>!V2_FUEL_MANUAL_WRITE_ENABLED||newNativeFoodActionId()!==null,
  );
  const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
  const pending=useRef<{key:string;command:ManualFoodCommand}|null>(null);
@@ -66,7 +67,7 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
  },[]);
  useFocusEffect(useCallback(()=>{
   focused.current=true;
-  if(V2_FUEL_MANUAL_WRITE_ENABLED)setSecureIdsAvailable(newFoodActionId()!==null);
+  if(V2_FUEL_MANUAL_WRITE_ENABLED)setSecureIdsAvailable(newNativeFoodActionId()!==null);
   setRefresh(r=>r+1);
   return()=>{focused.current=false;};
  },[]));
@@ -160,8 +161,8 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
    editor.kind==='edit'?editor.row.revision:null,operation,replacement]);
   let command=pending.current?.key===key?pending.current.command:null;
   if(!command){
-   const actionId=newFoodActionId();
-   const entryId=editor.kind==='add'?newFoodActionId():editor.row.id;
+   const actionId=newNativeFoodActionId();
+   const entryId=editor.kind==='add'?newNativeFoodActionId():editor.row.id;
    if(!actionId||!entryId){setNotice('Secure action IDs are unavailable on this device. Nothing was saved.');return;}
    command=editor.kind==='add'
     ?{operation:'add',ownerId,actionId,entryId,replacement}
@@ -177,7 +178,7 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
   const key=JSON.stringify(['delete',ownerId,row.id,row.revision]);
   let command=pending.current?.key===key?pending.current.command:null;
   if(!command){
-   const actionId=newFoodActionId();
+   const actionId=newNativeFoodActionId();
    if(!actionId){setNotice('Secure action IDs unavailable. Nothing was deleted.');return;}
    command={operation:'delete',ownerId,actionId,entryId:row.id,expectedRevision:row.revision};
    pending.current={key,command};
