@@ -1,0 +1,88 @@
+\set ON_ERROR_STOP on
+-- ALL-239: Goal behavior children, shared real local V2 Auth, rollback only.
+BEGIN;
+DO $behavior$
+DECLARE
+ a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ g1 uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ g2 uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ r1 uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ r2 uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ t1 uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ t2 uuid:='ffffffff-ffff-4fff-8fff-ffffffffffff';
+ t3 uuid:='33333333-3333-4333-8333-333333333333';
+BEGIN
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO public.v2_goals(id,user_id,goal_kind,title)
+ VALUES(g1,a,'general_wellbeing','Feel healthier'),
+       (g2,b,'activity_habit','Build consistency');
+ INSERT INTO public.v2_goal_revisions(id,goal_id,user_id,revision_number,status,source_kind)
+ VALUES(r1,g1,a,1,'candidate','athlete_authored'),
+       (r2,g2,b,1,'candidate','athlete_authored');
+ INSERT INTO public.v2_goal_revision_behavior_targets(
+  id,user_id,goal_id,goal_revision_id,behavior_description,
+  cadence_kind,evidence_policy,user_confirmed
+ ) VALUES(t1,a,g1,r1,'Take one small step that feels sustainable',
+   'qualitative_no_fixed_cadence','no_tracking',true);
+ INSERT INTO public.v2_goal_revision_behavior_targets(
+  id,user_id,goal_id,goal_revision_id,behavior_code,
+  behavior_description,cadence_kind,target_frequency,frequency_period,
+  evidence_owner,evidence_policy,user_confirmed
+ ) VALUES(t2,a,g1,r1,'cook_at_home','Cook dinner at home when possible',
+   'count_per_period',2,'week','meal_prep',
+   'canonical_food_or_meal_prep',true);
+ INSERT INTO public.v2_goal_revision_behavior_targets(
+  id,user_id,goal_id,goal_revision_id,behavior_description,
+  evidence_policy,user_confirmed
+ ) VALUES(t3,b,g2,r2,'Explore walking more regularly',
+   'no_tracking',false);
+ IF (SELECT count(*) FROM public.v2_goal_revision_behavior_targets
+     WHERE user_id=a AND target_frequency IS NULL)<>1
+ THEN RAISE EXCEPTION 'Qualitative Goal was forced to numeric progress'; END IF;
+ BEGIN
+  INSERT INTO public.v2_goal_revision_behavior_targets(
+    id,user_id,goal_id,goal_revision_id,behavior_description
+  ) VALUES('44444444-4444-4444-8444-444444444444',b,g1,r1,'Foreign target');
+  RAISE EXCEPTION 'Cross-account behavior target allowed';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_goal_revision_behavior_targets(
+    id,user_id,goal_id,goal_revision_id,behavior_description,
+    cadence_kind,evidence_policy
+  ) VALUES('55555555-5555-4555-8555-555555555555',a,g1,r1,'Count meals',
+           'count_per_period','no_tracking');
+  RAISE EXCEPTION 'Count target accepted without real frequency';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ UPDATE public.v2_goal_revisions
+ SET status='accepted',accepted_at=now() WHERE id=r1;
+ BEGIN
+  UPDATE public.v2_goal_revision_behavior_targets
+   SET behavior_description='Silently modified plan' WHERE id=t1;
+  RAISE EXCEPTION 'Published behavior was mutated';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  DELETE FROM public.v2_goal_revision_behavior_targets WHERE id=t1;
+  RAISE EXCEPTION 'Published behavior was deleted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_goal_revision_behavior_targets(
+    id,user_id,goal_id,goal_revision_id,behavior_description
+  ) VALUES('66666666-6666-4666-8666-666666666666',a,g1,r1,'Late hidden behavior');
+  RAISE EXCEPTION 'Behavior added after published acceptance';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF NOT (SELECT relrowsecurity FROM pg_catalog.pg_class
+         WHERE oid='public.v2_goal_revision_behavior_targets'::regclass)
+   OR has_table_privilege('authenticated',
+       'public.v2_goal_revision_behavior_targets','INSERT')
+   OR has_table_privilege('anon',
+       'public.v2_goal_revision_behavior_targets','SELECT')
+ THEN RAISE EXCEPTION 'Behavior candidate exposed via client API'; END IF;
+ DELETE FROM auth.users WHERE id=a;
+ IF EXISTS(SELECT 1 FROM public.v2_goal_revision_behavior_targets WHERE user_id=a)
+ THEN RAISE EXCEPTION 'Deleted Auth owner retained Goal behavior'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.v2_goal_revision_behavior_targets WHERE id=t3 AND user_id=b)
+ THEN RAISE EXCEPTION 'Other owner Goal behavior was deleted'; END IF;
+ RAISE NOTICE 'PASS ALL-239: qualitative/optional cadence, same-owner FK, published history, account cascade';
+END $behavior$;
+ROLLBACK;
