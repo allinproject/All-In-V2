@@ -79,6 +79,24 @@ INSERT INTO allin_private.v2_community_visibility(user_id,profile_visibility)
 VALUES ('61111111-6111-4111-8111-611111111111','private'),
        ('62222222-6222-4222-8222-622222222222','public');
 
+-- Directional Community fixtures: A initiated a block of B, never vice versa.
+-- Both may follow each other; incoming follows are scoped to the recipient.
+INSERT INTO allin_private.v2_community_pair_revisions
+ (lower_user_id,upper_user_id,version) VALUES
+ ('61111111-6111-4111-8111-611111111111','62222222-6222-4222-8222-622222222222',5);
+INSERT INTO allin_private.v2_community_follows
+ (follower_id,followed_id,state,approved_at) VALUES
+ ('61111111-6111-4111-8111-611111111111','62222222-6222-4222-8222-622222222222','approved',now()),
+ ('62222222-6222-4222-8222-622222222222','61111111-6111-4111-8111-611111111111','pending',NULL);
+INSERT INTO allin_private.v2_community_blocks
+ (blocker_id,blocked_id) VALUES
+ ('61111111-6111-4111-8111-611111111111','62222222-6222-4222-8222-622222222222');
+INSERT INTO allin_private.v2_community_action_receipts
+ (actor_id,action_id,target_id,action,expected_version,result_version,payload_sha256)
+ VALUES
+ ('61111111-6111-4111-8111-611111111111','a1111111-9111-4111-8111-611111111111','62222222-6222-4222-8222-622222222222','block',4,5,repeat('a',64)),
+ ('62222222-6222-4222-8222-622222222222','a2222222-9222-4222-8222-622222222222','61111111-6111-4111-8111-611111111111','request_follow',4,5,repeat('b',64));
+
 -- Diagnostic only: do not bypass this export guard. Log qualified missing
 -- table names so the canonical ALL-251 owner can add actual per-domain payloads.
 DO $export_coverage$
@@ -116,6 +134,14 @@ BEGIN
     OR jsonb_array_length(v_data->'eventhub'->'participations') <> 1
     OR jsonb_array_length(v_data->'eventhub'->'group_actions') <> 1
     OR v_data->'community'->'visibility'->>'profile_visibility' <> 'private'
+    OR jsonb_array_length(v_data->'community'->'outgoing_follows')<>1
+    OR jsonb_array_length(v_data->'community'->'incoming_follow_requests')<>1
+    OR jsonb_array_length(v_data->'community'->'outgoing_blocks')<>1
+    OR jsonb_array_length(v_data->'community'->'my_action_receipts')<>1
+    OR v_data->'community'->>'complete_community_export'<>'false'
+    OR v_data->'community'->>'incoming_blocks_disclosed'<>'false'
+    OR v_data->'community' ? 'pair_revisions'
+    OR v_data->'community' ? 'incoming_blocks'
     OR v_data::text LIKE '%Owner B private goal%'
     OR v_data::text LIKE '%Owner B private event note%'
     OR v_data::text LIKE '%Owner B cycling cadence%'
@@ -150,6 +176,13 @@ BEGIN
     OR jsonb_array_length(v_data->'eventhub'->'participations') <> 1
     OR jsonb_array_length(v_data->'eventhub'->'group_actions') <> 1
     OR v_data->'community'->'visibility'->>'profile_visibility' <> 'public'
+    OR jsonb_array_length(v_data->'community'->'outgoing_follows')<>1
+    OR jsonb_array_length(v_data->'community'->'incoming_follow_requests')<>1
+    OR jsonb_array_length(v_data->'community'->'outgoing_blocks')<>0
+    OR jsonb_array_length(v_data->'community'->'my_action_receipts')<>1
+    OR v_data->'community'->>'incoming_blocks_disclosed'<>'false'
+    OR v_data->'community' ? 'pair_revisions'
+    OR v_data->'community' ? 'incoming_blocks'
     OR v_data::text LIKE '%Owner A private goal%'
     OR v_data::text LIKE '%Owner A private event note%'
     OR v_data::text LIKE '%Owner A running cadence%'
