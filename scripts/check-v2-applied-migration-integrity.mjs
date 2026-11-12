@@ -42,9 +42,15 @@ export function auditAppliedMigrations(fileNames,readSql,baseline=appliedFoundat
    }catch{problems.push('Cannot read applied migration: '+name);}
  }
  const expected=new Set(baseline.map(([name])=>name));
+ const observedVersions=new Set();
  for(const name of fileNames){
-   if(!/^\d{14}_[a-z0-9_]+\.sql$/.test(name))continue;
-   if(name.slice(0,14)<=last&&!expected.has(name))
+   const match=/^(\d{14})_[a-z0-9_]+\.sql$/.exec(name);
+   if(!match){problems.push('Invalid migration filename: '+name);continue;}
+   const version=match[1];
+   if(observedVersions.has(version))
+     problems.push('Duplicate migration version: '+version);
+   observedVersions.add(version);
+   if(version<=last&&!expected.has(name))
      problems.push('Unrecorded historical migration filename: '+name);
  }
  return {ok:problems.length===0,problems,appliedCount:baseline.length};

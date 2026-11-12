@@ -32,3 +32,13 @@ test('missing, modified or renamed historical SQL fails closed',()=>{
  assert.equal(out.ok,false);
  assert.match(out.problems.join(';'),/Unrecorded historical migration/);
 });
+
+test('rejects duplicate future migration versions and malformed names',()=>{
+ const names=[...base.map(x=>x[0]),'20261112010000_next.sql','20261112010000_collision.sql'];
+ let result=auditAppliedMigrations(names,read,base);
+ assert.equal(result.ok,false);
+ assert.match(result.problems.join(';'),/Duplicate migration version/);
+ result=auditAppliedMigrations([...base.map(x=>x[0]),'unversioned.sql'],read,base);
+ assert.equal(result.ok,false);
+ assert.match(result.problems.join(';'),/Invalid migration filename/);
+});
