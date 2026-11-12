@@ -136,12 +136,14 @@ export async function auditPrivateMediaExportCoverage({
     ||listed.objects.length>MAX_ITEMS)
    throw Error('Incomplete private Storage owner-path listing');
  const names=new Set();
+ const objectSizes=new Map();
  for(const object of listed.objects){
   const path=object?.path;
   if(!validPath(ownerId,path)||names.has(path)
     ||!Number.isSafeInteger(object?.size)||object.size<1||object.size>MAX_BYTES)
     throw Error('Invalid or duplicate private Storage object');
   names.add(path);
+  objectSizes.set(path,object.size);
  }
  if(names.size!==requested.size||[...names].some(path=>!requested.has(path)))
    throw Error('Private Storage and canonical owner references do not match');
@@ -152,6 +154,8 @@ export async function auditPrivateMediaExportCoverage({
     bucket:PRIVATE_EVIDENCE,path,kind:reference.kind});
   if(!(bytes instanceof Uint8Array)||bytes.byteLength<1||bytes.byteLength>MAX_BYTES)
    throw Error('Private Storage bytes unavailable or oversized');
+  if(bytes.byteLength!==objectSizes.get(path))
+   throw Error('Private Storage byte length differs from listing');
   const actual=createHash('sha256').update(bytes).digest('hex');
   if(actual!==reference.checksum_sha256)
    throw Error('Private Storage bytes fail canonical SHA-256');
