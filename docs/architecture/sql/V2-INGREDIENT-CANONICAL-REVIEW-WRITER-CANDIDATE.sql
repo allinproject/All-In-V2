@@ -91,7 +91,7 @@ CREATE OR REPLACE FUNCTION allin_private.v2_review_ingredient_profile_status(
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, allin_private, pg_temp
+SET search_path = pg_catalog, pg_temp
 AS $function$
 DECLARE
   v_actor name := session_user;
