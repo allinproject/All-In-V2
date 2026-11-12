@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {randomBytes,createCipheriv,createDecipheriv} from 'node:crypto';
+import {randomBytes,createCipheriv,createDecipheriv,createHash} from 'node:crypto';
 import {createAwsKmsExportKeyProvider} from './trainingExportAwsKms.mjs';
 import {createAccountExportKeyLease} from './trainingExportKeyLease.mjs';
 const arn='arn:aws:kms:us-east-1:111122223333:key/12345678-1234-4234-8234-123456789abc';
@@ -52,8 +52,12 @@ test('generates AES-256 key via AWS SDK-shaped KMS and unwraps using identical o
  assert.equal(generated.keyPurpose,purpose);
  assert(!JSON.stringify({...generated,encryptionKey:undefined}).includes(generated.encryptionKey.toString('hex')));
  assert.deepEqual(f.calls[0].input.EncryptionContext,{
-  purpose,ownerId:a,requestId:request,keyVersion:'1',
+  purpose,
+  scopeDigest:createHash('sha256').update(['all251-kms-context-v1',a,request].join(':')).digest('hex'),
+  keyVersion:'1',
  });
+ assert(!JSON.stringify(f.calls[0].input.EncryptionContext).includes(a));
+ assert(!JSON.stringify(f.calls[0].input.EncryptionContext).includes(request));
  const clear=await provider.unwrapDataKey({
   kmsKeyId:arn,wrappedDataKey:generated.wrappedDataKey,
   keyVersion,purpose,context:{ownerId:a,requestId:request},
