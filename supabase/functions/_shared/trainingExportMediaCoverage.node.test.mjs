@@ -142,3 +142,8 @@ test('truncated or untrusted nested owner listing is never complete',async()=>{
  }});
  await assert.rejects(auditPrivateMediaExportCoverage({ownerId:owner,requestId,...adapters}),/Unbounded/);
 });
+
+test('Storage listing byte count must match the actual authenticated file length',async()=>{
+ const f=fixture({objects:[{path,size:bytes.byteLength+1}]});
+ await assert.rejects(auditPrivateMediaExportCoverage(f.services),/byte length differs/);
+});
