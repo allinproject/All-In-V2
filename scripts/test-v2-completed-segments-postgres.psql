@@ -136,7 +136,7 @@ BEGIN
    RAISE EXCEPTION 'Segment missing value interpreted as zero';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  IF has_function_privilege('authenticated',
- 'allin_private.v2_activity_append_segment_scalar_candidate(uuid,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text)',
+ 'allin_private.v2_activity_append_segment_scalar_candidate(uuid,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)',
  'EXECUTE') THEN RAISE EXCEPTION 'Client can append private segment metrics'; END IF;
  -- The same source can have a global power fact and a leg power fact.
  -- Global replay lookup MUST ignore segment rows rather than accidentally
