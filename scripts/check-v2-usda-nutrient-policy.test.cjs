@@ -91,3 +91,27 @@ test('all eight pinned source summaries satisfy source-only macro+sodium coverag
  }
  assert.equal(ids.size,8);
 });
+
+// ALL-228 automation decision: passing source facts do not require routine
+// founder approval, while exceptions remain quarantined from publication.
+test('automatic source preflight passes without making an ingredient publishable',()=>{
+ const result=validateFdcNutrients(sample([nutrient(2048,115,'kcal')]));
+ assert.equal(result.automatedSourceChecksPassed,true);
+ assert.equal(result.exceptionQueueRequired,false);
+ assert.equal(result.calculationReady,false);
+ assert.equal(result.publicationApproved,false);
+});
+test('invalid source, conflicting energy, and incomplete facts go to exception handling',()=>{
+ const missing=sample([nutrient(2048,115,'kcal')]);
+ missing.foodNutrients=missing.foodNutrients.filter(x=>x.nutrient.id!==1003);
+ const badBasis=sample([nutrient(2048,115,'kcal')]);badBasis.basis_unit='ml';
+ const cases=[missing,badBasis,sample([nutrient(2047,115,'kcal')]),
+   sample([nutrient(2048,115,'kcal'),nutrient(2048,116,'kcal')])];
+ for(const candidate of cases){
+   const result=validateFdcNutrients(candidate);
+   assert.equal(result.automatedSourceChecksPassed,false);
+   assert.equal(result.exceptionQueueRequired,true);
+   assert.equal(result.publicationApproved,false);
+   assert.equal(result.calculationReady,false);
+ }
+});
