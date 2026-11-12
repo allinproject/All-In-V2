@@ -228,6 +228,16 @@ test('automatic ingredient evidence preflight combines exact SHA, USDA nutrients
  assert(conflict.results.some(x=>x.issues.includes('identity:alias_scope_conflict')));
  const duplicate=assessAutomaticSourceEvidence([identity],[evidence,evidence]);
  assert(duplicate.results[0].issues.includes('duplicate_source_document'));
+ const empty=assessAutomaticSourceEvidence([],[]);
+ assert.equal(empty.automaticPreflightPassed,false);
+ const nullPayload='null';
+ const nullEvidence={source_profile_key:'cabbage_raw',payload_utf8:nullPayload,
+   payload_sha256:createHash('sha256').update(nullPayload,'utf8').digest('hex')};
+ const nullResult=assessAutomaticSourceEvidence([identity],[nullEvidence]);
+ assert(nullResult.results[0].issues.includes('invalid_source_payload_object'));
+ const wrongJson={source_profile_key:'cabbage_raw',payload_utf8:'{',
+   payload_sha256:createHash('sha256').update('{','utf8').digest('hex')};
+ assert(assessAutomaticSourceEvidence([identity],[wrongJson]).results[0].exceptionQueueRequired);
  const orphan=assessAutomaticSourceEvidence([identity],[evidence,doc('orphan',123)]);
  assert(orphan.results.some(x=>x.issues.includes('orphan_source_document')));
  assert.equal(orphan.publicationApproved,false);
