@@ -677,6 +677,13 @@ jobs:
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
           bash scripts/test-all12-training-plan-populated-restore-local.sh "$db_container"
+      - name: ALL-12 populated EventHub six-table restore
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          bash scripts/test-all12-eventhub-populated-restore-local.sh "$db_container"
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
