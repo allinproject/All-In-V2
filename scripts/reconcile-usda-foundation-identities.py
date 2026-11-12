@@ -102,14 +102,15 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
         matched_keys.update(exact)
         direct_source = sorted(source_links.get(fdc_id, set()))
         suggested = []
-        if not exact:
+        if not exact and not direct_source:
             for profile in profiles:
                 variants = [profile.get("source_label")] + (profile.get("source_aliases") or [])
                 best = max((similarity(description, text) for text in variants), default=0)
                 if best >= 0.42:
                     suggested.append((round(best, 4), profile["source_profile_key"]))
             suggested.sort(key=lambda pair: (-pair[0], pair[1]))
-        status = ("exact_name_review" if exact else
+        status = ("source_fdc_reference_review" if direct_source else
+                  "exact_name_review" if exact else
                   "similar_name_review" if suggested else "no_candidate")
         entries.append({
             "fdcId": fdc_id,
