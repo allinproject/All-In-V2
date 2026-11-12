@@ -99,6 +99,34 @@ BEGIN
     OR v_page->>'completeUserExport'<>'false'
     OR v_page->>'collection'<>v_collection
   THEN RAISE EXCEPTION 'Unverified page: %',v_collection; END IF;
+  -- Check every emitted owner-table row, not just the top-level page
+  -- ownerVerified flag. Missing user_id or a foreign row is a privacy breach.
+  IF (v_collection LIKE 'public.%' OR v_collection LIKE 'allin_private.%')
+      AND EXISTS(
+        SELECT 1 FROM pg_catalog.jsonb_array_elements(v_page->'rows') AS x(item)
+        WHERE x.item->>'user_id' IS DISTINCT FROM v_owner::text
+      )
+  THEN RAISE EXCEPTION 'Unscoped row in owner export source %',v_collection; END IF;
+  IF v_collection='auth.users' AND EXISTS(
+       SELECT 1 FROM pg_catalog.jsonb_array_elements(v_page->'rows') AS x(item)
+       WHERE x.item->>'id' IS DISTINCT FROM v_owner::text
+     )
+  THEN RAISE EXCEPTION 'Foreign Auth identity was exported'; END IF;
+  IF v_collection='community.outgoing_follows' AND EXISTS(
+       SELECT 1 FROM pg_catalog.jsonb_array_elements(v_page->'rows') AS x(item)
+       WHERE x.item->>'follower_id' IS DISTINCT FROM v_owner::text
+     )
+  THEN RAISE EXCEPTION 'Foreign outgoing follow row'; END IF;
+  IF v_collection='community.outgoing_blocks' AND EXISTS(
+       SELECT 1 FROM pg_catalog.jsonb_array_elements(v_page->'rows') AS x(item)
+       WHERE x.item->>'blocker_id' IS DISTINCT FROM v_owner::text
+     )
+  THEN RAISE EXCEPTION 'Foreign outgoing block row'; END IF;
+  IF v_collection='community.my_action_receipts' AND EXISTS(
+       SELECT 1 FROM pg_catalog.jsonb_array_elements(v_page->'rows') AS x(item)
+       WHERE x.item->>'actor_id' IS DISTINCT FROM v_owner::text
+     )
+  THEN RAISE EXCEPTION 'Foreign Community action row'; END IF;
   v_count:=v_count+1;
  END LOOP;
  IF v_count<>47 THEN RAISE EXCEPTION 'Not all 47 owner collections were probed'; END IF;
