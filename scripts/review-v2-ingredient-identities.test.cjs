@@ -58,3 +58,14 @@ test('malformed candidates fail closed, empty input never proves publication',()
   assert(result.issues.some(x=>x.code==='invalid_candidate'));
   assert.equal(review([]).publicationApproved,false);
 });
+
+test('rejects missing locale or invalid alias candidates without identity guessing',()=>{
+  const a=food('x');delete a.locale;a.aliases=['Chicken breast',''];
+  const codes=review([a]).issues.map(v=>v.code);
+  assert(codes.includes('locale_scope_unresolved'));
+  assert(codes.includes('invalid_alias_set'));
+});
+test('rejects external ID without source data type',()=>{
+  const a=food('x');a.sources=[{provider:'usda_fdc',external_record_id:'123'}];
+  assert(review([a]).issues.some(v=>v.code==='invalid_source_reference'));
+});
