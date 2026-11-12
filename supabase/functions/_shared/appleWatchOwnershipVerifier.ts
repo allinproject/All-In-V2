@@ -23,7 +23,8 @@ const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const hex64=/^[a-f0-9]{64}$/;
 const base64url=/^[A-Za-z0-9_-]+$/;
 const toHex=(bytes:Uint8Array)=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
-const digest=async(data:Uint8Array)=>new Uint8Array(await crypto.subtle.digest('SHA-256',data));
+const byteBuffer=(data:Uint8Array):ArrayBuffer=>new Uint8Array(data).buffer;
+const digest=async(data:Uint8Array)=>new Uint8Array(await crypto.subtle.digest('SHA-256',byteBuffer(data)));
 function decode(s:string,limit:number){
  if(typeof s!=='string'||s.length<4||s.length>limit||!base64url.test(s))
   throw Error('Malformed cryptographic proof');
@@ -175,7 +176,7 @@ export async function verifyAppleWatchControlAndIssueProof(
   sessionId:identity.sessionId,deviceRef,
  });
  if(!await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},
-  watchKey,watchSignature,watchBody))
+  watchKey,byteBuffer(watchSignature),byteBuffer(watchBody)))
   throw Error('Watch challenge signature invalid');
  const {authData,signature:phoneSignature}=parseAppAssertion(
   request.phoneAssertionCborB64url);
@@ -212,7 +213,7 @@ export async function verifyAppleWatchControlAndIssueProof(
    decode(key.publicKeySpkiB64url,512),{
     name:'ECDSA',namedCurve:'P-256'},false,['verify']);
   const validPhone=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},
-   phoneKey,p256Signature(phoneSignature),join(authData,clientHash));
+   phoneKey,byteBuffer(p256Signature(phoneSignature)),byteBuffer(join(authData,clientHash)));
   if(!validPhone)throw Error('Apple app assertion signature invalid');
   if(!await store.advancePhoneCounter({
    ownerId:identity.ownerId,keyId:key.keyId,
