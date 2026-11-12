@@ -185,7 +185,7 @@ test('exhaustive Storage audit agrees with actual canonical owner evidence; neve
   assert.equal(result.referencedObjects,1);
   assert.equal(result.observedObjects,1);
   assert.equal(result.completeUserExport,false);
-  assert.equal(result.bytesVerified,false);
+  assert.equal(result.bytesVerified,true);
 });
 test('an unreferenced owner photo or media object blocks export instead of silently omitting it',async()=>{
   const f=fixture();
@@ -235,4 +235,33 @@ test('unknown, photo, public or incorrectly duplicated buckets demand classifica
     }),/Storage bucket/);
     assert.equal(called,false);
   }
+});
+
+test('reconciled media identity still rejects corrupted bytes and absent content',async()=>{
+ for(const config of [{modifiedBytes:Buffer.from('tampered owner media')},{downloadFailure:true}]){
+  const f=fixture(config);
+  await assert.rejects(auditOwnerPrivateMediaCoverage({
+    ownerId:owner,requestId,
+    evidenceAdapter:createTrainingSupabaseEvidenceAdapter({supabase:f.supabase}),
+    listBucketCatalog:async()=>[{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false}],
+    listOwnerStorageObjects:async()=>({
+      ownerId:owner,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,
+      exhaustive:true,totalCount:1,paths:[path],
+    }),
+  }),/checksum|absent|missing/);
+ }
+});
+test('a pinned catalog-only audit stays incomplete without private byte verifier',async()=>{
+ const result=await auditOwnerPrivateMediaCoverage({
+  ownerId:owner,requestId,
+  listBucketCatalog:async()=>[{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false}],
+  listCanonicalMediaReferences:async()=>({ownerId,requestId,series:[seriesRow()],routes:[]}),
+  listOwnerStorageObjects:async()=>({
+   ownerId:owner,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,
+   exhaustive:true,totalCount:1,paths:[path],
+  }),
+ });
+ assert.equal(result.referencesReconciled,true);
+ assert.equal(result.bytesVerified,false);
+ assert.equal(result.completeUserExport,false);
 });
