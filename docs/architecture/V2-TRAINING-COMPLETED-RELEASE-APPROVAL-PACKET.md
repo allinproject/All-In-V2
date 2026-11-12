@@ -148,6 +148,14 @@ Structured segment and strength-set Details also include explicit `sourceQuality
 
 **Remaining definitive release gate:** review exact domain owner, permitted source-quality policy and service-only adapter against ALL-243 and ALL-251. The private SQL candidate is **not** a production-ready endpoint or versioned migration; preserve all `GRANT EXECUTE` revocations until two-owner RLS, account export/deletion and installed device acceptance pass.
 
+## 4C. Independent measurement and source confidence reconciliation — 2026-11-12
+
+The existing private **global** and **per-segment** scalar projections now combine two independent owner-authorized facts: the metric measurement's quality and its linked source's quality. A metric/source pair is usable only when **both** are `trusted` or `partial`. The result is `partial` whenever **either** is partial, and `trusted` only when **both** are trusted. If either quality is unverified, low-quality or rejected, the metric is withheld and reported as unresolved instead of being promoted or fabricated. This preserves recorded zero and measurement provenance without pretending a partially trusted source is fully certified.
+
+The previous SQL predicate incorrectly classified `trusted` measurement + `partial` source and `partial` measurement + `trusted` source as `unverified`. Its replacement is in the **existing** `V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql` and `V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql`; each of the two evidence CTEs per projection follows the same rule. The existing PostgreSQL 17 fixtures now exercise both mixed-confidence directions, and the current workflow explicitly watches all four changed files.
+
+**Acceptance boundary:** This is review-only source and executable test content, not a released provider-quality policy or live query. A new commit-matched green PostgreSQL workflow run is needed before this change can be described as validated. The caller still must enforce live Auth/owner access; confidence reconciliation grants neither athlete nor worker authorization.
+
 ## 5. Next smallest executable decision
 
 Obtain the **ALL-239 Goals and ALL-244 EventHub canonical owner key/version/participation contracts**, rather than adding a new Training or event schema. Then approve the first release unit and its exact FK/ACL matrix, stage versioned migrations, and rerun the complete local release acceptance. Green candidate SQL tests are necessary but not sufficient.
