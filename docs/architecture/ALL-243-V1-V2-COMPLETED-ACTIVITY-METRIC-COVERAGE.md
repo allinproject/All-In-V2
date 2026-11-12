@@ -125,6 +125,12 @@ Both are design/implementation targets, **not** proof that any source adapter, c
 
 **CI limit:** These newest changes are committed but there is no independently inspected complete green Node/TypeScript run for their exact integration SHA. The earlier clean 18-migration / 30-candidate Supabase replay remains validated at [43138298262](https://github.com/allinproject/All-In-V2/actions/runs/43138298262); that older replay is not evidence of these newer mobile tests.
 
+### Partial-confidence and estimate labeling in the reusable screen — 2026-11-12
+
+The existing `CompletedActivityScreenContent.tsx` now presents owner-provided quality notices alongside actual available Overview/Details metrics instead of silently treating `partial` evidence like `trusted` evidence. The shared, pure `metricEvidenceQualityNotice` helper distinguishes partial measurement quality and partial parent-source quality. An `estimated` metric remains explicitly **Estimated** even when its measurement or source quality is also partial. No label is fabricated for legacy metrics with no returned quality fields. Tests in `completedActivityDetailProjection.test.ts` cover all combinations.
+
+**Boundary:** This improves the reusable UI, not the backend's authority to certify a provider sample. The Completed Activity route is still not mounted on a deployed canonical owner reader. A real device and accessibility review must confirm quality text visibility in Overview and Details before ALL-243 can be marked installed/validated; new test commits' GitHub CI outcomes have not been inspected.
+
 ## Current evidence / outstanding gaps
 
 - [x] Exact 17-sport **V1 native scalar** Overview/Details baseline is in V2 and unit-test guarded.
