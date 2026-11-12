@@ -142,8 +142,13 @@ are intentionally valid. A rollback-only local Supabase smoke fixture lives at
 `scripts/test-v2-goals-owner-local-postgres.psql` and is included in the
 existing V2 local-foundation workflow.
 
-**This is not a deployed or owner-approved migration.** The proposed SQL has
-no approved client/Coach acceptance writer, no final immutable-history triggers,
+**This is not a deployed or owner-approved migration.** The follow-on
+`V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql` adds a SQL trigger rejecting
+in-place updates or direct deletion of published Goal revisions while the
+account exists, while allowing exact accepted→superseded status and genuine
+Auth account teardown cascades. The rollback-only test additionally covers
+rejection of revision mutations, supersession and two-owner deletion isolation.
+The proposed SQL still has no approved client/Coach acceptance writer,
 no Goal metric/behavior/typed Event evidence child tables, and no Training FK
 to an unavailable authoritative Event owner. Those remain dependent on ALL-239,
 ALL-243, ALL-244 and ALL-222 review. A passing SQL replay demonstrates only
