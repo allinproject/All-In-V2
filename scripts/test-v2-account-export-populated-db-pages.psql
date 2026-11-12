@@ -13,7 +13,7 @@ INSERT INTO public.v2_coach_messages
  (id,user_id,thread_id,role,content,client_request_id)
 SELECT gen_random_uuid(),'81111111-8111-4111-8111-811111111111'::uuid,
        'a8111111-8111-4111-8111-811111111111'::uuid,'user',
-       repeat('representative-coach-history-',1000)||lpad(i::text,5,'0'),
+       repeat('representative-coach-history-',150)||lpad(i::text,5,'0'),
        gen_random_uuid()
 FROM generate_series(1,190) i;
 INSERT INTO public.v2_coach_messages
@@ -25,18 +25,22 @@ FROM generate_series(1,2) i;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','81111111-8111-4111-8111-811111111111',true);
--- First/second keyset RPC pages under the actual authenticated owner.
-\copy (SELECT row_to_json(r)::text FROM public.v2_coach_read_messages('a8111111-8111-4111-8111-811111111111',100) r) TO '/tmp/all251-a-page-1.jsonl';
-\copy (SELECT row_to_json(r)::text FROM public.v2_coach_read_messages('a8111111-8111-4111-8111-811111111111',100,(SELECT message_created_at FROM public.v2_coach_read_messages('a8111111-8111-4111-8111-811111111111',100) ORDER BY message_created_at,message_id LIMIT 1),(SELECT message_id FROM public.v2_coach_read_messages('a8111111-8111-4111-8111-811111111111',100) ORDER BY message_created_at,message_id LIMIT 1)) r) TO '/tmp/all251-a-page-2.jsonl';
+-- Canonical owner-authenticated reader: 50-message maximum, newest-first.
+-- All four pages are actual keyset RPC calls with the previous page boundary;
+-- no privileged direct table read or arbitrary OFFSET pagination.
+\copy (WITH p1 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,NULL,NULL,50)) SELECT row_to_json(r)::text FROM p1 r) TO '/tmp/all251-a-page-1.jsonl';
+\copy (WITH p1 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,NULL,NULL,50)), boundary1 AS (SELECT created_at,message_id FROM p1 ORDER BY created_at ASC,message_id ASC LIMIT 1), p2 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,(SELECT created_at FROM boundary1),(SELECT message_id FROM boundary1),50)) SELECT row_to_json(r)::text FROM p2 r) TO '/tmp/all251-a-page-2.jsonl';
+\copy (WITH p1 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,NULL,NULL,50)), boundary1 AS (SELECT created_at,message_id FROM p1 ORDER BY created_at ASC,message_id ASC LIMIT 1), p2 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,(SELECT created_at FROM boundary1),(SELECT message_id FROM boundary1),50)), boundary2 AS (SELECT created_at,message_id FROM p2 ORDER BY created_at ASC,message_id ASC LIMIT 1), p3 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,(SELECT created_at FROM boundary2),(SELECT message_id FROM boundary2),50)) SELECT row_to_json(r)::text FROM p3 r) TO '/tmp/all251-a-page-3.jsonl';
+\copy (WITH p1 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,NULL,NULL,50)), boundary1 AS (SELECT created_at,message_id FROM p1 ORDER BY created_at ASC,message_id ASC LIMIT 1), p2 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,(SELECT created_at FROM boundary1),(SELECT message_id FROM boundary1),50)), boundary2 AS (SELECT created_at,message_id FROM p2 ORDER BY created_at ASC,message_id ASC LIMIT 1), p3 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,(SELECT created_at FROM boundary2),(SELECT message_id FROM boundary2),50)), boundary3 AS (SELECT created_at,message_id FROM p3 ORDER BY created_at ASC,message_id ASC LIMIT 1), p4 AS (SELECT * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8111111-8111-4111-8111-811111111111'::uuid,(SELECT created_at FROM boundary3),(SELECT message_id FROM boundary3),50)) SELECT row_to_json(r)::text FROM p4 r) TO '/tmp/all251-a-page-4.jsonl';
 DO $owner_a$
 BEGIN
  BEGIN
-  PERFORM * FROM public.v2_coach_read_messages('a8222222-8222-4222-8222-822222222222',100);
+  PERFORM * FROM public.v2_coach_read_messages('81111111-8111-4111-8111-811111111111'::uuid,'a8222222-8222-4222-8222-822222222222'::uuid,NULL,NULL,50);
   RAISE EXCEPTION 'Coach owner A accessed B thread';
  EXCEPTION WHEN insufficient_privilege THEN NULL;
  END;
 END $owner_a$;
 SELECT set_config('request.jwt.claim.sub','82222222-8222-4222-8222-822222222222',true);
-\copy (SELECT row_to_json(r)::text FROM public.v2_coach_read_messages('a8222222-8222-4222-8222-822222222222',100) r) TO '/tmp/all251-b-page.jsonl';
+\copy (SELECT row_to_json(r)::text FROM public.v2_coach_read_messages('82222222-8222-4222-8222-822222222222'::uuid,'a8222222-8222-4222-8222-822222222222'::uuid,NULL,NULL,50) r) TO '/tmp/all251-b-page.jsonl';
 RESET ROLE;
 ROLLBACK;
