@@ -1,0 +1,72 @@
+\set ON_ERROR_STOP on
+-- ALL-239: review-only Goals owner candidate; execute on a DISPOSABLE local
+-- Supabase stack after the 18 real foundation migrations. All rows rollback.
+BEGIN;
+DO $goals$
+DECLARE
+  owner_a uuid:='11111111-1111-4111-8111-111111111111';
+  owner_b uuid:='22222222-2222-4222-8222-222222222222';
+  goal_a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  goal_b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  goal_c uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  rev_a uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  rev_b uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  rev_c uuid:='ffffffff-ffff-4fff-8fff-ffffffffffff';
+BEGIN
+  INSERT INTO auth.users(id) VALUES(owner_a),(owner_b);
+  INSERT INTO public.v2_goals(id,user_id,goal_kind,title,status) VALUES
+    (goal_a,owner_a,'race_event','Race goal','active'),
+    (goal_b,owner_a,'general_wellbeing','Feel healthier','active'),
+    (goal_c,owner_b,'strength_performance','Strength goal','active');
+  INSERT INTO public.v2_goal_revisions(
+    id,goal_id,user_id,revision_number,status,source_kind,priority_role,
+    start_date,target_date,accepted_at
+  ) VALUES
+    (rev_a,goal_a,owner_a,1,'accepted','athlete_authored','primary',
+     DATE '2027-01-01',DATE '2027-06-01',now()),
+    (rev_b,goal_b,owner_a,1,'accepted','athlete_authored','primary',
+     NULL,NULL,now()),
+    (rev_c,goal_c,owner_b,1,'accepted','athlete_authored','primary',
+     NULL,NULL,now());
+  UPDATE public.v2_goals SET active_revision_id=rev_a WHERE id=goal_a;
+  UPDATE public.v2_goals SET active_revision_id=rev_b WHERE id=goal_b;
+  UPDATE public.v2_goals SET active_revision_id=rev_c WHERE id=goal_c;
+  IF (SELECT count(*) FROM public.v2_goal_revisions
+      WHERE user_id=owner_a AND priority_role='primary' AND status='accepted')<>2
+  THEN RAISE EXCEPTION 'Two independent primary goals were not retained'; END IF;
+  IF (SELECT start_date IS NOT NULL OR target_date IS NOT NULL
+      FROM public.v2_goal_revisions WHERE id=rev_b)
+  THEN RAISE EXCEPTION 'Undated qualitative goal was forced into a dated plan'; END IF;
+  BEGIN
+    UPDATE public.v2_goals SET active_revision_id=rev_c WHERE id=goal_a;
+    SET CONSTRAINTS v2_goal_active_revision_same_owner_fk IMMEDIATE;
+    RAISE EXCEPTION 'A foreign owner revision attached to another goal';
+  EXCEPTION WHEN foreign_key_violation THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO public.v2_goal_revisions(
+      id,goal_id,user_id,revision_number,status,source_kind,priority_role,accepted_at
+    ) VALUES('44444444-4444-4444-8444-444444444444',goal_a,owner_a,2,
+      'accepted','coach_proposal','secondary',now());
+    RAISE EXCEPTION 'Two current accepted revisions for one goal were allowed';
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO public.v2_goal_revisions(
+      id,goal_id,user_id,revision_number,status,source_kind,priority_role
+    ) VALUES('55555555-5555-4555-8555-555555555555',goal_a,owner_b,2,
+      'candidate','athlete_authored','optional');
+    RAISE EXCEPTION 'Cross-owner Goal revision inserted';
+  EXCEPTION WHEN foreign_key_violation THEN NULL;
+  END;
+  IF EXISTS(SELECT 1 FROM pg_catalog.pg_class c
+      WHERE c.oid IN ('public.v2_goals'::regclass,'public.v2_goal_revisions'::regclass)
+        AND NOT c.relrowsecurity)
+  THEN RAISE EXCEPTION 'Canonical Goal candidate RLS disabled'; END IF;
+  IF has_table_privilege('authenticated','public.v2_goals','SELECT')
+    OR has_table_privilege('anon','public.v2_goal_revisions','SELECT')
+    OR has_table_privilege('authenticated','public.v2_goal_revisions','INSERT')
+  THEN RAISE EXCEPTION 'Unexpected Goal candidate client table grants'; END IF;
+  RAISE NOTICE 'PASS: Goal owner binding, two primary goals, undated intention, stale revision and RLS';
+END $goals$;
+ROLLBACK;
