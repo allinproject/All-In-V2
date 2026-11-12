@@ -70,6 +70,16 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   assert.equal(second.profile_revision,3);assert.equal(second.review_status,'reviewed');
   await denied(db,call(3,'calculation_ready',k3),'23514');
   await db.exec('SET SESSION AUTHORIZATION postgres');
+  // Complete, source-matched numeric data still cannot override the separate
+  // ALL-225 method attestation / ALL-251 operator publication gate.
+  await db.exec([
+   "INSERT INTO public.v2_ingredient_aliases(id,ingredient_id,preparation_state,status) VALUES('77777777-7777-4777-8777-777777777777','11111111-1111-4111-8111-111111111111','cooked_drained','active')",
+   "INSERT INTO public.v2_nutrient_definitions(code,canonical_unit) VALUES('energy_kcal','kcal'),('protein_g','g'),('carbohydrate_g','g'),('total_fat_g','g'),('sodium_mg','mg')",
+   "INSERT INTO public.v2_ingredient_profile_nutrients(profile_id,nutrient_code,amount) VALUES('"+actorProfile+"','energy_kcal',115),('"+actorProfile+"','protein_g',6.91),('"+actorProfile+"','carbohydrate_g',19.8),('"+actorProfile+"','total_fat_g',1.27),('"+actorProfile+"','sodium_mg',218)"
+  ].join(';')+';');
+  await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await denied(db,call(3,'calculation_ready',k3),'0A000');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
   const row=(await db.query("SELECT review_status,profile_revision FROM public.v2_ingredient_nutrition_profiles WHERE id='"+actorProfile+"'")).rows[0];
   assert.equal(row.review_status,'reviewed');assert.equal(row.profile_revision,3);
   const events=(await db.query('SELECT actor_db_login,previous_status,next_status,source_payload_sha256,required_nutrient_set_version FROM allin_private.v2_ingredient_review_events ORDER BY event_id')).rows;
