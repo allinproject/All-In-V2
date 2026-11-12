@@ -76,6 +76,7 @@ on:
       - 'scripts/test-v2-account-export-pinned-snapshot-race-local.sh'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-account-export-populated-db-pages.mjs'
+      - 'scripts/test-v2-account-export-real-local-storage.mjs'
       - 'scripts/test-v2-account-export-populated-db-pages.psql'
       - 'scripts/test-v2-account-deletion-worker-off-local.psql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql'
@@ -121,6 +122,11 @@ jobs:
           # Local CLI only. Do not use --remote, --linked, --db-url or db push.
           supabase migration list --local
           supabase status
+      - name: Verify real disposable private Storage media archive and anonymous download denial
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          node scripts/test-v2-account-export-real-local-storage.mjs
       - name: Verify real foundation SQL/RLS/cron in the local Postgres container
         run: |
           set -euo pipefail
