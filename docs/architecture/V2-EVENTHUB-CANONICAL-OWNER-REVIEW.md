@@ -42,6 +42,24 @@ DNS/redirect safety, group visibility/block policies and rate limits
 before it can invoke this writer. This is not proof that the user
 has joined a real event or can see another user's workouts.
 
+## Monotonic organizer-source version guard
+
+`docs/architecture/sql/V2-EVENTHUB-EVENT-VERSION-GUARD-CANDIDATE.sql`
+requires an exact +1 `event_version` whenever the canonical event's
+organizer/source details, event date, timezone, sport, cancellation,
+name or verification evidence change. It rejects version-only increments,
+skipped versions, event ID reassignment and direct deletion of the
+verified canonical event identity. An organizer postponement is not
+silently edited into an athlete's previously accepted Event Plan:
+that plan must revalidate its stored exact Event version and request
+athlete-approved reassessment. The corresponding rollback-only
+`scripts/test-v2-eventhub-version-guard-local-postgres.psql`
+tests a date postponement, cancellation, version-gap rejection,
+identity immutability and denied direct deletion in the same local
+Supabase foundation workflow. This is **candidate SQL only**, not a
+deployed organizer update service. Do not claim a race's official
+date/version without real organizer evidence.
+
 ## Identity, participation and visibility remain distinct
 
 1. **Event**: organizer-confirmed or unverified source with version, sport, local day/timezone. One event can have multiple URL aliases only after reviewed provenance; multiple events can occur on the same day even in the same sport.
