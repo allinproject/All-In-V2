@@ -21,7 +21,7 @@ ALTER TABLE allin_private.v2_goal_acceptance_actions ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON allin_private.v2_goal_acceptance_actions
   FROM PUBLIC,anon,authenticated,service_role;
 
-CREATE FUNCTION public.v2_goal_accept_revision_candidate(
+CREATE FUNCTION allin_private.v2_goal_accept_revision_candidate(
  p_user_id uuid,p_goal_id uuid,p_candidate_id uuid,
  p_action_id uuid,p_expected_version bigint,p_payload_sha256 text
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
@@ -108,8 +108,10 @@ BEGIN
    'goalId',p_goal_id,'revisionId',p_candidate_id,'version',new_version,'replayed',false);
 END;
 $accept$;
-REVOKE ALL ON FUNCTION public.v2_goal_accept_revision_candidate(
+REVOKE ALL ON FUNCTION allin_private.v2_goal_accept_revision_candidate(
  uuid,uuid,uuid,uuid,bigint,text) FROM PUBLIC,anon,authenticated;
--- No service_role GRANT yet: owner review is required to expose even this
--- trusted server API. Local tests can call it as the PostgreSQL DDL owner.
+-- Private, non-PostgREST owner routine. A later reviewed server-only
+-- public gateway may delegate after validating the live Auth session and
+-- exact athlete-approved Goal preview; no such gateway is deployed here.
+-- No service_role grant. Local tests call as disposable DDL owner.
 COMMIT;
