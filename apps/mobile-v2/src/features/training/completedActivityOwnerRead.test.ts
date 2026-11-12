@@ -140,6 +140,22 @@ test('authentic outdoor route evidence remains allowed where the sport supports 
  }
 });
 
+test('rowing source-backed stats use a rowing Details layout; routes require on-water identity',()=>{
+ const raw={...base(),sport:'rowing',sportSubtype:'machine',metrics:[],sections:[]};
+ const input=canonicalActivityToScreenInput(raw,'owner-A','activity-1');
+ assert.equal(input.sport,'rowing');
+ assert.equal(buildCompletedActivityScreenModel(input).sportLabel,'Rowing');
+ const route={key:'rowing-route',kind:'route' as const,title:'Water route',
+  sourceId:'watch-record',count:50};
+ for(const sportSubtype of ['machine','indoor',''] as const){
+  assert.throws(()=>canonicalActivityToScreenInput({...raw,sportSubtype,sections:[route]},
+   'owner-A','activity-1'),/Route evidence is incompatible/,sportSubtype);
+ }
+ const outdoor=canonicalActivityToScreenInput({...raw,sportSubtype:'outdoor',sections:[route]},
+  'owner-A','activity-1');
+ assert.equal(outdoor.sections?.[0].kind,'route');
+});
+
 test('sport-specific structured sets and transitions cannot cross activity identities',()=>{
  const invalid=[
   {sport:'running',sportSubtype:'road',kind:'swim_sets'},
