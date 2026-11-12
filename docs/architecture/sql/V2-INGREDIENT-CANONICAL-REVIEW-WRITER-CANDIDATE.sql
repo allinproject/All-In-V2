@@ -84,6 +84,7 @@ FROM PUBLIC, anon, authenticated, service_role, allin_v2_ingredient_reviewer;
 CREATE OR REPLACE FUNCTION allin_private.v2_review_ingredient_profile_status(
   p_profile_id uuid,
   p_expected_revision integer,
+  p_expected_source_sha256 text,
   p_next_status text,
   p_reason text,
   p_idempotency_key uuid
@@ -117,6 +118,7 @@ BEGIN
   IF p_profile_id IS NULL OR p_expected_revision IS NULL OR p_expected_revision<1
      OR p_next_status IS NULL OR p_next_status NOT IN
        ('needs_review','reviewed','calculation_ready','retired','superseded')
+     OR p_expected_source_sha256 IS NULL OR p_expected_source_sha256 !~ '^[a-fA-F0-9]{64}$'
      OR p_reason IS NULL OR length(trim(p_reason))<12 OR length(p_reason)>2000
      OR p_idempotency_key IS NULL THEN
     RAISE EXCEPTION 'invalid controlled profile review request'
@@ -124,6 +126,7 @@ BEGIN
   END IF;
   v_payload := jsonb_build_object(
     'profile_id',p_profile_id,'expected_revision',p_expected_revision,
+    'expected_source_sha256',lower(p_expected_source_sha256),
     'next_status',p_next_status,'reason',p_reason
   );
   -- Whole-key lock serializes replay even on two independent connections.
@@ -167,8 +170,7 @@ BEGIN
     RAISE EXCEPTION 'source ingredient identity not active'
       USING ERRCODE='23514';
   END IF;
-  SELECT count(*),(array_agg(s.id))[1],(array_agg(s.payload_sha256))[1]
-    INTO v_source_count,v_source,v_source_sha
+  SELECT count(*) INTO v_source_count
     FROM public.v2_ingredient_profile_sources ps
     JOIN public.v2_ingredient_source_records s ON s.id=ps.source_record_id
     WHERE ps.profile_id=p_profile_id AND ps.evidence_role='primary'
@@ -177,6 +179,19 @@ BEGIN
   IF v_source_count<>1 THEN
     RAISE EXCEPTION 'exactly one approved primary source link required'
       USING ERRCODE='23514';
+  END IF;
+  -- The source-row lock protects its digest from a concurrent direct source
+  -- update while this reviewer transaction runs. A future source-link writer
+  -- must coordinate the same profile lock before linking/unlinking sources.
+  SELECT s.id,s.payload_sha256 INTO v_source,v_source_sha
+    FROM public.v2_ingredient_profile_sources ps
+    JOIN public.v2_ingredient_source_records s ON s.id=ps.source_record_id
+    WHERE ps.profile_id=p_profile_id AND ps.evidence_role='primary'
+      AND s.ingredient_id=v_old.ingredient_id AND s.mapping_status='mapped'
+    FOR SHARE OF s;
+  IF v_source IS NULL OR lower(v_source_sha)<>lower(p_expected_source_sha256) THEN
+    RAISE EXCEPTION 'source record changed since reviewer inspected evidence'
+      USING ERRCODE='40001';
   END IF;
 
   IF p_next_status='calculation_ready' THEN
@@ -257,9 +272,9 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION allin_private.v2_review_ingredient_profile_status(uuid,integer,text,text,uuid)
+REVOKE ALL ON FUNCTION allin_private.v2_review_ingredient_profile_status(uuid,integer,text,text,text,uuid)
   FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION allin_private.v2_review_ingredient_profile_status(uuid,integer,text,text,uuid)
+GRANT EXECUTE ON FUNCTION allin_private.v2_review_ingredient_profile_status(uuid,integer,text,text,text,uuid)
   TO allin_v2_ingredient_reviewer;
 -- Intentionally NO GRANT of role membership to ANY login. No API route.
 -- This candidate MUST NEVER be directly deployed before owner approval.
