@@ -9,7 +9,7 @@ import {APPLE_APP_ATTEST_ROOT_DER} from './appleAppAttestEnrollmentVerifier.ts';
 import type {VerifiedAppleReceiptService} from './appleAppAttestEnrollmentServer.ts';
 const MAX_RECEIPT_BYTES=12000;
 const maxAge=300000;
-const validApp=/^[A-Z0-9]{10}\\.[a-zA-Z0-9.-]{3,180}$/;
+const validApp=/^[A-Z0-9]{10}\.[a-zA-Z0-9.-]{3,180}$/;
 const equal=(a:Uint8Array,b:Uint8Array)=>a.length===b.length&&timingSafeEqual(a,b);
 function b64(value:string,bytes?:number):Buffer{
  if(!/^[A-Za-z0-9_-]+$/.test(value)||value.length>20000)
@@ -56,13 +56,13 @@ function string(v:Buffer):string{
  if(item.end!==v.length||![12,19,22].includes(item.tag))
   throw Error('Malformed receipt string');
  const result=new TextDecoder('utf-8',{fatal:true}).decode(item.body);
- if(!result||result.length>256||/[\\x00-\\x1f\\x7f]/.test(result))
+ if(!result||result.length>256||/[\x00-\x1f\x7f]/.test(result))
   throw Error('Invalid receipt string');
  return result;
 }
 function date(v:Buffer):number{
  const s=string(v);
- if(!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?Z$/.test(s))
+ if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(s))
   throw Error('Invalid receipt timestamp');
  const ms=Date.parse(s);
  if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,19)!==s.slice(0,19))
