@@ -1,0 +1,79 @@
+{
+  "issue": "ALL-222",
+  "relatedIssues": [
+    "ALL-228",
+    "ALL-225",
+    "ALL-251"
+  ],
+  "date": "2026-11-12",
+  "repository": "allinproject/All-In-V2",
+  "branch": "integration/v2-foundation",
+  "status": "review_only_isolated_postgresql_acceptance_not_deployed",
+  "codeEvidence": [
+    {
+      "path": "docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql",
+      "blobSha": "4ae3cf1980b8b71c736508cbb3bfe5394daaa59c"
+    },
+    {
+      "path": "docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql",
+      "blobSha": "9062f83acecb95f44ba5f1fa977c7b95f5f50f58"
+    },
+    {
+      "path": "scripts/test-v2-ingredient-review-writer-isolated.cjs",
+      "blobSha": "2a27922992220daa4da2c58d62a62dcef29b165c"
+    },
+    {
+      "path": "scripts/check-v2-ingredient-writer-candidate.test.cjs",
+      "blobSha": "613f74a5f43ff99bd01ac146cfb4c7862021a004"
+    }
+  ],
+  "environment": {
+    "execution": "isolated hosted ephemeral PostgreSQL WASM through PGlite; NO connection to V2 Supabase",
+    "pgliteVersion": "0.5.16",
+    "postgresVersion": "18.6",
+    "nodeVersion": "26.12.1",
+    "packageArchiveSha256": "04e3a275aa4f7663d94ec06fcf1288379c23845a3cd09decf474b424b1ee5c7c"
+  },
+  "testCommand": "PGLITE_MODULE=/path/to/pglite/dist/index.cjs node --test scripts/check-v2-ingredient-writer-candidate.test.cjs scripts/test-v2-ingredient-review-writer-isolated.cjs",
+  "result": {
+    "testCases": 7,
+    "passed": 7,
+    "failed": 0,
+    "runEvidence": "tool-executed native Node test output observed in conversation, not an independently archived GitHub Actions run"
+  },
+  "verified": [
+    "review-only canonical schema candidate creates eight shared tables with RLS and SELECT-only athlete privileges",
+    "anonymous access and ordinary athlete writes denied; review-only profiles and source records hidden",
+    "reviewer PostgreSQL session identity, role membership, and positive enabled-operator registry required",
+    "client-controlled actor GUC cannot impersonate reviewer",
+    "reviewer direct canonical UPDATE and private audit SELECT denied",
+    "source SHA digest and expected profile revision enforced, including source refresh between decisions",
+    "actor-scoped idempotency key replay succeeds only for identical payload; changed payload fails",
+    "valid candidate-to-needs_review and needs_review-to-reviewed transitions increment revision with private audit insertion",
+    "bad state transitions, stale revision and invalid source approvals rejected with SQLSTATE",
+    "audit event updates and deletes rejected by immutable trigger",
+    "source identity uniqueness and immediate reviewer enrollment revocation checked",
+    "search-only and unspecified-state aliases hidden from exact authenticated reads",
+    "superseded source links, unpublished nutrient values and wrong-preparation conversions remain hidden",
+    "test-only forced ready profile shows only approved state-compatible profiles, linked source and nutrient rows",
+    "complete test-only macros plus sodium still cannot overcome calculation_ready writer hard block"
+  ],
+  "notVerified": [
+    "real authenticated operator login/session provisioning under ALL-251",
+    "production or populated Supabase staging PostgreSQL grants and RLS",
+    "two independent simultaneous PostgreSQL sessions, deadlock/lock-race acceptance and source-link writer coordination",
+    "ALL-225 immutable approved energy-method attestation in canonical schema",
+    "ALL-222/ALL-228 complete owner approval of physical SQL, maintenance and audit retention policy",
+    "real USDA bulk import, canonical ID assignment, production migration or publication",
+    "device, mobile app, live Edge API and signed deployment acceptance",
+    "latest GitHub Actions CI run for this revision"
+  ],
+  "authorizationFlags": {
+    "productionMigrationApproved": false,
+    "databaseWritesExecuted": false,
+    "publishedCatalog": false,
+    "calculationReadyActivated": false,
+    "liveSupabaseTouched": false,
+    "workModeUsed": false
+  }
+}
