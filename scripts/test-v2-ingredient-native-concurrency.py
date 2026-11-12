@@ -47,7 +47,8 @@ def main():
     db = "allin_ing_iso_" + suffix
     actors = ["ing_actor_a_" + suffix, "ing_actor_b_" + suffix]
     athlete = "ing_athlete_" + suffix
-    logins = actors + [athlete]
+    workload = "allin_ing_workload_native_" + suffix
+    logins = actors + [athlete, workload]
     passwords = {a: secrets.token_hex(22) for a in logins}
     created = False
     def admin(statement, *, database=db, check=True):
@@ -58,7 +59,7 @@ def main():
         # Dedicated reviewer logins have NOINHERIT. Explicit SET ROLE
         # activates only the scoped function grant; session_user remains the
         # human login that the SECURITY DEFINER function verifies.
-        if actor in actors:
+        if actor in actors or actor == workload:
             statement = "SET ROLE allin_v2_ingredient_reviewer; " + statement
         elif actor == athlete:
             # Ordinary NOINHERIT athlete also explicitly assumes only the
@@ -92,6 +93,17 @@ def main():
                       ["ISOLATED-AUTH-" + actor, "test-idp.example",
                        "verified-" + actor, "test-vault-" + actor]))
                   + ",now()-interval '1 hour',now()+interval '1 day')")
+        # Dedicated non-human login has an independently random password and
+        # NOINHERIT membership; it is not Supabase service_role or a fake GUC.
+        admin(f"GRANT allin_v2_ingredient_reviewer TO {ident(workload)} WITH INHERIT FALSE, SET TRUE")
+        admin("INSERT INTO allin_private.v2_ingredient_review_operators"
+              "(login_role,principal_kind,enabled,enrollment_reference,identity_issuer,identity_subject,"
+              "credential_vault_reference,identity_verified_at,credential_expires_at) VALUES("
+              + lit(workload) + ",'workload',true,"
+              + ",".join(map(lit, ["ISOLATED-WORKLOAD-" + suffix,
+                  "allin-v2-internal-workload", "ingest-native-" + suffix,
+                  "native-ephemeral-credential-" + suffix]))
+              + ",now()-interval '1 hour',now()+interval '1 day')")
         admin(f"GRANT authenticated TO {ident(athlete)}")
         nutrition = {"energy_kcal": ("Energy", "kcal"), "protein_g": ("Protein", "g"),
                      "carbohydrate_g": ("Carbohydrates", "g"), "total_fat_g": ("Fat", "g"),
@@ -155,6 +167,104 @@ def main():
                       f"{int(energy['code'])},{energy['kcal']},"
                       "'ALL-228 pinned Foundation staging fixture')")
             rows.append((profile, source, digest, food))
+        # The machine-qualification fixture is separate from the eight source
+        # scenarios below. It uses genuine reviewed USDA digest/energy evidence,
+        # not fabricated food data. The original canonical tables are reused.
+        item = bundle["records"][0]
+        proof = pinned[item["fdcId"]]
+        m_ingredient, m_profile, m_source = uuid(1, 10), uuid(2, 10), uuid(3, 10)
+        m_digest = proof["sourcePayloadSha256"]
+        m_form = states[item["profile"]]
+        admin("INSERT INTO public.v2_ingredients"
+              "(id,canonical_key,canonical_name,normalized_name,identity_kind,status) VALUES("
+              + ",".join(map(lit,[m_ingredient,"machine_"+item["profile"],item["v1"],
+                                  "machine "+item["profile"],"generic_food","active"])) + ")")
+        admin("INSERT INTO public.v2_ingredient_nutrition_profiles"
+              "(id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,"
+              "coverage_status,review_status,source_quality,profile_revision,required_nutrient_set_version,is_default) VALUES("
+              + ",".join(map(lit,[m_profile,m_ingredient,m_form,"g",100,"100 g",
+                                  "launch_core_complete","candidate","foundation",1,
+                                  "cookbook-launch-macros-v1"])) + ",true)")
+        admin("INSERT INTO public.v2_ingredient_source_records"
+              "(id,ingredient_id,provider,source_data_type,external_record_id,source_description,"
+              "source_quality,source_license,mapping_status,payload_sha256) VALUES("
+              + ",".join(map(lit,[m_source,m_ingredient,"usda_fdc","Foundation",
+                                  item["fdcId"],item["source"],"foundation","CC0",
+                                  "mapped",m_digest])) + ")")
+        admin("INSERT INTO public.v2_ingredient_profile_sources(profile_id,source_record_id,evidence_role)"
+              f" VALUES({lit(m_profile)},{lit(m_source)},'primary')")
+        admin("INSERT INTO public.v2_ingredient_aliases(id,ingredient_id,normalized_alias,locale,"
+              "preparation_state,alias_kind,resolution_scope,status) VALUES("
+              + ",".join(map(lit,[uuid(7,10),m_ingredient,"machine source food "+suffix,
+                                  "en",m_form,"source_description","exact","active"])) + ")")
+        for code, amount in [("energy_kcal",item["energy"]["kcal"]),
+                             ("protein_g",item["protein"]),("carbohydrate_g",item["carbs"]),
+                             ("total_fat_g",item["fat"]),("sodium_mg",item["sodiumMg"])]:
+            admin("INSERT INTO public.v2_ingredient_profile_nutrients(profile_id,nutrient_code,amount)"
+                  f" VALUES({lit(m_profile)},{lit(code)},{amount})")
+        methods = [item["energy"]]
+        if item["energy"].get("alternative"):
+            methods.append(item["energy"]["alternative"])
+        for energy in methods:
+            admin("INSERT INTO allin_private.v2_ingredient_source_energy_evidence"
+                  "(source_record_id,source_payload_sha256,archive_sha256,fdc_nutrient_id,energy_kcal,source_review_reference)"
+                  f" VALUES({lit(m_source)},{lit(m_digest)},{lit(SOURCE_SHA)},"
+                  f"{int(energy['code'])},{energy['kcal']},'NATIVE-TEST-SOURCE-ENERGY-ONLY')")
+        # Real PostgreSQL TCP SCRAM authentication, distinct from admin and
+        # athlete roles; check actual session_user and activated reviewer role.
+        proof_session = client(workload, "SELECT session_user||':'||current_user")
+        require(proof_session.returncode == 0 and proof_session.stdout.strip() ==
+                workload+":allin_v2_ingredient_reviewer",
+                "real native workload login and role activation failed: "+proof_session.stderr[:250])
+        require(client(workload,"UPDATE public.v2_ingredient_nutrition_profiles "
+                f"SET review_status='calculation_ready' WHERE id={lit(m_profile)}").returncode!=0,
+                "workload gained direct nutrition table write")
+        require(client(athlete,"SELECT count(*) FROM allin_private.v2_ingredient_review_events").returncode!=0,
+                "athlete read private ingredient audit")
+
+        m_k1,m_k2 = uuid(4,10),uuid(5,10)
+        statement=("BEGIN; SELECT allin_private.v2_review_ingredient_profile_status("
+                   f"{lit(m_profile)},1,{lit(m_digest)},'needs_review',"
+                   f"'Automatically validated official source evidence',{lit(m_k1)});"
+                   "SELECT allin_private.v2_review_ingredient_profile_status("
+                   f"{lit(m_profile)},2,{lit(m_digest)},'reviewed',"
+                   f"'Automatically qualified source for local catalog',{lit(m_k2)});"
+                   "SELECT allin_private.v2_attest_ingredient_energy("
+                   f"{lit(m_profile)},3,{lit(m_digest)},"
+                   "'Verified immutable official USDA energy source'); COMMIT;")
+        accepted_machine=client(workload,statement)
+        require(accepted_machine.returncode==0 and '"status": "attested"' in accepted_machine.stdout,
+                "real TCP machine transaction failed: "+accepted_machine.stderr[:500])
+        replay_machine=client(workload,statement)
+        require(replay_machine.returncode==0 and
+                replay_machine.stdout.count('"status": "replayed"')==2 and
+                '"status": "already_attested"' in replay_machine.stdout,
+                "real machine duplicate replay changed events or attestation")
+        require(admin("SELECT review_status||':'||profile_revision "
+                      f"FROM public.v2_ingredient_nutrition_profiles WHERE id={lit(m_profile)}"
+                     ).stdout.strip()=="reviewed:3",
+                "machine incorrectly advanced a profile beyond unpublished reviewed state")
+        require(admin("SELECT count(*) FROM allin_private.v2_ingredient_review_events "
+                      f"WHERE profile_id={lit(m_profile)}").stdout.strip()=="2",
+                "native workload idempotency created missing or duplicate audit events")
+        require(admin("SELECT count(*) FROM allin_private.v2_ingredient_energy_attestations "
+                      f"WHERE profile_id={lit(m_profile)}").stdout.strip()=="1",
+                "native workload energy evidence not committed exactly once")
+        denied_publish=client(workload,"SELECT allin_private.v2_review_ingredient_profile_status("
+                              f"{lit(m_profile)},3,{lit(m_digest)},'calculation_ready',"
+                              f"'Default denied publisher authorization',{lit(uuid(6,10))})")
+        require(denied_publish.returncode!=0 and "calculation_ready blocked" in denied_publish.stderr,
+                "ungranted workload published a nutrition profile")
+        admin("UPDATE allin_private.v2_ingredient_review_operators SET enabled=false,"
+              f"revoked_at=clock_timestamp() WHERE login_role={lit(workload)}")
+        revoked_workload=client(workload,
+                               "SELECT allin_private.v2_attest_ingredient_energy("
+                               f"{lit(m_profile)},3,{lit(m_digest)},"
+                               "'Revoked machine must not replay attestation')")
+        require(revoked_workload.returncode!=0 and "unauthorized" in revoked_workload.stderr,
+                "revoked workload retained writer access")
+        # No PostgreSQL role or password persists outside this disposable runner.
+        # The rest of the eight-food native multi-session acceptance continues.
         profile, source, digest, _ = rows[0]
         cmd = lambda rev, status, key, actor=actors[0], sha=digest: (
             f"SELECT allin_private.v2_review_ingredient_profile_status({lit(profile)},"
@@ -337,6 +447,11 @@ def main():
                               "concurrentCredentialRevocation":"waited_and_denied",
                               "sourceDigests":"verified_official_archive_per_food",
                               "calculationReady":0,
+                              "workloadRealTcpAuthenticated":True,
+                              "workloadAtomicReviewAttestation":True,
+                              "workloadReplayNoDuplicates":True,
+                              "workloadPublisherDefaultDenied":True,
+                              "workloadRevokedDenied":True,
                               "externalSupabaseTouched":False},sort_keys=True))
         except Exception:
             raise
