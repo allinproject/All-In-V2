@@ -54,12 +54,13 @@ export function resolveActivityPresentationSport(canonicalSport:string,subtype?:
   case 'elliptical':view='elliptical';break;
   case 'stair':view='stairs';break;
   case 'yoga':case 'mobility':view='yoga_mobility';break;
-  // Rowing does not yet have a V1 dedicated screen config. Explicit generic
-  // fallback until the founder reviews its sport-specific metric taxonomy.
-  case 'rowing':case 'other':view='other';break;
+  // Separate V2 rowing presentation was recovered from the design-approved
+  // V1 metric registry; the original V1 17-sport transcription stays intact.
+  case 'rowing':view='rowing';break;
+  case 'other':view='other';break;
   default:throw new Error('Unsupported canonical sport.');
  }
  if(!v1SportBaseline(view))throw new Error('Missing approved sport presentation policy.');
  return {sport:view,terrain:['road','trail'].includes(kind)?kind as 'road'|'trail':null,
-  fallback:sport==='rowing'||sport==='other'};
+  fallback:sport==='other'};
 }
