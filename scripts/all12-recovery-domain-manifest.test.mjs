@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assessRecoveryCoverage,recoveryDomains} from './all12-recovery-domain-manifest.mjs';
+import {assessRecoveryCoverage,recoveryDomains,findUntrackedRecoveryTables} from './all12-recovery-domain-manifest.mjs';
 test('missing domains fail closed',()=>{
  const x=assessRecoveryCoverage();
  assert.equal(x.complete,false);
