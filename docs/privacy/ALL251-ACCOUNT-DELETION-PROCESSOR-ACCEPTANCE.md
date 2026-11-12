@@ -178,3 +178,41 @@ must extend the existing canonical claim and completion coverage to reviewed
 indirect owner graphs, while preserving the default-off processor and existing
 audit/retention system. Do not modify historical applied migrations or enable
 deletion processing merely because the cascade fixtures pass.
+
+
+## 2026-11-12 — Review-only recursive owner graph and Storage preflight
+
+A **non-deployed, read-only** reviewer SQL function now lives in
+`docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql`.
+It traverses real `ON DELETE CASCADE` foreign-key paths from
+`auth.users` through chained relations (including
+`auth.users → public.v2_profiles → allin_private.v2_community_posts`)
+instead of treating only an exact `user_id` column as an owner.
+
+This is a diagnostic for the **existing** deletion lifecycle, not a
+replacement worker, production migration or authorization API. The function
+has no direct grants for anonymous, authenticated or service clients.
+It reports owner-looking V2 columns without proven cascading paths, and
+still flags relationship/actor columns for independent policy review even
+where a cascade exists. Its coverage is necessarily conservative: a
+relationship may contain information about more than one athlete.
+It separately reports any existing Storage bucket as an unreviewed
+private-file cleanup blocker, and recognizes the surviving execution audit
+as an explicit retention-policy obligation.
+
+The existing rollback-only two-account Community fixture tests a verified
+Auth→Profile→Post path, inserts an unknown `owner_id` table and a
+`follower_id` relationship table, and asserts the graph review flags them.
+It also inserts a temporary private Storage bucket and demands a cleanup
+blocker. The fixture verifies the deletion audit requires retention review,
+the scanner is inaccessible to client roles, and no bucket or fixture row
+persists after rollback. Full foundation CI replay is required before
+counting this as tested.
+
+**Not yet accepted:** durable third-party relationship retention/redaction,
+provider-side Storage object enumeration and deletion verification,
+external/protected backup retention, legally approved audit lifetime, or
+the actual hosted account-deletion worker. Keep the current database
+`execution_enabled=false` switch and worker hard OFF. Do not apply
+a review function as a migration or silently treat no cascade gaps as
+authorization to delete an account.
