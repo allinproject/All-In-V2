@@ -1,5 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+/** Yield to the event loop and fail visibly if mocked I/O never reaches its
+ * expected checkpoint; microtask-only polling can starve Node's timers. */
+async function waitForCheckpoint(ready:()=>unknown, label:string){
+ for(let attempt=0;attempt<100;attempt++){
+  if(ready())return;
+  await new Promise<void>(resolve=>setTimeout(resolve,5));
+ }
+ assert.fail('Native billing test checkpoint was never reached: '+label);
+}
+
 import {createNativeBillingFlow} from './nativeBillingFlow.ts';
 const owner='00000000-0000-0000-0000-000000000001';
 const productId='allin365.monthly';
@@ -55,7 +66,7 @@ test('account switching mid-flight prevents cross-account completion',async()=>{
  const flow=createNativeBillingFlow({platform:'ios',productId,store,server,
   getAuthenticatedOwner:()=>ownerNow});
  const task=flow.purchase();
- while(!release)await Promise.resolve();
+ await waitForCheckpoint(()=>release,'release');
  ownerNow='00000000-0000-0000-0000-000000000002';
  release(iosEvidence);
  assert.equal(await task,'wrong_account');
@@ -71,7 +82,7 @@ test('simultaneous purchase attempts cannot launch duplicate store sessions',asy
   getAuthenticatedOwner:()=>owner});
  const first=flow.purchase();
  assert.equal(await flow.purchase(),'purchase_pending');
- while(!release)await Promise.resolve();
+ await waitForCheckpoint(()=>release,'release');
  release(iosEvidence);
  assert.equal(await first,'server_entitled');
 });
@@ -88,7 +99,7 @@ test('restore with no receipts preserves wrong-account outcome after entitlement
   getAuthenticatedOwner:()=>currentOwner,
  });
  const restoration=flow.restore();
- while(!releaseRead)await Promise.resolve();
+ await waitForCheckpoint(()=>releaseRead,'releaseRead');
  currentOwner='00000000-0000-0000-0000-000000000002';
  releaseRead({entitled:true});
  assert.equal(await restoration,'wrong_account');
@@ -123,7 +134,7 @@ test('finishing a verified transaction never returns prior account entitlement a
   },getAuthenticatedOwner:()=>currentOwner,
  });
  const task=flow.purchase();
- while(!releaseFinish)await Promise.resolve();
+ await waitForCheckpoint(()=>releaseFinish,'releaseFinish');
  currentOwner='00000000-0000-0000-0000-000000000002';
  releaseFinish();
  assert.equal(await task,'wrong_account');
@@ -145,7 +156,7 @@ test('transport failure after switching accounts is classified as wrong_account'
   },getAuthenticatedOwner:()=>currentOwner,
  });
  const task=flow.purchase();
- while(!rejectEvidence)await Promise.resolve();
+ await waitForCheckpoint(()=>rejectEvidence,'rejectEvidence');
  currentOwner='00000000-0000-0000-0000-000000000002';
  rejectEvidence(Error('service down'));
  assert.equal(await task,'wrong_account');
@@ -166,7 +177,7 @@ test('store cancellation after account switch reports wrong_account, not cancele
   getAuthenticatedOwner:()=>currentOwner,
  });
  const task=flow.purchase();
- while(!completePurchase)await Promise.resolve();
+ await waitForCheckpoint(()=>completePurchase,'completePurchase');
  currentOwner='00000000-0000-0000-0000-000000000002';
  completePurchase(null);
  assert.equal(await task,'wrong_account');
@@ -187,7 +198,7 @@ test('store restore transport error after owner switch reports wrong_account',as
   getAuthenticatedOwner:()=>currentOwner,
  });
  const task=flow.restore();
- while(!rejectRestore)await Promise.resolve();
+ await waitForCheckpoint(()=>rejectRestore,'rejectRestore');
  currentOwner='00000000-0000-0000-0000-000000000002';
  rejectRestore(Error('store unavailable'));
  assert.equal(await task,'wrong_account');
