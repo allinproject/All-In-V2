@@ -158,8 +158,10 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_device_revoke_candidate(
 CREATE FUNCTION allin_private.v2_device_pairing_immutability_guard_candidate()
 RETURNS trigger LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=''
 AS $guard$
+DECLARE v_owner_id uuid;
 BEGIN
  IF TG_TABLE_NAME='v2_device_pairing_challenges_candidate' THEN
+  v_owner_id:=OLD.owner_id;
   IF NEW.id IS DISTINCT FROM OLD.id OR
    NEW.owner_id IS DISTINCT FROM OLD.owner_id OR
    NEW.session_id IS DISTINCT FROM OLD.session_id OR
@@ -172,6 +174,7 @@ BEGIN
     USING ERRCODE='42501';
   END IF;
  ELSIF TG_TABLE_NAME='v2_device_registrations_candidate' THEN
+  v_owner_id:=OLD.user_id;
   IF NEW.id IS DISTINCT FROM OLD.id OR
    NEW.user_id IS DISTINCT FROM OLD.user_id OR
    NEW.device_ref IS DISTINCT FROM OLD.device_ref OR
@@ -188,9 +191,7 @@ BEGIN
    USING ERRCODE='42501';
  END IF;
  PERFORM pg_catalog.pg_advisory_xact_lock(
-  pg_catalog.hashtextextended('v2-metric:'||
-  CASE WHEN TG_TABLE_NAME='v2_device_pairing_challenges_candidate'
-    THEN OLD.owner_id::text ELSE OLD.user_id::text END,0));
+  pg_catalog.hashtextextended('v2-metric:'||v_owner_id::text,0));
  RETURN NEW;
 END;
 $guard$;
