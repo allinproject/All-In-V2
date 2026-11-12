@@ -1,0 +1,37 @@
+name: ALL-251 authenticated HTTP staging acceptance (manual only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: all251-temporary-hosted-http
+  cancel-in-progress: false
+jobs:
+  authenticated-download:
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: all251-temporary-staging
+    env:
+      CI: 'true'
+      ALL251_HTTP_ALLOW: 'true'
+      ALL251_HTTP_PROJECT_REF: fbtgknlxjyeqrxemskbl
+      ALL251_HTTP_ENDPOINT: https://fbtgknlxjyeqrxemskbl.supabase.co/functions/v1/v2-account-export-download
+      ALL251_OWNER_A_ID: ${{ vars.ALL251_OWNER_A_ID }}
+      ALL251_OWNER_A_REQUEST_ID: ${{ vars.ALL251_OWNER_A_REQUEST_ID }}
+      ALL251_EXPECTED_COLLECTIONS_JSON: ${{ vars.ALL251_EXPECTED_COLLECTIONS_JSON }}
+      ALL251_OWNER_A_TOKEN: ${{ secrets.ALL251_OWNER_A_TOKEN }}
+      ALL251_OWNER_B_TOKEN: ${{ secrets.ALL251_OWNER_B_TOKEN }}
+      ALL251_REVOKED_TOKEN: ${{ secrets.ALL251_REVOKED_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify real staging HTTP download and access denial
+        run: node scripts/test-v2-all251-hosted-authenticated-http.mjs
+
+# Requires authorized staging test identities and a DEPLOYED trusted server endpoint
+# with approved canonical Auth/session/request/KMS wiring. Never install live V1/V2 tokens.
+# Short-lived session tokens should not be persisted longer than necessary.
+# No trigger on push, no deployment, no production migration and no account deletion.
