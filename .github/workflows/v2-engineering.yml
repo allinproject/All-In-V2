@@ -1,6 +1,12 @@
 name: V2 Engineering validation (no deploy)
 
 on:
+  # One branch-only engineering acceptance run when this workflow itself changes.
+  # Ordinary source pushes do not start the full npm/Expo job.
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - '.github/workflows/v2-engineering.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
