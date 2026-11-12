@@ -13,6 +13,16 @@ BEGIN
  OR to_regclass('public.v2_activity_sources') IS NULL
  THEN RAISE EXCEPTION 'ALL-12 required canonical candidates absent'; END IF;
 END $gate$;
+-- Refuse to dump unrelated fixture records; isolated test DB required.
+DO $empty$
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.v2_training_session_instances)
+ OR EXISTS(SELECT 1 FROM public.v2_completed_activities)
+ OR EXISTS(SELECT 1 FROM public.v2_activity_sources)
+ OR EXISTS(SELECT 1 FROM public.v2_coach_threads)
+ OR EXISTS(SELECT 1 FROM public.v2_coach_messages)
+ THEN RAISE EXCEPTION 'ALL-12 requires isolated empty candidate tables'; END IF;
+END $empty$;
 INSERT INTO auth.users(id,raw_user_meta_data)
 VALUES ('a1212121-2121-4121-8121-212121212121','{"display_name":"Recovery A"}'),
        ('b1212121-2121-4121-8121-212121212121','{"display_name":"Recovery B"}');
