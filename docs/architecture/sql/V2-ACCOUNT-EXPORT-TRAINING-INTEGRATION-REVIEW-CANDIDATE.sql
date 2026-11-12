@@ -63,6 +63,23 @@ begin
    raise exception 'New personal data tables require export coverage' using errcode='42501';
  end if;
 
+ -- Future Nutrition, Progress, cookbook and equipment schemas are not
+ -- covered merely because an author chose a different owner column name.
+ -- Block new domain tables (including reference-like names) until each is
+ -- classified as personal or reference and added to this owning registry.
+ IF EXISTS (
+   SELECT 1 FROM pg_catalog.pg_class c
+   JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
+     AND (c.relname LIKE 'v2_nutrition_%'
+       OR c.relname LIKE 'v2_progress_%'
+       OR c.relname LIKE 'v2_food_%'
+       OR c.relname LIKE 'v2_recipe_%'
+       OR c.relname LIKE 'v2_cookbook_%'
+       OR c.relname LIKE 'v2_gear_%'
+       OR c.relname LIKE 'v2_shoe_%')
+ ) THEN RAISE EXCEPTION 'New domain requires explicit account export classification'
+   USING ERRCODE='42501'; END IF;
  -- An unknown V2 domain can own personal records without a user_id.
  -- Mirror the paginated registry's alternate-key safety rule. Never treat
  -- future Nutrition, Progress, gear or Community posts as nonpersonal by name.
