@@ -10,6 +10,8 @@ const root=new X509Certificate(ROOT);
 export const APPLE_ROOT_SHA256='1cb9823ba28ba6ad2d33a006941de2ae4f513ef1d4e831b9f7e0fa7b6242c932';
 if(root.fingerprint256.replaceAll(':','').toLowerCase()!==APPLE_ROOT_SHA256)
  throw Error('Official Apple App Attestation root pin mismatch');
+/** Only the fingerprint-pinned official root can authenticate receipt CMS. */
+export const APPLE_APP_ATTEST_ROOT_DER=root.raw;
 const hash=(b:Uint8Array)=>createHash('sha256').update(b).digest();
 const same=(a:Uint8Array,b:Uint8Array)=>Buffer.from(a).equals(Buffer.from(b));
 const raw=(v:unknown,max=20000)=>{
