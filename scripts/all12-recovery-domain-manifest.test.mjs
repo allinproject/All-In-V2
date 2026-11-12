@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assessRecoveryCoverage,recoveryDomains,findUntrackedRecoveryTables,assessIndependentRecoveryEvidence} from './all12-recovery-domain-manifest.mjs';
+import {assessRecoveryCoverage,recoveryDomains,findUntrackedRecoveryTables,assessIndependentRecoveryEvidence,assessIndependentLogicalRecoveryEvidence} from './all12-recovery-domain-manifest.mjs';
 test('missing domains fail closed',()=>{
  const x=assessRecoveryCoverage();
  assert.equal(x.complete,false);
@@ -128,4 +128,52 @@ test('canonical Coach recovery inventory follows actual SQL candidate',()=>{
  // Coach claims and policy are private operational state, not portable
  // account export rows; still mandatory in recovery logical backup.
  assert.deepEqual(findUntrackedRecoveryTables(coach.tables),[]);
+});
+
+
+test('green synthetic replay and physical-less logical plan are not accepted without real evidence',()=>{
+ const r=assessIndependentLogicalRecoveryEvidence({
+  recoveryMethod:'independent_logical',
+  localSyntheticCiPassed:true,sourceProjectRef:'v2',
+  physicalRestoreSkipped:true
+ });
+ assert.equal(r.accepted,false);
+ for(const k of ['backupArtifactDigest','isolatedTargetId','measuredRpoSeconds',
+  'privateStorageInventoryAndBytesRecovered','founderAcceptedLogicalRecoveryScope'])
+  assert.ok(r.missing.includes(k),k);
+ assert.ok(!r.missing.includes('providerPhysicalRestore'));
+});
+test('unsafe or self-targeted logical recoveries remain blocked',()=>{
+ const r=assessIndependentLogicalRecoveryEvidence({
+  recoveryMethod:'independent_logical',sourceProjectRef:'same',isolatedTargetId:'same',
+  backupCutoffUtc:'2026-11-12T04:00:00Z',
+  backupStartedUtc:'2026-11-12T05:00:00Z',
+  backupCompletedUtc:'2026-11-12T05:05:00Z',
+  restoreStartedUtc:'2026-11-12T05:06:00Z',
+  restoreVerifiedUtc:'2026-11-12T05:10:00Z',
+  preImportOutboundIsolationVerified:false
+ });
+ assert.equal(r.accepted,false);
+ assert.ok(r.missing.includes('independentTarget'));
+ assert.ok(r.missing.includes('consistentBackupAndRecoveryTimeline'));
+ assert.ok(r.missing.includes('preImportOutboundIsolationVerified'));
+});
+test('complete independently reviewed logical evidence can satisfy its own gate without a physical clone',()=>{
+ const r=assessIndependentLogicalRecoveryEvidence({
+  recoveryMethod:'independent_logical',sourceProjectRef:'source',isolatedTargetId:'disposable-local',
+  backupArtifactDigest:'a'.repeat(64),
+  backupStartedUtc:'2026-11-12T04:00:00Z',backupCutoffUtc:'2026-11-12T04:01:00Z',
+  backupCompletedUtc:'2026-11-12T04:05:00Z',
+  restoreStartedUtc:'2026-11-12T04:06:00Z',
+  restoreVerifiedUtc:'2026-11-12T04:10:00Z',
+  preImportOutboundIsolationVerified:true,
+  unsafeSqlAndScheduledJobsExcluded:true,sourceAtCutoffManifestVerified:true,
+  deployedDomainsReconciled:true,authDatabaseAndSignInRecovered:true,
+  authProviderConfigurationRecreated:true,
+  privateStorageInventoryAndBytesRecovered:true,rlsAndCrossOwnerDenialsPassed:true,
+  allPresentOwnerDataDigestsMatch:true,measuredRpoSeconds:60,measuredRtoSeconds:240,
+  backupArtifactDestroyedOrSecured:true,evidenceReviewed:true,
+  founderAcceptedLogicalRecoveryScope:true
+ });
+ assert.deepEqual(r,{accepted:true,missing:[]});
 });
