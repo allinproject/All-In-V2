@@ -48,6 +48,11 @@ on:
       - 'supabase/functions/_shared/certifiedDevicePairingPostgres.ts'
       - 'supabase/functions/_shared/certifiedDevicePairingServer.test.mjs'
       - 'supabase/functions/v2-device-pairing/**'
+      - 'supabase/functions/_shared/appleWatchOwnershipVerifier.ts'
+      - 'supabase/functions/_shared/appleWatchOwnershipVerifier.test.mjs'
+      - 'supabase/functions/_shared/appleWatchOwnershipPostgres.ts'
+      - 'docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql'
+      - 'apps/mobile-v2/native/apple-watch/**'
       - 'scripts/test-v2-device-pairing-postgres-runtime.ts'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql'
@@ -308,6 +313,8 @@ jobs:
           docker cp scripts/test-v2-device-pairing-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-device-pairing-postgres.psql"
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -c "UPDATE auth.sessions SET not_after=now()+interval '1 day' WHERE id='11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa'"
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-device-pairing-postgres.psql
+          docker cp docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql"
+          docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql
       - name: Run actual trusted pairing adapter through dedicated DB role
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
@@ -328,7 +335,7 @@ jobs:
         with:
           node-version: '22.16.0'
       - name: Validate canonical transactional device ingestion, expiry and offline retries
-        run: node --experimental-strip-types --test supabase/functions/_shared/certifiedDeviceIngestCanonical.test.mjs supabase/functions/_shared/certifiedDeviceIngestServer.test.mjs supabase/functions/_shared/certifiedDevicePostgresAdapter.node.test.mjs supabase/functions/_shared/certifiedDevicePairingServer.test.mjs
+        run: node --experimental-strip-types --test supabase/functions/_shared/certifiedDeviceIngestCanonical.test.mjs supabase/functions/_shared/certifiedDeviceIngestServer.test.mjs supabase/functions/_shared/certifiedDevicePostgresAdapter.node.test.mjs supabase/functions/_shared/certifiedDevicePairingServer.test.mjs supabase/functions/_shared/appleWatchOwnershipVerifier.test.mjs
 
   completed-segment-regression:
     name: ALL-243 isolated segment owner and invalidation regression (PG17)
