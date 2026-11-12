@@ -9,6 +9,7 @@ type SeasonInput=Parameters<typeof proposeSeasonFromVerifiedTraining>[0];
 type OwnerEventEvidence={
   eventId:string; ownerId:string; eventVersion:number;
   date:string; timezone:string; sport:string;
+  cancelled:boolean;
   verification:'organizer_verified'|'partial'|'unverified';
   /** Canonical EventParticipation state, never EventHub group membership. */
   participation:'interested'|'registered'|'attended'|'completed'|
@@ -86,6 +87,7 @@ export function certifySeasonAgainstGoalEventOwners(
   if(!e||!e.eventId?.trim()||events.has(e.eventId)||
     e.ownerId!==input.expectedOwnerId||!Number.isSafeInteger(e.eventVersion)||e.eventVersion<1||
     !validDate(e.date)||!e.date||!validTimezone(e.timezone)||
+    e.cancelled!==false||
     e.verification!=='organizer_verified'||e.evidenceGeneration!==input.activeSessionGeneration||
     !['interested','registered','attended','completed'].includes(e.participation)||
     !['athlete_confirmed','organizer_verified'].includes(e.participationSource))
