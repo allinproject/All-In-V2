@@ -49,7 +49,12 @@ BEGIN
  WITH rows AS (
   SELECT m.metric_code,m.definition_version,d.canonical_unit,
     m.value_numeric,m.value_text,m.value_boolean,m.measurement_kind,
-    CASE WHEN m.quality=s.quality THEN m.quality ELSE 'unverified' END AS quality
+    CASE
+      WHEN m.quality IN ('trusted','partial') AND s.quality IN ('trusted','partial')
+       THEN CASE WHEN m.quality='partial' OR s.quality='partial'
+                 THEN 'partial' ELSE 'trusted' END
+      ELSE 'unverified'
+    END AS quality
   FROM public.v2_activity_metric_values m
   JOIN public.v2_activity_sources s
     ON s.id=m.source_id AND s.activity_id=m.activity_id AND s.user_id=m.user_id
@@ -90,7 +95,12 @@ BEGIN
  WITH rows AS (
   SELECT m.metric_code,m.definition_version,m.value_numeric,m.value_text,
    m.value_boolean,m.measurement_kind,
-   CASE WHEN m.quality=s.quality THEN m.quality ELSE 'unverified' END AS quality
+   CASE
+      WHEN m.quality IN ('trusted','partial') AND s.quality IN ('trusted','partial')
+       THEN CASE WHEN m.quality='partial' OR s.quality='partial'
+                 THEN 'partial' ELSE 'trusted' END
+      ELSE 'unverified'
+    END AS quality
   FROM public.v2_activity_metric_values m
   JOIN public.v2_activity_sources s
     ON s.id=m.source_id AND s.activity_id=m.activity_id AND s.user_id=m.user_id
