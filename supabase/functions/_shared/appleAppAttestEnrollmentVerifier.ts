@@ -4,7 +4,7 @@
  * Apple root cannot be supplied or changed by a client.
  */
 import {X509Certificate,createHash} from 'node:crypto';
-import {decode} from 'npm:cbor-x@1.6.0';
+import {decode,decodeMultiple} from 'npm:cbor-x@1.6.0';
 const ROOT="-----BEGIN CERTIFICATE-----\nMIICITCCAaegAwIBAgIQC/O+DvHN0uD7jG5yH2IXmDAKBggqhkjOPQQDAzBSMSYw\nJAYDVQQDDB1BcHBsZSBBcHAgQXR0ZXN0YXRpb24gUm9vdCBDQTETMBEGA1UECgwK\nQXBwbGUgSW5jLjETMBEGA1UECAwKQ2FsaWZvcm5pYTAeFw0yMDAzMTgxODMyNTNa\nFw00NTAzMTUwMDAwMDBaMFIxJjAkBgNVBAMMHUFwcGxlIEFwcCBBdHRlc3RhdGlv\nbiBSb290IENBMRMwEQYDVQQKDApBcHBsZSBJbmMuMRMwEQYDVQQIDApDYWxpZm9y\nbmlhMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAERTHhmLW07ATaFQIEVwTtT4dyctdh\nNbJhFs/Ii2FdCgAHGbpphY3+d8qjuDngIN3WVhQUBHAoMeQ/cLiP1sOUtgjqK9au\nYen1mMEvRq9Sk3Jm5X8U62H+xTD3FE9TgS41o0IwQDAPBgNVHRMBAf8EBTADAQH/\nMB0GA1UdDgQWBBSskRBTM72+aEH/pwyp5frq5eWKoTAOBgNVHQ8BAf8EBAMCAQYw\nCgYIKoZIzj0EAwMDaAAwZQIwQgFGnByvsiVbpTKwSga0kP0e8EeDS4+sQmTvb7vn\n53O5+FRXgeLhpJ06ysC5PrOyAjEAp5U4xDgEgllF7En3VcE3iexZZtKeYnpqtijV\noyFraWVIyd/dganmrduC1bmTBGwD\n-----END CERTIFICATE-----";
 const root=new X509Certificate(ROOT);
 export const APPLE_ROOT_SHA256='1cb9823ba28ba6ad2d33a006941de2ae4f513ef1d4e831b9f7e0fa7b6242c932';
@@ -47,6 +47,46 @@ function appleNonce(leaf:Uint8Array){
  }
  walk(leaf,0);if(!found)throw Error('Missing Apple attestation nonce');
  return found;
+}
+/** App Attest authData CBOR inspector, independent of certificate validity.
+ * iOS 27+ may append launch metadata even when ED flag is clear. Older iOS
+ * emits only the credential COSE key. Fail closed on trailing/unparseable data.
+ * A passing result NEVER creates trust without the Apple certificate check.
+ */
+export function inspectAppAttestCredentialPayload(authData:Uint8Array,
+ expectedPublicPoint:Uint8Array){
+ if(authData.length<88||expectedPublicPoint.length!==65||
+  expectedPublicPoint[0]!==4||!(authData[32]&0x40))
+  throw Error('Missing attested App Attest credential');
+ const values=decodeMultiple(Buffer.from(authData.slice(87)));
+ if(!Array.isArray(values)||values.length<1||values.length>2)
+  throw Error('Invalid or trailing App Attest CBOR credential');
+ const field=(o:unknown,k:string|number):unknown=>o instanceof Map?
+  o.get(k):(o&&typeof o==='object'?
+   (o as Record<string,unknown>)[String(k)]:undefined);
+ const key=values[0];
+ const kty=field(key,1),alg=field(key,3),curve=field(key,-1);
+ const x=field(key,-2),y=field(key,-3);
+ if(kty!==2||alg!==-7||curve!==1||
+   !(x instanceof Uint8Array)||!(y instanceof Uint8Array)||
+   x.length!==32||y.length!==32||
+   !same(Buffer.concat([Buffer.from([4]),Buffer.from(x),Buffer.from(y)),expectedPublicPoint))
+  throw Error('App Attest COSE P-256 key differs from certificate');
+ let category:number|null=null,bundleVersion:string|null=null;
+ if(values.length===2){
+  const ext=values[1];
+  category=field(ext,'apple_validation_category_01') as number|null;
+  bundleVersion=field(ext,'apple_bundle_version_01') as string|null;
+  if(category instanceof Uint8Array){
+   if(category.length!==4)throw Error('Invalid Apple validation category bytes');
+   category=Buffer.from(category).readUInt32LE(0);
+  }
+  if(!Number.isInteger(category)||![2,3,4,5].includes(category as number)||
+    typeof bundleVersion!=='string'||bundleVersion.length<1||
+    bundleVersion.length>64||!/^[a-zA-Z0-9._-]+$/.test(bundleVersion))
+   throw Error('Unexpected Apple application launch category or version');
+ }
+ return {validationCategory:category,bundleVersion};
 }
 export function appAttestChallengeData(owner:string,session:string,challenge:string,appId:string){
  if(![owner,session,challenge].every(v=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v)))
@@ -94,6 +134,7 @@ export function inspectAppleAppAttestation(input:{
  const point=Buffer.concat([Buffer.from([4]),Buffer.from(jwk.x,'base64url'),Buffer.from(jwk.y,'base64url')]);
  if(point.length!==65||!same(hash(point),id))
   throw Error('Apple certificate public key ID mismatch');
+ const launch=inspectAppAttestCredentialPayload(a,point);
  const nonce=hash(Buffer.concat([a,hash(input.challengeData)]));
  if(!same(appleNonce(leaf.raw),nonce))
   throw Error('Apple certificate nonce/challenge mismatch');
@@ -102,5 +143,7 @@ export function inspectAppleAppAttestation(input:{
   publicKeySpkiBase64url:leaf.publicKey.export({format:'der',type:'spki'}).toString('base64url'),
   receiptB64url:raw(obj.attStmt.receipt,12000).toString('base64url'),
   leafFingerprint:leaf.fingerprint256.replaceAll(':','').toLowerCase(),
+  validationCategory:launch.validationCategory,
+  bundleVersion:launch.bundleVersion,
   reviewedOnly:true as const};
 }
