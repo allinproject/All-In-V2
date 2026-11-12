@@ -11,6 +11,8 @@ BEGIN
  OR to_regclass('public.v2_completed_activities') IS NULL
  OR to_regclass('public.v2_training_session_instances') IS NULL
  OR to_regclass('public.v2_activity_sources') IS NULL
+ OR to_regclass('public.v2_goals') IS NULL
+ OR to_regclass('public.v2_goal_revisions') IS NULL
  THEN RAISE EXCEPTION 'ALL-12 required canonical candidates absent'; END IF;
 END $gate$;
 -- Refuse to dump unrelated fixture records; isolated test DB required.
@@ -21,11 +23,19 @@ BEGIN
  OR EXISTS(SELECT 1 FROM public.v2_activity_sources)
  OR EXISTS(SELECT 1 FROM public.v2_coach_threads)
  OR EXISTS(SELECT 1 FROM public.v2_coach_messages)
+ OR EXISTS(SELECT 1 FROM public.v2_goals)
+ OR EXISTS(SELECT 1 FROM public.v2_goal_revisions)
  THEN RAISE EXCEPTION 'ALL-12 requires isolated empty candidate tables'; END IF;
 END $empty$;
 INSERT INTO auth.users(id,raw_user_meta_data)
 VALUES ('a1212121-2121-4121-8121-212121212121','{"display_name":"Recovery A"}'),
        ('b1212121-2121-4121-8121-212121212121','{"display_name":"Recovery B"}');
+INSERT INTO public.v2_goals(id,user_id,goal_kind,title)
+VALUES ('a8888888-8888-4888-8888-888888888888','a1212121-2121-4121-8121-212121212121','endurance_distance','Recovery A distance'),
+       ('b8888888-8888-4888-8888-888888888888','b1212121-2121-4121-8121-212121212121','activity_habit','Recovery B habit');
+INSERT INTO public.v2_goal_revisions(id,goal_id,user_id,revision_number,source_kind)
+VALUES ('a9999999-9999-4999-8999-999999999999','a8888888-8888-4888-8888-888888888888','a1212121-2121-4121-8121-212121212121',1,'athlete_authored'),
+       ('b9999999-9999-4999-8999-999999999999','b8888888-8888-4888-8888-888888888888','b1212121-2121-4121-8121-212121212121',1,'athlete_authored');
 INSERT INTO public.v2_training_session_instances(id,user_id,status,source_kind,athlete_local_date,timezone)
 VALUES ('a2222222-2222-4222-8222-222222222222','a1212121-2121-4121-8121-212121212121','active','phone','2026-11-12','America/Chicago');
 INSERT INTO public.v2_completed_activities(id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,status,training_session_instance_id)
@@ -60,6 +70,12 @@ FROM (
         md5(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY id))
  FROM public.v2_activity_sources t GROUP BY user_id
  UNION ALL
+ SELECT 'goal',user_id::text,count(*),md5(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY id))
+ FROM public.v2_goals t GROUP BY user_id
+ UNION ALL
+ SELECT 'goal_revision',user_id::text,count(*),md5(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY id))
+ FROM public.v2_goal_revisions t GROUP BY user_id
+ UNION ALL
  SELECT 'coach_thread',user_id::text,count(*),
         md5(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY id))
  FROM public.v2_coach_threads t GROUP BY user_id
@@ -72,12 +88,15 @@ SQL
 )
 manifest() { docker exec -i "$db" psql -X -qAt -U postgres -d postgres -v ON_ERROR_STOP=1 <<<"$manifest_sql"; }
 before="$(manifest)"
-test "$(printf '%s\n' "$before" | wc -l | tr -d ' ')" = 8 || { echo 'Unexpected pre-backup domain/owner coverage'; exit 1; }
+test "$(printf '%s\n' "$before" | wc -l | tr -d ' ')" = 12 || { echo 'Unexpected pre-backup domain/owner coverage'; exit 1; }
 docker exec "$db" pg_dump -U postgres -d postgres -Fc --data-only \
   -t public.v2_training_session_instances -t public.v2_completed_activities \
   -t public.v2_activity_sources -t public.v2_coach_threads \
-  -t public.v2_coach_messages -f /tmp/all12-multidomain.dump
+  -t public.v2_coach_messages -t public.v2_goals \\
+  -t public.v2_goal_revisions -f /tmp/all12-multidomain.dump
 docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+DELETE FROM public.v2_goal_revisions WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121');
+DELETE FROM public.v2_goals WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121');
 DELETE FROM public.v2_coach_messages WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121');
 DELETE FROM public.v2_coach_threads WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121');
 DELETE FROM public.v2_activity_sources WHERE user_id='a1212121-2121-4121-8121-212121212121';
