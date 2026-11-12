@@ -39,20 +39,40 @@ VALUES ('a5555555-5555-4555-8555-555555555555','a1212121-2121-4121-8121-21212121
 INSERT INTO public.v2_coach_messages(id,user_id,thread_id,role,content,client_action_id)
 VALUES ('a6666666-6666-4666-8666-666666666666','a1212121-2121-4121-8121-212121212121','a5555555-5555-4555-8555-555555555555','user','Recovery run A','a7777777-7777-4777-8777-777777777777'),
        ('b6666666-6666-4666-8666-666666666666','b1212121-2121-4121-8121-212121212121','b5555555-5555-4555-8555-555555555555','user','Recovery ride B','b7777777-7777-4777-8777-777777777777');
-CREATE TEMP TABLE all12_expected AS
- SELECT 'training' domain,count(*) n,md5(string_agg(row_to_json(t)::text,'|' ORDER BY t.id)) digest
- FROM public.v2_training_session_instances t WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121')
- UNION ALL SELECT 'activity',count(*),md5(string_agg(row_to_json(t)::text,'|' ORDER BY t.id))
- FROM public.v2_completed_activities t WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121')
- UNION ALL SELECT 'source',count(*),md5(string_agg(row_to_json(t)::text,'|' ORDER BY t.id))
- FROM public.v2_activity_sources t WHERE user_id='a1212121-2121-4121-8121-212121212121'
- UNION ALL SELECT 'coach_thread',count(*),md5(string_agg(row_to_json(t)::text,'|' ORDER BY t.id))
- FROM public.v2_coach_threads t WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121')
- UNION ALL SELECT 'coach_message',count(*),md5(string_agg(row_to_json(t)::text,'|' ORDER BY t.id))
- FROM public.v2_coach_messages t WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121');
--- TEMP expected is session-local, so persist digest to a local-only file.
-\copy (SELECT domain||' '||n||' '||digest FROM all12_expected ORDER BY domain) TO '/tmp/all12-expected.txt'
+
 SQL
+# Collect manifests outside the DB; comparison survives separate psql sessions.
+# These fixture tables must be exclusively owned by this disposable test.
+manifest_sql=$(cat <<'SQL'
+-- Each record's entire JSON representation is hashed in stable primary-key order.
+-- Include row counts and per-owner breakdown to detect missing/foreign records.
+SELECT domain || E'\\t' || owner || E'\\t' || n || E'\\t' || digest
+FROM (
+ SELECT 'training' domain,user_id::text owner,count(*) n,
+        md5(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY id)) digest
+ FROM public.v2_training_session_instances t GROUP BY user_id
+ UNION ALL
+ SELECT 'activity',user_id::text,count(*),
+        md5(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY id))
+ FROM public.v2_completed_activities t GROUP BY user_id
+ UNION ALL
+ SELECT 'source',user_id::text,count(*),
+        md5(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY id))
+ FROM public.v2_activity_sources t GROUP BY user_id
+ UNION ALL
+ SELECT 'coach_thread',user_id::text,count(*),
+        md5(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY id))
+ FROM public.v2_coach_threads t GROUP BY user_id
+ UNION ALL
+ SELECT 'coach_message',user_id::text,count(*),
+        md5(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY id))
+ FROM public.v2_coach_messages t GROUP BY user_id
+) x ORDER BY domain,owner;
+SQL
+)
+manifest() { docker exec -i "$db" psql -X -qAt -U postgres -d postgres -v ON_ERROR_STOP=1 <<<"$manifest_sql"; }
+before="$(manifest)"
+test "$(printf '%s\\n' "$before" | wc -l | tr -d ' ')" = 8 || { echo 'Unexpected pre-backup domain/owner coverage'; exit 1; }
 docker exec "$db" pg_dump -U postgres -d postgres -Fc --data-only \
   -t public.v2_training_session_instances -t public.v2_completed_activities \
   -t public.v2_activity_sources -t public.v2_coach_threads \
@@ -65,6 +85,12 @@ DELETE FROM public.v2_completed_activities WHERE user_id IN ('a1212121-2121-4121
 DELETE FROM public.v2_training_session_instances WHERE user_id='a1212121-2121-4121-8121-212121212121';
 SQL
 docker exec "$db" pg_restore -U postgres -d postgres --data-only --exit-on-error /tmp/all12-multidomain.dump
+after="$(manifest)"
+if [[ "$before" != "$after" ]]; then
+  echo 'FAIL ALL-12: pre/post restore row counts, owners or row digests differ' >&2
+  diff -u <(printf '%s\\n' "$before") <(printf '%s\\n' "$after") >&2 || true
+  exit 1
+fi
 docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
 DO $verify$
 BEGIN
@@ -75,5 +101,5 @@ BEGIN
  THEN RAISE EXCEPTION 'ALL-12 recovered cross-owner source'; END IF;
 END $verify$;
 SQL
-docker exec "$db" rm -f /tmp/all12-multidomain.dump /tmp/all12-expected.txt
-echo 'PASS ALL-12: local multi-domain pg_dump/pg_restore (Training, Activity, sources, Coach)'
+docker exec "$db" rm -f /tmp/all12-multidomain.dump
+echo 'PASS ALL-12: deterministic per-owner counts and full-row digests match after local multi-domain pg_dump/pg_restore'
