@@ -45,6 +45,7 @@ test('native account purchase controls mount only behind all four approvals',()=
  assert.match(runtime,/signedNativeBuild:false/);
  assert.match(runtime,/storeCatalogApproved:false/);
  assert.match(runtime,/serverSecurityApproved:false/);
+ assert.match(actions,/Platform\.OS!=='ios'&&Platform\.OS!=='android'/);
  assert.doesNotMatch(actions,/from ['"]expo-iap['"]/);
  assert.match(actions,/prepareNativeBillingRuntime\(/);
  assert.match(actions,/createNativeBillingServerClient\(/);
