@@ -62,10 +62,12 @@ profiles=[{'source_profile_key':'beans','source_label':'Black beans','source_ali
 r=m.reconcile(foods,profiles,2,2)
 print(json.dumps({'refs':r['rows'][1]['direct_fdc_source_profile_keys'],
  'count':r['summary']['directFdcSourceReferencePairs'],
+ 'status':r['rows'][1]['status'],
  'approval':r['reconciliationApproved'],'ready':r['calculationReady']}))`;
   const r=runPython(code);
   assert.deepEqual(r.refs,['beans']);
   assert.equal(r.count,1);
+  assert.equal(r.status,'source_fdc_reference_review');
   assert.equal(r.approval,false);
   assert.equal(r.ready,false);
 });
