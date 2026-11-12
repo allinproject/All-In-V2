@@ -19,8 +19,11 @@ BEGIN
     OR p_quality IS NULL OR p_source_hash IS NULL
     OR p_source_hash !~ '^[0-9a-f]{64}$'
  THEN RAISE EXCEPTION 'Invalid canonical source reference' USING ERRCODE='22023'; END IF;
- -- Serialize source identity within athlete account; two concurrent provider
- -- callbacks must not create two different canonical workout records.
+ -- Lock order: metric owner fence FIRST, source identity SECOND. This
+ -- coordinates source attachment with invalidation/scalar ingestion and
+ -- avoids inversion against the activity/source UPDATE triggers.
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+   pg_catalog.hashtextextended('v2-metric:'||p_owner_id::text,0));
  PERFORM pg_catalog.pg_advisory_xact_lock(
    pg_catalog.hashtextextended('v2-activity-source:'||p_owner_id::text,0));
  SELECT * INTO v_activity FROM public.v2_completed_activities

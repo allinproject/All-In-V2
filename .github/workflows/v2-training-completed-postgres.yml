@@ -233,6 +233,37 @@ jobs:
           set -euo pipefail
           bash scripts/test-v2-device-ingest-invalidation-race.sh
 
+  completed-segment-regression:
+    name: ALL-243 isolated segment owner and invalidation regression (PG17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: completed_segments
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d completed_segments"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run exact completed-segment regression independently of export tests
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec "$PG_CONTAINER" mkdir -p /tmp/allin/scripts /tmp/allin/docs/architecture/sql
+          for f in V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql; do
+            docker cp "docs/architecture/sql/$f" "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/$f"
+          done
+          docker cp scripts/test-v2-completed-segments-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-completed-segments-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -X -U postgres -d completed_segments -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-completed-segments-postgres.psql
+
   review-only:
     name: PostgreSQL 17 Training, Completed Activity and Competition owner replay
     runs-on: ubuntu-latest

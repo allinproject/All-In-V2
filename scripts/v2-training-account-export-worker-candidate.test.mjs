@@ -29,6 +29,8 @@ function setup(options={}) {
    events.push('auth');
    if(options.revokeAfterWrite&&events.filter(x=>x==='auth').length>=3)
      return {error:new Error('revoked')};
+   if(options.revokeAfterSnapshot&&events.includes('snapshotClosed'))
+     return {error:new Error('revoked after staging')};
    return {data:{user:{id:owner}}};
  }}};
  const data={v2_activity_series:[row()],v2_activity_route_objects:[]};
@@ -127,6 +129,27 @@ function setup(options={}) {
         expiresAt:new Date(Date.now()+3600000).toISOString()};
     }}
   :defaultPersistence;
+ const pinnedPageReader=options.pinnedReader?{
+   withRepeatableReadSnapshot:async({ownerId,sessionId,requestId:rid},fn)=>{
+    assert.equal(ownerId,owner);assert.equal(sessionId,session);assert.equal(rid,requestId);
+    events.push('snapshotOpen');
+    try {
+     const receipt=await fn({
+      getCanonicalInventory:async({ownerId:o,requestId:r})=>({
+       ownerId:o,requestId:r,snapshotId:requestId,
+       complete:!options.unapprovedDomain,collections:['coach_messages'],
+      }),
+      readPage:async({ownerId:o,collection})=>({
+       ownerId:o,collection,snapshotId:requestId,ownerVerified:true,
+       rows:[{id:'pinned-owner-history',user_id:owner,content:'Only A private history'}],
+       done:true,nextCursor:null,
+      }),
+     });
+     if(options.snapshotCommitFails)throw Error('pinned DB COMMIT failed');
+     return receipt;
+    } finally {events.push('snapshotClosed');}
+   },
+ }:undefined;
  const canonicalPageReader=options.largeReader?{
    getCanonicalInventory:async({ownerId,requestId:rid})=>({
      ownerId,requestId:rid,snapshotId:requestId,complete:true,
@@ -140,7 +163,8 @@ function setup(options={}) {
  }:undefined;
  const worker=createTrainingAccountExportWorkerCandidate({
    bearerToken:token,authClient,serviceClient,
-   resolveEncryptionKey:async()=>key,...selectedPersistence,canonicalPageReader,
+   resolveEncryptionKey:async()=>key,...selectedPersistence,
+   canonicalPageReader:pinnedPageReader??canonicalPageReader,
  });
  return {worker,events,key,pagedArchives,get envelope(){return envelope;},
    get purges(){return purges;}};
@@ -222,4 +246,38 @@ test('large history stays unavailable until exact canonical reader and request l
  await assert.rejects(f.worker.stageApprovedLargeHistory(requestId),/not configured/);
  await assert.rejects(f.worker.openApprovedLargeHistoryDownload(requestId),/not configured/);
  assert.equal(f.events.some(x=>x==='pagedDownload'),false);
+});
+
+test('canonical worker holds one PostgreSQL snapshot across staged pages and downloads frozen private manifest',async()=>{
+ const f=setup({useSupabasePersistence:true,pinnedReader:true});
+ const staged=await f.worker.stageApprovedLargeHistory(requestId);
+ assert.equal(staged.completeUserExport,true);
+ assert.equal(f.events.filter(x=>x==='snapshotOpen').length,1);
+ assert.equal(f.events.filter(x=>x==='snapshotClosed').length,1);
+ const response=await f.worker.openApprovedLargeHistoryDownload(requestId);
+ assert.equal(response.status,200);
+ const result=await response.text();
+ assert(result.includes('Only A private history'));
+ assert.equal(f.events.filter(x=>x==='snapshotOpen').length,1,
+  'frozen staging receipt must not run new mutable DB snapshot during download');
+});
+test('unreviewed Community or Storage source blocks worker before any archived page',async()=>{
+ const f=setup({useSupabasePersistence:true,pinnedReader:true,unapprovedDomain:true});
+ await assert.rejects(f.worker.stageApprovedLargeHistory(requestId),/coverage or privacy review incomplete/);
+ assert.equal(f.pagedArchives.size,0);
+ assert.deepEqual(f.events.filter(x=>x.startsWith('snapshot')),['snapshotOpen','snapshotClosed']);
+});
+
+test('database COMMIT failure after encrypted manifest staging purges the private archive',async()=>{
+ const f=setup({useSupabasePersistence:true,pinnedReader:true,snapshotCommitFails:true});
+ await assert.rejects(f.worker.stageApprovedLargeHistory(requestId),/COMMIT failed/);
+ assert.equal(f.pagedArchives.size,0);
+ assert.equal(f.events.filter(x=>x==='archiveRemove').length,1);
+ assert.equal(f.events.filter(x=>x==='snapshotClosed').length,1);
+});
+test('session revoked immediately after snapshot commit purges completed private pages',async()=>{
+ const f=setup({useSupabasePersistence:true,pinnedReader:true,revokeAfterSnapshot:true});
+ await assert.rejects(f.worker.stageApprovedLargeHistory(requestId),/unavailable/);
+ assert.equal(f.pagedArchives.size,0);
+ assert.equal(f.events.filter(x=>x==='archiveRemove').length,1);
 });

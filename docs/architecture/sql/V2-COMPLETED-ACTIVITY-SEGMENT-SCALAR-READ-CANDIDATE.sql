@@ -10,6 +10,7 @@ AS $segment_projection$
 DECLARE
  v_sport text;
  v_parent_sport text;
+ v_activity_status text;
  v_values jsonb;
  v_conflicts jsonb;
 BEGIN
@@ -30,15 +31,23 @@ BEGIN
    WHERE parent.activity_id=p_activity_id AND parent.user_id=p_user_id
      AND child.depth<32
  )
- SELECT a.sport,
+ SELECT a.sport,a.status,
    coalesce((SELECT l.sport FROM lineage l
      WHERE l.sport IS NOT NULL ORDER BY l.depth LIMIT 1),a.sport)
- INTO v_parent_sport,v_sport
+ INTO v_parent_sport,v_activity_status,v_sport
  FROM public.v2_completed_activities a
  WHERE a.id=p_activity_id AND a.user_id=p_user_id
    AND EXISTS(SELECT 1 FROM lineage);
  IF v_sport IS NULL THEN
   RAISE EXCEPTION 'Activity segment not owned or unavailable' USING ERRCODE='42501';
+ END IF;
+ -- Match the global projection: retain raw evidence privately, but do
+ -- not display any segment measurements after parent invalidation.
+ IF v_activity_status='invalidated' THEN
+  RETURN pg_catalog.jsonb_build_object(
+   'activityId',p_activity_id,'segmentId',p_segment_id,
+   'metrics','[]'::jsonb,'unresolvedMetrics','[]'::jsonb,
+   'coverage','invalidated_activity');
  END IF;
  IF v_parent_sport<>'multisport' AND v_sport<>v_parent_sport THEN
   RAISE EXCEPTION 'Segment sport contradicts canonical activity sport'

@@ -128,4 +128,58 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $api_gate$;
 RESET ROLE;
+
+-- A source that was not explicitly reviewed must break the whole inventory.
+-- It must not be silently excluded, even when it contains no rows.
+CREATE TABLE allin_private.v2_future_sensitive_owner_data (
+ user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
+);
+SET LOCAL ROLE service_role;
+DO $unknown_owner$
+BEGIN
+ BEGIN
+  PERFORM public.v2_account_export_inventory_review_candidate(
+   '91111111-9111-4111-8111-911111111111',
+   '93333333-9333-4333-8333-933333333333',
+   '95555555-9555-4555-8555-955555555555');
+  RAISE EXCEPTION 'New owner table was silently omitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $unknown_owner$;
+RESET ROLE;
+DROP TABLE allin_private.v2_future_sensitive_owner_data;
+
+-- A directional relationship table without user_id is equally sensitive.
+CREATE TABLE allin_private.v2_community_unreviewed_directional (
+ actor_id uuid, target_id uuid
+);
+SET LOCAL ROLE service_role;
+DO $unknown_relation$
+BEGIN
+ BEGIN
+  PERFORM public.v2_account_export_inventory_review_candidate(
+   '91111111-9111-4111-8111-911111111111',
+   '93333333-9333-4333-8333-933333333333',
+   '95555555-9555-4555-8555-955555555555');
+  RAISE EXCEPTION 'New directional table was silently omitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $unknown_relation$;
+RESET ROLE;
+DROP TABLE allin_private.v2_community_unreviewed_directional;
+
+-- The blocked athlete must NEVER learn the other athlete blocked them.
+SET LOCAL ROLE service_role;
+DO $hidden_block$
+DECLARE v_page jsonb;
+BEGIN
+ v_page:=public.v2_account_export_page_review_candidate(
+   '92222222-9222-4222-8222-922222222222',
+   '94444444-9444-4444-8444-944444444444',
+   '96666666-9666-4666-8666-966666666666',
+   'community.outgoing_blocks',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>0 THEN
+   RAISE EXCEPTION 'Another athlete private block leaked in recipient export';
+ END IF;
+ RAISE NOTICE 'PASS ALL-251: unknown owner/directional tables block export and incoming blocks stay private';
+END $hidden_block$;
+RESET ROLE;
 ROLLBACK;

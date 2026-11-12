@@ -12,6 +12,10 @@ on:
       - 'scripts/review-v2-ingredient-identities.test.cjs'
       - 'scripts/check-v2-usda-nutrient-policy.cjs'
       - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
+      - 'scripts/review-v2-usda-source-admission.cjs'
+      - 'scripts/review-v2-usda-source-admission.test.cjs'
+      - 'apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts'
+      - 'apps/mobile-v2/src/features/cookbook/recipeNutritionCalculator.ts'
       - 'docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'
       - 'docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'
       - 'docs/evidence/ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'
@@ -28,6 +32,10 @@ on:
       - 'scripts/review-v2-ingredient-identities.test.cjs'
       - 'scripts/check-v2-usda-nutrient-policy.cjs'
       - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
+      - 'scripts/review-v2-usda-source-admission.cjs'
+      - 'scripts/review-v2-usda-source-admission.test.cjs'
+      - 'apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts'
+      - 'apps/mobile-v2/src/features/cookbook/recipeNutritionCalculator.ts'
       - 'docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'
       - 'docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'
       - 'docs/evidence/ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'
@@ -60,5 +68,7 @@ jobs:
         run: node --test scripts/review-v2-ingredient-identities.test.cjs
       - name: Validate versioned USDA energy and nutrient completeness policy
         run: node --test scripts/check-v2-usda-nutrient-policy.test.cjs
+      - name: Test source-to-canonical-review-to-calculator staging path (no writes)
+        run: node --experimental-strip-types --test scripts/review-v2-usda-source-admission.test.cjs
       - name: Test pinned USDA reconciliation and no-auto-approval gates
         run: node --test scripts/reconcile-usda-foundation-identities.test.cjs
