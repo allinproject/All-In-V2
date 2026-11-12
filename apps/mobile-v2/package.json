@@ -21,22 +21,23 @@
     "test:subscriptions": "node --experimental-strip-types --test src/features/subscriptions/entitlementContract.test.ts src/features/subscriptions/offerPolicy.test.ts src/features/subscriptions/verifiedPurchaseLedger.test.ts ../../supabase/functions/_shared/subscriptionIngress.node.test.mjs ../../supabase/functions/_shared/stripeWebhookEnvelope.node.test.mjs ../../supabase/functions/_shared/stripeCurrentSubscription.node.test.mjs ../../scripts/check-v2-subscription-ledger-candidate.test.mjs ../../supabase/functions/_shared/subscriptionPurchaseBinding.node.test.mjs ../../supabase/functions/_shared/stripeCheckoutConfirmation.node.test.mjs ../../supabase/functions/_shared/stripeCheckoutPreparation.node.test.mjs ../../supabase/functions/_shared/stripeSandboxSecretAdapter.node.test.mjs ../../supabase/functions/_shared/stripeCheckoutRequest.node.test.mjs ../../supabase/functions/_shared/stripeCheckoutTrustAdapters.node.test.mjs ../../supabase/functions/_shared/stripeWebhookVerification.node.test.mjs ../../supabase/functions/_shared/stripeWebhookReconciliation.node.test.mjs ../../supabase/functions/_shared/stripeSubscriptionProjection.node.test.mjs ../../scripts/test-v2-stripe-checkout-edge-guard.test.mjs ../../scripts/test-v2-stripe-webhook-edge-guard.test.mjs ../../scripts/test-v2-billing-entitlement-edge-guard.test.mjs ../../supabase/functions/_shared/appleStoreTransactionVerification.node.test.mjs ../../supabase/functions/_shared/googlePlaySubscriptionVerification.node.test.mjs src/features/subscriptions/nativeBillingFlow.test.ts ../../supabase/functions/_shared/googlePlayDeveloperTransport.node.test.mjs ../../supabase/functions/_shared/googleBillingAccountBinding.node.test.mjs ../../supabase/functions/_shared/nativePurchaseVerification.node.test.mjs ../../supabase/functions/_shared/googleServiceAccountAccessToken.node.test.mjs ../../supabase/functions/_shared/appleStoreServerAdapters.node.test.mjs ../../scripts/test-v2-native-subscription-edge-guard.test.mjs src/features/subscriptions/openIapStoreAdapter.test.ts src/features/subscriptions/nativeBillingServerClient.test.ts src/features/subscriptions/subscriptionBillingScreen.test.mjs"
   },
   "dependencies": {
+    "@sentry/react-native": "8.32.0",
     "@supabase/supabase-js": "^2.118.0",
     "expo": "~58.0.21",
     "expo-constants": "~58.0.14",
+    "expo-file-system": "~58.0.13",
+    "expo-iap": "6.4.3",
     "expo-linking": "~58.0.15",
     "expo-router": "~58.0.28",
     "expo-sqlite": "~58.0.14",
     "expo-status-bar": "~58.0.4",
+    "expo-web-browser": "~58.0.7",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.0",
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
-    "react-native-url-polyfill": "^4.0.0",
-    "@sentry/react-native": "8.32.0",
-    "expo-web-browser": "~58.0.7",
-    "expo-file-system": "~58.0.13"
+    "react-native-url-polyfill": "^4.0.0"
   },
   "devDependencies": {
     "@types/react": "~19.3.0",
