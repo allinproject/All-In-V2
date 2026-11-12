@@ -126,15 +126,19 @@ export function createTrainingSupabaseEvidenceAdapter({ supabase }) {
  * than silently omitted. No Storage or authentication permissions are changed.
  */
 export async function auditOwnerPrivateMediaCoverage({
-  ownerId,requestId,evidenceAdapter,listBucketCatalog,listOwnerStorageObjects,
+  ownerId,requestId,evidenceAdapter,listCanonicalMediaReferences,
+  listBucketCatalog,listOwnerStorageObjects,
 }) {
   checkOwner(ownerId);
   if(!UUID.test(requestId??'')
-    ||typeof evidenceAdapter?.listEvidence!=='function'
+    ||(typeof evidenceAdapter?.listEvidence!=='function'
+      && typeof listCanonicalMediaReferences!=='function')
+    ||(typeof evidenceAdapter?.listEvidence==='function'
+      && typeof listCanonicalMediaReferences==='function')
     ||typeof listBucketCatalog!=='function'
     ||typeof listOwnerStorageObjects!=='function')
     throw Error('Trusted exhaustive Storage coverage dependencies required');
-  const buckets=await listBucketCatalog();
+  const buckets=await listBucketCatalog({ownerId,requestId});
   if(!Array.isArray(buckets)||buckets.some(b=>!b||typeof b.id!=='string'
       ||typeof b.public!=='boolean')||new Set(buckets.map(b=>b.id)).size!==buckets.length)
     throw Error('Unverified Storage bucket inventory');
@@ -146,7 +150,9 @@ export async function auditOwnerPrivateMediaCoverage({
     throw Error('Canonical private workout bucket missing from coverage audit');
   // Private account-export archives are generated output, NOT source media.
   // Their separate retention/purge acceptance remains independently required.
-  const evidence=await evidenceAdapter.listEvidence(ownerId,requestId);
+  const evidence=typeof listCanonicalMediaReferences==='function'
+    ? await listCanonicalMediaReferences({ownerId,requestId})
+    : await evidenceAdapter.listEvidence(ownerId,requestId);
   if(evidence?.ownerId!==ownerId||!Array.isArray(evidence.series)
     ||!Array.isArray(evidence.routes))
     throw Error('Canonical private evidence owner mismatch');
