@@ -103,6 +103,7 @@ DECLARE
   v_existing allin_private.v2_ingredient_review_events%ROWTYPE;
   v_payload jsonb;
   v_profile_kind text;
+  v_principal_kind text;
 BEGIN
   -- Check BOTH database authentication/membership and positive enrollment.
   -- service_role / authenticated / anon must never be reviewer members.
@@ -119,6 +120,16 @@ BEGIN
        FOR SHARE OF o
      ) THEN
     RAISE EXCEPTION 'unauthorized ingredient reviewer'
+      USING ERRCODE='42501';
+  END IF;
+  SELECT o.principal_kind INTO v_principal_kind
+    FROM allin_private.v2_ingredient_review_operators o
+    WHERE o.login_role=v_actor AND o.enabled=true AND o.revoked_at IS NULL
+      AND o.credential_expires_at>clock_timestamp();
+  -- Machine-originated source checks may only move a candidate to reviewed.
+  -- They cannot approve calculation readiness, retire or supersede profiles.
+  IF v_principal_kind='workload' AND p_next_status NOT IN ('needs_review','reviewed') THEN
+    RAISE EXCEPTION 'workload ingredient publication or exception decision forbidden'
       USING ERRCODE='42501';
   END IF;
   IF p_profile_id IS NULL OR p_expected_revision IS NULL OR p_expected_revision<1
