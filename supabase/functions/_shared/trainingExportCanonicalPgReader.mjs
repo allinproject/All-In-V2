@@ -27,11 +27,20 @@ export function createCanonicalPgAccountReaderCandidate({pool}) {
    if(typeof client?.query!=='function'||typeof client?.release!=='function')
      throw Error('Trusted PostgreSQL connection unavailable');
    let entered=false,closed=false;
+   const startedAt=Date.now();
+   const maxSnapshotAgeMs=5*60*1000;
    try {
     await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
     entered=true;
+    // Prevent a stalled archive upload from keeping a vacuum-blocking
+    // snapshot, lock wait or arbitrary table scan open without bounds.
+    await client.query("SET LOCAL statement_timeout = '60s'");
+    await client.query("SET LOCAL lock_timeout = '5s'");
+    await client.query("SET LOCAL idle_in_transaction_session_timeout = '90s'");
     const query=async(statement,args)=>{
      if(closed)throw Error('Export snapshot transaction is closed');
+     if(Date.now()-startedAt>maxSnapshotAgeMs)
+      throw Error('Canonical export snapshot exceeded maximum staging age');
      const response=await client.query(statement,args);
      const value=response?.rows?.[0]?.payload;
      if(!value||typeof value!=='object'||Array.isArray(value))
@@ -54,6 +63,8 @@ export function createCanonicalPgAccountReaderCandidate({pool}) {
      },
     });
     const result=await fn(scoped);
+    if(Date.now()-startedAt>maxSnapshotAgeMs)
+      throw Error('Canonical export snapshot exceeded maximum staging age');
     closed=true;
     await client.query('COMMIT');
     return result;
