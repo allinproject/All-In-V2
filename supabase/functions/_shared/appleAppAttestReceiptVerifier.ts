@@ -133,13 +133,13 @@ export const appleAppAttestReceiptService:VerifiedAppleReceiptService={
   const bytes=b64(input.receiptB64url);
   if(!bytes.length||bytes.length>MAX_RECEIPT_BYTES)
    throw Error('Invalid receipt length');
-  const envelope=ContentInfo.fromBER(bytes);
+  const envelope=ContentInfo.fromBER(Uint8Array.from(bytes).buffer as ArrayBuffer);
   if(envelope.contentType!==ContentInfo.SIGNED_DATA)
    throw Error('Apple receipt is not signed CMS data');
   const cms=new SignedData({schema:envelope.content});
   if(cms.signerInfos.length!==1||!cms.encapContentInfo.eContent)
    throw Error('Apple receipt must have one attached signer');
-  const appleRoot=Certificate.fromBER(APPLE_APP_ATTEST_ROOT_DER);
+  const appleRoot=Certificate.fromBER(Uint8Array.from(APPLE_APP_ATTEST_ROOT_DER).buffer as ArrayBuffer);
   const verified=await cms.verify({signer:0,checkChain:true,
    trustedCerts:[appleRoot],checkDate:new Date(input.nowMs)});
   if(verified!==true)
