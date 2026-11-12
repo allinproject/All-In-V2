@@ -67,13 +67,28 @@ docker exec "$db" pg_dump -U postgres -d postgres -Fc --data-only \
  -t public.v2_event_groups -t public.v2_event_group_memberships \
  -t public.v2_event_participations -t allin_private.v2_event_group_actions \
  -f /tmp/all12-eventhub.dump
+# Canonical Event provenance intentionally denies DELETE. Only on the strictly
+# identified disposable DB, bypass that one trigger inside a transaction to
+# simulate total data loss; reenable atomically before pg_restore. Never hosted.
 sql <<'SQL'
+BEGIN;
+ALTER TABLE public.v2_events DISABLE TRIGGER v2_event_version_guard;
 DELETE FROM allin_private.v2_event_group_actions;
 DELETE FROM public.v2_event_participations;
 DELETE FROM public.v2_event_group_memberships;
 DELETE FROM public.v2_event_url_aliases;
 DELETE FROM public.v2_event_groups;
 DELETE FROM public.v2_events;
+ALTER TABLE public.v2_events ENABLE TRIGGER v2_event_version_guard;
+COMMIT;
+DO $guard$
+BEGIN
+ IF NOT EXISTS (
+ SELECT 1 FROM pg_trigger
+ WHERE tgrelid='public.v2_events'::regclass
+ AND tgname='v2_event_version_guard' AND tgenabled='O'
+ ) THEN RAISE EXCEPTION 'Event provenance guard not reenabled after loss simulation'; END IF;
+END $guard$;
 SQL
 docker exec "$db" pg_restore -U postgres -d postgres --data-only --exit-on-error /tmp/all12-eventhub.dump
 after="$(manifest)"
