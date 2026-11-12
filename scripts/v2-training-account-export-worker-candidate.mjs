@@ -13,6 +13,7 @@ import {createTrainingEncryptedArchiveSink} from './v2-training-export-archive-w
 import {createSupabasePrivateArchivePersistence,createSupabasePagedAccountExportStorage} from '../supabase/functions/_shared/trainingExportSupabaseArchive.mjs';
 import {stageLargeAccountExport,createLargeAccountDownloadResponse} from '../supabase/functions/_shared/trainingExportLargeArchive.mjs';
 import {stageTrainingPrivateStorageExport} from './v2-training-private-storage-stage.mjs';
+import {auditPrivateMediaExportCoverage,createSupabaseTrainingMediaAuditAdapters} from '../supabase/functions/_shared/trainingExportMediaCoverage.mjs';
 
 export function createTrainingAccountExportWorkerCandidate({
   bearerToken,authClient,serviceClient,resolveEncryptionKey,
@@ -77,6 +78,23 @@ export function createTrainingAccountExportWorkerCandidate({
     return inventory.collections;
   }
   return Object.freeze({
+    async auditApprovedPrivateMediaCoverage(requestId) {
+      if(!hasSupabaseLease)
+        throw new Error('Canonical private media audit requires the approved request lease');
+      const gate=await services.authorizeExport(requestId);
+      const adapters=createSupabaseTrainingMediaAuditAdapters({
+        supabase:serviceClient,evidenceAdapter:storageAdapter,
+      });
+      const coverage=await auditPrivateMediaExportCoverage({
+        ownerId:gate.ownerId,requestId,...adapters,
+      });
+      const rechecked=await services.authorizeExport(requestId);
+      if(rechecked.ownerId!==gate.ownerId
+        ||rechecked.sessionId!==gate.sessionId)
+        throw new Error('Private media audit session changed');
+      // This is only one media domain. Do not switch on downloadable export.
+      return coverage;
+    },
     async stageApprovedRequest(requestId) {
       // No caller-supplied ownerId, path, bucket, key, archive URL or privileges.
       return stageTrainingPrivateStorageExport({requestId,services});
