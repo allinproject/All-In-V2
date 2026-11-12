@@ -1,0 +1,3835 @@
+{
+  "status": "review_only",
+  "approved": false,
+  "publicationApproved": false,
+  "sourceArchiveSha256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579",
+  "sourceV1": "read-only public.allin_ingredient_profiles label/alias data",
+  "sourceUSDA": "official Foundation Foods JSON 2026-10-29",
+  "method": "exact Unicode NFKC lowercase collapsed whitespace names and aliases; fallback token Jaccard >=0.42 top three; no implied food-state or nutrient equivalence",
+  "summary": {
+    "usdaRecords": 424,
+    "v1Profiles": 408,
+    "categories": {
+      "no_candidate": 304,
+      "similar_name_review": 117,
+      "exact_name_review": 3
+    },
+    "exactLinkedV1Profiles": 3,
+    "v1ProfilesWithoutExactUSDAName": 405,
+    "exactNamePairs": 3,
+    "archiveSHA256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579"
+  },
+  "rows": [
+    {
+      "fdcId": 321358,
+      "description": "Hummus, commercial",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 321360,
+      "description": "Tomatoes, grape, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cherry_tomatoes_raw",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 321611,
+      "description": "Beans, snap, green, canned, regular pack, drained solids",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 323121,
+      "description": "Frankfurter, beef, unheated",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 323294,
+      "description": "Nuts, almonds, dry roasted, with salt added",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 323505,
+      "description": "Kale, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 323604,
+      "description": "Egg, whole, raw, frozen, pasteurized",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 323697,
+      "description": "Egg, white, raw, frozen, pasteurized",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "egg_white_raw",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 323793,
+      "description": "Egg, white, dried",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "egg_white_raw",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 324317,
+      "description": "Onion rings, breaded, par fried, frozen, prepared, heated in oven",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 324653,
+      "description": "Pickles, cucumber, dill or kosher dill",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 325036,
+      "description": "Cheese, parmesan, grated",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "parmesan_cheese_generic",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 325198,
+      "description": "Cheese, pasteurized process, American, vitamin D fortified",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 325287,
+      "description": "Grapefruit juice, white, canned or bottled, unsweetened",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 325430,
+      "description": "Peaches, yellow, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 325524,
+      "description": "Seeds, sunflower seed kernels, dry roasted, with salt added",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 326196,
+      "description": "Kale, frozen, cooked, boiled, drained, without salt",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 326698,
+      "description": "Mustard, prepared, yellow",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "mustard_yellow_prepared",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "dijon_mustard",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 327046,
+      "description": "Kiwifruit, green, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 327357,
+      "description": "Nectarines, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 328637,
+      "description": "Cheese, cheddar",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cheddar_regular",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "cheddar_reduced_fat",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "cheese_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 328841,
+      "description": "Cheese, cottage, lowfat, 2% milkfat",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "milk_cottage_2pct",
+          "token_jaccard": 0.6667
+        },
+        {
+          "source_profile_key": "cottage_cheese_nonfat",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 329370,
+      "description": "Cheese, mozzarella, low moisture, part-skim",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "mozzarella_part_skim",
+          "token_jaccard": 0.6667
+        },
+        {
+          "source_profile_key": "ricotta_part_skim",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 329490,
+      "description": "Egg, whole, dried",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "egg_whole_raw_fresh",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 329596,
+      "description": "Egg, yolk, raw, frozen, pasteurized",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 329716,
+      "description": "Egg, yolk, dried",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "egg_yolk",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 330137,
+      "description": "Yogurt, Greek, plain, nonfat",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "yogurt_greek_nonfat",
+          "token_jaccard": 1
+        }
+      ]
+    },
+    {
+      "fdcId": 330415,
+      "description": "Yogurt, Greek, strawberry, nonfat",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "yogurt_greek_nonfat",
+          "token_jaccard": 0.75
+        }
+      ]
+    },
+    {
+      "fdcId": 330458,
+      "description": "Oil, coconut",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "coconut_oil_generic",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "cooking_oil_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 331897,
+      "description": "Chicken, broilers or fryers, drumstick, meat only, cooked, braised",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 331960,
+      "description": "Chicken, broiler or fryers, breast, skinless, boneless, meat only, cooked, braised",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 332282,
+      "description": "Sauce, pasta, spaghetti/marinara, ready-to-serve",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 332397,
+      "description": "Ham, sliced, pre-packaged, deli meat (96%fat free, water added)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 332791,
+      "description": "Olives, green, Manzanilla, stuffed with pimiento",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 333008,
+      "description": "Cookies, oatmeal, soft, with raisins",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 333281,
+      "description": "Tomatoes, canned, red, ripe, diced",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 333374,
+      "description": "Fish, haddock, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 333476,
+      "description": "Fish, pollock, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 334194,
+      "description": "Fish, tuna, light, canned in water, drained solids",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "tuna_canned_water_drained",
+          "token_jaccard": 0.625
+        }
+      ]
+    },
+    {
+      "fdcId": 334536,
+      "description": "Restaurant, Chinese, fried rice, without meat",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 334628,
+      "description": "Restaurant, Latino, tamale, pork",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 334720,
+      "description": "Restaurant, Latino, pupusas con frijoles (pupusas, bean)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746758,
+      "description": "Beef, loin, tenderloin roast, separable lean only, boneless, trimmed to 0\" fat, select, cooked, roasted",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746759,
+      "description": "Beef, loin, top loin steak, boneless, lip-on, separable lean only, trimmed to 1/8\" fat, choice, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746760,
+      "description": "Beef, round, eye of round roast, boneless, separable lean only, trimmed to 0\" fat, select, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746761,
+      "description": "Beef, round, top round roast, boneless, separable lean only, trimmed to 0\" fat, select, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746762,
+      "description": "Beef, short loin, porterhouse steak, separable lean only, trimmed to 1/8\" fat, select, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746763,
+      "description": "Beef, short loin, t-bone steak, bone-in, separable lean only, trimmed to 1/8\" fat, choice, cooked, grilled",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746764,
+      "description": "Carrots, frozen, unprepared",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746765,
+      "description": "Cheese, dry white, queso seco",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746766,
+      "description": "Cheese, ricotta, whole milk",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "whole_milk",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 746767,
+      "description": "Cheese, swiss",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "swiss_cheese",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "cheese_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 746768,
+      "description": "Figs, dried, uncooked",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746769,
+      "description": "Lettuce, cos or romaine, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "romaine_lettuce_raw",
+          "token_jaccard": 0.6
+        }
+      ]
+    },
+    {
+      "fdcId": 746770,
+      "description": "Melons, cantaloupe, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746771,
+      "description": "Oranges, raw, navels",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746772,
+      "description": "Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746773,
+      "description": "Pears, raw, bartlett",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746774,
+      "description": "Restaurant, Chinese, sweet and sour pork",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746775,
+      "description": "Salt, table, iodized",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746776,
+      "description": "Milk, nonfat, fluid, with added vitamin A and vitamin D (fat free or skim)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746777,
+      "description": "Sauce, salsa, ready-to-serve",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746778,
+      "description": "Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746779,
+      "description": "Sausage, breakfast sausage, beef, pre-cooked, unprepared",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "pork_breakfast_sausage_cooked",
+          "token_jaccard": 0.4286
+        },
+        {
+          "source_profile_key": "turkey_breakfast_sausage_cooked",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 746780,
+      "description": "Sausage, Italian, pork, mild, cooked, pan-fried",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746781,
+      "description": "Sausage, pork, chorizo, link or ground, cooked, pan-fried",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746782,
+      "description": "Milk, whole, 3.25% milkfat, with added vitamin D",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746783,
+      "description": "Sausage, turkey, breakfast links, mild, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "sausage_italian_raw_unspecified",
+          "token_jaccard": 0.4286
+        },
+        {
+          "source_profile_key": "turkey_breakfast_sausage_cooked",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 746784,
+      "description": "Sugars, granulated",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746785,
+      "description": "Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 746952,
+      "description": "Ham, sliced, restaurant",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747429,
+      "description": "Cheese, American, restaurant",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747430,
+      "description": "Beans, Dry, Medium Red (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747431,
+      "description": "Beans, Dry, Red (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747432,
+      "description": "Beans, Dry, Flor de Mayo (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747433,
+      "description": "Beans, Dry, Brown (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747434,
+      "description": "Beans, Dry, Tan (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747435,
+      "description": "Beans, Dry, Light Tan (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747436,
+      "description": "Beans, Dry, Carioca (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747437,
+      "description": "Beans, Dry, Cranberry (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747438,
+      "description": "Beans, Dry, Light Red Kidney (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747439,
+      "description": "Beans, Dry, Pink (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747440,
+      "description": "Beans, Dry, Dark Red Kidney (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747441,
+      "description": "Beans, Dry, Navy (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747442,
+      "description": "Beans, Dry, Small White (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747443,
+      "description": "Beans, Dry, Small Red (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747444,
+      "description": "Beans, Dry, Black (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747445,
+      "description": "Beans, Dry, Pinto (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747446,
+      "description": "Beans, Dry, Great Northern (0% moisture)",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 747447,
+      "description": "Broccoli, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "broccoli_raw_florets",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 747693,
+      "description": "Ketchup, restaurant",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "ketchup_plain",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 747997,
+      "description": "Eggs, Grade A, Large, egg white",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 748236,
+      "description": "Eggs, Grade A, Large, egg yolk",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 748278,
+      "description": "Oil, canola",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cooking_oil_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 748323,
+      "description": "Oil, corn",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cooking_oil_unspecified",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "corn_generic_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 748366,
+      "description": "Oil, soybean",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cooking_oil_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 748608,
+      "description": "Oil, olive, extra virgin",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "olive_oil_generic",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 748967,
+      "description": "Eggs, Grade A, Large, egg whole",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 749420,
+      "description": "Pork, cured, bacon, cooked, restaurant",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 789828,
+      "description": "Butter, stick, unsalted",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "butter_unsalted_usda",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 789890,
+      "description": "Flour, wheat, all-purpose, enriched, bleached",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "flour_all_purpose_enriched_average",
+          "token_jaccard": 0.7143
+        },
+        {
+          "source_profile_key": "flour_all_purpose_enriched_unbleached",
+          "token_jaccard": 0.625
+        }
+      ]
+    },
+    {
+      "fdcId": 789951,
+      "description": "Flour, wheat, all-purpose, enriched, unbleached",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "flour_all_purpose_enriched_unbleached",
+          "token_jaccard": 0.8571
+        },
+        {
+          "source_profile_key": "flour_all_purpose_enriched_average",
+          "token_jaccard": 0.7143
+        }
+      ]
+    },
+    {
+      "fdcId": 790018,
+      "description": "Flour, wheat, all-purpose, unenriched, unbleached",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "flour_all_purpose_enriched_unbleached",
+          "token_jaccard": 0.625
+        },
+        {
+          "source_profile_key": "flour_all_purpose_enriched_average",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 790085,
+      "description": "Flour, whole wheat, unenriched",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 790146,
+      "description": "Flour, bread, white, enriched, unbleached",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 790214,
+      "description": "Flour, rice, white, unenriched",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "rice_white_long_grain_raw_dry",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 790276,
+      "description": "Flour, corn, yellow, fine meal, enriched",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 790508,
+      "description": "Butter, stick, salted",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "butter_salted_generic",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 790577,
+      "description": "Onions, red, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 790646,
+      "description": "Onions, yellow, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1104647,
+      "description": "Garlic, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "garlic_fresh_raw",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 1104705,
+      "description": "Flour, soy, defatted",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1104766,
+      "description": "Flour, soy, full-fat",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1104812,
+      "description": "Flour, rice, brown",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "rice_basmati_brown_unspecified",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "rice_brown_dry",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 1104867,
+      "description": "Flour, rice, glutinous",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1104913,
+      "description": "Flour, pastry, unenriched, unbleached",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1104962,
+      "description": "Onions, white, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1105073,
+      "description": "Bananas, overripe, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1105314,
+      "description": "Bananas, ripe and slightly ripe, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1750339,
+      "description": "Apples, red delicious, with skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "apple_raw_with_skin",
+          "token_jaccard": 0.4286
+        },
+        {
+          "source_profile_key": "zucchini_raw_with_skin",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 1750340,
+      "description": "Apples, fuji, with skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "apple_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "zucchini_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "potato_white_raw_skin_on",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 1750341,
+      "description": "Apples, gala, with skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "apple_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "zucchini_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "potato_white_raw_skin_on",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 1750342,
+      "description": "Apples, granny smith, with skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "apple_raw_with_skin",
+          "token_jaccard": 0.4286
+        },
+        {
+          "source_profile_key": "zucchini_raw_with_skin",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 1750343,
+      "description": "Apples, honeycrisp, with skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "apple_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "zucchini_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "potato_white_raw_skin_on",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 1750348,
+      "description": "Oil, peanut",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cooking_oil_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 1750349,
+      "description": "Oil, sunflower",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cooking_oil_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 1750350,
+      "description": "Oil, safflower",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cooking_oil_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 1750351,
+      "description": "Oil, olive, extra light",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "olive_oil_generic",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 1999626,
+      "description": "Mushroom, lion's mane",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1999627,
+      "description": "Mushroom, oyster",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1999628,
+      "description": "Mushrooms, shiitake",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1999629,
+      "description": "Mushrooms, white button",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 1999630,
+      "description": "Soy milk, unsweetened, plain, shelf stable",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "almond_milk_unsweet",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 1999631,
+      "description": "Almond milk, unsweetened, plain, shelf stable",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "almond_milk_unsweet",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 1999632,
+      "description": "Spinach, baby",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "spinach_raw",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "spinach_unspecified_form",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 1999633,
+      "description": "Spinach, mature",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "spinach_unspecified_form",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 1999634,
+      "description": "Tomato, roma",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "tomato_red_raw_generic",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2003586,
+      "description": "Flour, 00",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003587,
+      "description": "Flour, spelt, whole grain",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003588,
+      "description": "Flour, semolina, coarse and semi-coarse",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003589,
+      "description": "Flour, semolina, fine",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003590,
+      "description": "Apple juice, with added vitamin C, from concentrate, shelf stable",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003591,
+      "description": "Orange juice, no pulp, not fortified, from concentrate, refrigerated",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003592,
+      "description": "Grape juice, purple, with added vitamin C, from concentrate, shelf stable",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003593,
+      "description": "Grape juice, white, with added vitamin C, from concentrate, shelf stable",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003594,
+      "description": "Cranberry juice, not fortified, from concentrate, shelf stable",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003595,
+      "description": "Grapefruit juice, red, not fortified, not from concentrate, refrigerated",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003596,
+      "description": "Tomato juice, with added ingredients, from concentrate, shelf stable",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003597,
+      "description": "Orange juice, no pulp, not fortified, not from concentrate, refrigerated",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003598,
+      "description": "Mushroom, portabella",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003599,
+      "description": "Mushroom, king oyster",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003600,
+      "description": "Mushroom, enoki",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003601,
+      "description": "Mushroom, crimini",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003602,
+      "description": "Mushroom, maitake",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003603,
+      "description": "Mushroom, beech",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2003604,
+      "description": "Mushroom, pioppini",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2257044,
+      "description": "Soy milk, sweetened, plain, refrigerated",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2257045,
+      "description": "Almond milk, unsweetened, plain, refrigerated",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "almond_milk_unsweet",
+          "token_jaccard": 0.8
+        }
+      ]
+    },
+    {
+      "fdcId": 2257046,
+      "description": "Oat milk, unsweetened, plain, refrigerated",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "almond_milk_unsweet",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2258586,
+      "description": "Carrots, mature, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2258587,
+      "description": "Carrots, baby, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2258588,
+      "description": "Peppers, bell, green, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "bell_pepper_green_raw",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2258589,
+      "description": "Peppers, bell, yellow, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "bell_pepper_yellow_raw",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2258590,
+      "description": "Peppers, bell, red, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "bell_pepper_red_raw",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2258591,
+      "description": "Peppers, bell, orange, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2259792,
+      "description": "Buttermilk, low fat",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2259793,
+      "description": "Yogurt, plain, whole milk",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "whole_milk",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2259794,
+      "description": "Yogurt, Greek, plain, whole milk",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "yogurt_greek_nonfat",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2259795,
+      "description": "Cheese, parmesan, grated, refrigerated",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "parmesan_cheese_generic",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2259796,
+      "description": "Cheese, feta, whole milk, crumbled",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2261420,
+      "description": "Flour, almond",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2261421,
+      "description": "Flour, oat, whole grain",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "oat_flour_generic",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2261422,
+      "description": "Flour, potato",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2262072,
+      "description": "Peanut butter, creamy",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "peanut_butter",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "peanut_butter_cups",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "powdered_peanut_butter",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2262073,
+      "description": "Sesame butter, creamy",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "peanut_butter",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2262074,
+      "description": "Almond butter, creamy",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "peanut_butter",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2262075,
+      "description": "Flaxseed, ground",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "ground_flaxseed",
+          "token_jaccard": 1
+        }
+      ]
+    },
+    {
+      "fdcId": 2346384,
+      "description": "Cottage cheese, full fat, large or small curd",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346385,
+      "description": "Cream cheese, full fat, block",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cream_cheese_reduced_fat_pending",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "cream_sour_regular",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2346386,
+      "description": "Cream, heavy",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "heavy_cream",
+          "token_jaccard": 1
+        }
+      ]
+    },
+    {
+      "fdcId": 2346387,
+      "description": "Cream, sour, full fat",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cream_sour_regular",
+          "token_jaccard": 1
+        }
+      ]
+    },
+    {
+      "fdcId": 2346388,
+      "description": "Lettuce, iceberg, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "romaine_lettuce_raw",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2346389,
+      "description": "Lettuce, romaine, green, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "romaine_lettuce_raw",
+          "token_jaccard": 0.75
+        }
+      ]
+    },
+    {
+      "fdcId": 2346390,
+      "description": "Lettuce, leaf, red, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346391,
+      "description": "Lettuce, leaf, green, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346392,
+      "description": "Nuts, pine nuts, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346393,
+      "description": "Nuts, almonds, whole, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346394,
+      "description": "Nuts, walnuts, English, halves, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346395,
+      "description": "Nuts, pecans, halves, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346396,
+      "description": "Oats, whole grain, rolled, old fashioned",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "oats_rolled_dry",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 2346397,
+      "description": "Oats, whole grain, steel cut",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346398,
+      "description": "Pineapple, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346399,
+      "description": "Cherries, sweet, dark red, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346400,
+      "description": "Beans, snap, green, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "beans_green_raw",
+          "token_jaccard": 0.6
+        }
+      ]
+    },
+    {
+      "fdcId": 2346401,
+      "description": "Potatoes, russet, without skin, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346402,
+      "description": "Potatoes, red, without skin, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346403,
+      "description": "Potatoes, gold, without skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "potato_yukon_gold_raw",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2346404,
+      "description": "Sweet potatoes, orange flesh, without skin, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346405,
+      "description": "Celery, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "celery_raw_generic",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2346406,
+      "description": "Cucumber, with peel, raw",
+      "status": "exact_name_review",
+      "exact_profile_keys": [
+        "cucumber_raw_with_peel"
+      ],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346407,
+      "description": "Cabbage, green, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cabbage_green_raw",
+          "token_jaccard": 0.75
+        }
+      ]
+    },
+    {
+      "fdcId": 2346408,
+      "description": "Cabbage, red, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346409,
+      "description": "Strawberries, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "strawberries",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2346410,
+      "description": "Raspberries, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346411,
+      "description": "Blueberries, raw",
+      "status": "exact_name_review",
+      "exact_profile_keys": [
+        "blueberry_raw"
+      ],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346412,
+      "description": "Grapes, red, seedless, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346413,
+      "description": "Grapes, green, seedless, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2346414,
+      "description": "Applesauce, unsweetened, with added vitamin C",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2512371,
+      "description": "Flour, amaranth",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2512372,
+      "description": "Flour, quinoa",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2512373,
+      "description": "Flour, sorghum",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2512374,
+      "description": "Flour, buckwheat",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2512375,
+      "description": "Flour, rye",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2512376,
+      "description": "Flour, barley",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2512377,
+      "description": "Flour, cassava",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2512378,
+      "description": "Buckwheat, whole grain",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "bun_whole_grain",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "pita_whole_grain",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "tortilla_whole_grain",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2512379,
+      "description": "Millet, whole grain",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "bun_whole_grain",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "pita_whole_grain",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "tortilla_whole_grain",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2512380,
+      "description": "Rice, brown, long grain, unenriched, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "rice_white_long_grain_raw_dry",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2512381,
+      "description": "Rice, white, long grain, unenriched, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "rice_white_long_grain_raw_dry",
+          "token_jaccard": 0.7143
+        }
+      ]
+    },
+    {
+      "fdcId": 2514743,
+      "description": "Beef, ground, 90% lean meat / 10% fat, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "beef_ground_raw_lean_unspecified",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "beef_ground_93_raw",
+          "token_jaccard": 0.4444
+        },
+        {
+          "source_profile_key": "beef_ground_95_raw",
+          "token_jaccard": 0.4444
+        }
+      ]
+    },
+    {
+      "fdcId": 2514744,
+      "description": "Beef, ground, 80% lean meat / 20% fat, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "beef_ground_raw_lean_unspecified",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "beef_ground_93_raw",
+          "token_jaccard": 0.4444
+        },
+        {
+          "source_profile_key": "beef_ground_95_raw",
+          "token_jaccard": 0.4444
+        }
+      ]
+    },
+    {
+      "fdcId": 2514745,
+      "description": "Pork, ground, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2514746,
+      "description": "Chicken, ground, with additives, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "chicken_ground_93_raw",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2514747,
+      "description": "Turkey, ground, 93% lean/ 7% fat, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "ground_turkey_93_raw",
+          "token_jaccard": 0.7143
+        },
+        {
+          "source_profile_key": "ground_turkey_raw_unspecified_fat",
+          "token_jaccard": 0.5714
+        },
+        {
+          "source_profile_key": "beef_ground_93_raw",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2515373,
+      "description": "Nuts, brazilnuts, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2515374,
+      "description": "Nuts, cashew nuts, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2515375,
+      "description": "Nuts, hazelnuts or filberts, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2515376,
+      "description": "Peanuts, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2515377,
+      "description": "Flour, chestnut",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2515378,
+      "description": "Nuts, macadamia nuts, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2515379,
+      "description": "Nuts, pistachio nuts, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2515380,
+      "description": "Seeds, pumpkin seeds (pepitas), raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2515381,
+      "description": "Seeds, sunflower seed, kernel, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2515382,
+      "description": "Flour, coconut",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2644281,
+      "description": "Beans, cannellini, dry",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2644282,
+      "description": "Chickpeas, (garbanzo beans, bengal gram), dry",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2644283,
+      "description": "Lentils, dry",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "lentils_dry_generic",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "lentils_brown_raw_dry",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2644284,
+      "description": "Blackeye pea, dry",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2644285,
+      "description": "Beans, black, canned, sodium added, drained and rinsed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "black_beans_canned_drained",
+          "token_jaccard": 0.75
+        },
+        {
+          "source_profile_key": "beans_kidney_canned_drained",
+          "token_jaccard": 0.4444
+        },
+        {
+          "source_profile_key": "cannellini_canned_drained",
+          "token_jaccard": 0.4444
+        }
+      ]
+    },
+    {
+      "fdcId": 2644286,
+      "description": "Beans, navy, canned, sodium added, drained and rinsed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "black_beans_canned_drained",
+          "token_jaccard": 0.5556
+        },
+        {
+          "source_profile_key": "beans_kidney_canned_drained",
+          "token_jaccard": 0.4444
+        },
+        {
+          "source_profile_key": "cannellini_canned_drained",
+          "token_jaccard": 0.4444
+        }
+      ]
+    },
+    {
+      "fdcId": 2644287,
+      "description": "Beans, cannellini, canned, sodium added, drained and rinsed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "cannellini_canned_drained",
+          "token_jaccard": 0.625
+        },
+        {
+          "source_profile_key": "black_beans_canned_drained",
+          "token_jaccard": 0.5556
+        },
+        {
+          "source_profile_key": "beans_kidney_canned_drained",
+          "token_jaccard": 0.4444
+        }
+      ]
+    },
+    {
+      "fdcId": 2644288,
+      "description": "Chickpeas (garbanzo beans, bengal gram), canned, sodium added, drained and rinsed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "chickpeas_canned_drained_rinsed",
+          "token_jaccard": 0.4545
+        }
+      ]
+    },
+    {
+      "fdcId": 2644289,
+      "description": "Beans, kidney, dark red, canned, sodium added, sugar added, drained and rinsed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "beans_kidney_canned_drained",
+          "token_jaccard": 0.4545
+        }
+      ]
+    },
+    {
+      "fdcId": 2644290,
+      "description": "Beans, kidney, light red, canned, sodium added, sugar added, drained and rinsed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "beans_kidney_canned_drained",
+          "token_jaccard": 0.4545
+        }
+      ]
+    },
+    {
+      "fdcId": 2644291,
+      "description": "Peas, green, sweet, canned, sodium added, sugar added, drained and rinsed",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2644292,
+      "description": "Beans, pinto, canned, sodium added, drained and rinsed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "black_beans_canned_drained",
+          "token_jaccard": 0.5556
+        },
+        {
+          "source_profile_key": "beans_kidney_canned_drained",
+          "token_jaccard": 0.4444
+        },
+        {
+          "source_profile_key": "cannellini_canned_drained",
+          "token_jaccard": 0.4444
+        }
+      ]
+    },
+    {
+      "fdcId": 2644293,
+      "description": "Blackeye pea, canned, sodium added, drained and rinsed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "chickpeas_canned_drained_rinsed",
+          "token_jaccard": 0.4444
+        }
+      ]
+    },
+    {
+      "fdcId": 2644294,
+      "description": "Beans, great northern, canned, sodium added, drained and rinsed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "black_beans_canned_drained",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2646168,
+      "description": "Pork, loin, boneless, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "pork_loin_roast_boneless_raw",
+          "token_jaccard": 0.8
+        },
+        {
+          "source_profile_key": "pork_loin_raw_lean",
+          "token_jaccard": 0.6
+        }
+      ]
+    },
+    {
+      "fdcId": 2646169,
+      "description": "Pork, loin, tenderloin, boneless, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "pork_loin_roast_boneless_raw",
+          "token_jaccard": 0.6667
+        },
+        {
+          "source_profile_key": "pork_loin_raw_lean",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2646170,
+      "description": "Chicken, breast, boneless, skinless, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "chicken_breast_raw_skinless_boneless",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "chicken_thigh_raw_boneless_skinless",
+          "token_jaccard": 0.6667
+        },
+        {
+          "source_profile_key": "turkey_breast_raw_meat_only",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 2646171,
+      "description": "Chicken, thigh, boneless, skinless, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "chicken_thigh_raw_boneless_skinless",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "chicken_breast_raw_skinless_boneless",
+          "token_jaccard": 0.6667
+        },
+        {
+          "source_profile_key": "turkey_breast_raw_meat_only",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2646172,
+      "description": "Beef, ribeye, steak, boneless, choice, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2646173,
+      "description": "Beef, round, top round, boneless, choice, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2646174,
+      "description": "Beef, chuck, roast, boneless, choice, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "beef_chuck_raw_boneless",
+          "token_jaccard": 0.8333
+        }
+      ]
+    },
+    {
+      "fdcId": 2646175,
+      "description": "Beef, flank, steak, boneless, choice, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2647437,
+      "description": "Yogurt, plain, nonfat",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "yogurt_greek_nonfat",
+          "token_jaccard": 0.75
+        }
+      ]
+    },
+    {
+      "fdcId": 2647438,
+      "description": "Cheese, monterey jack, solid",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2647439,
+      "description": "Cheese, pasteurized process cheese food or product, American, singles",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2647440,
+      "description": "Cheese, provolone, sliced",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "provolone",
+          "token_jaccard": 0.6667
+        }
+      ]
+    },
+    {
+      "fdcId": 2647441,
+      "description": "Cheese, oaxaca, solid",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2647442,
+      "description": "Cheese, queso fresco, solid",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2647443,
+      "description": "Cheese, cotija, solid",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2684440,
+      "description": "Fish, salmon, sockeye, wild caught, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2684441,
+      "description": "Fish, salmon, Atlantic, farm raised, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2684442,
+      "description": "Fish, tilapia, farm raised, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2684443,
+      "description": "Crustaceans, shrimp, farm raised, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2684444,
+      "description": "Fish, cod, Atlantic, wild caught, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2684445,
+      "description": "Fish, catfish, farm raised, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2684446,
+      "description": "Crustaceans, crab, blue swimming, lump, pasteurized, refrigerated",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685568,
+      "description": "Squash, summer, green, zucchini, includes skin, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685569,
+      "description": "Squash, summer, yellow, includes skin, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685570,
+      "description": "Squash, winter, butternut, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685571,
+      "description": "Squash, winter, acorn, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685572,
+      "description": "Cabbage, bok choy, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685573,
+      "description": "Cauliflower, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685574,
+      "description": "Collards, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685575,
+      "description": "Brussels sprouts, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685576,
+      "description": "Beets, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685577,
+      "description": "Eggplant, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685578,
+      "description": "Tomatoes, whole, canned, solids and liquids, with salt added",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2685579,
+      "description": "Tomato, sauce, canned, with salt added",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "tomato_sauce_canned_generic",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2685580,
+      "description": "Tomato, paste, canned, without salt added",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "tomato_paste_canned_unsalted",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2685581,
+      "description": "Tomatoes, crushed, canned",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "tomatoes_crushed_canned",
+          "token_jaccard": 1
+        }
+      ]
+    },
+    {
+      "fdcId": 2685582,
+      "description": "Tomato, puree, canned",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710815,
+      "description": "Apricot, with skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "apple_raw_with_skin",
+          "token_jaccard": 0.6
+        },
+        {
+          "source_profile_key": "zucchini_raw_with_skin",
+          "token_jaccard": 0.6
+        },
+        {
+          "source_profile_key": "potato_white_raw_skin_on",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2710816,
+      "description": "Melons, honeydew, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710817,
+      "description": "Plantains, ripe, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710818,
+      "description": "Plantains, underripe, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710819,
+      "description": "Chia seeds, dry, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "chia_seeds_dry",
+          "token_jaccard": 0.75
+        }
+      ]
+    },
+    {
+      "fdcId": 2710820,
+      "description": "Bulgur, dry, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "lentils_dry_generic",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2710821,
+      "description": "Wild rice, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710822,
+      "description": "Arugula, baby, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710823,
+      "description": "Asparagus, green, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710824,
+      "description": "Avocado, Hass, peeled, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710825,
+      "description": "Rice, black, unenriched, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710826,
+      "description": "Corn, sweet, yellow and white kernels,  fresh, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710827,
+      "description": "Einkorn, grain, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710828,
+      "description": "Farro, pearled, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710829,
+      "description": "Fonio, grain, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710830,
+      "description": "Khorasan, grain, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710831,
+      "description": "Kiwifruit (kiwi), green, peeled, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710832,
+      "description": "Mandarin, seedless, peeled, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710833,
+      "description": "Mango, Tommy Atkins, peeled, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710834,
+      "description": "Mango, Ataulfo, peeled, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710835,
+      "description": "Corn flour, masa harina, white or yellow, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710836,
+      "description": "Pear, Anjou, green, with skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "apple_raw_with_skin",
+          "token_jaccard": 0.4286
+        },
+        {
+          "source_profile_key": "zucchini_raw_with_skin",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2710837,
+      "description": "Plum, black, with skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "apple_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "zucchini_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "potato_white_raw_skin_on",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2710838,
+      "description": "Rice, red, unenriched, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710839,
+      "description": "Sorghum bran, white, unenriched, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710840,
+      "description": "Sorghum flour, white, pearled, unenriched, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710841,
+      "description": "Sorghum grain, white, pearled, unenriched, dry, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "rice_white_long_grain_raw_dry",
+          "token_jaccard": 0.4444
+        }
+      ]
+    },
+    {
+      "fdcId": 2710842,
+      "description": "Sorghum, whole grain, white, dry, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2710843,
+      "description": "Plantains, overripe, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727566,
+      "description": "Chicken, drumstick, meat and skin, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727567,
+      "description": "Chicken, thigh, meat and skin, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727568,
+      "description": "Chicken, wing, meat and skin, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727569,
+      "description": "Chicken, breast, meat and skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "chicken_breast_raw_skinless_boneless",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2727570,
+      "description": "Lamb, ground, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727571,
+      "description": "Bison, ground, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727572,
+      "description": "Beef, short loin (NY strip steak), raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727573,
+      "description": "Beef, tenderloin steak, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727574,
+      "description": "Beef, top sirloin steak, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727575,
+      "description": "Pork, chop, center cut, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727576,
+      "description": "Pork, belly, with skin, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "apple_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "zucchini_raw_with_skin",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "potato_white_raw_skin_on",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2727577,
+      "description": "Pawpaw, peeled, seeded, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727578,
+      "description": "Squash, pie pumpkin, peeled, seeded, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727579,
+      "description": "Squash, spaghetti, peeled, seeded, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727580,
+      "description": "Rutabaga, peeled, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727581,
+      "description": "Blackberries, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727582,
+      "description": "Tomatillos, dehusked, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727583,
+      "description": "Cabbage, napa, leaf, destemmed, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727584,
+      "description": "Leeks, bulb and greens, root removed, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727585,
+      "description": "Green onion, (scallion), bulb and greens, root removed, raw",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "scallion_green_onion_raw",
+          "token_jaccard": 0.4444
+        }
+      ]
+    },
+    {
+      "fdcId": 2727586,
+      "description": "Shallots, bulb, peeled, root removed, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727587,
+      "description": "Juice, prune, shelf-stable",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727588,
+      "description": "Juice, pomegranate, from concentrate, shelf-stable",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2727589,
+      "description": "Juice, tart cherry, from concentrate, shelf-stable",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747652,
+      "description": "Anchovies, canned in olive oil, with salt, drained",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747653,
+      "description": "Beet greens, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747654,
+      "description": "Cod, Pacific or Alaskan, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747655,
+      "description": "Fennel, bulb, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747656,
+      "description": "Halibut, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747657,
+      "description": "Lobster, tail only, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747658,
+      "description": "Mahi mahi, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747659,
+      "description": "Parsnips, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747660,
+      "description": "Peppers, banana or Hungarian wax, seeded, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747661,
+      "description": "Peppers, jalapeno, seeded, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747662,
+      "description": "Peppers, poblano, seeded, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747663,
+      "description": "Peppers, serrano, seeded, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747664,
+      "description": "Radicchio, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747665,
+      "description": "Radishes, red, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747666,
+      "description": "Scallops, bay, Patagonian, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747667,
+      "description": "Scallops, sea, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747668,
+      "description": "Sea bass, Chilean, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747669,
+      "description": "Snapper, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747670,
+      "description": "Snow crab, legs only, frozen  ",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747671,
+      "description": "Squid (calamari), frozen, tubes only",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747672,
+      "description": "Swordfish, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747673,
+      "description": "Tuna, ahi or yellowfin, frozen, wild caught",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747674,
+      "description": "Turnips, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747675,
+      "description": "Watermelon, seedless, flesh only, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2747676,
+      "description": "Watermelon, seedless, rind only, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758975,
+      "description": "Rhubarb, stalk, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758976,
+      "description": "Cranberries, dried, sweetened",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758977,
+      "description": "Grapefruit, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758978,
+      "description": "Plums, dried (prunes), uncooked",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758979,
+      "description": "Raisins, golden, seedless",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758980,
+      "description": "Raisins, dark, seedless",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758981,
+      "description": "Edamame, frozen, prepared",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758982,
+      "description": "Baked beans, Original, canned, with pork",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758983,
+      "description": "Beans, baked, canned, vegetarian",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758984,
+      "description": "Refried beans, canned (pinto)",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "beans_pinto_cooked",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2758985,
+      "description": "Refried beans, canned, vegetarian",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758986,
+      "description": "Mayonnaise, Regular",
+      "status": "exact_name_review",
+      "exact_profile_keys": [
+        "mayonnaise_regular"
+      ],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758987,
+      "description": "Salad dressing, Italian dressing, commercial, regular",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758988,
+      "description": "Dressing, Ranch",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "salad_dressing_ranch_light",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2758989,
+      "description": "Peanut butter, Creamy",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "peanut_butter",
+          "token_jaccard": 1
+        },
+        {
+          "source_profile_key": "peanut_butter_cups",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "powdered_peanut_butter",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2758990,
+      "description": "Sweetened condensed milk",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758991,
+      "description": "Bologna, beef",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758992,
+      "description": "Bologna, classic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758993,
+      "description": "Bread, white, commercial",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758994,
+      "description": "Bread, 100% whole wheat, commercial",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758995,
+      "description": "Bread, mulitgrain, commercial",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758996,
+      "description": "Tortilla, wheat flour, shelf stable",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2758997,
+      "description": "Tortilla, corn, shelf stable",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "corn_tortilla",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2758998,
+      "description": "Pasta, dry, enriched, spaghetti",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "pasta_dry_standard",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2759000,
+      "description": "Pasta, dry, whole grain, spaghetti ",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2759001,
+      "description": "Lunchmeat, turkey, oven roasted, sliced",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2759002,
+      "description": "Lunchmeat, ham, black forest, sliced",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2759003,
+      "description": "Lunchmeat, roast beef, sliced, prepackaged",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2759004,
+      "description": "Lunchmeat, chicken breast, sliced",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "chicken_breast_raw_skinless_boneless",
+          "token_jaccard": 0.6
+        },
+        {
+          "source_profile_key": "chicken_breast_cooked",
+          "token_jaccard": 0.4286
+        }
+      ]
+    },
+    {
+      "fdcId": 2759005,
+      "description": "Salami, hard, sliced",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2759006,
+      "description": "Pepperoni, beef and pork, sliced",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2768188,
+      "description": "Alaska Pollock, raw",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779240,
+      "description": "Sorghum, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779241,
+      "description": "Quinoa, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779242,
+      "description": "Mushroom corn, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779243,
+      "description": "Millet, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779244,
+      "description": "Khorasan, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779245,
+      "description": "Kamut, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779246,
+      "description": "Winter wheat, hard red, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779247,
+      "description": "Buckwheat, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779248,
+      "description": "Brown rice, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779249,
+      "description": "Amaranth, puffed, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779250,
+      "description": "Rice, white, puffed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "rice_white_cooked",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "rice_white_long_grain_raw_dry",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2779251,
+      "description": "Sorghum, puffed",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779252,
+      "description": "Quinoa, puffed",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779253,
+      "description": "Oats, puffed",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779254,
+      "description": "Wheat, durum, puffed",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779255,
+      "description": "Chickpeas, puffed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "chickpeas_form_unspecified",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2779256,
+      "description": "Brown rice, puffed",
+      "status": "similar_name_review",
+      "exact_profile_keys": [],
+      "suggestions": [
+        {
+          "source_profile_key": "rice_basmati_brown_unspecified",
+          "token_jaccard": 0.5
+        },
+        {
+          "source_profile_key": "rice_brown_dry",
+          "token_jaccard": 0.5
+        }
+      ]
+    },
+    {
+      "fdcId": 2779257,
+      "description": "Millet, puffed",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779258,
+      "description": "Sorghum, flour, pre-gelatinized, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779259,
+      "description": "Quinoa flour, pre-gelatinized, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779260,
+      "description": "Millet, flour, pre-gelatinized, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779261,
+      "description": "Brown rice, flour, coarse ground, pre-gelatinized, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779262,
+      "description": "Amaranth, flour, pre-gelatinized, organic",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779263,
+      "description": "White rice, flour, pre-gelatinized",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779264,
+      "description": "Sorghum, flour, pre-gelatinized",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779265,
+      "description": "Millet, flour, pre-gelatinized",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779266,
+      "description": "Corn, flour, pre-gelatinized",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779267,
+      "description": "Chickpea flour, pre-gelatinized",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    },
+    {
+      "fdcId": 2779268,
+      "description": "Kernza flour, pre-gelatinized",
+      "status": "no_candidate",
+      "exact_profile_keys": [],
+      "suggestions": []
+    }
+  ]
+}
