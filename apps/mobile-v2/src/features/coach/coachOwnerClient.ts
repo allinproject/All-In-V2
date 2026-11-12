@@ -8,6 +8,7 @@ const uuid=(x:unknown):x is string=>typeof x==='string'&&
 const obj=(x:unknown):x is Record<string,unknown>=>!!x&&typeof x==='object'&&!Array.isArray(x);
 const unavailable=()=>({status:'unavailable' as const});
 export type CoachMessage={id:string;threadId:string;role:'user'|'assistant';content:string;createdAt:string};
+export type CoachHistoryCursor={beforeCreatedAt:string;beforeMessageId:string};
 export type CoachSendCommand={threadId:string;clientRequestId:string;
  userMessageId:string;assistantMessageId:string;message:string};
 export type CoachServices={
@@ -38,9 +39,11 @@ export function createCoachOwnerClient(deps:CoachServices,ownerId:string,
    const r=await call({action:'open',candidateThreadId});
    return uuid(r?.threadId)?{status:'ready' as const,threadId:r.threadId}:unavailable();
   },
-  history:async(threadId:string)=>{
-   if(!readEnabled||!uuid(threadId))return unavailable();
-   const r=await call({action:'history',threadId,limit:40});
+  history:async(threadId:string,cursor:CoachHistoryCursor|null=null)=>{
+   if(!readEnabled||!uuid(threadId)||
+     (cursor!==null&&(!uuid(cursor.beforeMessageId)||
+       !Number.isFinite(Date.parse(cursor.beforeCreatedAt)))))return unavailable();
+   const r=await call({action:'history',threadId,cursor,limit:40});
    if(!r||!Array.isArray(r.messages)||r.messages.length>40||
       typeof r.hasMore!=='boolean')return unavailable();
    const messages:CoachMessage[]=[];
@@ -54,7 +57,18 @@ export function createCoachOwnerClient(deps:CoachServices,ownerId:string,
     ids.add(m.id);messages.push({id:m.id,threadId,role:m.role as CoachMessage['role'],
       content:m.content,createdAt:m.createdAt});
    }
-   return {status:'ready' as const,messages,hasMore:r.hasMore};
+   const next=r.nextCursor;
+   if(r.hasMore===true&&(!obj(next)||!uuid(next.beforeMessageId)||
+     typeof next.beforeCreatedAt!=='string'||
+     !Number.isFinite(Date.parse(next.beforeCreatedAt))||
+     !messages.length||messages.at(-1)?.id!==next.beforeMessageId||
+     messages.at(-1)?.createdAt!==next.beforeCreatedAt))return unavailable();
+   if(r.hasMore===false&&next!=null)return unavailable();
+   if(cursor&&messages.some(m=>Date.parse(m.createdAt)>Date.parse(cursor.beforeCreatedAt)||
+     (m.createdAt===cursor.beforeCreatedAt&&m.id>=cursor.beforeMessageId)))return unavailable();
+   return {status:'ready' as const,messages,hasMore:r.hasMore,
+     nextCursor:r.hasMore?{beforeCreatedAt:(next as CoachHistoryCursor).beforeCreatedAt,
+       beforeMessageId:(next as CoachHistoryCursor).beforeMessageId}:null};
   },
   send:async(command:CoachSendCommand)=>{
    if(!readEnabled||!sendEnabled||!command||
