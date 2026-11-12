@@ -32,6 +32,16 @@ versions fail closed. Joining defaults to participation **hidden**,
 does not create `v2_event_participations`, and does not publish a
 Community workout. Leaving always hides membership visibility.
 
+A not-yet-joined athlete has a **virtual, non-persisted**
+membership read snapshot with `version=1`, `joined=false` and hidden
+participation. The first explicit join inserts the canonical row with
+`version=2`; this is consistent with the existing
+`eventHubMembershipLifecycle.ts` client receipt requirement. Do not
+create persisted joined rows merely because a URL was submitted or a
+group page was viewed. Future reader must return the exact virtual
+prejoin state and, after mutation, the actual versioned row under the
+same authenticated owner.
+
 The review-only rollback replay is
 `scripts/test-v2-eventhub-membership-writer-local-postgres.psql`
 in the established local Supabase foundation workflow.
