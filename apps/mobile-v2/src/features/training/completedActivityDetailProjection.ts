@@ -11,6 +11,12 @@ export type MetricEvidence=LayoutMetric&{
  provenance:'device'|'provider'|'manual'|'derived'|'estimated';
  source:string;
  unit?:string;
+ /** Keep owner-certified data quality for Details/Coach display; a partially
+  * verified measurement must not appear indistinguishable from trusted data.
+  * Optional for legacy presentation-only fixtures; canonical reads supply it.
+  */
+ quality?:'trusted'|'partial';
+ sourceQuality?:'trusted'|'partial';
 };
 export type StructuredKind='route'|'splits'|'laps'|'intervals'|'heart_rate_series'|
  'power_series'|'cadence_series'|'elevation_series'|'speed_series'|
