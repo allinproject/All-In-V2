@@ -150,7 +150,7 @@ BEGIN
  IF p_limit IS NULL OR p_limit<1 OR p_limit>25 OR
     (p_cursor IS NOT NULL AND p_cursor !~ '^(0|[1-9][0-9]{0,6})$')
  THEN RAISE EXCEPTION 'Invalid account export page bound' USING ERRCODE='22023'; END IF;
- v_offset:=pg_catalog.coalesce(p_cursor::integer,0);
+ v_offset:=coalesce(p_cursor::integer,0);
  IF v_offset>2000000 THEN RAISE EXCEPTION 'Page cursor out of bounds' USING ERRCODE='22023'; END IF;
  IF p_collection IS NULL OR
     NOT (v_inventory->'collections' ? p_collection)
