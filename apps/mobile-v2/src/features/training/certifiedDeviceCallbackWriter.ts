@@ -20,6 +20,10 @@ export type VerifiedDeviceCallback={
  observations:readonly DeviceMetricObservation[];
 };
 export type CanonicalDeviceWriter={
+ /** Only the trusted database adapter can opt in. An exact registered source
+  * is not proof that every scalar measurement was already persisted; the
+  * canonical metric writer itself enforces immutable idempotent replay. */
+ appendMissingMetricsOnExactSourceReplay?:true;
  /** Snapshot MUST be transactional, owner-scoped and complete for identity + overlap. */
  findCandidates(identity:ActivitySourceIdentity):Promise<CanonicalSourceCandidateSnapshot>;
  /** Atomic owner-checked canonical write. Must enforce source uniqueness, immutable
@@ -50,14 +54,15 @@ export async function routeVerifiedDeviceCallback(
  if(snapshot.sourceIdentityKey!==sourceIdentityKey(callback.identity))
   throw new Error('Source candidate identity changed.');
  const decision=reconcileCertifiedActivitySource(callback.identity,snapshot);
- if(decision.decision==='exact_replay')
+ if(decision.decision==='exact_replay'&&!writer.appendMissingMetricsOnExactSourceReplay)
   return {status:'already_applied',activityId:decision.activityId};
  if(decision.decision==='needs_review'||decision.decision==='revision_review')
   return {status:'review_required',reason:decision.reason,activityId:decision.activityId};
  if(decision.decision==='new_activity_candidate')
   return {status:'review_required',reason:'canonical_activity_creation_requires_approved_writer',
    activityId:null};
- // Only attach to a single server-certified session; never merge on time/HR.
+ // Exact replay reaches the writer ONLY when the trusted DB adapter explicitly
+ // enables canonical missing-measurement append. No changed source revisions.
  const activityId=decision.activityId;
  if(callback.source.activityId!==activityId)
   throw new Error('Certified activity identity does not match reconciliation.');
