@@ -50,6 +50,8 @@ on:
       - 'supabase/functions/v2-device-pairing/**'
       - 'supabase/functions/_shared/appleWatchOwnershipVerifier.ts'
       - 'supabase/functions/_shared/appleWatchOwnershipVerifier.test.mjs'
+      - 'supabase/functions/_shared/appleAppAttestEnrollmentVerifier.ts'
+      - 'supabase/functions/_shared/appleAppAttestEnrollmentVerifier.test.ts'
       - 'supabase/functions/_shared/appleWatchOwnershipPostgres.ts'
       - 'docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql'
       - 'scripts/test-v2-apple-attested-phone-trust-postgres.psql'
@@ -305,6 +307,7 @@ jobs:
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -c "INSERT INTO public.v2_activity_metric_definitions(metric_code,definition_version,display_name,canonical_unit,value_kind,sport_scope,measurement_kinds,display_group,privacy_class,status) VALUES ('ingest_runtime_metric',1,'Runtime metric','units','numeric',ARRAY['cycling'],ARRAY['source_measured'],'other','private','published')"
           deno check supabase/functions/v2-device-ingest/index.ts
           deno check supabase/functions/v2-device-pairing/index.ts
+          deno test --allow-env --allow-net supabase/functions/_shared/appleAppAttestEnrollmentVerifier.test.ts
           deno test --allow-env --allow-net scripts/test-v2-device-ingest-postgres-runtime.ts
       - name: Validate restricted device pairing and revocation in disposable PostgreSQL
         env:
