@@ -86,6 +86,23 @@ BEGIN
  IF pg_catalog.cardinality(v_missing)<>0 OR pg_catalog.cardinality(v_unknown)<>0
  THEN RAISE EXCEPTION 'Canonical owner tables changed: missing %, unknown %',
    v_missing,v_unknown USING ERRCODE='42501'; END IF;
+ -- Future Nutrition, Progress, cookbook and equipment schemas are not
+ -- covered merely because an author chose a different owner column name.
+ -- Block new domain tables (including reference-like names) until each is
+ -- classified as personal or reference and added to this owning registry.
+ IF EXISTS (
+   SELECT 1 FROM pg_catalog.pg_class c
+   JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
+     AND (c.relname LIKE 'v2_nutrition_%'
+       OR c.relname LIKE 'v2_progress_%'
+       OR c.relname LIKE 'v2_food_%'
+       OR c.relname LIKE 'v2_recipe_%'
+       OR c.relname LIKE 'v2_cookbook_%'
+       OR c.relname LIKE 'v2_gear_%'
+       OR c.relname LIKE 'v2_shoe_%')
+ ) THEN RAISE EXCEPTION 'New domain requires explicit account export classification'
+   USING ERRCODE='42501'; END IF;
  -- Future owner data can use owner_id / athlete_id / actor_id rather
  -- than user_id.  Reject unknown V2 relations before a supposedly complete
  -- export silently skips Nutrition, Progress, equipment or Community posts.
