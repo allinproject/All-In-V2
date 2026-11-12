@@ -63,3 +63,18 @@ The flag rejects incomplete or extra records against that review source count, b
 The recipe projection now explicitly preserves `source_freezer_kit_review_only` for 20 V1 freezer-kit records. The exact read-only V1 SQL projection was executed after this change: 907 recipes; 20 explicit freezer-kit source modes; zero nested `nutrition` and `nutrition_delta` keys. The three observed source `kind` values are `freezer_kit` (8), `raw_kit` (2), and `uncooked_assembled` (10). These are review candidates, not normalized V2 meal states. Their assembly, freeze, thaw and cook-day instructions and raw component measures remain separate from cooked edible recipe amounts. Source recipe projection SHA-256 is updated in the committed digest manifest; the other three unchanged projections retain their prior hashes.
 
 The test runner now has a lightweight no-deploy workflow at `.github/workflows/v2-cookbook-candidate-validation.yml`, triggered only by its own script/test/workflow files. It does not run Expo/npm installs or require database secrets. Until the run is checked, do not claim the GitHub Actions job passed. The script is also checked with a small isolated JavaScript harness for critical expected-count, malformed-input, nested-macro and freezer-kit acceptance cases.
+
+## Founder design approval and review-first triage — 2026-11-12
+
+The founder approved ALL-218 **architecture and staged source review**, recorded in Linear comment `7470d4c0-676e-480d-8ced-914e81ed2896`. **This is not authorization to deploy a V2 migration, import live records, make any recipe publicly visible, or bypass ALL-222/225/226/228/229/216.**
+
+A lightweight source review report is available in `scripts/cookbook-review-triage.cjs`, with `scripts/cookbook-review-triage.test.cjs` and the existing isolated Cookbook CI workflow. After the separately approved, read-only recipe candidate projection has been exported to newline-delimited JSON, run:
+
+```bash
+node --test scripts/cookbook-review-triage.test.cjs
+node scripts/cookbook-review-triage.cjs /private/path/recipes.ndjson 907 > /private/path/recipe-review-queue.json
+```
+
+Each output recipe has the source identity, a raw freezer-kit indicator, a list of source-review flags, and the constant `reviewRequired:true`, `publicationApproved:false`. The report groups counts of missing provenance, V1 draft/unpublished source states, free-text ingredient lines, incomplete ingredient items or amounts, and sparse source variants; it requires a source review of cooking quantity and preparation state for standard recipes and separate assembly/cook-day review for freezer kits. It intentionally flags ingredient identity/calculation/yield and image rights review **for every recipe** until separately adjudicated. It does not copy nutrient facts, infer cooking yield, decide source rights, issue publication credentials, or write to a database. The review queue is a worklist, not an approved seed.
+
+A source candidate can move from source preservation to ingredient/quantity verification and cooking/yield verification only under its owning domain contracts. Publication requires a distinct audited owner decision under a final, approved writer/security design, not any source `published`, `tested`, `active`, image `approved`, triage flag absence, or passing validator status.
