@@ -192,14 +192,14 @@ begin
   begin
     perform public.v2_coach_append_exchange(
       'aa11aa11-1111-4111-8111-111111111111',
-      'cc88cc88-8888-4888-8888-888888888888',
+      'cc33cc33-3333-4333-8333-333333333333',
       'ee55ee55-5555-4555-8555-555555555555',
       '10101010-1010-4010-8010-101010101010',
       '20202020-2020-4020-8020-202020202020',
       1,
-      'same request moved to a different thread',
+      'same completed request with different message identities',
       'should not persist');
-    raise exception 'A request ID was replayed into a different Coach thread';
+    raise exception 'A completed request accepted different message identities';
   exception when sqlstate '40001' then null;
   end;
   perform public.v2_coach_claim_turn(
