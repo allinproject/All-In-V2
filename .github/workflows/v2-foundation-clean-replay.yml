@@ -129,7 +129,22 @@ jobs:
           node --test scripts/check-v2-applied-migration-integrity.test.mjs
           node scripts/check-v2-applied-migration-integrity.mjs
       - name: Boot isolated local Supabase services
-        run: supabase start
+        run: |
+          set -euo pipefail
+          # A GitHub-hosted runner can briefly hold a local Inbucket port.
+          # Retry only this known Docker bind failure, never migration or SQL errors.
+          if supabase start > /tmp/v2-supabase-start.log 2>&1; then
+            cat /tmp/v2-supabase-start.log
+          else
+            cat /tmp/v2-supabase-start.log
+            if ! grep -Eq 'failed to bind host port .*:54324/tcp: address already in use' /tmp/v2-supabase-start.log; then
+              exit 1
+            fi
+            echo 'Transient local Inbucket port conflict; stopping partial disposable services before one retry'
+            supabase stop --no-backup
+            sleep 5
+            supabase start
+          fi
       - name: Reset local-only foundation and replay every committed migration
         run: supabase db reset --local --no-seed
       - name: Verify local foundation objects, permissions and migration count
