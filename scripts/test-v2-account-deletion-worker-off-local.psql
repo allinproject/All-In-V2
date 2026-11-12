@@ -1,0 +1,44 @@
+\set ON_ERROR_STOP on
+-- ALL-251 disposable local Supabase ONLY. Never enable the live processor.
+-- Tests the installed migration's hard-OFF gate with a real service_role,
+-- a pending synthetic request and full rollback.
+BEGIN;
+DO $gate$
+BEGIN
+ IF NOT EXISTS(
+  SELECT 1 FROM allin_private.v2_account_deletion_processor_config
+  WHERE singleton=true AND execution_enabled=false
+ ) THEN RAISE EXCEPTION 'Deletion worker OFF gate absent from local foundation'; END IF;
+END $gate$;
+INSERT INTO auth.users(id)
+ VALUES ('a5555555-5555-4555-8555-555555555555');
+INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+ VALUES ('a5555555-5555-4555-8555-555555555555',
+         'b5555555-5555-4555-8555-555555555555','requested');
+SET LOCAL ROLE service_role;
+DO $blocked$
+BEGIN
+ BEGIN
+  PERFORM public.v2_claim_account_deletion_for_processing(
+   'a5555555-5555-4555-8555-555555555555',
+   'b5555555-5555-4555-8555-555555555555');
+  RAISE EXCEPTION 'Disabled account deletion worker accepted a claim';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $blocked$;
+RESET ROLE;
+DO $invariant$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM auth.users WHERE id='a5555555-5555-4555-8555-555555555555')
+ OR NOT EXISTS(
+   SELECT 1 FROM allin_private.v2_account_deletion_requests
+   WHERE user_id='a5555555-5555-4555-8555-555555555555'
+     AND request_id='b5555555-5555-4555-8555-555555555555'
+     AND status='requested')
+ OR EXISTS(
+   SELECT 1 FROM allin_private.v2_account_deletion_execution_audit
+   WHERE request_id='b5555555-5555-4555-8555-555555555555')
+ THEN RAISE EXCEPTION 'Disabled claim mutated account/deletion/audit state'; END IF;
+ RAISE NOTICE 'PASS ALL-251: service_role cannot claim while deletion processor is OFF';
+END $invariant$;
+ROLLBACK;
