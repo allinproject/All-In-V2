@@ -154,3 +154,15 @@ test('rejects export counts that do not match the frozen source inventory',async
     assert(malformed.errors.some(e=>e.includes('manifest must specify positive integer')));
   } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
+
+test('preserves staged raw freezer-kit instructions without implying cooked recipe readiness',()=>{
+  const errors=[],r=recipe();
+  r.source_freezer_kit_review_only={kind:'raw_kit',quantity_basis:'per_serving',
+    assembly:['Freeze the uncooked components'],thaw:'Thaw refrigerated',
+    freezer_ingredients:[{item:'raw chicken',amount:'10 oz raw'}],
+    cook_day_instructions:['Cook to a safe endpoint']};
+  inspect('recipes',r,seen(),errors);assert.deepEqual(errors,[]);
+  const invalid=structuredClone(r);invalid.source_freezer_kit_review_only.nutrition={calories:500};
+  const rejected=[];inspect('recipes',invalid,seen(),rejected);
+  assert(rejected.some(e=>e.includes('nutrition: forbidden')));
+});
