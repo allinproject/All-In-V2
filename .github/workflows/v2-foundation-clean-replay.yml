@@ -23,6 +23,7 @@ on:
       - 'scripts/test-v2-billing-local-foundation.psql'
       - 'scripts/test-v2-billing-backup-seed-local.psql'
       - 'scripts/test-v2-billing-backup-restored-local.psql'
+      - 'scripts/verify-v2-billing-postdeploy-readonly.psql'
       - 'scripts/test-v2-billing-preupgrade-seed.psql'
       - 'scripts/test-v2-billing-schema-rollback-local.psql'
       - 'docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql'
@@ -139,6 +140,13 @@ jobs:
           done
           docker cp scripts/test-v2-billing-local-foundation.psql "$db_container:/tmp/v2-billing-foundation-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-foundation-qa.psql
+      - name: Check billing security catalog using production-safe read-only SQL
+        run: |
+          set -euo pipefail
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp scripts/verify-v2-billing-postdeploy-readonly.psql "$db_container:/tmp/v2-billing-readonly-inventory.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-readonly-inventory.psql
       - name: Restore synthetic billing ledger from a real local PostgreSQL backup
         run: |
           set -euo pipefail
