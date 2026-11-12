@@ -98,6 +98,20 @@ silently change a plan. Revalidate on physical installed devices.
 - [ ] Validate installed iOS/Android Training calendar → start/finish → Completed Activity Overview/Details/Coach, protected owner reads, account switching, multi-event plans and profile export/deletion. Verify build/type generation.
 - [ ] Obtain explicit authorized release approval before hosted deployment; verify post-deploy grants/schemas and keep unapproved workers/features OFF.
 
+## 4A. Canonical Completed Activity owner-reader DTO and session expiry acceptance
+
+**Current gap, not an approved public API:** the review-only `public.v2_completed_activity_detail_candidate` returns an activity summary with `activityId`, sources without their raw provider record IDs, `activityMetrics` containing numeric typed values, segments, and strength-set facts. The existing mobile `completedActivityOwnerRead.ts` deliberately consumes a **different, source-certified presentation DTO**: `id/ownerId/version`, sport/subtype, a stable opaque source key per measurement, versioned published definitions, source/metric confidence, and an authorized display value + real unit. Do **not** connect those two shapes directly, fabricate a `displayValue`, infer missing route/series payloads from mere count, or create another workout store. This adapter must be owned and reviewed under ALL-243/222.
+
+Acceptance for the single owner-backed integration:
+- Authenticate and re-check the actual owner/session before any private owner projection, including `auth.sessions.not_after` when present. Do not rely solely on an extant row or a stale JWT claim; session expiry and account change must fail closed.
+- Return a bounded, complete, authenticated *one activity* snapshot with exact owner, canonical ID/revision, approved sport/subtype and source-local opaque IDs—not private provider record IDs or Storage paths.
+- Resolve multiple published versions of the **same metric code** within one activity or segment as `conflicting_versions` in the existing `unresolvedMetrics`, without emitting two screen metrics or silently picking whichever was first. The review-only scalar/segment candidate and local PG regression fixtures now encode this rule; a green replay at their exact commit is **still required**.
+- Translate typed numeric/text/boolean canonical values with explicitly approved unit formatters/version, provenance and source/measurement quality. A measured zero is real; missing/low-quality data is not zero. The client must not treat `unresolvedMetrics`, private counts, or source labels as authoritatively displayed facts.
+- Include immutable canonical snapshot revision, semantic segment IDs and authorized/private routes/series descriptors only after the approved secure reader exists. Never expose raw object paths, provider secrets or HealthKit identifiers.
+- Prove anonymous/foreign owner, revoked/expired sessions, exact owner switch, duplicate source, same-code different-version, cross-sport metric, and partial-result failures against real roles plus an installed screen before granting client execution.
+
+**Separation of gates:** Existing 18-foundation/30-candidate replay success at run 43138298262 predates these new SQL candidate changes and does **not** validate them. Only the new commit-matched CI suite can close this review check. The hosted migration, public RPC grant, worker activation, and installed client remain OFF.
+
 ## 5. Next smallest executable decision
 
 Obtain the **ALL-239 Goals and ALL-244 EventHub canonical owner key/version/participation contracts**, rather than adding a new Training or event schema. Then approve the first release unit and its exact FK/ACL matrix, stage versioned migrations, and rerun the complete local release acceptance. Green candidate SQL tests are necessary but not sufficient.
