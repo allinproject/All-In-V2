@@ -22,6 +22,8 @@ on:
       - 'scripts/test-v2-ingredient-energy-attestation-isolated.cjs'
       - 'scripts/test-v2-ingredient-native-concurrency.py'
       - 'scripts/check-v2-ingredient-writer-candidate.test.cjs'
+      - 'scripts/check-v2-ingredient-hosted-reviewer-connection.cjs'
+      - 'scripts/check-v2-ingredient-hosted-reviewer-connection.test.cjs'
       - 'scripts/test-v2-ingredient-review-writer-isolated.cjs'
       - 'apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts'
       - 'apps/mobile-v2/src/features/cookbook/recipeNutritionCalculator.ts'
@@ -51,6 +53,8 @@ on:
       - 'scripts/test-v2-ingredient-energy-attestation-isolated.cjs'
       - 'scripts/test-v2-ingredient-native-concurrency.py'
       - 'scripts/check-v2-ingredient-writer-candidate.test.cjs'
+      - 'scripts/check-v2-ingredient-hosted-reviewer-connection.cjs'
+      - 'scripts/check-v2-ingredient-hosted-reviewer-connection.test.cjs'
       - 'scripts/test-v2-ingredient-review-writer-isolated.cjs'
       - 'apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts'
       - 'apps/mobile-v2/src/features/cookbook/recipeNutritionCalculator.ts'
@@ -90,5 +94,7 @@ jobs:
         run: node --experimental-strip-types --test scripts/review-v2-usda-source-admission.test.cjs
       - name: Verify canonical ingredient SQL writer guards without deployment
         run: node --test scripts/check-v2-ingredient-writer-candidate.test.cjs
+      - name: Check read-only hosted reviewer connection safety preflight (no credential required)
+        run: node --test scripts/check-v2-ingredient-hosted-reviewer-connection.test.cjs
       - name: Test pinned USDA reconciliation and no-auto-approval gates
         run: node --test scripts/reconcile-usda-foundation-identities.test.cjs
