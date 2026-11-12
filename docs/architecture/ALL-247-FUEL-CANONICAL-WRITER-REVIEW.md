@@ -71,3 +71,23 @@ Each client-originated mutation MUST take `expected_user_id` (compared to `auth.
 5. Verify on populated staging and device, including account export/deletion and Today preview; promote only through existing release gates.
 
 **Not yet done:** database schema/migration, authenticated end-to-end tests, mobile wiring or production deployment. Do not mark ALL-247 complete from this document.
+
+## 7. First physical review unit — manual consumed food (2026-11-12)
+
+A **review-only, nonmigration** SQL candidate is staged on branch `review/all-247-fuel-food-event-owner-20261112`:
+
+[`docs/architecture/sql/V2-FUEL-MANUAL-FOOD-WRITER-CANDIDATE.sql`](../architecture/sql/V2-FUEL-MANUAL-FOOD-WRITER-CANDIDATE.sql)
+
+It proposes only `public.v2_fuel_food_entries_candidate` and the private `allin_private.v2_fuel_food_actions_candidate` with one owner-checked, revision-guarded private add/correct/move/tombstone function. It preserves action-ID exact replay, changed-payload rejection, owner-scoped transaction serialization, and a deliberate **unknown nutrition** state for manually described items. It does **not** invent energy/macros, promote a manual entry to a verified ingredient, create prepared-meal consumption, define another Coach diary, or add user-custom-food catalog tables. The source and actual live read access are intentionally absent pending owner approval.
+
+**Static source inspection only:** reviewed presence of RLS on both tables, default-denied client/service grants, private writer revocation, composite owner key, revision guard, and action ledger; this is *not* a passing real PostgreSQL syntax/RLS/concurrency test. The candidate has not been merged into `integration/v2-foundation` or applied to any Supabase project.
+
+**Owner-review blockers before a versioned migration:**
+1. Approve exact table/column naming, meal-slot and quantity units, athlete-local date and timezone rules, tombstone retention, permitted manual-entry behavior and stricter authenticated-session checks.
+2. Validate the existing target Supabase `pgcrypto` extension schema used for server-derived action hashes; verify private function ownership/search path and avoid any client-writable trust boundary.
+3. Approve the restricted authenticated writer gateway and private day/history reader with owner/session rechecks; current draft purposely grants no direct client execution.
+4. Confirm typed foreign keys/version snapshots for ALL-228 ingredient, ALL-218 recipe and ALL-248 prepared portion **as separate subsequent slices**, not a polymorphic unchecked generic reference.
+5. Register Food events and action records with the existing ALL-251 export/deletion workflow and prove account switching, two-user isolation, pagination, retention and rollback.
+6. Execute SQL under disposable PostgreSQL/Supabase with two real roles, action replay/CAS, timezone/midnight/DST, unknown-vs-zero and concurrent writes; only then consider reviewed migration sequencing and explicit deployment authorization.
+
+**Dependency decision:** ALL-222 may remain In Progress globally. ALL-247 requires only a specific signed-off Fuel schema/grant/export review, not final sign-off on unrelated Training, Billing, Watch or Coach domains. The Linear blocker should not be considered cleared until this narrower Fuel review is actually approved.
