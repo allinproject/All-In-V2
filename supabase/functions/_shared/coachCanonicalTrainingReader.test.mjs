@@ -34,6 +34,7 @@ test("authenticated Training reader retrieves restrictions and accurately marks 
  assert.equal(a.history.restrictions[0].subject,"lying leg curl");
  assert.equal(a.history.completeness,"partial");
  assert.equal(a.history.currentPlan,null);
+ assert.equal(a.history.plannedDay.sessions[0].intent.blocks,4);
  assert.equal(a.historyCertification.ownerId,owner);
 });
 test("a missing restrictions source cannot masquerade as verified empty restrictions",async()=>{
@@ -64,4 +65,11 @@ test("missing plan, verified empty day and missing athlete timezone do not inven
  assert.equal(result.history.completeness,"partial");
  const bad=fixture();bad.deps.resolveAthleteDate=async()=>"2026-02-30";
  await assert.rejects(()=>bad.reader()(input),/read_unavailable/);
+});
+
+test("oversized accepted workout day is blocked rather than silently truncated",async()=>{
+ const x=fixture(),long=structuredClone(day);
+ long.plannedWorkouts[0].intent={nested:"x".repeat(18000)};
+ x.deps.userClient.rpc=async()=>({data:long});
+ await assert.rejects(()=>x.reader()(input),/read_unavailable/);
 });
