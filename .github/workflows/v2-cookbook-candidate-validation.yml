@@ -14,6 +14,8 @@ on:
       - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
       - 'scripts/review-v2-usda-source-admission.cjs'
       - 'scripts/review-v2-usda-source-admission.test.cjs'
+      - 'scripts/run-v2-ingredient-auto-qualification.cjs'
+      - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql'
@@ -45,6 +47,8 @@ on:
       - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
       - 'scripts/review-v2-usda-source-admission.cjs'
       - 'scripts/review-v2-usda-source-admission.test.cjs'
+      - 'scripts/run-v2-ingredient-auto-qualification.cjs'
+      - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql'
@@ -92,6 +96,8 @@ jobs:
         run: node --test scripts/check-v2-usda-nutrient-policy.test.cjs
       - name: Test source-to-canonical-review-to-calculator staging path (no writes)
         run: node --experimental-strip-types --test scripts/review-v2-usda-source-admission.test.cjs
+      - name: Test automatic ingredient qualification through existing canonical writer transaction
+        run: node --test scripts/run-v2-ingredient-auto-qualification.test.cjs
       - name: Verify canonical ingredient SQL writer guards without deployment
         run: node --test scripts/check-v2-ingredient-writer-candidate.test.cjs
       - name: Check read-only hosted reviewer connection safety preflight (no credential required)
