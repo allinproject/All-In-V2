@@ -70,6 +70,36 @@ BEGIN
    'sandbox',repeat('c',100),repeat('a',64),repeat('b',64));
   RAISE EXCEPTION 'Consumed enrollment challenge reused';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- Force a duplicate-key failure after the function has updated consumed_at.
+ -- PostgreSQL must roll back that update with the failed INSERT.
+ INSERT INTO allin_private.v2_appattest_enrollment_challenges_candidate(
+  id,owner_id,session_id,apple_app_id,environment,expires_at
+ ) VALUES (
+  '99999999-9999-4999-8999-999999999998',
+  '11111111-1111-4111-8111-111111111111',
+  '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'ABCDE12345.com.allin365.app','sandbox',now()+interval '4 minutes'
+ );
+ BEGIN
+  PERFORM allin_private.v2_appattest_enroll_verified_key_candidate(
+   '99999999-9999-4999-8999-999999999998',
+   '11111111-1111-4111-8111-111111111111',
+   '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'fixture-apple-appattest-enrolled-key',
+   'ABCDE12345.com.allin365.app','sandbox',
+   repeat('c',100),repeat('a',64),repeat('b',64));
+  RAISE EXCEPTION 'Duplicate enrollment key unexpectedly accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ IF (SELECT consumed_at IS NOT NULL
+     FROM allin_private.v2_appattest_enrollment_challenges_candidate
+     WHERE id='99999999-9999-4999-8999-999999999998') THEN
+  RAISE EXCEPTION 'Failed key insert consumed enrollment challenge';
+ END IF;
+ IF (SELECT count(*) FROM allin_private.v2_apple_attested_companion_keys_candidate
+     WHERE key_id='fixture-apple-appattest-enrolled-key')<>1 THEN
+  RAISE EXCEPTION 'Failed enrollment modified trusted key registry';
+ END IF;
+ RAISE NOTICE 'PASS ALL-243 failed key insert rolls back challenge consumption';
  RAISE NOTICE 'PASS ALL-243 trusted-only one-use App Attest enrollment writer';
 END $enroll$;
 RESET ROLE;
