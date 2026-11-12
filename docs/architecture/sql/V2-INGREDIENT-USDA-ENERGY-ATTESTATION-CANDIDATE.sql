@@ -140,6 +140,16 @@ BEGIN
   IF v_count<>1 THEN
     RAISE EXCEPTION 'ambiguous or missing source archive evidence' USING ERRCODE='23514';
   END IF;
+  SELECT min(lower(e.archive_sha256)) INTO v_archive
+    FROM allin_private.v2_ingredient_source_energy_evidence e
+    WHERE e.source_record_id=v_source.id
+      AND lower(e.source_payload_sha256)=lower(v_source.payload_sha256);
+  -- ALL-225 v1 is tied to the independently SHA-verified Foundation
+  -- 2026-10-29 archive. A subsequent release needs a separately reviewed
+  -- source version and attestation policy before acceptance.
+  IF v_archive<> 'dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579' THEN
+    RAISE EXCEPTION 'unapproved USDA Foundation archive revision' USING ERRCODE='23514';
+  END IF;
 
   SELECT e.* INTO v_evidence
     FROM allin_private.v2_ingredient_source_energy_evidence e
