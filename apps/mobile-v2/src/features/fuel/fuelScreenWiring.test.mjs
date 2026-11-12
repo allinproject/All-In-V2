@@ -65,7 +65,13 @@ test('Recipes and Food Plan do not mutate an unconnected meal plan',()=>{
  assert.match(screen,/A banana, an apple and a protein bar may each be planned as separate foods/);
  assert.match(screen,/Shopping will combine missing ingredients from planned recipes with individual scheduled foods/);
  assert.match(screen,/Existing stock is not assumed empty/);
- assert.match(screen,/No days or foods have been added/);
+ assert.match(screen,/KitchenWeekPlanPanel ownerId=\{user\.id\} day=\{day\}/);
+ assert.match(screen,/Adding foods and starting Meal Prep remain unavailable/);
+ const plan=source('../kitchen/KitchenWeekPlanPanel.tsx');
+ assert.match(plan,/readKitchenWeek\(ownedKitchenPlanServices\(supabase,ownerId\)/);
+ assert.match(plan,/existing plans are not assumed empty/);
+ assert.match(plan,/verified week/);
+ assert.doesNotMatch(plan,/insert\(|update\(|upsert\(|delete\(/);
  assert.match(screen,/No shopping cart or purchase has been created/);
  assert.doesNotMatch(screen,/create.*Shopping|write.*Shopping|addShoppingItem/);
 });
