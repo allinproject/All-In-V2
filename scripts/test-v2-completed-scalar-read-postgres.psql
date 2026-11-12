@@ -93,6 +93,27 @@ BEGIN
      WHERE item->>'metricCode'='avg_power_w'
        AND item->>'reason'='conflicting_sources')<>1
  THEN RAISE EXCEPTION 'Conflicting watts were displayed rather than quarantined: %',v; END IF;
+ -- A metric code with multiple published definition versions is unresolved,
+ -- even when both sources report exactly the same numeric zero. The client
+ -- accepts only one canonical semantic code after version reconciliation.
+ INSERT INTO public.v2_activity_metric_definitions
+ (metric_code,definition_version,display_name,canonical_unit,value_kind,
+  sport_scope,measurement_kinds,display_group,privacy_class,status)
+ VALUES('cadence_rpm',2,'Cadence','rpm','numeric',ARRAY['cycling'],
+  ARRAY['source_measured'],'cadence','private','published');
+ INSERT INTO public.v2_activity_metric_values
+ (id,activity_id,user_id,source_id,metric_code,definition_version,
+  value_numeric,measurement_kind,quality,source_payload_hash)
+ VALUES('00000000-0000-4000-8000-000000000006',ride,a,src_a,
+  'cadence_rpm',2,0,'source_measured','trusted',repeat('a',64));
+ v:=allin_private.v2_activity_scalar_evidence_projection_candidate(a,ride);
+ IF jsonb_array_length(v->'metrics')<>0
+ OR jsonb_array_length(v->'unresolvedMetrics')<>3
+ OR (SELECT count(*) FROM jsonb_array_elements(v->'unresolvedMetrics') AS x(item)
+     WHERE item->>'metricCode'='cadence_rpm'
+       AND item->>'reason'='conflicting_versions'
+       AND item->>'definitionVersion' IS NULL)<>1
+ THEN RAISE EXCEPTION 'Mixed published definition versions escaped quarantine: %',v; END IF;
  BEGIN
   PERFORM allin_private.v2_activity_scalar_evidence_projection_candidate(b,ride);
   RAISE EXCEPTION 'Cross-owner metric projection succeeded';
