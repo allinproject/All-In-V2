@@ -66,6 +66,27 @@ Auth-deletion isolation. This first candidate does not yet establish an owner
 writer, published authenticated read API, user-approved target evidence, or the
 authoritative Event FK. Do not mistake a green local replay for schema approval.
 
+### ALL-239 durable approval consent gate
+
+The existing Goals owner has a **review-only** end-to-end proposed
+approval chain: canonical accepted-revision identity, immutable behavior
+children, a private live-session-bound writer, a private bounded Goal
+snapshot reader, an immutable ten-minute athlete review ledger, a
+server-generated SHA-256 of the exact Goal/revision/behavior preview,
+and a private issuer and commit gateway that rechecks the same content
+inside its database transaction. The source-only Edge Auth adapter also
+passes the exact durable review ID. See
+`docs/architecture/V2-GOALS-PHYSICAL-ERD-AND-SECURITY-PROPOSAL.md`.
+
+None of these files is an approved migration or app-delivered UI.
+**Goals cannot be considered complete until the mobile athlete actually
+sees and explicitly confirms the exact server-provided preview**, and
+the trusted authenticated server can persist, revoke and use that consent
+without granting direct client access. Race/event FKs and certified
+participation remain with ALL-244/234; Goals cannot fabricate them.
+Any Goal change after preview must invalidate consent rather than
+silently change a plan. Revalidate on physical installed devices.
+
 ## 4. Release cut acceptance (all must pass before hosted DDL)
 
 - [ ] ALL-222/243/246 sign off source identity, canonical aggregate FKs, plan revision lifecycle, metric registry and exact source/quality model.
