@@ -196,9 +196,13 @@ BEGIN
   THEN RAISE EXCEPTION 'Foreign outgoing block row'; END IF;
   IF v_collection='community.my_action_receipts' AND EXISTS(
        SELECT 1 FROM pg_catalog.jsonb_array_elements(v_page->'rows') AS x(item)
-       WHERE x.item->>'actor_id' IS DISTINCT FROM v_owner::text
+       WHERE NOT (x.item ? 'action_id' AND x.item ? 'action' AND x.item ? 'created_at')
+          OR x.item ? 'payload_sha256'
+          OR x.item ? 'expected_version'
+          OR x.item ? 'result_version'
+          OR x.item ? 'actor_id'
      )
-  THEN RAISE EXCEPTION 'Foreign Community action row'; END IF;
+  THEN RAISE EXCEPTION 'Community action receipt leaked internal CAS or replay metadata'; END IF;
   v_count:=v_count+1;
  END LOOP;
  IF v_count<>50 THEN RAISE EXCEPTION 'Not all 50 owner collections were probed'; END IF;
