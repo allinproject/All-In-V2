@@ -119,10 +119,19 @@ BEGIN
    OR NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(all_rows) AS item
    WHERE item->>'nutrition_source'='unknown' AND item->>'kcal' IS NULL)
    OR NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(all_rows) AS item
-   WHERE item->>'nutrition_source'='user_entered' AND item->>'kcal'='0')
+   WHERE item->>'nutrition_source'='user_entered'
+     AND (item->>'kcal')::numeric=0)
    OR pb::text NOT LIKE '%OWNER_B_FOOD_SECRET%'
    OR all_rows::text LIKE '%OWNER_B_FOOD_SECRET%'
- THEN RAISE EXCEPTION 'Food tombstone, unknown/zero or owner isolation failed'; END IF;
+ THEN RAISE EXCEPTION 'Food history verification failed: tombstones %, unknown %, numeric-zero %, B owner content %, A leaked B %',
+  (SELECT count(*) FROM pg_catalog.jsonb_array_elements(all_rows) AS item
+    WHERE item->>'revision'='2' AND item->>'deleted_at' IS NOT NULL),
+  (SELECT count(*) FROM pg_catalog.jsonb_array_elements(all_rows) AS item
+    WHERE item->>'nutrition_source'='unknown' AND item->>'kcal' IS NULL),
+  (SELECT count(*) FROM pg_catalog.jsonb_array_elements(all_rows) AS item
+    WHERE item->>'nutrition_source'='user_entered' AND (item->>'kcal')::numeric=0),
+  pb::text LIKE '%OWNER_B_FOOD_SECRET%',
+  all_rows::text LIKE '%OWNER_B_FOOD_SECRET%'; END IF;
  BEGIN
   PERFORM public.v2_account_export_page_review_candidate(
    a,sb,ra,'food.my_entries',NULL,25);
