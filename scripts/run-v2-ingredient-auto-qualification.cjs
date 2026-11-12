@@ -7,6 +7,7 @@ const {createHash}=require('node:crypto');
 const {assessAutomaticSourceEvidence}=require('./review-v2-ingredient-identities.cjs');
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const WRITER='SELECT allin_private.v2_review_ingredient_profile_status($1::uuid,$2::integer,$3::text,$4::text,$5::text,$6::uuid) AS result';
+const ENERGY_WRITER='SELECT allin_private.v2_attest_ingredient_energy($1::uuid,$2::integer,$3::text,$4::text) AS result';
 function requestKey(profileId,revision,sha,stage) {
   // Stable replay identifiers for each stage. Version/variant comply with UUID.
   const bytes=createHash('sha256').update(JSON.stringify([
@@ -38,10 +39,11 @@ function planAutomaticQualification({candidates,documents,sourceProfileKey,profi
       idempotencyKey:requestKey(profileId,p.revision,digest,p.status)})),
     calculationReady:false,publicationApproved:false});
 }
-async function runAutomaticQualification({client,...inputs}) {
+async function runAutomaticQualification({client,attestEnergy=false,...inputs}) {
   // The injected client MUST already be a trusted, server-only, independently
   // authenticated restricted DB session. No public RPC, service_role or anon.
   if(!client||typeof client.query!=='function')throw Error('Trusted database session required');
+  if(typeof attestEnergy!=='boolean')throw Error('Energy attestation mode must be explicit boolean');
   const plan=planAutomaticQualification(inputs);
   let begun=false,commitAttempted=false;
   try {
@@ -61,10 +63,27 @@ async function runAutomaticQualification({client,...inputs}) {
         throw Error('Canonical writer returned inconsistent status/revision receipt');
       outputs.push(result);
     }
+    let energyAttestation=null;
+    if(attestEnergy) {
+      // This is still NOT publication. The existing private SQL attestation
+      // independently proves current revision, stored immutable archive digest,
+      // permitted USDA energy method, and normalized per-100g core nutrients.
+      // Failure rolls back the two status transitions and any partial evidence.
+      const att=await client.query(ENERGY_WRITER,[
+        plan.profileId,plan.phases[1].revision+1,plan.sourceDigest,
+        'Automated immutable USDA source energy evidence verification'
+      ]);
+      const evidence=att?.rows?.[0]?.result;
+      if(!evidence||!['attested','already_attested'].includes(evidence.status)||
+         !(Number.isSafeInteger(Number(evidence.attestation_id))&&Number(evidence.attestation_id)>0)||
+         evidence.calculation_ready===true)
+        throw Error('Canonical energy attestation returned invalid receipt');
+      energyAttestation=evidence;
+    }
     commitAttempted=true;
     await client.query('COMMIT');begun=false;
     return {status:'source_qualified_not_published',profileId:plan.profileId,
-      events:outputs,calculationReady:false,publicationApproved:false};
+      events:outputs,energyAttestation,calculationReady:false,publicationApproved:false};
   } catch(error) {
     // COMMIT can succeed even if its response is lost. Do NOT claim rollback
     // or send a compensating write after an ambiguous commit acknowledgement.
@@ -78,4 +97,4 @@ async function runAutomaticQualification({client,...inputs}) {
     throw error;
   }
 }
-module.exports={planAutomaticQualification,runAutomaticQualification,requestKey,WRITER};
+module.exports={planAutomaticQualification,runAutomaticQualification,requestKey,WRITER,ENERGY_WRITER};
