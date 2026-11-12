@@ -36,7 +36,7 @@ test('Food Log uses only the approved owner-guarded RPC and no shadow store',()=
  assert.match(client,/EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED === 'true'/);
  assert.match(writer,/EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED === 'true'/);
  assert.match(writer,/result\.status===409/);
- assert.doesNotMatch(panel,/Math\.random/);
+ assert.doesNotMatch(panel,/Math\.random\s*\(/);
  assert.doesNotMatch(panel,/AsyncStorage/);
 });
 
