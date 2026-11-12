@@ -72,6 +72,7 @@ on:
       - 'scripts/check-v2-coach-sql-candidate.mjs'
       - 'scripts/test-v2-coach-persistence-race-local.sh'
       - 'scripts/test-v2-coach-account-export-local.psql'
+      - 'scripts/test-v2-account-deletion-worker-off-local.psql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql'
   workflow_dispatch:
@@ -502,6 +503,14 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-training-local-populated-owner-deletion.psql "$db_container:/tmp/v2-owner-deletion.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-owner-deletion.psql
+      - name: Prove account deletion processor remains disabled in disposable V2
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp scripts/test-v2-account-deletion-worker-off-local.psql "$db_container:/tmp/v2-deletion-off.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-deletion-off.psql
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
