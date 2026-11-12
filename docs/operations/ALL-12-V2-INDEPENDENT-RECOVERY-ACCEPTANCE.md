@@ -42,3 +42,24 @@ Status: **not accepted**. This runbook does not waive the provider physical-back
 - Prior V1 physical Restore-to-New-Project UI showed COMPLETED; snapshot mapping and post-restore integrity records were not retained. Supabase ticket `SU-542002` confirms no guaranteed pre-start isolation of copied `pg_cron`/`pg_net`.
 - Existing V2 local CI replays foundation/candidate SQL and uses a **synthetic billing-only** `pg_dump/pg_restore` with owner and receipt assertions.
 - Neither result validates a complete V2 logical backup, private Storage recovery, production Auth settings, or the provider's managed physical backup. Keep ALL-12 **In Progress** until evidence is collected and the release gate is explicitly reviewed; do not silently substitute one recovery class for another.
+
+## 2026-11-12 — Release acceptance review (not a waiver)
+
+Authoritative read-only V2 hosted table inventory: 12 application tables (5 public, 7 allin_private), no Auth users and no Storage objects. The recovery manifest now explicitly registers all 12 current foundation application tables. This is **inventory classification**, not backup/restore validation of their contents.
+
+### Evidence accepted for engineering development only
+
+- Disposable local Supabase foundation migration replay and candidate-table logical `pg_dump/pg_restore`, including two-owner Training/Completed Activity/source/Coach/Goals row-count and deterministic full-row comparisons.
+- Synthetic Auth identity-row restoration followed by real local password sign-in, token refresh and logout checks.
+- Synthetic private Storage object-byte deletion/recovery with SHA-256 checks and valid cross-account access denial.
+- Fail-closed recovery manifest checks, including a test against the known hosted V2 foundation table names.
+
+### Unmet release gates
+
+1. **Complete logical domain restore:** Seed and restore representative data for the deployed foundation profile/settings/onboarding/legal/health/deletion/private-action tables and every newly approved domain, including sensitive fields, immutable receipts, and action ledgers. Reconcile actual schema inventory automatically; a static known-table unit test alone cannot prove future completeness.
+2. **Auth configuration and operational restoration:** Prove fresh credential sign-in after restoring the required Auth users/identities and password verifier in an isolated destination; validate Auth service configuration, external identity providers if enabled, key rotation, recovery/expiry, and session semantics. Current identity-row roundtrip retains the original user/password record.
+3. **Private Storage completeness:** Prove every authorized object and its metadata can be recovered, not just two synthetic objects; reconcile ownership, hashes and absent/deleted objects.
+4. **Hosted recovery:** Obtain independent hosted recovery evidence (approved safe target, verified outbound isolation, snapshot provenance, restored data/permissions and measured RPO/RTO) or an explicit founder-approved alternative risk decision documented separately. Local logical recovery is not provider-managed physical recovery.
+5. **Release approval:** Review security/privacy/legal implications and authorize a clearly scoped release gate. No implicit production deployment, signup opening, or billing authorization.
+
+Founder-beta development and isolated testing may continue while these gates are open. **Do not mark ALL-12 Done, production recovery accepted, or hosted deployment approved based on local tests.**
