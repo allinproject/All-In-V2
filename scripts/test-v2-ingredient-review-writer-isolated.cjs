@@ -11,10 +11,10 @@ const canonicalSchema=fs.readFileSync(path.join(__dirname,'../docs/architecture/
 const setup=['CREATE ROLE anon NOLOGIN','CREATE ROLE authenticated NOLOGIN','CREATE ROLE service_role NOLOGIN'].join(';')+';';
 const actorProfile='22222222-2222-4222-8222-222222222222',sourceHash='a'.repeat(64);
 const fixture=[
-  'CREATE ROLE ingredient_reviewer_a LOGIN',
-  'CREATE ROLE ingredient_reviewer_b LOGIN',
+  'CREATE ROLE ingredient_reviewer_a LOGIN NOINHERIT',
+  'CREATE ROLE ingredient_reviewer_b LOGIN NOINHERIT',
   'CREATE ROLE ingredient_attacker LOGIN',
-  'GRANT allin_v2_ingredient_reviewer TO ingredient_reviewer_a,ingredient_reviewer_b',
+  'GRANT allin_v2_ingredient_reviewer TO ingredient_reviewer_a,ingredient_reviewer_b WITH INHERIT FALSE, SET TRUE',
   "INSERT INTO allin_private.v2_ingredient_review_operators(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES('ingredient_reviewer_a',true,'ISOLATED-TEST-ACTOR-A','test-idp.example','test-subject-a','test-vault-reference-operator-a',now()-interval '1 hour',now()+interval '1 day'),('ingredient_reviewer_b',false,'ISOLATED-TEST-ACTOR-B','test-idp.example','test-subject-b','test-vault-reference-operator-b',now()-interval '1 hour',now()+interval '1 day')",
   "INSERT INTO public.v2_ingredients(id,canonical_key,canonical_name,normalized_name,identity_kind,status) VALUES('11111111-1111-4111-8111-111111111111','black_beans_canned_drained','Black Beans - Canned Drained and Rinsed','black beans canned drained rinsed','generic_food','active')",
   "INSERT INTO public.v2_ingredient_nutrition_profiles(id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,review_status,profile_revision,coverage_status,source_quality,required_nutrient_set_version,is_default) VALUES('"+actorProfile+"','11111111-1111-4111-8111-111111111111','cooked_drained','g',100,'100 g','candidate',1,'launch_core_complete','foundation_review','cookbook-launch-macros-v1',false)",
@@ -55,10 +55,12 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   // Even a role member with an expired credential must be denied.
   await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET credential_expires_at=now()-interval '1 minute' WHERE login_role='ingredient_reviewer_a'");
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,call(1,'needs_review',k1),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET credential_expires_at=now()+interval '1 day' WHERE login_role='ingredient_reviewer_a'");
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_b');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,call(1,'needs_review',k1),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec('SET SESSION AUTHORIZATION ingredient_attacker');
@@ -66,6 +68,7 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   await denied(db,call(1,'needs_review',k1),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   // Authorized to call only the private checked review function, not to query
   // its audit ledger or mutate canonical rows directly.
   await denied(db,"SELECT * FROM allin_private.v2_ingredient_review_events",'42501');
@@ -82,10 +85,12 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec("UPDATE public.v2_ingredient_source_records SET payload_sha256=repeat('b',64) WHERE external_record_id='2644285'");
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,call(2,'reviewed',k2),'40001');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec("UPDATE public.v2_ingredient_source_records SET payload_sha256=repeat('a',64) WHERE external_record_id='2644285'");
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,call(2,'calculation_ready',k2),'23514');
   const second=(await db.query(call(2,'reviewed',k2))).rows[0].outcome;
   assert.equal(second.profile_revision,3);assert.equal(second.review_status,'reviewed');
@@ -99,6 +104,7 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
    "INSERT INTO public.v2_ingredient_profile_nutrients(profile_id,nutrient_code,amount) VALUES('"+actorProfile+"','energy_kcal',115),('"+actorProfile+"','protein_g',6.91),('"+actorProfile+"','carbohydrate_g',19.8),('"+actorProfile+"','total_fat_g',1.27),('"+actorProfile+"','sodium_mg',218)"
   ].join(';')+';');
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,call(3,'calculation_ready',k3),'0A000');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   const row=(await db.query("SELECT review_status,profile_revision FROM public.v2_ingredient_nutrition_profiles WHERE id='"+actorProfile+"'")).rows[0];
@@ -152,6 +158,7 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   // capability; existing audit history must remain available to operators only.
   await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET enabled=false,revoked_at=clock_timestamp() WHERE login_role='ingredient_reviewer_a'");
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,call(3,'retired',k3),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await denied(db,"UPDATE allin_private.v2_ingredient_review_operators SET enabled=true WHERE login_role='ingredient_reviewer_a'",'23514');
