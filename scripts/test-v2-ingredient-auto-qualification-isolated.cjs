@@ -59,6 +59,18 @@ async function setup(){
    "'foundation','CC0','mapped','"+x.digest+"');");
  await db.exec("INSERT INTO public.v2_ingredient_profile_sources(profile_id,source_record_id,evidence_role)"+
    " VALUES('"+PROFILE+"','"+SOURCE+"','primary');");
+ await db.exec("INSERT INTO public.v2_nutrient_definitions(code,display_name,canonical_unit,launch_core,is_published) VALUES"+
+   "('energy_kcal','Energy','kcal',true,true),('protein_g','Protein','g',true,true),"+
+   "('carbohydrate_g','Carbohydrate','g',true,true),('total_fat_g','Fat','g',true,true);");
+ await db.exec("INSERT INTO public.v2_ingredient_profile_nutrients(profile_id,nutrient_code,amount) VALUES"+
+   "('"+PROFILE+"','energy_kcal',115),('"+PROFILE+"','protein_g',6.91),"+
+   "('"+PROFILE+"','carbohydrate_g',19.8),('"+PROFILE+"','total_fat_g',1.27);");
+ // Privileged source-release fixture, NOT a caller-provided energy claim.
+ await db.exec("INSERT INTO allin_private.v2_ingredient_source_energy_evidence"+
+   "(source_record_id,source_payload_sha256,archive_sha256,fdc_nutrient_id,energy_kcal,source_review_reference)"+
+   " VALUES('"+SOURCE+"','"+x.digest+"',"+
+   "'dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579',"+
+   "2048,115,'ISOLATED-TEST-ARCHIVE-ONLY');");
  await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_food_ingest_v1;SET ROLE allin_v2_ingredient_reviewer;');
  return {db,x};
 }
@@ -77,11 +89,13 @@ test('actual PostgreSQL transaction: rollback, two immutable events, idempotent 
    assert.equal(row.review_status,'candidate');assert.equal(row.profile_revision,1);
    assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_review_events')).rows[0].n,0);
    await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_food_ingest_v1;SET ROLE allin_v2_ingredient_reviewer;');
-   const success=await runAutomaticQualification({client:db,...x});
+   const success=await runAutomaticQualification({client:db,...x,attestEnergy:true});
    assert.equal(success.status,'source_qualified_not_published');
    assert.equal(success.publicationApproved,false);
-   const replay=await runAutomaticQualification({client:db,...x});
+   assert.equal(success.energyAttestation.status,'attested');
+   const replay=await runAutomaticQualification({client:db,...x,attestEnergy:true});
    assert(replay.events.every(e=>e.status==='replayed'));
+   assert.equal(replay.energyAttestation.status,'already_attested');
    await db.exec('SET SESSION AUTHORIZATION postgres');
    row=(await db.query("SELECT review_status,profile_revision FROM public.v2_ingredient_nutrition_profiles WHERE id='"+PROFILE+"'")).rows[0];
    assert.equal(row.review_status,'reviewed');assert.equal(row.profile_revision,3);
@@ -97,14 +111,20 @@ test('actual PostgreSQL transaction: rollback, two immutable events, idempotent 
    await assert.rejects(
      db.query("SELECT allin_private.v2_review_ingredient_profile_status('"+PROFILE+"',3,'"+x.digest+"','retired','Simulated machine retirement denial','55555555-5555-4555-8555-555555555555')"),
      e=>e?.code==='42501');
-   await assert.rejects(
-     db.query("SELECT allin_private.v2_attest_ingredient_energy('"+PROFILE+"',3,'"+x.digest+"','Simulated machine energy attestation denial')"),
-     e=>e?.code==='42501');
+   const attestAgain=(await db.query(
+     "SELECT allin_private.v2_attest_ingredient_energy('"+PROFILE+"',3,'"+x.digest+"','Safe replay of immutable source evidence') AS result")).rows[0].result;
+   assert.equal(attestAgain.status,'already_attested');
    await assert.rejects(db.query('SELECT * FROM allin_private.v2_ingredient_review_events'),
      e=>e?.code==='42501');
    await db.exec('SET SESSION AUTHORIZATION postgres');
    const auditAfter=(await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_review_events')).rows[0].n;
    assert.equal(auditAfter,2);
+   const stored=(await db.query(
+     'SELECT selected_fdc_nutrient_id,selected_energy_kcal FROM allin_private.v2_ingredient_energy_attestations')).rows;
+   assert.equal(stored.length,1);
+   assert.equal(stored[0].selected_fdc_nutrient_id,2048);
+   assert.equal(Number(stored[0].selected_energy_kcal),115);
+
    const final=(await db.query("SELECT review_status,profile_revision FROM public.v2_ingredient_nutrition_profiles WHERE id='"+PROFILE+"'")).rows[0];
    assert.equal(final.review_status,'reviewed');assert.equal(final.profile_revision,3);
    // Bad workload claims cannot pass the canonical registry constraint.
