@@ -33,6 +33,7 @@ SELECT json_build_object(
  'athlete_profile_write',has_table_privilege(current_user,'public.v2_ingredient_nutrition_profiles','UPDATE'),
  'private_audit_read',has_table_privilege(current_user,'allin_private.v2_ingredient_review_events','SELECT'),
  'login_direct_profile_write',has_table_privilege(session_user,'public.v2_ingredient_nutrition_profiles','UPDATE'),
+ 'login_private_audit_read',has_table_privilege(session_user,'allin_private.v2_ingredient_review_events','SELECT'),
  'login_schema_create',has_schema_privilege(session_user,'public','CREATE') OR has_schema_privilege(session_user,'allin_private','CREATE'),
  'reviewer_schema_create',has_schema_privilege(current_user,'public','CREATE') OR has_schema_privilege(current_user,'allin_private','CREATE'),
  'login_privileged',EXISTS(SELECT 1 FROM pg_roles WHERE rolname=session_user AND (rolsuper OR rolcreaterole OR rolcreatedb OR rolreplication OR rolbypassrls)),
@@ -43,7 +44,7 @@ ROLLBACK;`;
 function checkProof(proof){
  for(const field of ['session_matches_expected','role_matches_reviewer','reviewer_membership','review_function_execute'])
    if(proof?.[field]!==true)throw new Error('Reviewer acceptance failed: '+field);
- for(const field of ['athlete_profile_write','private_audit_read','login_direct_profile_write','login_schema_create','reviewer_schema_create','login_privileged','reviewer_privileged'])
+ for(const field of ['athlete_profile_write','private_audit_read','login_direct_profile_write','login_private_audit_read','login_schema_create','reviewer_schema_create','login_privileged','reviewer_privileged'])
    if(proof?.[field]!==false)throw new Error('Excessive reviewer privilege: '+field);
  return {ok:true,connection:'verified-dedicated-session',reviewerFunction:'execute-only',directWrites:false,auditReads:false};
 }
