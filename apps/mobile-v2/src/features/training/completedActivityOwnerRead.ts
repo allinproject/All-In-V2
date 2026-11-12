@@ -3,7 +3,7 @@
  * It deliberately does not name or call an unapproved Supabase RPC or introduce
  * a second activity store. The backend must enforce RLS/expected-owner checks.
  */
-import {resolveActivityPresentationSport} from './completedActivitySportAdapter.ts';
+import {isCanonicalActivitySport,resolveActivityPresentationSport} from './completedActivitySportAdapter.ts';
 import type {CompletedActivityScreenInput} from './completedActivityScreenModel.ts';
 import type {MetricEvidence,StructuredEvidence,StructuredKind} from './completedActivityDetailProjection.ts';
 
@@ -77,6 +77,7 @@ function evidenceKind(kind:CanonicalActivityMetric['measurementKind']):MetricEvi
 export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRead,expectedOwner:string,activityId:string):CompletedActivityScreenInput{
  if(raw.ownerId!==expectedOwner||raw.id!==activityId||!Number.isSafeInteger(raw.version)||raw.version<1)
   throw new Error('Canonical activity identity could not be verified.');
+ if(!isCanonicalActivitySport(raw.sport))throw new Error('Canonical activity sport is not registered.');
  const display=resolveActivityPresentationSport(raw.sport,raw.sportSubtype);
  if(!text(raw.title)||!text(raw.completedAt,100))
   throw new Error('Canonical activity type or summary is invalid.');
@@ -93,7 +94,8 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
  const definitions=new Map<string,CanonicalMetricDefinition>();
  for(const def of raw.definitions){
   if(!code(def.code)||!Number.isSafeInteger(def.version)||def.version<1||!text(def.displayName,120)||
-   !Array.isArray(def.sportScope)||!def.sportScope.length||!def.sportScope.every(code)||
+   !Array.isArray(def.sportScope)||!def.sportScope.length||def.sportScope.length>20||
+   !def.sportScope.every(isCanonicalActivitySport)||
    !Array.isArray(def.measurementKinds)||!def.measurementKinds.length||
    !def.measurementKinds.every(kind=>kinds.has(kind)))
    throw new Error('Invalid metric registry definition.');
@@ -108,7 +110,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    !text(m.sourceId)||!sources.has(m.sourceId)||!qualities.has(m.quality)||!kinds.has(m.measurementKind))
    throw new Error('Unverifiable metric source or definition.');
   const definition=definitions.get(m.code+':'+m.definitionVersion);
-  if(!definition||!(definition.sportScope.includes(raw.sport)||definition.sportScope.includes(display.sport))||
+  if(!definition||!definition.sportScope.includes(raw.sport)||
    !definition.measurementKinds.includes(m.measurementKind))
    throw new Error('Metric definition does not allow this activity and evidence.');
   if(seenCodes.has(m.code))throw new Error('Conflicting canonical values require upstream reconciliation.');
