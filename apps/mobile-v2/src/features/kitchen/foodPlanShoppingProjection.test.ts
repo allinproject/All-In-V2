@@ -57,6 +57,12 @@ test('missing ingredient or food portion lines cannot silently become zero shopp
  const incomplete=food('unresolved-bar','2026-11-16','unreviewed-bar');
  assert.throws(()=>projectFoodPlanShopping({occurrences:[{...incomplete,requirements:[]}],pantry:[]}),/incomplete/);
 });
+test('half a planned food portion contributes half the verified quantity',()=>{
+ const apple=food('half-apple','2026-11-16','apple');
+ const result=projectFoodPlanShopping({occurrences:[{...apple,servings:0.5}],pantry:[]});
+ assert.equal(result.demands[0].required,0.5);
+ assert.equal(result.shortages[0].shortage,0.5);
+});
 test('invalid plan, stock, coverage and quantities fail closed',()=>{
  const one=food('a','2026-11-16','banana');
  assert.throws(()=>projectFoodPlanShopping({occurrences:[one,one],pantry:[]}),/duplicate/);
