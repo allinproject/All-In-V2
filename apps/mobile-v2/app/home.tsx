@@ -11,7 +11,9 @@ import { deviceLocalToday, millisecondsUntilNextLocalDay, shouldRefreshTodayOnAp
 import { combineCalendarReads } from '../src/features/training/trainingCalendarReadModel';
 import { summarizeTodayTraining } from '../src/features/today/todayTrainingCard';
 import { todayEnergyGlance } from '../src/features/today/todayEnergyGlance';
-import { todayFoodLog } from '../src/features/today/todayFoodLog';
+import { todayFoodLog, type FuelLogDayEvidence } from '../src/features/today/todayFoodLog';
+import { readOwnedFuelDay, V2_FUEL_DAY_READ_ENABLED } from '../src/features/fuel/fuelOwnerFoodClient';
+import { supabase } from '../src/lib/supabase';
 import { todayWellnessGlance } from '../src/features/today/todayWellnessGlances';
 import { todayKitchenDue } from '../src/features/today/todayKitchenDue';
 import { todayFuelDestination } from '../src/features/today/todayFuelNavigation';
@@ -83,8 +85,22 @@ function HomeOwnerScreen() {
   // Read-only Fuel projection. The canonical daily Fuel owner is not connected;
   // do not invent calories or present a missing food day as zero.
   const energyGlance = todayEnergyGlance({ status: 'unavailable' }, user?.id ?? '', localDay);
-  // Canonical Fuel entries are not available yet; do not invent rows or photos.
-  const foodLog = todayFoodLog({ status: 'unavailable' }, user?.id ?? '', localDay);
+  // The Fuel RPC is disabled until its single canonical schema is approved and deployed.
+  // Keep unavailable distinct from a verified empty day; reject stale async results.
+  const [foodEvidence, setFoodEvidence] = useState<FuelLogDayEvidence>({status:'unavailable'});
+  useEffect(() => {
+    let active = true;
+    if (!V2_FUEL_DAY_READ_ENABLED || gate.status !== 'ready' || !user?.id || !localDay) {
+      setFoodEvidence({status:'unavailable'});
+      return () => { active=false; };
+    }
+    setFoodEvidence({status:'loading'});
+    void readOwnedFuelDay(supabase,user.id,localDay,()=>active)
+      .then(evidence => { if(active)setFoodEvidence(evidence); })
+      .catch(() => { if(active)setFoodEvidence({status:'unavailable'}); });
+    return () => { active=false; };
+  }, [user?.id, localDay, gate.status]);
+  const foodLog = todayFoodLog(foodEvidence, user?.id ?? '', localDay);
   // Progress/Recovery owners are not connected yet: preserve unknown rather
   // than manufacturing performance statistics or a readiness recommendation.
   const progressGlance = todayWellnessGlance({status:'unavailable'}, user?.id ?? '', localDay, 'progress');
