@@ -148,3 +148,32 @@ The existing logical acceptance evaluator `scripts/all12-recovery-domain-manifes
 **CI evidence:** [run 43326920981](https://github.com/allinproject/All-In-V2/actions/runs/43326920981) passed the ALL-12 independent recovery scope test step; the full clean replay must be checked separately before calling the workflow green. Previous [run 43319878768](https://github.com/allinproject/All-In-V2/actions/runs/43319878768) remains the accepted full local synthetic recovery suite. Neither represents a real authorized hosted logical source dump.
 
 **Final operational boundary:** Obtain a source-consistent logical archive from an approved V2 source using an authorized read-only backup identity, an independently isolated target and explicit artifact security/recovery verification. This session's connected Supabase tools can inspect SQL catalog state but cannot export a real PostgreSQL dump or control the GitHub runner's secret-backed PostgreSQL connection. Do not use the temporary ALL-251 staging project as a substitute or mark ALL-12 done solely from an empty hosted inventory.
+
+
+## 2026-11-12 — Pre-import logical archive inspection (data-only)
+
+The founder-selected independent logical recovery path now has a **read-only** offline archive guard in `scripts/all12-verify-logical-archive.mjs` with regression tests and the existing clean replay CI job. It uses `pg_restore -l` (list only) on a real `pg_dump -Fc --data-only` file and computes the artifact SHA-256 from bytes; it **never** runs `pg_restore -d`, connects to the database, reads owner records or executes SQL.
+
+For an eventual separately authorized drill, store the encrypted archive and approved manifest **outside Git, CI logs and shared storage**. The reviewed manifest is a local JSON file with `sourceProjectRef`, exact `backupCutoffUtc`, `archiveSha256` (64 hex chars), explicit `tables` of qualified names and optional `sequences`. The source-at-cutoff table list MUST be independently captured from the same consistent backup snapshot; do not copy a current production inventory with a different timestamp or manufacture the digest. A sample shape (placeholder values **not** acceptance evidence) is:
+
+```json
+{
+  "sourceProjectRef": "approved-v2-source-ref",
+  "backupCutoffUtc": "2026-11-12T20:00:00Z",
+  "archiveSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "tables": ["auth.users", "public.v2_profiles"],
+  "sequences": []
+}
+```
+
+When the real archive, independent inventory and trusted SHA exist, an authorized operator can run **only the offline inspection**:
+
+```bash
+node scripts/all12-verify-logical-archive.mjs \
+  --archive /secure/recovery/source-data.custom \
+  --inventory /secure/recovery/approved-inventory.json
+```
+
+Inspection fails closed on a missing/extra/duplicate table or sequence, unapproved schemas, a mismatched archive digest, missing source identity/cutoff, and unsupported TOC entries including function definitions, extensions, jobs or non-allowlisted executable restore objects. A data-only TOC that matches exactly is **not** proof of per-row integrity, full domain coverage, artifact confidentiality, provider configuration recovery, absence of side effects in preexisting target functions/triggers, safe import, or measured RPO/RTO. The actual target must still be independently prepared with outbound capabilities disabled *before* any import.
+
+This guard is a prerequisite only, **not** a substitute for the genuine source-consistent backup, actual isolated restore, Auth/Storage and ownership verification, cleanup, and explicit founder release acceptance. No hosted source dump, shared staging reset, physical Supabase restore or paid recovery resource has been authorized or run by this change.
