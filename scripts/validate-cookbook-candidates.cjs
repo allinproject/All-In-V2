@@ -116,7 +116,11 @@ async function validate(paths) {
     }
   }
   if (!DATASETS.every(d=>paths[d])) errors.push('missing dataset: supply all four inputs');
-  else checkReferences(records,errors);
+  else {
+    for (const dataset of DATASETS) if (records[dataset].length===0)
+      errors.push(dataset+': empty dataset is not a valid complete-catalog candidate');
+    checkReferences(records,errors);
+  }
   return {ok:errors.length===0,publicationApproved:false,counts:Object.fromEntries(DATASETS.map(d=>[d,records[d].length])),errorCount:errors.length,errors:errors.slice(0,100)};
 }
 if (require.main === module) {
