@@ -38,7 +38,7 @@ begin
   'c0000000-0000-4000-8000-000000000003','b0000000-0000-4000-8000-000000000001',
   1,'edit','2026-11-12 18:00+00','2026-11-12','America/Chicago','lunch','Rice',200,'g',400,'user_entered');
   raise exception 'stale revision accepted';
- exception when sqlstate '40001' then null; end;
+ exception when sqlstate 'PT409' then null; end;
  v:=public.v2_food_log_mutate_manual('11111111-1111-4111-8111-111111111111',
  'c0000000-0000-4000-8000-000000000002','b0000000-0000-4000-8000-000000000002',
  1,'move','2026-11-13 20:00+00','2026-11-13','America/Chicago','snack','Banana',1,'each',100,'user_entered');
@@ -66,7 +66,7 @@ begin
   perform public.v2_food_log_mutate_manual('11111111-1111-4111-8111-111111111111',
   'c0000000-0000-4000-8000-000000000006','b0000000-0000-4000-8000-000000000002',3,'delete');
   raise exception 'double delete accepted';
- exception when sqlstate '40001' then null; end;
+ exception when sqlstate 'PT409' then null; end;
  -- Explicit unknown vs zero: both an unknown and a real zero entry.
  perform public.v2_food_log_add_manual('11111111-1111-4111-8111-111111111111',
  'a0000000-0000-4000-8000-000000000003','b0000000-0000-4000-8000-000000000003',
