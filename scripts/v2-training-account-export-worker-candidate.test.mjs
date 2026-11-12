@@ -64,6 +64,10 @@ function setup(options={}) {
    }};
   },
   storage:{
+   async listBuckets(){
+     return {data:[{id:'v2-private-workout-objects',public:options.publicBucket??false},
+       {id:'v2-private-account-exports',public:false}],error:null};
+   },
    async getBucket(name){
      events.push('bucket');
      return {data:{id:name,public:options.publicBucket??false},error:null};
@@ -93,6 +97,15 @@ function setup(options={}) {
          return {data:{path:objectPath},error:null};
        },
        async list(prefix,{limit=1000,offset=0}={}){
+         if(name==='v2-private-workout-objects' && options.mediaAudit){
+           if(prefix===owner) return {data:[{name:'c'.repeat(64),id:null}],error:null};
+           if(prefix===owner+'/'+'c'.repeat(64)){
+             const files=[{name:'sensor.fit',id:'file',metadata:{size:bytes.byteLength}}];
+             if(options.mediaExtra)files.push({name:'unknown.jpg',id:'other',metadata:{size:5}});
+             return {data:files,error:null};
+           }
+           return {data:[],error:null};
+         }
          const names=[...pagedArchives.keys()].filter(k=>k.startsWith(prefix+'/'))
            .slice(offset,offset+limit).map(k=>({name:k.slice(prefix.length+1)}));
          return {data:names,error:null};
@@ -280,4 +293,24 @@ test('session revoked immediately after snapshot commit purges completed private
  await assert.rejects(f.worker.stageApprovedLargeHistory(requestId),/unavailable/);
  assert.equal(f.pagedArchives.size,0);
  assert.equal(f.events.filter(x=>x==='archiveRemove').length,1);
+});
+
+test('existing ALL-251 worker audits canonical private evidence without claiming complete export',async()=>{
+ const f=setup({useSupabasePersistence:true,mediaAudit:true});
+ const result=await f.worker.auditApprovedPrivateMediaCoverage(requestId);
+ assert.equal(result.verifiedObjects,1);
+ assert.equal(result.checksumVerified,true);
+ assert.equal(result.completeUserExport,false);
+ assert(f.events.includes('ownerPathProof'));
+ assert(f.events.includes('download'));
+ assert(f.events.filter(x=>x==='auth').length>=2);
+});
+test('existing worker refuses extra private media with no canonical Training reference',async()=>{
+ const f=setup({useSupabasePersistence:true,mediaAudit:true,mediaExtra:true});
+ await assert.rejects(f.worker.auditApprovedPrivateMediaCoverage(requestId),/do not match/);
+});
+test('media audit never runs from an unleased legacy export worker',async()=>{
+ const f=setup();
+ await assert.rejects(f.worker.auditApprovedPrivateMediaCoverage(requestId),/approved request lease/);
+ assert.equal(f.events.includes('download'),false);
 });
