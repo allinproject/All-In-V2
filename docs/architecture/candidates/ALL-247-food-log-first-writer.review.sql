@@ -71,7 +71,8 @@ begin
     p_unit is null or p_unit not in ('g','ml','oz','fl_oz','serving','each') or
     p_nutrition_source is null or p_nutrition_source not in ('user_entered','unknown') or
     (p_nutrition_source = 'unknown' and p_kcal is not null) or
-    p_kcal < 0 then
+    p_kcal < 0 or
+    p_local_date is distinct from (p_consumed_at at time zone p_timezone_name)::date then
    raise exception 'Invalid food log entry' using errcode='22023';
  end if;
  -- Capture complete semantically relevant inputs; replay never recalculates nutrition.
