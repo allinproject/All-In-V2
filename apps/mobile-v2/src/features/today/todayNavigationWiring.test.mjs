@@ -52,6 +52,11 @@ test('Today never presents unavailable domain data as accepted athlete facts', (
   assert.match(home, /!V2_FUEL_DAY_READ_ENABLED \|\| gate\.status !== 'ready'/);
   assert.match(home, /setFoodEvidence\(\{status:'unavailable'\}\)/);
   assert.match(home, /readOwnedFuelDay\(supabase,user\.id,localDay,/);
+  // A same-day Fuel mutation must be reflected after Today regains focus;
+  // a foreground transition similarly invalidates cached owner evidence.
+  assert.match(home, /setFoodRefreshRevision\(value => value \+ 1\)/);
+  assert.match(home, /foodRefreshRevision\]\)/);
+  assert.match(home, /if \(shouldRefreshTodayOnAppState\(state\)\)/);
   const client = source('../fuel/fuelOwnerFoodClient.ts');
   assert.match(client, /EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED === 'true'/);
   assert.match(client, /await services\.authenticateOwner\(\)/);
