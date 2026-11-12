@@ -1,0 +1,287 @@
+{
+  "domain": "ALL-228 canonical ingredient source review",
+  "status": "review_only_evidence_not_approved",
+  "archive": "USDA FoodData Central Foundation Foods 2026-10-29",
+  "archiveSha256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579",
+  "sourceDataType": "Foundation",
+  "basisNote": "USDA Foundation foodNutrients express amounts per 100g food as characterized; foodPortions supply separate particular item weights; no generic density/can-drainage conversion inferred",
+  "energyNote": "USDA nutrient ID 1008 / number 208 = legacy kcal; 2048 / 958 = Atwater Specific Factors kcal; 2047 / 957 = Atwater General Factors kcal. Both must be preserved as distinct source energy methods; no silent interchange.",
+  "reviewedCount": 8,
+  "sourceReferenceMatchedCount": 8,
+  "sourceAndMassBasisEvidencedCount": 8,
+  "fullyApprovedCanonicalIdentities": 0,
+  "calculationReadyProfiles": 0,
+  "publicationApproved": false,
+  "databaseWritesAuthorized": false,
+  "records": [
+    {
+      "fdcId": 328841,
+      "profile": "milk_cottage_2pct",
+      "source": "Cheese, cottage, lowfat, 2% milkfat",
+      "v1": "Cottage cheese, 2 percent milkfat",
+      "form": "prepared lowfat cottage cheese, 2% milkfat; generic composite sampled from multiple brands",
+      "basis": "100 g edible product",
+      "energy": {
+        "code": "1008",
+        "number": "208",
+        "kcal": 84
+      },
+      "protein": 11,
+      "carbs": 4.31,
+      "fat": 2.3,
+      "sodiumMg": 321,
+      "portionEvidence": [
+        {
+          "quantity": "1 cup",
+          "grams": 220
+        },
+        {
+          "quantity": "RACC",
+          "grams": 55
+        }
+      ],
+      "decision": "source_and_mass_basis_confirmed_identity_candidate_not_calculation_ready",
+      "caveats": [
+        "generic sample is not any exact branded formulation",
+        "verify exact product or limit generic fallback scope",
+        "verify launch micronutrient coverage and provenance rights"
+      ]
+    },
+    {
+      "fdcId": 790577,
+      "profile": "red_onion_raw",
+      "source": "Onions, red, raw",
+      "v1": "Red onion, raw edible portion",
+      "form": "red onion raw edible portion",
+      "basis": "100 g edible raw onion",
+      "energy": {
+        "code": "1008",
+        "number": "208",
+        "kcal": 44
+      },
+      "protein": 0.94,
+      "carbs": 9.93,
+      "fat": 0.1,
+      "sodiumMg": 1,
+      "portionEvidence": [
+        {
+          "quantity": "1 edible onion",
+          "grams": 197
+        },
+        {
+          "quantity": "RACC",
+          "grams": 85
+        }
+      ],
+      "decision": "source_and_mass_basis_confirmed_identity_candidate_not_calculation_ready",
+      "caveats": [
+        "do not apply to yellow onion, cooked onion or trimmed grocery purchase mass",
+        "1 onion = 197 g is source-specific portion, not every onion"
+      ]
+    },
+    {
+      "fdcId": 2346407,
+      "profile": "cabbage_green_raw",
+      "source": "Cabbage, green, raw",
+      "v1": "Green cabbage, raw chopped",
+      "form": "green cabbage, raw; chopped is V1 cut/portion presentation, not USDA's exact food description",
+      "basis": "100 g edible raw cabbage",
+      "energy": {
+        "code": "2048",
+        "number": "958",
+        "kcal": 27.9,
+        "alternative": {
+          "code": "2047",
+          "number": "957",
+          "kcal": 31.4
+        }
+      },
+      "protein": 0.961,
+      "carbs": 6.38,
+      "fat": 0.228,
+      "sodiumMg": 16.1,
+      "portionEvidence": [
+        {
+          "quantity": "RACC",
+          "grams": 85
+        }
+      ],
+      "decision": "source_and_mass_basis_confirmed_identity_candidate_not_calculation_ready",
+      "caveats": [
+        "V1 cup chopped 89 g is NOT evidenced by this archive member; avoid approving this household conversion from this record",
+        "no cooked cabbage substitution or trimming/cooking yields",
+        "source uses 2048 specific-factor vs 2047 general-factor energy; select by explicit calorie policy"
+      ]
+    },
+    {
+      "fdcId": 2644285,
+      "profile": "black_beans_canned_drained",
+      "source": "Beans, black, canned, sodium added, drained and rinsed",
+      "v1": "Black beans, canned drained rinsed",
+      "form": "black beans canned with sodium added, drained and rinsed; edible drained solids",
+      "basis": "100 g edible drained/rinsed beans",
+      "energy": {
+        "code": "2048",
+        "number": "958",
+        "kcal": 115,
+        "alternative": {
+          "code": "2047",
+          "number": "957",
+          "kcal": 118
+        }
+      },
+      "protein": 6.91,
+      "carbs": 19.8,
+      "fat": 1.27,
+      "sodiumMg": 218,
+      "portionEvidence": [
+        {
+          "quantity": "RACC",
+          "grams": 130
+        }
+      ],
+      "decision": "source_and_mass_basis_confirmed_identity_candidate_not_calculation_ready",
+      "caveats": [
+        "V1 generic canned beans label omits sodium-added qualifier",
+        "drainage yield from purchased can NOT available",
+        "cannot substitute dry, un-rinsed, no-salt or specific branded beans"
+      ]
+    },
+    {
+      "fdcId": 2644288,
+      "profile": "chickpeas_canned_drained_rinsed",
+      "source": "Chickpeas (garbanzo beans, bengal gram), canned, sodium added, drained and rinsed",
+      "v1": "Chickpeas, canned drained rinsed",
+      "form": "sodium-added canned chickpeas, drained and rinsed edible beans",
+      "basis": "100 g edible drained/rinsed chickpeas",
+      "energy": {
+        "code": "2048",
+        "number": "958",
+        "kcal": 133,
+        "alternative": {
+          "code": "2047",
+          "number": "957",
+          "kcal": 137
+        }
+      },
+      "protein": 7.02,
+      "carbs": 20.3,
+      "fat": 3.1,
+      "sodiumMg": 202,
+      "portionEvidence": [
+        {
+          "quantity": "RACC",
+          "grams": 130
+        }
+      ],
+      "decision": "source_and_mass_basis_confirmed_identity_candidate_not_calculation_ready",
+      "caveats": [
+        "V1 profile omits sodium-added qualifier",
+        "cannot infer drained mass from unopened can",
+        "do not use for dry, no-salt or un-rinsed beans"
+      ]
+    },
+    {
+      "fdcId": 2644289,
+      "profile": "beans_kidney_canned_drained",
+      "source": "Beans, kidney, dark red, canned, sodium added, sugar added, drained and rinsed",
+      "v1": "Kidney beans, canned drained",
+      "form": "dark red canned kidney beans, added sodium and added sugar, drained and rinsed edible solids",
+      "basis": "100 g edible drained/rinsed beans",
+      "energy": {
+        "code": "2048",
+        "number": "958",
+        "kcal": 123,
+        "alternative": {
+          "code": "2047",
+          "number": "957",
+          "kcal": 127
+        }
+      },
+      "protein": 7.8,
+      "carbs": 21,
+      "fat": 1.26,
+      "sodiumMg": 172,
+      "portionEvidence": [
+        {
+          "quantity": "RACC",
+          "grams": 130
+        }
+      ],
+      "decision": "form_restriction_required_before_generic_identity_can_be_accepted",
+      "caveats": [
+        "V1 broad canned kidney-beans name lacks dark red variety AND sodium-added AND sugar-added qualifiers",
+        "do not map to light red, sugar-free, unsalted or undrained variants",
+        "purchased can-to-drained yield not evidenced"
+      ]
+    },
+    {
+      "fdcId": 2685580,
+      "profile": "tomato_paste_canned_unsalted",
+      "source": "Tomato, paste, canned, without salt added",
+      "v1": "Tomato paste, canned unsalted",
+      "form": "canned tomato paste without salt added",
+      "basis": "100 g edible paste",
+      "energy": {
+        "code": "2048",
+        "number": "958",
+        "kcal": 88.5,
+        "alternative": {
+          "code": "2047",
+          "number": "957",
+          "kcal": 104
+        }
+      },
+      "protein": 4.23,
+      "carbs": 20.2,
+      "fat": 0.732,
+      "sodiumMg": 61.2,
+      "portionEvidence": [
+        {
+          "quantity": "RACC",
+          "grams": 30
+        }
+      ],
+      "decision": "source_and_mass_basis_confirmed_identity_candidate_not_calculation_ready",
+      "caveats": [
+        "no salt added does not mean sodium-free; USDA reports 61.2 mg/100g",
+        "V1 rounded 89 kcal vs source 88.5 kcal",
+        "do not use for double-concentrated paste or branded salted variants"
+      ]
+    },
+    {
+      "fdcId": 2685581,
+      "profile": "tomatoes_crushed_canned",
+      "source": "Tomatoes, crushed, canned",
+      "v1": "Crushed tomatoes, canned",
+      "form": "canned crushed tomatoes (generic Foundation product)",
+      "basis": "100 g edible contents",
+      "energy": {
+        "code": "2048",
+        "number": "958",
+        "kcal": 32.3,
+        "alternative": {
+          "code": "2047",
+          "number": "957",
+          "kcal": 37.9
+        }
+      },
+      "protein": 1.44,
+      "carbs": 7.14,
+      "fat": 0.398,
+      "sodiumMg": 140,
+      "portionEvidence": [
+        {
+          "quantity": "RACC",
+          "grams": 130
+        }
+      ],
+      "decision": "source_and_mass_basis_confirmed_identity_candidate_not_calculation_ready",
+      "caveats": [
+        "do not silently substitute salt-free or particular branded tomato products",
+        "USDA reports 140 mg sodium/100g",
+        "no brand-specific spices or draining assumptions"
+      ]
+    }
+  ]
+}
