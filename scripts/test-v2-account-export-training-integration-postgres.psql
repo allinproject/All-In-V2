@@ -19,6 +19,25 @@ CREATE TABLE allin_private.v2_account_deletion_execution_audit(user_id uuid);
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql
 
+-- Preserve the current V2 foundation's actual RPC grant boundary:
+-- owner-authenticated export only; no anonymous or broad service export.
+DO $export_acl$
+BEGIN
+ IF NOT pg_catalog.has_function_privilege('authenticated',
+   'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('anon',
+   'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('service_role',
+   'public.v2_export_my_account_snapshot(uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'Existing V2 account export RPC grant boundary changed';
+ END IF;
+ IF pg_catalog.has_function_privilege('authenticated',
+   'allin_private.v2_training_account_export_fragment_candidate(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('anon',
+   'allin_private.v2_training_account_export_fragment_candidate(uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'Training fragment is directly executable by mobile roles';
+ END IF;
+END $export_acl$;
 SELECT pg_catalog.set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
 DO $qa$
 DECLARE
