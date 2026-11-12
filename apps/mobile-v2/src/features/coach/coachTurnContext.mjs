@@ -83,7 +83,7 @@ export function prepareCoachTurnContext(input) {
   const day = model.plannedDay;
   if (day !== undefined && (
       !day || day.verified !== true || !validDate(day.localDate) ||
-      day.localDate !== model.requested.fromDate ||
+      day.localDate < model.requested.fromDate ||
       day.localDate !== model.requested.throughDate ||
       !Array.isArray(day.calendarDays) || day.calendarDays.length > 64 ||
       !Array.isArray(day.sessions) || day.sessions.length > 8 ||
