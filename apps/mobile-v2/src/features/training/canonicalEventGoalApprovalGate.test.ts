@@ -44,7 +44,7 @@ function fixture(){
      evidenceGeneration:generation}))},
   goalSnapshot:{ownerId:owner,authSessionGeneration:generation,complete:true,nextCursor:null,
     snapshotVersion:token,goals:events.map(e=>({goalId:'goal-'+e.id,ownerId:owner,
-     goalRevisionId:'goal-rev-'+e.id,goalVersion:3,status:'accepted',
+     goalRevisionId:'goal-rev-'+e.id,goalVersion:3,goalKind:'race_event' as const,status:'accepted',
      targetEventId:e.id,startDate:null,targetDate:e.date}))}
  };
  return {input,proofs};
@@ -115,7 +115,31 @@ test('different valid version tokens from separate Goal, Event and Training owne
 test('undated qualitative goal can coexist without manufacturing an event',()=>{
  const f=fixture();f.proofs.goalSnapshot.goals=[...f.proofs.goalSnapshot.goals,{
   goalId:'qualitative',ownerId:owner,goalRevisionId:'q-rev',goalVersion:1,
+  goalKind:'other',
   status:'accepted',targetEventId:null,startDate:null,targetDate:null
  }];
  assert.equal(certifySeasonAgainstGoalEventOwners(f.input,f.proofs).status,'review_required');
+});
+
+test('non-race goal cannot authorize a race, but independent qualitative goals remain valid',()=>{
+ const wrong=fixture();
+ wrong.proofs.goalSnapshot.goals[0]={...wrong.proofs.goalSnapshot.goals[0],goalKind:'other'};
+ assert.equal(certifySeasonAgainstGoalEventOwners(wrong.input,wrong.proofs).status,'unavailable');
+ const valid=fixture();
+ valid.proofs.goalSnapshot.goals.push({
+  goalId:'nutrition',ownerId:owner,goalRevisionId:'nutrition-rev',goalVersion:1,
+  goalKind:'other',status:'accepted',targetEventId:null,startDate:null,targetDate:null
+ });
+ assert.equal(certifySeasonAgainstGoalEventOwners(valid.input,valid.proofs).status,'review_required');
+});
+test('stale goal target dates or start dates cannot override an event',()=>{
+ const stale=fixture();
+ stale.proofs.goalSnapshot.goals[0]={...stale.proofs.goalSnapshot.goals[0],targetDate:'2027-04-11'};
+ assert.equal(certifySeasonAgainstGoalEventOwners(stale.input,stale.proofs).status,'unavailable');
+ const later=fixture();
+ later.proofs.goalSnapshot.goals[0]={...later.proofs.goalSnapshot.goals[0],startDate:'2027-05-01'};
+ assert.equal(certifySeasonAgainstGoalEventOwners(later.input,later.proofs).status,'unavailable');
+ const valid=fixture();
+ valid.proofs.goalSnapshot.goals[0]={...valid.proofs.goalSnapshot.goals[0],startDate:'2027-02-01'};
+ assert.equal(certifySeasonAgainstGoalEventOwners(valid.input,valid.proofs).status,'review_required');
 });

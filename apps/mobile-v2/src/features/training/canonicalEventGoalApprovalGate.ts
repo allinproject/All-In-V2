@@ -15,6 +15,7 @@ type OwnerEventEvidence={
 };
 type OwnerGoalEvidence={
   goalId:string;ownerId:string;goalRevisionId:string;goalVersion:number;
+  goalKind:'race_event'|'other';
   status:'accepted'|'draft'|'archived';
   targetEventId:string|null;
   startDate:string|null;targetDate:string|null;
@@ -120,7 +121,10 @@ export function certifySeasonAgainstGoalEventOwners(
  const bound=new Set<string>();
  for(const g of goals.values()){
   if(g.targetEventId!==null){
-   if(!events.has(g.targetEventId)||g.status!=='accepted')
+   if(!events.has(g.targetEventId)||g.status!=='accepted'||
+      g.goalKind!=='race_event'||
+      (g.targetDate!==null&&g.targetDate!==events.get(g.targetEventId)!.date)||
+      (g.startDate!==null&&g.startDate>events.get(g.targetEventId)!.date))
     return no('goal_event_binding_stale');
    bound.add(g.targetEventId);
   }
