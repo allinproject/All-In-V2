@@ -95,7 +95,8 @@ export type CanonicalIngestTransaction={
  }):Promise<boolean>;
  /** Canonical nonce ledger insertion, unique and transactional (not a cache). */
  consumeNonce(input:{nonce:string;ownerId:string;sessionId:string;
-  activityId:string;sourceId:string;issuedAtMs:number}):Promise<boolean>;
+  activityId:string;sourceId:string;issuedAtMs:number;
+  callbackHash:string}):Promise<boolean>;
  /** This must invoke the existing source-reconciliation + scalar append writer
   * inside the SAME database transaction, never a client-created ledger. */
  writer:CanonicalDeviceWriter;
@@ -152,7 +153,7 @@ export async function ingestVerifiedDeviceEnvelopeTransactional(
   if(!await tx.consumeNonce({
    nonce:envelope.nonce,ownerId:session.ownerId,sessionId:session.sessionId,
    activityId:source.activityId,sourceId:source.sourceId,
-   issuedAtMs:envelope.issuedAtMs,
+   issuedAtMs:envelope.issuedAtMs,callbackHash:envelope.signatureHex,
   }))throw new Error('Device ingest replay or nonce denied');
   const outcome=await routeVerifiedDeviceCallback(envelope.payload,tx.writer);
   // Also require live session/source binding at the end, before commit. This
