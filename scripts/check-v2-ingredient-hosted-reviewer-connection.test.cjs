@@ -29,3 +29,10 @@ test('reviewer login cannot assume privileged Postgres group roles',()=>{
  assert.match(q,/pg_has_role\(session_user,r\.oid,'member'\)/);
  assert.throws(()=>checkProof({...valid,login_admin_role_member:true}),/Excessive reviewer privilege/);
 });
+
+test('prohibit libpq environment redirection before connecting',()=>{
+ const base={ALLIN_ALLOW_HOSTED_REVIEWER_SMOKE:'1',ALLIN_SUPABASE_PROJECT_REF:'fbtgknlxjyeqrxemskbl',PGHOST:'db.fbtgknlxjyeqrxemskbl.supabase.co',PGPORT:'5432',PGDATABASE:'postgres',PGSSLMODE:'verify-full',PGSSLROOTCERT:process.execPath,PGPASSFILE:process.execPath,ALLIN_REVIEWER_EXPECTED_DB_LOGIN:'allin_ing_reviewer_testoperator',PGUSER:'allin_ing_reviewer_testoperator'};
+ assert.equal(assertConfig(base).login,'allin_ing_reviewer_testoperator');
+ for(const key of ['PGHOSTADDR','PGSERVICE','PGSERVICEFILE','PGOPTIONS','PGCONNECT_TIMEOUT','PGTARGETSESSIONATTRS'])
+  assert.throws(()=>assertConfig({...base,[key]:'unexpected'}),/Connection override/);
+});
