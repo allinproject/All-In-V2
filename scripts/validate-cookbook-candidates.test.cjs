@@ -107,3 +107,14 @@ test('malformed null records fail inspection without crashing cross references',
     assert(result.errors.some(e=>e.includes('candidate must be an object')));
   } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
+
+test('rejects unexpected source columns even without known macro names',()=>{
+  const errors=[],r=recipe();r.legacy_estimated_energy=520;
+  inspect('recipes',r,seen(),errors);
+  assert(errors.some(e=>e.includes('unexpected top-level field legacy_estimated_energy')));
+});
+test('rejects an unexpected source selector metadata blob',()=>{
+  const errors=[];inspect('selectors',{source_selector_id:2,source_recipe_id:'r1',
+    selector_key:'wrapper',source_active:false,metadata:{some_unreviewed_authoring:true}},seen(),errors);
+  assert(errors.some(e=>e.includes('unexpected top-level field metadata')));
+});
