@@ -34,6 +34,11 @@ BEGIN
    a,sa,e,g,join_a,null,'join',1);
   RAISE EXCEPTION 'Unresolved URL joined a verified EventHub group';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_event_group_action_candidate(
+   a,sa,e,g,join_a,alias_id,null,1);
+  RAISE EXCEPTION 'NULL action kind changed private EventHub membership';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  result:=allin_private.v2_event_group_action_candidate(
   a,sa,e,g,join_a,alias_id,'join',1);
  IF result->>'version'<>'2' OR result->>'replayed'<>'false'
