@@ -48,7 +48,16 @@ const structuredKinds=new Set(['route','splits','laps','intervals','heart_rate_s
 // ingest validation: a separate real outdoor source requires an appropriately
 // classified canonical activity before its route can be presented.
 const routeIneligibleSports=new Set(['pool_swim','indoor_trainer','elliptical','stairs']);
-
+// These have unambiguous owning sport identities in the approved V1 Details
+// contract. Hybrid activities can contain distinct source-backed sport legs.
+// Other sections remain under the canonical owner/source evidence contract;
+// do not infer their absence merely from an unfamiliar sport subtype.
+const sectionSportScopes:Partial<Record<StructuredKind,ReadonlySet<string>>> = {
+ strength_sets:new Set(['strength','hiit','hybrid']),
+ swim_sets:new Set(['pool_swim','swim','open_water_swim','hybrid']),
+ sport_legs:new Set(['hybrid']),
+ transitions:new Set(['hybrid']),
+};
 
 function assertCurrent(isCurrent:()=>boolean){
  if(!isCurrent())throw new Error('Completed Activity view is no longer active.');
@@ -125,6 +134,9 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    throw new Error('Structured activity evidence is not verifiable.');
   if(section.kind==='route'&&routeIneligibleSports.has(display.sport))
    throw new Error('Route evidence is incompatible with the canonical activity sport.');
+  const allowedSports=sectionSportScopes[section.kind];
+  if(allowedSports&&!allowedSports.has(display.sport))
+   throw new Error('Structured evidence is incompatible with the canonical activity sport.');
   sections.push({key:section.key,kind:section.kind,title:section.title,source:source.provider,count:section.count});
  }
  return {id:raw.id,sport:display.sport,terrain:display.terrain,title:raw.title,completedAt:raw.completedAt,
