@@ -32,6 +32,7 @@ on:
       - 'scripts/test-v2-goals-owner-local-postgres.psql'
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'supabase/tests/all251_two_account_owner_isolation_rollback.sql'
+      - 'scripts/test-v2-account-deletion-two-auth-api.mjs'
       - 'scripts/test-v2-billing-local-foundation.psql'
       - 'scripts/test-v2-billing-backup-seed-local.psql'
       - 'scripts/test-v2-billing-backup-restored-local.psql'
@@ -126,6 +127,11 @@ jobs:
           test -n "$db_container"
           docker cp supabase/tests/all251_two_account_owner_isolation_rollback.sql "$db_container:/tmp/all251-two-account-qa.sql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/all251-two-account-qa.sql
+      - name: Verify ALL-251 two independently authenticated local Supabase API sessions
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          node scripts/test-v2-account-deletion-two-auth-api.mjs
       - name: Seed populated V2 owner accounts before billing candidate upgrade
         run: |
           set -euo pipefail
