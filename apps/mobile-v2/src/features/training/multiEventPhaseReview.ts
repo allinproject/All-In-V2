@@ -60,7 +60,7 @@ export function reviewMultiEventPhaseWindows(input:{
   if(!d||!events.has(d.eventId)||mapped.has(d.eventId)||
      !['peak','supported','practice'].includes(d.effort)||
      !['athlete_confirmed','coach_evidence_reviewed'].includes(d.source)||
-     !Array.isArray(d.evidenceRefs)||!d.evidenceRefs.every(x=>typeof x==='string'&&x.trim())||
+     !Array.isArray(d.evidenceRefs)||!d.evidenceRefs.every((x:string)=>typeof x==='string'&&x.trim())||
      (d.source==='coach_evidence_reviewed'&&d.evidenceRefs.length===0)||
      (d.taperDays!==null&&(!Number.isSafeInteger(d.taperDays)||d.taperDays<0||d.taperDays>42))||
      (d.recoveryReviewDays!==null&&(!Number.isSafeInteger(d.recoveryReviewDays)||d.recoveryReviewDays<0||d.recoveryReviewDays>90)))
