@@ -3,6 +3,7 @@ import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {colors} from '../../theme/tokens';
 import {CompletedActivityCustomizePanel} from './CompletedActivityCustomizePanel';
 import {buildCompletedActivityScreenModel,type CompletedActivityScreenInput,type CompletedActivityTab} from './completedActivityScreenModel';
+import {metricEvidenceQualityNotice} from './completedActivityDetailProjection';
 import type {MetricLayout} from './completedActivityLayouts';
 
 export type CompletedActivityContentProps={
@@ -71,6 +72,9 @@ export function CompletedActivityScreenContent({activity,onSaveLayout,onOpenCoac
     <Text style={styles.helper}>{metric.label}</Text>
     <Text style={styles.value}>{metric.value}</Text>
     {tab==='Details'?<Text style={styles.source}>{metric.provenance} · {metric.source}</Text>:null}
+    {metricEvidenceQualityNotice(metric)?<Text style={styles.quality} accessibilityLabel={'Data quality: '+metricEvidenceQualityNotice(metric)}>
+      {metricEvidenceQualityNotice(metric)}
+     </Text>:null}
    </View>)}
    {tab==='Details'&&model.stats.hiddenMetricKeys.length>0?<Text style={styles.helper}>
     {model.stats.hiddenMetricKeys.length} statistic(s) hidden by your layout. Customize to show them again.
@@ -104,6 +108,7 @@ const styles=StyleSheet.create({
  heading:{fontSize:17,fontWeight:'800',color:colors.warmWhite},gold:{color:colors.goldSoft,fontWeight:'700'},
  metric:{borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface,borderRadius:12,padding:12,gap:5},
  value:{fontSize:20,fontWeight:'800',color:colors.warmWhite},
+ quality:{fontSize:12,fontWeight:'700',color:colors.goldSoft},
  section:{borderWidth:1,borderColor:colors.border,borderRadius:12,padding:12,gap:6},
  actions:{gap:9},outline:{borderWidth:1,borderColor:colors.border,minHeight:44,alignItems:'center',justifyContent:'center',padding:10,borderRadius:11},
  save:{backgroundColor:colors.gold,minHeight:44,alignItems:'center',justifyContent:'center',padding:10,borderRadius:11},
