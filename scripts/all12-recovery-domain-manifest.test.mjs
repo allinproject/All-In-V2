@@ -26,3 +26,20 @@ test('pending schema domains cannot be claimed complete by table-only evidence',
  assert.equal(coverage.domains.find(d=>d.name==='nutrition').status,'unverified');
  assert.equal(coverage.domains.find(d=>d.name==='community').status,'unverified');
 });
+
+test('new V2 data tables cannot silently escape recovery inventory',()=>{
+ assert.deepEqual(findUntrackedRecoveryTables([
+  'public.v2_coach_messages',
+  'public.v2_new_nutrition_records',
+  'allin_private.v2_new_export_jobs',
+  'storage.objects',
+  'public.legacy_table',
+  'public.v2_new_nutrition_records'
+ ]),['allin_private.v2_new_export_jobs','public.v2_new_nutrition_records']);
+ const all=recoveryDomains.flatMap(d=>d.tables);
+ const result=assessRecoveryCoverage({presentTables:all,verifiedTables:all,
+  verifiedExternal:['private_media','auth_configuration'],
+  actualTables:['public.v2_new_nutrition_records']});
+ assert.equal(result.complete,false);
+ assert.deepEqual(result.untrackedTables,['public.v2_new_nutrition_records']);
+});
