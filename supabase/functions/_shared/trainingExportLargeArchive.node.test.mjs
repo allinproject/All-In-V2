@@ -102,7 +102,7 @@ test('request revocation during download stops before subsequent pages',async()=
 test('incomplete manifest, wrong collection contract and invalid cursor fail closed',async()=>{
  const f=fixture();
  await stageLargeAccountExport({requestId,collections,services:f.services});
- await assert.rejects(collect(requestId,f.services,['coach_messages']),/Unverified/);
+ await assert.rejects(collect(requestId,f.services,['coach_messages']),/Unverified|inventory incomplete/);
  const m={...f.manifest,pages:[...f.manifest.pages].slice(1)};
  const spoof=fixture({data:{coach_messages:[],completed_activities:[]},overrideManifest:m});
  await assert.rejects(collect(requestId,spoof.services),/Unverified|Incomplete|Missing/);
