@@ -127,6 +127,32 @@ BEGIN
 END $$;
 RESET ROLE;
 
+-- An unauthenticated client cannot create a thread, read history or append.
+SET LOCAL ROLE anon;
+SELECT set_config('request.jwt.claim.sub', '', true);
+DO $anon_gate$
+BEGIN
+  BEGIN
+    PERFORM * FROM public.v2_coach_get_or_create_thread();
+    RAISE EXCEPTION 'anon unexpectedly created a Coach thread';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.v2_coach_read_messages(
+      (SELECT thread_id FROM _coach_a_thread));
+    RAISE EXCEPTION 'anon unexpectedly read Coach messages';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.v2_coach_append_user_message(
+      (SELECT thread_id FROM _coach_a_thread),
+      'b2222222-4444-4444-8444-222222222222', 'Anonymous message');
+    RAISE EXCEPTION 'anon unexpectedly appended a Coach message';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END $anon_gate$;
+RESET ROLE;
+
 -- Owner A now sees the user/assistant history. Neither role has raw table reads.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', 'a1111111-1111-4111-8111-111111111111', true);
@@ -137,6 +163,22 @@ BEGIN
    RAISE EXCEPTION 'owner A missing canonical assistant reply';
  END IF;
 END $$;
+-- Invalid cursor pairs and unbounded page sizes must fail closed.
+DO $input_gate$
+BEGIN
+  BEGIN
+    PERFORM * FROM public.v2_coach_read_messages(
+      (SELECT thread_id FROM _coach_a_thread), 101);
+    RAISE EXCEPTION 'unbounded Coach history page accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.v2_coach_read_messages(
+      (SELECT thread_id FROM _coach_a_thread), 10, now(), NULL);
+    RAISE EXCEPTION 'partial Coach history cursor accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+END $input_gate$;
 -- Both messages share transaction-start now(), exercising the (created_at,id)
 -- tie-breaker rather than a cursor based on timestamp alone.
 DO $cursor$
