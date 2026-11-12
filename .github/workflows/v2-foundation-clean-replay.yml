@@ -83,6 +83,7 @@ on:
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-account-export-populated-db-pages.mjs'
       - 'scripts/test-v2-account-export-real-local-storage.mjs'
+      - 'scripts/test-all12-private-storage-two-auth-local.mjs'
       - 'scripts/test-v2-account-export-populated-db-pages.psql'
       - 'scripts/test-v2-account-deletion-worker-off-local.psql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql'
@@ -135,6 +136,11 @@ jobs:
           set -euo pipefail
           test "${CI}" = "1"
           node scripts/test-v2-account-export-real-local-storage.mjs
+      - name: ALL-12 restored private Storage two authenticated owners
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          node scripts/test-all12-private-storage-two-auth-local.mjs
       - name: Verify real foundation SQL/RLS/cron in the local Postgres container
         run: |
           set -euo pipefail
