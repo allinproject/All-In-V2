@@ -23,7 +23,15 @@ export type MetricEvidence=LayoutMetric&{
  * has no confidence claim and therefore receives no invented quality badge. */
 export function metricEvidenceQualityNotice(metric:MetricEvidence):string|null{
  const warnings:string[]=[];
- if(metric.provenance==='estimated')warnings.push('Estimated value');
+ // Every value derived, estimated or manually reported must retain its
+ // evidence kind on Overview too; the source label alone can describe a mixed
+ // activity's primary recorder rather than this individual metric.
+ switch(metric.provenance){
+  case 'estimated':warnings.push('Estimated value');break;
+  case 'derived':warnings.push('Calculated value');break;
+  case 'provider':warnings.push('Provider-derived value');break;
+  case 'manual':warnings.push('Manually entered value');break;
+ }
  if(metric.quality==='partial'&&metric.sourceQuality==='partial')
   warnings.push('Partial measurement and source quality');
  else if(metric.quality==='partial')warnings.push('Partial measurement quality');
