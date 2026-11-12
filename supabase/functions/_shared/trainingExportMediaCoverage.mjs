@@ -21,6 +21,80 @@ const PRIVATE_OUTPUT='v2-private-account-exports';
 const MAX_ITEMS=512;
 const MAX_BYTES=16*1024*1024;
 
+/**
+ * Compose the EXISTING canonical Training evidence adapter with a bounded,
+ * recursive Supabase Storage owner listing. The caller must already have a
+ * server-only client; this never opens a public URL or enumerates other owners.
+ * This audits an owner subtree only, and cannot prove a bucket is immutable.
+ */
+export function createSupabaseTrainingMediaAuditAdapters({supabase,evidenceAdapter}){
+ if(typeof supabase?.storage?.listBuckets!=='function'
+   ||typeof supabase?.storage?.from!=='function'
+   ||typeof evidenceAdapter?.listEvidence!=='function'
+   ||typeof evidenceAdapter?.downloadPrivateObject!=='function')
+   throw Error('Existing trusted Training evidence and private Storage adapters required');
+ return Object.freeze({
+  listBuckets:async()=>{
+   const result=await supabase.storage.listBuckets();
+   if(result?.error||!Array.isArray(result?.data))
+    throw Error('Unable to inventory account media buckets');
+   return result.data.map(bucket=>({id:bucket.id,public:bucket.public}));
+  },
+  listCanonicalEvidence:async({ownerId,requestId})=>{
+   const result=await evidenceAdapter.listEvidence(ownerId,requestId);
+   if(result?.ownerId!==ownerId
+      ||!Array.isArray(result.series)||!Array.isArray(result.routes))
+     throw Error('Training evidence source was not fully enumerated');
+   return {ownerId,sourceCoverageComplete:true,
+    records:[...result.series.map(row=>({...row,kind:'series'})),
+     ...result.routes.map(row=>({...row,kind:'route'}))]};
+  },
+  listOwnerStorageObjects:async({ownerId,requestId,bucket})=>{
+   if(!UUID.test(ownerId??'')||!UUID.test(requestId??'')
+      ||bucket!==PRIVATE_EVIDENCE)throw Error('Owner Storage audit path invalid');
+   const storage=supabase.storage.from(PRIVATE_EVIDENCE);
+   const objects=[],visited=new Set(),queue=[{prefix:ownerId,depth:0}];
+   while(queue.length){
+    const {prefix,depth}=queue.shift();
+    if(visited.has(prefix)||depth>8)
+     throw Error('Unreviewed nested private media structure');
+    visited.add(prefix);
+    for(let offset=0;offset<=MAX_ITEMS;offset+=100){
+     const response=await storage.list(prefix,{limit:100,offset,sortBy:{column:'name',order:'asc'}});
+     if(response?.error||!Array.isArray(response?.data))
+      throw Error('Private Storage owner enumeration failed');
+     const batch=response.data;
+     if(batch.length>100)throw Error('Unbounded private Storage page');
+     for(const item of batch){
+      const name=item?.name;
+      if(typeof name!=='string'||!name||name==='.'||name==='..'
+         ||name.includes('/')||name.includes('\\'))
+       throw Error('Unsafe private Storage entry');
+      const path=prefix+'/'+name;
+      if(item.id==null){
+       if(!validPath(ownerId,path))throw Error('Invalid private media directory');
+       queue.push({prefix:path,depth:depth+1});
+      }else {
+       const size=item.metadata?.size??item.size;
+       objects.push({path,size});
+      }
+     }
+     if(objects.length+queue.length>MAX_ITEMS)
+      throw Error('Private media listing exceeds reviewed bound');
+     if(batch.length<100)break;
+     if(offset===MAX_ITEMS)throw Error('Private media enumeration exceeds page bound');
+    }
+   }
+   return {ownerId,bucket,complete:true,objects};
+  },
+  readVerifiedObject:async({ownerId,requestId,bucket,path,kind})=>{
+   if(bucket!==PRIVATE_EVIDENCE)throw Error('Unapproved private media bucket');
+   return evidenceAdapter.downloadPrivateObject({ownerId,requestId,path,kind});
+  },
+ });
+}
+
+
 function validPath(ownerId,path){
  return typeof path==='string' && path.startsWith(ownerId+'/')
   && path.length>=ownerId.length+3 && path.length<=500
