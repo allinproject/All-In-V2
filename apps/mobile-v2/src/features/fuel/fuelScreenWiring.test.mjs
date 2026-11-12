@@ -50,6 +50,15 @@ test('Recipes and Food Plan do not mutate an unconnected meal plan',()=>{
  const screen=source('../../../app/fuel.tsx');
  assert.match(screen,/Cook Now/);
  assert.match(screen,/Each recipe is one serving/);
- assert.match(screen,/Plan · Shopping · Pantry/);
- assert.match(screen,/Nothing has been added to a meal plan or shopping list/);
+ assert.match(screen,/type FoodPlanSection='plan'\|'shopping'\|'pantry'/);
+ assert.match(screen,/\{id:'plan',label:'Plan'\}/);
+ assert.match(screen,/\{id:'shopping',label:'Shopping'\}/);
+ assert.match(screen,/\{id:'pantry',label:'Pantry'\}/);
+ assert.match(screen,/selected:foodPlanSection===tab\.id/);
+ assert.match(screen,/A banana, an apple and a protein bar may each be planned as separate foods/);
+ assert.match(screen,/Shopping will combine missing ingredients from planned recipes with individual scheduled foods/);
+ assert.match(screen,/Existing stock is not assumed empty/);
+ assert.match(screen,/No days or foods have been added/);
+ assert.match(screen,/No shopping cart or purchase has been created/);
+ assert.doesNotMatch(screen,/create.*Shopping|write.*Shopping|addShoppingItem/);
 });
