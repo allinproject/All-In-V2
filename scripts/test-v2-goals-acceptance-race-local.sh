@@ -29,7 +29,7 @@ BEGIN;
 SELECT pg_advisory_xact_lock($key);
 SELECT id FROM public.v2_goals WHERE id='$goal' FOR UPDATE;
 SELECT pg_sleep(10);
-SELECT public.v2_goal_accept_revision_candidate(
+SELECT allin_private.v2_goal_accept_revision_candidate(
  '$owner','$goal','$rev_a','$action_a',1,repeat('a',64));
 COMMIT;
 SQL
@@ -45,7 +45,7 @@ done
 if [[ "$locked" != true ]]; then echo "No first-writer lock" >&2; exit 1; fi
 docker exec -e PGAPPNAME=all239_goal_loser -i "$db" \
   psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 >"$tmp/b.out" 2>&1 <<SQL &
-SELECT public.v2_goal_accept_revision_candidate(
+SELECT allin_private.v2_goal_accept_revision_candidate(
  '$owner','$goal','$rev_b','$action_b',1,repeat('b',64));
 SQL
 pid_b=$!
