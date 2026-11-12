@@ -15,6 +15,7 @@ declare
  v_goals jsonb;
  v_eventhub jsonb;
  v_community jsonb;
+ v_billing jsonb;
  v_relation record;
 begin
  if v_user is null or p_expected_user_id is distinct from v_user
@@ -81,7 +82,8 @@ begin
      AND NOT (
        n.nspname='allin_private' AND c.relname=ANY(ARRAY[
          'v2_community_pair_revisions','v2_community_follows',
-         'v2_community_blocks','v2_community_action_receipts'
+         'v2_community_blocks','v2_community_action_receipts',
+         'v2_subscription_checkout_attempts','v2_subscription_purchases'
        ])
      )
  ) THEN RAISE EXCEPTION 'Unreviewed alternate-key owner table requires export coverage'
@@ -207,6 +209,40 @@ begin
    ) into v_community;
  end if;
 
+ -- Billing is owned through owner_id, not user_id. Event receipts inherit
+ -- ownership via purchase_id. Provider internal IDs must not leak into export.
+ IF EXISTS(
+   SELECT 1 FROM (VALUES
+    ('allin_private.v2_subscription_checkout_attempts'),
+    ('allin_private.v2_subscription_purchases'),
+    ('allin_private.v2_subscription_verified_events')
+   ) AS required(name) WHERE pg_catalog.to_regclass(required.name) IS NULL
+ ) THEN RAISE EXCEPTION 'Billing export source graph is incomplete'
+    USING ERRCODE='42501'; END IF;
+ SELECT pg_catalog.jsonb_build_object(
+   'checkout_attempts',coalesce((SELECT pg_catalog.jsonb_agg(
+     pg_catalog.jsonb_build_object('attemptId',t.attempt_id,'provider',t.provider,
+       'environment',t.environment,'offerKind',t.offer_kind,
+       'state',t.state,'verifiedAt',t.verified_at) ORDER BY t.attempt_id)
+       FROM allin_private.v2_subscription_checkout_attempts t
+       WHERE t.owner_id=v_user),'[]'::jsonb),
+   'purchases',coalesce((SELECT pg_catalog.jsonb_agg(
+     pg_catalog.jsonb_build_object('purchaseId',t.id,'checkoutAttemptId',t.checkout_attempt_id,
+       'provider',t.provider,'environment',t.environment,'phase',t.phase,
+       'revision',t.revision,'accessUntil',t.access_until,'updatedAt',t.updated_at)
+       ORDER BY t.id)
+       FROM allin_private.v2_subscription_purchases t
+       WHERE t.owner_id=v_user),'[]'::jsonb),
+   'verified_events',coalesce((SELECT pg_catalog.jsonb_agg(
+     pg_catalog.jsonb_build_object('purchaseId',e.purchase_id,'provider',e.provider,
+       'environment',e.environment,'revision',e.revision,'acceptedAt',e.accepted_at)
+       ORDER BY e.purchase_id,e.revision)
+       FROM allin_private.v2_subscription_verified_events e
+       JOIN allin_private.v2_subscription_purchases p ON p.id=e.purchase_id
+       WHERE p.owner_id=v_user),'[]'::jsonb),
+   'providerInternalIdentifiersDisclosed',false
+ ) INTO v_billing;
+
  select jsonb_build_object(
    'schema_version','v2-account-export-snapshot-v2',
    'exported_at',now(),
@@ -228,6 +264,7 @@ begin
    'goals',v_goals,
    'eventhub',v_eventhub,
    'community',v_community,
+   'billing',v_billing,
    'training_activity',allin_private.v2_training_account_export_fragment_candidate(v_user),
    -- Coach identity/contents/receipts remain part of the SAME owner export.
    -- Never include another user's messages, even if a thread UUID is known.
