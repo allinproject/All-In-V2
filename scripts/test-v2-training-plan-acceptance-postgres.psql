@@ -200,6 +200,28 @@ BEGIN
  (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
  VALUES('31313131-3131-4131-8131-313131313131',
         rev,p,u,'2026-11-18','America/Chicago','rest',1);
+ -- Matching but nonexistent timezone strings must NOT become accepted
+ -- simply because revision, day and scheduled session agree with each other.
+ UPDATE public.v2_training_plan_revisions SET calendar_timezone='Mars/Phobos'
+ WHERE id=rev;
+ UPDATE public.v2_training_revision_days SET timezone='Mars/Phobos'
+ WHERE plan_revision_id=rev;
+ UPDATE public.v2_training_revision_sessions SET timezone='Mars/Phobos'
+ WHERE plan_revision_id=rev;
+ BEGIN
+  PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+   u,p,rev,'34343434-3434-4434-8434-343434343434',1);
+  RAISE EXCEPTION 'Accepted nonexistent timezone as canonical local calendar';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ IF (SELECT version FROM public.v2_training_plans WHERE id=p)<>1
+ OR (SELECT status FROM public.v2_training_plan_revisions WHERE id=rev)<>'candidate'
+ THEN RAISE EXCEPTION 'Invalid timezone acceptance partially mutated plan'; END IF;
+ UPDATE public.v2_training_plan_revisions SET calendar_timezone='America/Chicago'
+ WHERE id=rev;
+ UPDATE public.v2_training_revision_days SET timezone='America/Chicago'
+ WHERE plan_revision_id=rev;
+ UPDATE public.v2_training_revision_sessions SET timezone='America/Chicago'
+ WHERE plan_revision_id=rev;
  result:=allin_private.v2_training_accept_plan_revision_candidate(
   u,p,rev,'27272727-2727-4727-8727-272727272727',1);
  IF result->>'version'<>'2' OR
