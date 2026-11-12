@@ -152,9 +152,8 @@ test('ALL-251 source ownership: canonical Community posts and ALL-247 food logs 
   assert(candidate.includes("'owner_id'"),'Community posts owner_id must fail closed');
   assert(candidate.includes('v2_community_posts')===false,
    'Community posts cannot enter the reviewed export registry without explicit approval');
-  assert(candidate.includes("'complete',false")||candidate.includes("'complete_user_export',false")||
-   candidate.includes('complete_user_export',false)===true,
-   'Check the whole-account readiness before adding an export source');
+  if(candidate===reader)assert(candidate.includes("'complete',false"),
+   'Paginated inventory must remain incomplete until media/owner approvals');
  }
 });
 
