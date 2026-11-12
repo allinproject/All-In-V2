@@ -54,3 +54,11 @@ test('native account purchase controls mount only behind all four approvals',()=
  assert.match(actions,/Restore Purchases/);
  assert.match(actions,/Subscribe with/);
 });
+
+test('native billing launch runbook retains signed-device and owner security gates',()=>{
+ const runbook=readFileSync(new URL('../../../../../docs/architecture/V2-NATIVE-BILLING-SIGNED-DEVICE-ACCEPTANCE.md',import.meta.url),'utf8');
+ for(const requirement of [
+  'ALL-222','ALL-264/265','signed','sandbox','owner A','account B',
+  'rollback','refund','releaseReady=false',
+ ]) assert.ok(runbook.includes(requirement),`Missing billing acceptance evidence: ${requirement}`);
+});
