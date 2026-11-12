@@ -251,6 +251,18 @@ BEGIN
     ' JOIN allin_private.v2_subscription_purchases t ON t.id=e.purchase_id'||
     ' WHERE t.owner_id=$1 ORDER BY e.purchase_id,e.revision LIMIT $2 OFFSET $3';
   ELSE RAISE EXCEPTION 'Unknown billing export projection' USING ERRCODE='42501'; END IF;
+ ELSIF p_collection='community.my_posts' THEN
+  -- REVIEW-ONLY / NOT REGISTERED: this owner-only projection is intentionally
+  -- unreachable through the current inventory allowlist. Activating it
+  -- requires separate Community source, media and privacy acceptance.
+  -- Never use the public-feed reader or infer another athlete's posts.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''id'',p.id,''owner_id'',p.owner_id,''kind'',p.kind,'||
+    '''audience'',p.audience,''title'',p.title,''body'',p.body,'||
+    '''source_id'',p.source_id,''post_version'',p.post_version,'||
+    '''published_at'',p.published_at,''updated_at'',p.updated_at) '||
+    'FROM allin_private.v2_community_posts p '||
+    'WHERE p.owner_id=$1 ORDER BY p.published_at,p.id LIMIT $2 OFFSET $3';
  ELSIF p_collection LIKE 'community.%' THEN
   v_schema:='allin_private';
   IF p_collection='community.outgoing_follows' THEN
