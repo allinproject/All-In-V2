@@ -25,30 +25,30 @@ BEGIN
  VALUES(r1,g,a,1,'candidate','athlete_authored','primary'),
        (r2,g,a,2,'candidate','coach_proposal','primary'),
        (rb,g2,b,1,'candidate','athlete_authored','primary');
- res:=public.v2_goal_accept_revision_candidate(a,g,r1,action_one,1,digest);
+ res:=allin_private.v2_goal_accept_revision_candidate(a,g,r1,action_one,1,digest);
  IF res->>'version'<>'2' OR res->>'replayed'<>'false'
  THEN RAISE EXCEPTION 'First Goal acceptance failed: %',res; END IF;
  IF (SELECT active_revision_id FROM public.v2_goals WHERE id=g)<>r1
  THEN RAISE EXCEPTION 'First accepted revision was not activated'; END IF;
- res:=public.v2_goal_accept_revision_candidate(a,g,r1,action_one,1,digest);
+ res:=allin_private.v2_goal_accept_revision_candidate(a,g,r1,action_one,1,digest);
  IF res->>'version'<>'2' OR res->>'replayed'<>'true'
  THEN RAISE EXCEPTION 'Identical action did not replay: %',res; END IF;
  BEGIN
-   PERFORM public.v2_goal_accept_revision_candidate(a,g,r1,action_one,1,repeat('b',64));
+   PERFORM allin_private.v2_goal_accept_revision_candidate(a,g,r1,action_one,1,repeat('b',64));
    RAISE EXCEPTION 'Changed payload with same action ID succeeded';
  EXCEPTION WHEN unique_violation THEN NULL;
  END;
  BEGIN
-   PERFORM public.v2_goal_accept_revision_candidate(a,g,r2,action_two,1,digest);
+   PERFORM allin_private.v2_goal_accept_revision_candidate(a,g,r2,action_two,1,digest);
    RAISE EXCEPTION 'Stale expected version was accepted';
  EXCEPTION WHEN serialization_failure THEN NULL;
  END;
  BEGIN
-   PERFORM public.v2_goal_accept_revision_candidate(b,g,r2,action_two,2,digest);
+   PERFORM allin_private.v2_goal_accept_revision_candidate(b,g,r2,action_two,2,digest);
    RAISE EXCEPTION 'Cross-owner Goal mutation succeeded';
  EXCEPTION WHEN insufficient_privilege THEN NULL;
  END;
- res:=public.v2_goal_accept_revision_candidate(a,g,r2,action_two,2,digest);
+ res:=allin_private.v2_goal_accept_revision_candidate(a,g,r2,action_two,2,digest);
  IF res->>'version'<>'3' OR res->>'replayed'<>'false'
  THEN RAISE EXCEPTION 'Second revision acceptance failed: %',res; END IF;
  IF (SELECT status FROM public.v2_goal_revisions WHERE id=r1)<>'superseded'
@@ -68,7 +68,7 @@ SET LOCAL ROLE authenticated;
 DO $client$
 BEGIN
  BEGIN
-   PERFORM public.v2_goal_accept_revision_candidate(
+   PERFORM allin_private.v2_goal_accept_revision_candidate(
      '11111111-1111-4111-8111-111111111111',
      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
      'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
