@@ -44,3 +44,22 @@ These changes are covered by five additional committed regressions (14 total in 
 The review-only validator now has **explicit allowlists for every top-level field** in all four SQL candidate projections. An unexpected field—even one using an unfamiliar name for a macro or source metadata—is a validation error and requires review of both the SQL projection and the downstream contract. Nested legacy `nutrition` and `nutrition_delta` keys remain forbidden recursively. Two additional negative tests cover unexpected recipe and selector fields (16 total committed tests).
 
 This staging projection is an audit format, **not** the final canonical V2 schema. Field-list changes should never be auto-accepted: first update source provenance documentation, review the change against the no-authored-macros rule, then adjust the allowlist and tests. Equivalent local Node checks exercised the added rejection path; CI on the exact committed code remains unconfirmed.
+
+## Full snapshot verification and freezer-kit review — 2026-11-12
+
+The validator accepts optional `counts=/path/to/expected-counts.json`. The project-pinned review-only count baseline is `docs/migration/ALL-218-REVIEW-CANDIDATE-EXPECTED-COUNTS-2026-11-12.json` (907 recipes, 1,293 selectors, 5,876 options, 2,855 component mappings). Example:
+
+```bash
+node scripts/validate-cookbook-candidates.cjs \
+  recipes=/private/path/recipes.ndjson \
+  selectors=/private/path/selectors.ndjson \
+  options=/private/path/options.ndjson \
+  mappings=/private/path/mappings.ndjson \
+  counts=docs/migration/ALL-218-REVIEW-CANDIDATE-EXPECTED-COUNTS-2026-11-12.json
+```
+
+The flag rejects incomplete or extra records against that review source count, but cannot detect same-count substitutions: also compare the V1 PostgreSQL projections against the source SHA-256 manifest. A genuine approved source change requires a fresh source review and new counts/digests, never silent regeneration.
+
+The recipe projection now explicitly preserves `source_freezer_kit_review_only` for 20 V1 freezer-kit records. The exact read-only V1 SQL projection was executed after this change: 907 recipes; 20 explicit freezer-kit source modes; zero nested `nutrition` and `nutrition_delta` keys. The three observed source `kind` values are `freezer_kit` (8), `raw_kit` (2), and `uncooked_assembled` (10). These are review candidates, not normalized V2 meal states. Their assembly, freeze, thaw and cook-day instructions and raw component measures remain separate from cooked edible recipe amounts. Source recipe projection SHA-256 is updated in the committed digest manifest; the other three unchanged projections retain their prior hashes.
+
+The test runner now has a lightweight no-deploy workflow at `.github/workflows/v2-cookbook-candidate-validation.yml`, triggered only by its own script/test/workflow files. It does not run Expo/npm installs or require database secrets. Until the run is checked, do not claim the GitHub Actions job passed. The script is also checked with a small isolated JavaScript harness for critical expected-count, malformed-input, nested-macro and freezer-kit acceptance cases.
