@@ -33,15 +33,15 @@ async function setup(){
  await db.exec(read('V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'));
  await db.exec(read('V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql'));
  const x=input();
- await db.exec('CREATE ROLE ingredient_automation_test LOGIN NOINHERIT;'+
-   'GRANT allin_v2_ingredient_reviewer TO ingredient_automation_test WITH INHERIT FALSE, SET TRUE;');
+ await db.exec('CREATE ROLE allin_ing_workload_food_ingest_v1 LOGIN NOINHERIT;'+
+   'GRANT allin_v2_ingredient_reviewer TO allin_ing_workload_food_ingest_v1 WITH INHERIT FALSE, SET TRUE;');
  // Synthetic operator identity is confined to this ephemeral database; it is
  // NOT a real IdP enrollment or permission to deploy reviewer credentials.
  await db.exec("INSERT INTO allin_private.v2_ingredient_review_operators"+
-   "(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,"+
+   "(login_role,principal_kind,enabled,enrollment_reference,identity_issuer,identity_subject,"+
    "credential_vault_reference,identity_verified_at,credential_expires_at) VALUES"+
-   "('ingredient_automation_test',true,'LOCAL-TEST-ONLY','local.test.example',"+
-   "'isolated-test-subject','test-vault-reference-not-a-secret',"+
+   "('allin_ing_workload_food_ingest_v1','workload',true,'LOCAL-TEST-ONLY','allin-v2-internal-workload',"+
+   "'ingest-isolated-test-v1','test-vault-reference-not-a-secret',"+
    "now()-interval '1 hour',now()+interval '1 day');");
  await db.exec("INSERT INTO public.v2_ingredients(id,canonical_key,canonical_name,"+
    "normalized_name,identity_kind,status) VALUES ('"+ING+"','"+key+"',"+
@@ -58,7 +58,7 @@ async function setup(){
    "'foundation','CC0','mapped','"+x.digest+"');");
  await db.exec("INSERT INTO public.v2_ingredient_profile_sources(profile_id,source_record_id,evidence_role)"+
    " VALUES('"+PROFILE+"','"+SOURCE+"','primary');");
- await db.exec('SET SESSION AUTHORIZATION ingredient_automation_test;SET ROLE allin_v2_ingredient_reviewer;');
+ await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_food_ingest_v1;SET ROLE allin_v2_ingredient_reviewer;');
  return {db,x};
 }
 test('actual PostgreSQL transaction: rollback, two immutable events, idempotent replay',async()=>{
@@ -75,7 +75,7 @@ test('actual PostgreSQL transaction: rollback, two immutable events, idempotent 
    let row=(await db.query("SELECT review_status,profile_revision FROM public.v2_ingredient_nutrition_profiles WHERE id='"+PROFILE+"'")).rows[0];
    assert.equal(row.review_status,'candidate');assert.equal(row.profile_revision,1);
    assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_review_events')).rows[0].n,0);
-   await db.exec('SET SESSION AUTHORIZATION ingredient_automation_test;SET ROLE allin_v2_ingredient_reviewer;');
+   await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_food_ingest_v1;SET ROLE allin_v2_ingredient_reviewer;');
    const success=await runAutomaticQualification({client:db,...x});
    assert.equal(success.status,'source_qualified_not_published');
    assert.equal(success.publicationApproved,false);
@@ -87,5 +87,26 @@ test('actual PostgreSQL transaction: rollback, two immutable events, idempotent 
    const events=(await db.query('SELECT previous_status,next_status FROM allin_private.v2_ingredient_review_events ORDER BY event_id')).rows;
    assert.deepEqual(events.map(e=>e.previous_status+'>'+e.next_status),
      ['candidate>needs_review','needs_review>reviewed']);
+   // Workload cannot publish or perform human exception decisions even with
+   // an enabled operator registry row and valid restricted role membership.
+   await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_food_ingest_v1;SET ROLE allin_v2_ingredient_reviewer;');
+   await assert.rejects(
+     db.query("SELECT allin_private.v2_review_ingredient_profile_status('"+PROFILE+"',3,'"+x.digest+"','calculation_ready','Simulated machine publication denial','44444444-4444-4444-8444-444444444444')"),
+     e=>e?.code==='42501');
+   await assert.rejects(
+     db.query("SELECT allin_private.v2_review_ingredient_profile_status('"+PROFILE+"',3,'"+x.digest+"','retired','Simulated machine retirement denial','55555555-5555-4555-8555-555555555555')"),
+     e=>e?.code==='42501');
+   await assert.rejects(db.query('SELECT * FROM allin_private.v2_ingredient_review_events'),
+     e=>e?.code==='42501');
+   await db.exec('SET SESSION AUTHORIZATION postgres');
+   const auditAfter=(await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_review_events')).rows[0].n;
+   assert.equal(auditAfter,2);
+   const final=(await db.query("SELECT review_status,profile_revision FROM public.v2_ingredient_nutrition_profiles WHERE id='"+PROFILE+"'")).rows[0];
+   assert.equal(final.review_status,'reviewed');assert.equal(final.profile_revision,3);
+   // Bad workload claims cannot pass the canonical registry constraint.
+   await assert.rejects(db.query(
+     "INSERT INTO allin_private.v2_ingredient_review_operators(login_role,principal_kind,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES('bad_workload','workload',true,'LOCAL-TEST-ONLY','untrusted-issuer','ingest-fake-subject','test-vault-reference-unsafe',now(),now()+interval '1 day')"),
+     e=>e?.code==='23514');
+
  } finally {await db.close()}
 });
