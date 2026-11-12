@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {projectCompletedActivityDetail,type MetricEvidence} from './completedActivityDetailProjection.ts';
+import {metricEvidenceQualityNotice,projectCompletedActivityDetail,type MetricEvidence} from './completedActivityDetailProjection.ts';
 const fact=(key:string,label:string,value:string):MetricEvidence=>
  ({key,label,value,provenance:'device',source:'watch'});
 test('details preserves every supplied metric, including extended measurements outside 17-sport scalar baseline',()=>{
@@ -105,4 +105,21 @@ test('user can promote a true non-default Details metric to Overview, without fi
   overviewLayout:{order:['cadence','distance','zone2'],pinned:['zone2'],hidden:[]}});
  assert.deepEqual(customized.overview.map(x=>x.key),['zone2','distance']);
  assert.equal(customized.details.length,3);
+});
+
+test('visible confidence warnings distinguish partial measurement, provider and estimates',()=>{
+ const metric=fact('distance','Distance','8 km');
+ assert.equal(metricEvidenceQualityNotice(metric),null);
+ assert.equal(metricEvidenceQualityNotice({...metric,quality:'trusted',sourceQuality:'trusted'}),null);
+ assert.equal(metricEvidenceQualityNotice({...metric,quality:'partial',sourceQuality:'trusted'}),
+  'Partial measurement quality');
+ assert.equal(metricEvidenceQualityNotice({...metric,quality:'trusted',sourceQuality:'partial'}),
+  'Partial source quality');
+ assert.equal(metricEvidenceQualityNotice({...metric,quality:'partial',sourceQuality:'partial'}),
+  'Partial measurement and source quality');
+ assert.equal(metricEvidenceQualityNotice({...metric,provenance:'estimated'}),
+  'Estimated value');
+ const projected=projectCompletedActivityDetail({sport:'outdoor_run',
+  metrics:[{...metric,quality:'partial',sourceQuality:'trusted'}]});
+ assert.equal(metricEvidenceQualityNotice(projected.details[0]),'Partial measurement quality');
 });
