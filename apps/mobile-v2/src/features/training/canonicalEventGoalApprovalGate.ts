@@ -40,6 +40,11 @@ const validDate=(v:string|null):boolean=>v===null||
   typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&
   !Number.isNaN(Date.parse(v+'T12:00:00Z'))&&
   new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v;
+function validTimezone(value:unknown):value is string{
+ if(typeof value!=='string'||!value.trim()||value!==value.trim()||value.length>100)return false;
+ try{new Intl.DateTimeFormat('en-US',{timeZone:value});return true;}
+ catch{return false;}
+}
 /** Cross-domain gate; only authoritative snapshots can pass. No client-supplied
  * EventHub URL/group membership is event registration or race certification.
  */
@@ -72,7 +77,7 @@ export function certifySeasonAgainstGoalEventOwners(
  for(const e of owners.eventSnapshot.events){
   if(!e||!e.eventId?.trim()||events.has(e.eventId)||
     e.ownerId!==input.expectedOwnerId||!Number.isSafeInteger(e.eventVersion)||e.eventVersion<1||
-    !validDate(e.date)||!e.date||!e.timezone?.includes('/')||
+    !validDate(e.date)||!e.date||!validTimezone(e.timezone)||
     e.verification!=='organizer_verified'||e.evidenceGeneration!==input.activeSessionGeneration||
     !['registered','athlete_confirmed'].includes(e.participation))
    return no('event_not_owner_certified');
@@ -94,7 +99,7 @@ export function certifySeasonAgainstGoalEventOwners(
   if(!binding||!binding.eventId?.trim()||bindings.has(binding.eventId)||
     binding.planRevisionId!==input.activePlanRevisionId||
     !binding.sessionId?.trim()||!Number.isSafeInteger(binding.eventVersion)||
-    binding.eventVersion<1||!binding.eventTimezone?.includes('/'))
+    binding.eventVersion<1||!validTimezone(binding.eventTimezone))
    return no('training_event_version_binding_invalid');
   bindings.set(binding.eventId,binding);
  }
