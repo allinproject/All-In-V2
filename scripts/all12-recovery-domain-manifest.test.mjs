@@ -117,3 +117,15 @@ test('complete independently reviewed physical recovery evidence can satisfy its
  });
  assert.deepEqual(r,{accepted:true,missing:[]});
 });
+
+test('canonical Coach recovery inventory follows actual SQL candidate',()=>{
+ const coach=recoveryDomains.find(d=>d.name==='coach');
+ assert.deepEqual(coach.tables,[
+  'public.v2_coach_threads','public.v2_coach_messages',
+  'allin_private.v2_coach_turn_claims',
+  'allin_private.v2_coach_request_policy'
+ ]);
+ // Coach claims and policy are private operational state, not portable
+ // account export rows; still mandatory in recovery logical backup.
+ assert.deepEqual(findUntrackedRecoveryTables(coach.tables),[]);
+});
