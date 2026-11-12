@@ -158,6 +158,9 @@ BEGIN
    '11111111-1111-4111-8111-111111111111',
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
  IF v->>'sport'<>'cycling'
+ OR v->>'ownerId'<>'11111111-1111-4111-8111-111111111111'
+ OR v->>'activityId'<>'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+ OR v->>'version'<>'1'
  OR v->>'status'<>'needs_review'
  OR pg_catalog.jsonb_array_length(v->'segments')<>2
  OR v#>>'{segments,0,sourceMetrics,metrics,0,valueNumeric}'<>'200'
