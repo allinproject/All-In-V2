@@ -6,6 +6,7 @@ import {useAuth} from '../src/auth/AuthProvider';
 import {v2AuthenticatedScreenKey} from '../src/auth/authRoute';
 import {useAccessGate} from '../src/auth/AccessGateProvider';
 import {FuelFoodLogPanel} from '../src/features/fuel/FuelFoodLogPanel';
+import {KitchenWeekPlanPanel} from '../src/features/kitchen/KitchenWeekPlanPanel';
 import {V2BottomNavigation} from '../src/navigation/V2BottomNavigation';
 import {deviceLocalToday} from '../src/features/today/todayEntry';
 import {parseFuelDayContext} from '../src/features/today/todayFuelNavigation';
@@ -103,7 +104,8 @@ function OwnedFuelScreen(){
       {foodPlanSection==='plan'?<>
        <Text style={styles.description}>Choose the recipes and individual foods you intend to eat on specific days and at breakfast, lunch, dinner or snacks.</Text>
        <Text style={styles.description}>A banana, an apple and a protein bar may each be planned as separate foods for the same lunch. Planning is not logging food as eaten.</Text>
-       <Text style={styles.note}>Meal Plan data is not connected yet. No days or foods have been added. Start Meal Prep will become available only with a verified plan and an authenticated session.</Text>
+       <KitchenWeekPlanPanel ownerId={user.id} day={day} accessReady={gate.status==='ready'}/>
+       <Text style={styles.note}>Adding foods and starting Meal Prep remain unavailable until the approved Recipe/Food owner writers and Kitchen session backend are connected.</Text>
       </>:foodPlanSection==='shopping'?<>
        <Text style={styles.description}>Shopping will combine missing ingredients from planned recipes with individual scheduled foods, including fruit, snacks and drinks.</Text>
        <Text style={styles.description}>Only verified shortages after usable Pantry quantities and reservations are considered belong on this list. Purchases must be confirmed before changing Pantry.</Text>
