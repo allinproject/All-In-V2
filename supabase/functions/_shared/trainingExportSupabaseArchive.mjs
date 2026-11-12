@@ -152,7 +152,7 @@ export function createSupabasePagedAccountExportStorage({
   return ownerId+'/'+requestId;
  };
  const pageName=(collection,index)=>{
-  if(!/^[a-z][a-z0-9_]{0,63}$/.test(collection??'')
+  if((!/^[a-z][a-z0-9_.]{0,63}$/.test(collection??'') || collection.includes('..'))
    ||!Number.isInteger(index)||index<0||index>20000)
    throw Error('Invalid private archive page identity');
   return collection+'_'+index+'.page.json';
@@ -227,7 +227,7 @@ export function createSupabasePagedAccountExportStorage({
     if(error||!Array.isArray(data))throw Error('Private page cleanup listing failed');
     for(const entry of data){
      const name=entry?.name;
-     if(!/^[a-z][a-z0-9_]{0,63}_[0-9]+\.page\.json$/.test(name??'')
+     if((!/^[a-z][a-z0-9_.]{0,63}_[0-9]+\.page\.json$/.test(name??'') || name.includes('..'))
       ||seen.has(name))throw Error('Unexpected account export cleanup entry');
      seen.add(name);paths.push(base+'/pages/'+name);
     }
