@@ -30,9 +30,14 @@ const validSubtypes:Record<string,readonly string[]>={
  multisport:['','triathlon','duathlon','brick','hybrid'],
  other:[''],
 };
+/** Matches the exact canonical sport vocabulary of the ALL-243 metric registry.
+ * Display labels such as outdoor_run and pool_swim are not registry scopes. */
+export function isCanonicalActivitySport(value:unknown):value is string{
+ return typeof value==='string'&&Object.prototype.hasOwnProperty.call(validSubtypes,value);
+}
 export function resolveActivityPresentationSport(canonicalSport:string,subtype?:string|null):ActivityPresentationSport{
  const sport=normalized(canonicalSport),kind=normalized(subtype);
- const valid=validSubtypes[sport];
+ const valid=isCanonicalActivitySport(sport)?validSubtypes[sport]:undefined;
  if(!valid||!valid.includes(kind))throw new Error('Unsupported activity sport or subtype; review the recorded identity.');
  let view:V1CompletedActivitySport;
  switch(sport){
