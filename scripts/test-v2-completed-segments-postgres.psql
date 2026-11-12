@@ -228,6 +228,39 @@ BEGIN
  RAISE NOTICE 'PASS ALL-243 typed segments: owner scope, nested order, metric/segment identity and RLS';
 END $qa$;
 
+-- Published metric revisions with one semantic code are not interchangeable
+-- even when the sensor reports identical watts. Each segment must expose a
+-- single reconciled definition or an explicit unresolved_versions reason.
+DO $versions$
+DECLARE
+ v jsonb;
+BEGIN
+ INSERT INTO public.v2_activity_metric_definitions(
+   metric_code,definition_version,display_name,canonical_unit,value_kind,
+   sport_scope,measurement_kinds,display_group,privacy_class,status)
+ VALUES('power_w',2,'Power','W','numeric',ARRAY['cycling'],
+   ARRAY['source_measured'],'power','private','published');
+ INSERT INTO public.v2_activity_metric_values(
+   id,activity_id,user_id,segment_id,source_id,metric_code,definition_version,
+   value_numeric,measurement_kind,quality,source_payload_hash)
+ VALUES('00000000-0000-4000-8000-000000000014',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   '11111111-1111-4111-8111-111111111111',
+   'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+   'power_w',2,200,'source_measured','trusted',repeat('a',64));
+ v:=allin_private.v2_activity_segment_scalar_projection_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+ IF pg_catalog.jsonb_array_length(v->'metrics')<>0
+ OR pg_catalog.jsonb_array_length(v->'unresolvedMetrics')<>1
+ OR v#>>'{unresolvedMetrics,0,reason}'<>'conflicting_versions'
+ OR v#>>'{unresolvedMetrics,0,metricCode}'<>'power_w'
+ THEN RAISE EXCEPTION 'Mixed segment definition versions escaped quarantine: %',v; END IF;
+ RAISE NOTICE 'PASS ALL-243: segment definition versions fail closed';
+END $versions$;
+
 -- Parent multisport activity must project cycling metrics from a nested
 -- cycling leg, even when the interval itself does not repeat a sport label.
 DO $multisport_leg$
