@@ -249,3 +249,31 @@ registration on 2026-11-12 caused the canonical Node source parity test to
 fail; the review-only projections were preserved while deferring registration.
 Unknown Fuel tables continue to **block** a complete export rather than
 silently disappearing. Never activate a second `food.my_entries` alias.
+
+## Four Fuel source regression coverage — 2026-11-12
+
+The existing single rollback-only `test-all251-food-log-export-projection-local.psql`
+now exercises all four proposed Fuel collections using the exact ALL-247
+Food Log and hydration review schemas under two synthetic Auth owners.
+The actual ALL-251 approved owner/session/request bridge stays required.
+Inside that same rollback transaction, a **test-only registry override** lets
+the gated projections be exercised without registering them in the real
+release inventory.
+
+- Food entries: 27 owner A records over 25+2 pages and one owner B record,
+  including a deleted tombstone, revision history, explicit unknown calories
+  and a genuine numeric zero.
+- Hydration entries: 28 owner A records over 25+3 pages and one owner B
+  record, preserving `drink` versus `refill`, a deleted event and the
+  original and canonical volume units.
+- Action receipts: owner A/B Food and Hydration receipts are included only
+  with action ID, result ID/revision and timestamps; private request
+  fingerprints, replay hashes and cross-owner metadata stay excluded.
+- Both new collections also exercise wrong-session/owner denial and assert
+  `completeUserExport=false`.
+
+Source-level regressions require correct projection fields and ownership,
+no private action internals, and explicitly verify that NONE of the four
+candidate tables enters the canonical owner inventory before owner schema,
+media and retention approval. Actual PostgreSQL and CI acceptance results
+remain distinct from documenting this intended contract.
