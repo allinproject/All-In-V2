@@ -27,7 +27,7 @@ const fingerprint=()=>sql(`SELECT coalesce(md5(string_agg(to_jsonb(x)::text,E'\\
  SELECT 'user' kind,id::text row_id,to_jsonb(u) AS record FROM auth.users u WHERE id IN ('${accounts[0].id}'::uuid,'${accounts[1].id}'::uuid)
  UNION ALL SELECT 'identity',id::text,to_jsonb(i) FROM auth.identities i WHERE user_id IN ('${accounts[0].id}'::uuid,'${accounts[1].id}'::uuid)
  UNION ALL SELECT 'session',id::text,to_jsonb(s) FROM auth.sessions s WHERE user_id IN ('${accounts[0].id}'::uuid,'${accounts[1].id}'::uuid)
- UNION ALL SELECT 'refresh',id::text,to_jsonb(t) FROM auth.refresh_tokens t WHERE user_id IN ('${accounts[0].id}'::uuid,'${accounts[1].id}'::uuid)
+ UNION ALL SELECT 'refresh',id::text,to_jsonb(t) FROM auth.refresh_tokens t WHERE user_id::text IN ('${accounts[0].id}','${accounts[1].id}')
  ) x`);
 try {
  for(const who of ['a','b']){
