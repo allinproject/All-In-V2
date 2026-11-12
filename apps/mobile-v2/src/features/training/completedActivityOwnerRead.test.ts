@@ -56,6 +56,26 @@ test('unverified measurements are not mislabeled validated, rejected source neve
  assert.equal(b.metrics.length,0);
  assert.throws(()=>canonicalActivityToScreenInput({...a,sources:[{...a.sources[0],quality:'rejected'}]},'owner-A','activity-1'),/source is unavailable/);
 });
+test('partial metric and provider confidence remain distinguishable from trusted readings',()=>{
+ const a=base();
+ const fromMetric=canonicalActivityToScreenInput({...a,metrics:[
+  {...a.metrics[0],quality:'partial'}
+ ]},'owner-A','activity-1');
+ assert.equal(fromMetric.metrics.length,1);
+ assert.equal(fromMetric.metrics[0].quality,'partial');
+ assert.equal(fromMetric.metrics[0].sourceQuality,'trusted');
+ assert.equal(fromMetric.metrics[0].value,'0');
+ const partialProvider=canonicalActivityToScreenInput({...a,sources:[
+  {...a.sources[0],quality:'partial'}
+ ],metrics:[a.metrics[0]]},'owner-A','activity-1');
+ assert.equal(partialProvider.metrics[0].quality,'trusted');
+ assert.equal(partialProvider.metrics[0].sourceQuality,'partial');
+ const unverifiedProvider=canonicalActivityToScreenInput({...a,sources:[
+  {...a.sources[0],quality:'unverified'}
+ ],metrics:[a.metrics[0]]},'owner-A','activity-1');
+ assert.equal(unverifiedProvider.metrics.length,0);
+});
+
 test('source and source-level sport applicability validated before display',()=>{
  const a=base();
  assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],sourceId:'another'}]},'owner-A','activity-1'),/source/);
