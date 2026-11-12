@@ -7,6 +7,7 @@ set -euo pipefail
 a=$(mktemp); b=$(mktemp); pid=""
 cleanup(){ if [[ -n "$pid" ]]; then wait "$pid" || true; fi; rm -f "$a" "$b"; }
 trap cleanup EXIT
+failures=0
 owner="11111111-1111-4111-8111-111111111111"
 activity="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 source="cccccccc-cccc-4ccc-8ccc-cccccccccccc"
@@ -58,8 +59,13 @@ SQL
   if [[ "$count" != 0 ]]; then
     echo "FAIL ALL-243 concurrency gate: $case mutation overlapped and accepted stale metric" >&2
     cat "$a" "$b" >&2
-    exit 1
+    failures=$((failures+1))
+  else
+    echo "PASS ALL-243 $case mutation prevented overlapping stale metric"
   fi
-  echo "PASS ALL-243 $case mutation prevented overlapping stale metric"
 done
+if [[ "$failures" -ne 0 ]]; then
+  echo "FAIL ALL-243: $failures/2 real two-session mutation races permit stale ingest; cross-writer lock contract required" >&2
+  exit 1
+fi
 echo 'PASS ALL-243 two-connection mutation / ingest race gate'
