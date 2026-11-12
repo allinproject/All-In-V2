@@ -172,3 +172,35 @@ REVOKE ALL ON FUNCTION allin_private.v2_activity_append_scalar_candidate(
 -- No client/Coach/competition execution grants. The trusted device
 -- adapter/metric-review process must perform actual source authentication
 -- and registry publishing. This function does NOT adjudicate selected values.
+
+
+-- ALL-243 cross-writer owner fence, review-only candidate.
+-- These guards are attached to the canonical activity and source tables,
+-- rather than trusting each backend caller to remember a lock. They preserve
+-- raw historical evidence: invalidated/rejected facts are NOT deleted.
+-- The lock namespace is the same as v2_activity_append_scalar_candidate.
+CREATE FUNCTION allin_private.v2_activity_metric_owner_fence_candidate()
+RETURNS trigger LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=''
+AS $fence$
+BEGIN
+ IF TG_OP='UPDATE' AND NEW.user_id IS DISTINCT FROM OLD.user_id THEN
+  RAISE EXCEPTION 'Activity/source owner cannot change' USING ERRCODE='42501';
+ END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('v2-metric:'||OLD.user_id::text,0));
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ RETURN NEW;
+END;
+$fence$;
+REVOKE ALL ON FUNCTION allin_private.v2_activity_metric_owner_fence_candidate()
+ FROM PUBLIC,anon,authenticated,service_role;
+
+-- Guard status mutations, including in-place invalidation of recorded activity.
+CREATE TRIGGER v2_metric_activity_state_fence_candidate
+ BEFORE UPDATE OF status OR DELETE ON public.v2_completed_activities
+ FOR EACH ROW EXECUTE FUNCTION allin_private.v2_activity_metric_owner_fence_candidate();
+
+-- Rejection/quality changes must not race with the source-bound scalar writer.
+CREATE TRIGGER v2_metric_source_quality_fence_candidate
+ BEFORE UPDATE OF quality,source_payload_hash OR DELETE ON public.v2_activity_sources
+ FOR EACH ROW EXECUTE FUNCTION allin_private.v2_activity_metric_owner_fence_candidate();

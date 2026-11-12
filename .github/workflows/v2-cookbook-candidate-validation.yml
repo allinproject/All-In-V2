@@ -10,6 +10,8 @@ on:
       - 'scripts/cookbook-review-triage.test.cjs'
       - 'scripts/review-v2-ingredient-identities.cjs'
       - 'scripts/review-v2-ingredient-identities.test.cjs'
+      - 'scripts/check-v2-usda-nutrient-policy.cjs'
+      - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
       - 'docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'
       - 'docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'
       - 'docs/evidence/ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'
@@ -24,6 +26,8 @@ on:
       - 'scripts/cookbook-review-triage.test.cjs'
       - 'scripts/review-v2-ingredient-identities.cjs'
       - 'scripts/review-v2-ingredient-identities.test.cjs'
+      - 'scripts/check-v2-usda-nutrient-policy.cjs'
+      - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
       - 'docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'
       - 'docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'
       - 'docs/evidence/ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'
@@ -54,5 +58,7 @@ jobs:
         run: node --test scripts/cookbook-review-triage.test.cjs
       - name: Verify candidate ingredient identity isolation and source gates
         run: node --test scripts/review-v2-ingredient-identities.test.cjs
+      - name: Validate versioned USDA energy and nutrient completeness policy
+        run: node --test scripts/check-v2-usda-nutrient-policy.test.cjs
       - name: Test pinned USDA reconciliation and no-auto-approval gates
         run: node --test scripts/reconcile-usda-foundation-identities.test.cjs

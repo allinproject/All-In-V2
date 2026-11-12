@@ -64,6 +64,65 @@ SQL
     echo "PASS ALL-243 $case mutation prevented overlapping stale metric"
   fi
 done
+
+# Reverse order: owner-scoped ingest commits first; a trusted lifecycle
+# mutation must then fence against it and make that retained evidence
+# ineligible in the real canonical scalar projection. Historical data remains.
+for case in activity source; do
+  db="v2_ingest_first_${case}"
+  docker exec "$PG_CONTAINER" createdb -U postgres -T device_ingest_rls "$db"
+  docker exec "$PG_CONTAINER" psql -XAt -U postgres -d "$db" -v ON_ERROR_STOP=1 \
+    -f /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql >/dev/null
+  : >"$a"; : >"$b"
+  docker exec -i "$PG_CONTAINER" psql -XAt -U postgres -d "$db" -v ON_ERROR_STOP=1 >"$a" 2>&1 <<SQL &
+SET ROLE allin_v2_device_ingest;
+SET request.jwt.claim.sub='$owner';
+BEGIN;
+SELECT allin_private.v2_device_ingest_scalar_gateway_candidate(
+ repeat('7',64),repeat('8',64),'$owner','$activity','$source',
+ 'abababab-abab-4aba-8aba-abababababab',
+ 'draft_metric',1,'source_measured',121,NULL,NULL,repeat('a',64),'partial');
+\echo INGEST_HELD
+SELECT pg_sleep(3);
+COMMIT;
+SQL
+  pid=$!
+  ready=0
+  for _ in $(seq 1 60); do
+    if grep -q '^INGEST_HELD$' "$a"; then ready=1; break; fi
+    if ! kill -0 "$pid" 2>/dev/null; then break; fi
+    sleep 0.1
+  done
+  if [[ "$ready" != 1 ]]; then echo "Ingest never held transaction" >&2; cat "$a"; exit 1; fi
+  if [[ "$case" == activity ]]; then
+    mutation="UPDATE public.v2_completed_activities SET status='invalidated' WHERE id='$activity';"
+  else
+    mutation="UPDATE public.v2_activity_sources SET quality='rejected' WHERE id='$source';"
+  fi
+  docker exec -i "$PG_CONTAINER" psql -XAt -U postgres -d "$db" -v ON_ERROR_STOP=1 >"$b" 2>&1 <<SQL &
+SET lock_timeout='7s';
+$mutation
+SQL
+  mutation_pid=$!
+  wait "$mutation_pid" || { echo "Mutation failed after ingest" >&2; cat "$b"; failures=$((failures+1)); }
+  wait "$pid" || { echo "Ingest failed before mutation" >&2; cat "$a"; exit 1; }
+  pid=""
+  # Raw evidence remains for export/history, but projection must exclude it.
+  counts=$(docker exec "$PG_CONTAINER" psql -XAt -U postgres -d "$db" -v ON_ERROR_STOP=1 -c "
+    SELECT (SELECT count(*) FROM public.v2_activity_metric_values
+            WHERE id='abababab-abab-4aba-8aba-abababababab')::text
+      || ':' ||
+      pg_catalog.jsonb_array_length(
+        allin_private.v2_activity_scalar_evidence_projection_candidate(
+         '$owner'::uuid,'$activity'::uuid)->'metrics')::text")
+  if [[ "$counts" != "1:0" ]]; then
+    echo "FAIL ALL-243 $case ingest-first: raw evidence/eligibility mismatch ($counts)" >&2
+    cat "$a" "$b" >&2
+    failures=$((failures+1))
+  else
+    echo "PASS ALL-243 ingest-first $case: evidence retained, current projection excluded"
+  fi
+done
 if [[ "$failures" -ne 0 ]]; then
   echo "FAIL ALL-243: $failures/2 real two-session mutation races permit stale ingest; cross-writer lock contract required" >&2
   exit 1

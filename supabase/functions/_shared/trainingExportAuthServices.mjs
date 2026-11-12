@@ -54,7 +54,7 @@ export function createTrainingExportAuthServices({
       ||Date.parse(gate.expiresAt)>Date.now()+24*60*60*1000) {
      throw new Error('Current Auth session and approved export request required');
    }
-   return {ownerId,activeSession:true,exportPermitted:true};
+   return {ownerId,sessionId,activeSession:true,exportPermitted:true};
  }
  return Object.freeze({
    authorizeExport,

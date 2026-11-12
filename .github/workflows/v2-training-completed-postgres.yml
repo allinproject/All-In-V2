@@ -219,7 +219,7 @@ jobs:
         run: |
           set -euo pipefail
           docker exec "$PG_CONTAINER" mkdir -p /tmp/allin/scripts /tmp/allin/docs/architecture/sql
-          for f in V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql V2-COMPLETED-ACTIVITY-PRIVATE-INGEST-GATEWAY-CANDIDATE.sql; do
+          for f in V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql V2-COMPLETED-ACTIVITY-PRIVATE-INGEST-GATEWAY-CANDIDATE.sql V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql; do
             docker cp "docs/architecture/sql/$f" "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/$f"
           done
           for f in test-v2-completed-scalar-metrics-postgres.psql test-v2-device-ingest-two-owner-postgres.psql; do

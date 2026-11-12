@@ -19,6 +19,14 @@ BEGIN
   WHERE id=p_activity_id AND user_id=p_user_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'Owner-scoped activity not found'
    USING ERRCODE='42501'; END IF;
+ -- Preserve raw measurements for history/export, but never project them as
+ -- eligible current evidence after the canonical activity is invalidated.
+ IF v_activity.status='invalidated' THEN
+  RETURN pg_catalog.jsonb_build_object(
+   'activityId',p_activity_id,'metrics','[]'::jsonb,
+   'unresolvedMetrics','[]'::jsonb,
+   'coverage','invalidated_activity');
+ END IF;
  -- Evidence from all sources, including excluded/low confidence sources,
  -- is considered when determining whether a metric can be displayed.
  WITH rows AS (
