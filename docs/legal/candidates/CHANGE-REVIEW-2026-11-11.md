@@ -58,3 +58,18 @@
 | Native signup, 18+, version/receipt and account-isolation test evidence | Pending |
 
 Only after all required review fields are complete should a controlled V2-only publication be prepared and tested. Preserve the ability to supersede, rather than overwrite, existing published versions.
+
+
+## 2026-11-12 — founder principle approval and current technical correction
+
+**Founder-approved policy principles (not exact-document approval):** On 2026-11-12, the founder approved five durable implementation rules in [ALL-219](https://linear.app/allin365/issue/ALL-219/v1-v2-legal-business-plan-and-brand-authority-transfer): (1) health information and progress photos private by default with user-directed sharing; (2) user-requested exports and deletion, with full lifecycle implemented and tested before fulfillment promises; (3) Coach may use only authorized relevant data and actual AI processor/data use must be disclosed truthfully; (4) founder-beta participation never authorizes a subscription charge; (5) age 18+ and distinct recorded current Terms, Privacy and Founder Beta acceptance. The V2 product authority records the same decision.
+
+**This approval does NOT satisfy any pending document-specific fields in the table above.** Final Terms/Privacy/Founder Beta text, qualified legal/privacy review, founder signoff of exact versions, effective dates and hashes, controlled publication, native device verification, any deletion executor activation and opening signup remain **pending**. Do not backfill those fields or publish under this policy approval.
+
+**Superseded snapshot claims requiring correction before final wording:** On 2026-11-12, verified live V2 backend now includes deletion request, processor config and execution audit tables and owner-bound request/cancel RPCs. The native Account screen allows users to submit, inspect and cancel eligible **deletion requests**, and export a **limited** account JSON snapshot. However, the live deletion execution configuration is **false**; no tested actual erasure is established, and export is not a full archive. The earlier sheet's claim that no request queue exists is historical only. The two current proposed candidate texts saying in-app deletion controls 'may be introduced' are stale and must be reconciled to the request-only reality, with explicit distinction from unfinished irreversible deletion. Do not alter verbatim V1 sources or assume future deletion completion. The prior email-only candidate is not sufficient as a general Apple account-deletion compliance claim.
+
+**Deployed legal authority constraints:** Latest read-only live checks show zero legal documents/acceptances; published legal text is public-readable only when effective and published; users cannot directly insert or modify legal documents; legal acceptance reads are account-scoped; no ordinary user execution grant for privileged deletion-processing functions. This is source/schema/grant evidence, **not** device tests or final legal compliance.
+
+**Backups and processors:** Connected Supabase organization identifies a Pro plan, but a verified V2 project backup schedule/restore and service-specific retention evidence remain outstanding. Deployed AI/data processor inventory and support mailbox delivery/reply workflow require verification. Retain proposed conditional wording; do not invent assured backup frequency, retention or deletion turnaround.
+
+**Next permissible work:** prepare narrowly scoped factual candidate revisions for counsel/founder review, inventory current V2 processing and links, and complete non-destructive tests. No legal rows, signup opening, production deployment, paid billing or deletion execution may follow merely from the five policy-principle approvals.
