@@ -1,0 +1,66 @@
+{
+  "issue": "ALL-225",
+  "stage": "actual_pinned_usda_archive_evidence_review_only",
+  "archiveUrl": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_json_2026-10-29.zip",
+  "archiveSha256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579",
+  "recordDigestAlgorithm": "sha256(utf8 Python json.dumps(food,sort_keys=True,ensure_ascii=False,separators=(',',':')))",
+  "basis": "per 100 grams edible USDA Foundation food as characterized",
+  "sourceDescription": "FoundationFoods[] canonical per-food reserialization; no independent food ZIP member",
+  "selectedEnergyVersion": "usda-fdc-energy-specific-legacy-v1",
+  "recordCount": 8,
+  "records": [
+    {
+      "fdcId": 328841,
+      "sourcePayloadSha256": "77cf3ae438814c51bb5ef732b14a6f2643fa54b5c428f0104354c24473368323",
+      "selectedFdcNutrientId": 1008,
+      "selectedEnergyKcal": 84
+    },
+    {
+      "fdcId": 790577,
+      "sourcePayloadSha256": "0b8fc2d591a88381aa11cf0e3041f3b3f30ef4a660d68f74e3f483214f6d8b51",
+      "selectedFdcNutrientId": 1008,
+      "selectedEnergyKcal": 44
+    },
+    {
+      "fdcId": 2346407,
+      "sourcePayloadSha256": "88bec4819f0243de72ad7ada9f6f4f9295e66f3e19892710d4757adc41d70b8f",
+      "selectedFdcNutrientId": 2048,
+      "selectedEnergyKcal": 27.9
+    },
+    {
+      "fdcId": 2644285,
+      "sourcePayloadSha256": "b2e32066eeb463137d35b84670e3c26504c5fa62f32734946a8b59e404d4e2e6",
+      "selectedFdcNutrientId": 2048,
+      "selectedEnergyKcal": 115
+    },
+    {
+      "fdcId": 2644288,
+      "sourcePayloadSha256": "d369e999d09bc5e73742bcfd466350874a3671f6c96f9d916c6cecff5787f08f",
+      "selectedFdcNutrientId": 2048,
+      "selectedEnergyKcal": 133
+    },
+    {
+      "fdcId": 2644289,
+      "sourcePayloadSha256": "9666e868d07842fc3f6e69a904b7aa7cf4b8607342fdc9391210168d98b28224",
+      "selectedFdcNutrientId": 2048,
+      "selectedEnergyKcal": 123
+    },
+    {
+      "fdcId": 2685580,
+      "sourcePayloadSha256": "020baa3671721a0d4fea358fd729afd3b06eb39f5d46166a81061805748a41ed",
+      "selectedFdcNutrientId": 2048,
+      "selectedEnergyKcal": 88.5
+    },
+    {
+      "fdcId": 2685581,
+      "sourcePayloadSha256": "de8faf99cdeb9b24b9ac84bfee58e1ff1dcd1ab576919794946c400f8be39121",
+      "selectedFdcNutrientId": 2048,
+      "selectedEnergyKcal": 32.3
+    }
+  ],
+  "sourceOnly": true,
+  "profilesApproved": false,
+  "publicationApproved": false,
+  "stagingImporterAuthorized": false,
+  "productionWriteAuthorized": false
+}
