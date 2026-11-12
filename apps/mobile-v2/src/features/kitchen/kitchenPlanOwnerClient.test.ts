@@ -77,7 +77,7 @@ test('writer sends one canonical action and returns only confirmed version',asyn
  }});
 });
 test('conflict, unauthorized, malformed and ambiguous outcomes fail closed',async()=>{
- const make=(data:unknown,error:KitchenPlanServices extends never?never:any,status?:number):KitchenPlanServices=>({
+ const make=(data:unknown,error:{code?:string;message?:string}|null,status?:number):KitchenPlanServices=>({
   authenticateOwner:async()=>{},rpc:async()=>({data,error,status}),
  });
  assert.equal((await writeKitchenWeek(make(null,{code:'40001'}),owner,date,3,action,[food],()=>true,true)).status,'conflict');
