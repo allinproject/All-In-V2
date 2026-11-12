@@ -12,7 +12,10 @@ DECLARE
   result jsonb;
 BEGIN
   INSERT INTO auth.users(id) VALUES(a),(b);
-  INSERT INTO public.v2_profiles(user_id) VALUES(a),(b);
+  -- The real V2 auth.users trigger creates profiles. Never duplicate them.
+  IF NOT EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id=a)
+     OR NOT EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id=b)
+  THEN RAISE EXCEPTION 'Auth trigger did not create canonical profiles'; END IF;
   INSERT INTO auth.sessions(id,user_id) VALUES(sid,a);
   INSERT INTO public.v2_goals(id,user_id,goal_kind,title,status)
     VALUES(gid,a,'race_event','Race goal','active'),
