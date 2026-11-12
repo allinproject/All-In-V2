@@ -165,6 +165,8 @@ BEGIN
  OR pg_catalog.jsonb_array_length(v->'segments')<>2
  OR v#>>'{segments,0,sourceMetrics,metrics,0,valueNumeric}'<>'200'
  OR v#>>'{segments,1,sourceMetrics,metrics,0,valueNumeric}'<>'260'
+ OR v#>>'{segments,0,sourceQuality}'<>'trusted'
+ OR v#>>'{segments,1,sourceQuality}'<>'trusted'
  OR v#>>'{activityMetrics,metrics}' IS NULL
  OR v->>'readyPrivateRouteCount'<>'1'
  OR v->>'readySeriesCount'<>'0'
@@ -179,7 +181,8 @@ BEGIN
  IF pg_catalog.jsonb_array_length(v->'strengthSets')<>1
  OR v#>>'{strengthSets,0,reps}'<>'8'
  OR v#>>'{strengthSets,0,loadValue}'<>'45'
- OR v#>>'{strengthSets,0,quality}'<>'unverified' THEN
+ OR v#>>'{strengthSets,0,quality}'<>'unverified'
+ OR v#>>'{strengthSets,0,sourceQuality}'<>'unverified' THEN
   RAISE EXCEPTION 'Strength owner details fabricated or lost source: %',v; END IF;
  BEGIN
   PERFORM public.v2_completed_activity_detail_candidate(
