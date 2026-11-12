@@ -68,6 +68,18 @@ export function prepareFoodReplacement(input:FoodFormInput):ManualFoodReplacemen
  const local=new Date(year,month-1,day,hour,minute,0,0);
  if(local.getFullYear()!==year||local.getMonth()!==month-1
   ||local.getDate()!==day||local.getHours()!==hour||local.getMinutes()!==minute)return null;
+ // During fall DST transitions a local wall-clock time may occur twice.
+ // A plain Date constructor selects one instant without user confirmation.
+ // Reject ambiguity instead of silently moving or logging the wrong meal.
+ const stamp=local.getTime();
+ for(let delta=15;delta<=180;delta+=15){
+  for(const direction of [-1,1]){
+   const other=new Date(stamp+direction*delta*60_000);
+   if(other.getFullYear()===year&&other.getMonth()===month-1
+    &&other.getDate()===day&&other.getHours()===hour
+    &&other.getMinutes()===minute)return null;
+  }
+ }
  return {
   consumedAt:local.toISOString(),localDate:input.day,timezoneName:input.timezoneName,
   mealSlot:input.mealSlot,label:input.label.trim(),quantity,unit:input.unit,
@@ -78,8 +90,10 @@ export function prepareFoodReplacement(input:FoodFormInput):ManualFoodReplacemen
 /** Secure action and entry identifiers for idempotent owner mutations.
  * Fail closed if device entropy is unavailable; Math.random is never used.
  */
-export function newFoodActionId():string|null{
- const crypt=globalThis.crypto;
+export function newFoodActionId(
+ entropy:Pick<Crypto,'getRandomValues'>|null=globalThis.crypto??null,
+):string|null{
+ const crypt=entropy;
  if(!crypt||typeof crypt.getRandomValues!=='function')return null;
  try{
   const bytes=crypt.getRandomValues(new Uint8Array(16));
