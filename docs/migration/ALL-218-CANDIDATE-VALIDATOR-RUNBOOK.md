@@ -26,3 +26,9 @@ The validator fails on missing datasets, malformed records, duplicate source IDs
 Do not import or publish until ALL-222 establishes final ownership/migrations/RLS, ALL-228 establishes canonical ingredient identity, ALL-225 validates deterministic nutrition and yields, ALL-226 confirms provider boundaries, ALL-229 completes cooked-target/freezer-kit review, and the V2 foundation/installed app integration is accepted. Recalculate and reconcile the digest manifest before a frozen approved seed.
 
 Nothing in this folder should be interpreted as authorization to write to live V1 or V2.
+
+## Source review coverage (2026-11-12)
+
+The read-only `docs/migration/ALL-218-SOURCE-REVIEW-COVERAGE.sql` report found **3,208** active selector-option pairs, **775** whose option has a review-like source status, and **274** where both parent selector and option have review-like source statuses. These are **not** 274 approved V2 choices; no ingredient or cooking-yield acceptance is implied. Also found **457** individually active options under inactive parent selectors, which must never be selectable. Only **27** component mappings across **5** recipes have `verified=true`; **2,590** unverified component mappings still contain a quantity.
+
+Before making a selectable option visible in V2, require ownership, source status and exact quantity/yield compatibility through the final ALL-222/225/228/229 contracts. Do not silently promote V1 `fully_calculated` or `verified_default` labels as proof that dynamic V2 nutrition is validated.
