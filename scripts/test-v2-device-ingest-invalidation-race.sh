@@ -12,7 +12,7 @@ owner="11111111-1111-4111-8111-111111111111"
 activity="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 source="cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 
-for case in activity source; do
+for case in activity source source_hash; do
   db="v2_ingest_race_${case}"
   docker exec "$PG_CONTAINER" createdb -U postgres -T device_ingest_rls "$db"
   : >"$a"; : >"$b"
@@ -21,7 +21,11 @@ for case in activity source; do
   if [[ "$case" == activity ]]; then
     mutation="UPDATE public.v2_completed_activities SET status='invalidated' WHERE id='$activity';"
   else
-    mutation="UPDATE public.v2_activity_sources SET quality='rejected' WHERE id='$source';"
+    if [[ "$case" == source ]]; then
+      mutation="UPDATE public.v2_activity_sources SET quality='rejected' WHERE id='$source';"
+    else
+      mutation="UPDATE public.v2_activity_sources SET source_payload_hash=repeat('c',64) WHERE id='$source';"
+    fi
   fi
   docker exec -i "$PG_CONTAINER" psql -XAt -U postgres -d "$db" -v ON_ERROR_STOP=1 >"$a" 2>&1 <<SQL &
 BEGIN;
@@ -124,7 +128,7 @@ SQL
   fi
 done
 if [[ "$failures" -ne 0 ]]; then
-  echo "FAIL ALL-243: $failures/2 real two-session mutation races permit stale ingest; cross-writer lock contract required" >&2
+  echo "FAIL ALL-243: $failures real two-session mutation races permit stale ingest; cross-writer lock contract required" >&2
   exit 1
 fi
 echo 'PASS ALL-243 two-connection mutation / ingest race gate'
