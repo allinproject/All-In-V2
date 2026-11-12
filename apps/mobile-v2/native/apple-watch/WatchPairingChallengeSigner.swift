@@ -5,16 +5,20 @@ import Foundation
 import CryptoKit
 import Security
 import WatchConnectivity
+import Combine
 
 enum WatchPairingError: Error {
     case keyUnavailable, invalidRequest, userDidNotConfirm, replyUnavailable
 }
 
 @available(watchOS 9.0, *)
-final class WatchPairingChallengeSigner: NSObject, WCSessionDelegate {
+final class WatchPairingChallengeSigner: NSObject, WCSessionDelegate, ObservableObject {
     static let shared = WatchPairingChallengeSigner()
     private let keyTag = "com.allin365.watch-pairing.p256.v1"
-    private var pendingUserApproval: String?
+    @Published private(set) var pendingChallengeId: String?
+    @Published private(set) var pairingStatus = "Ready to pair"
+    private var pendingChallengeMessage: [String: Any]?
+    private var pendingReplyHandler: (([String: Any]) -> Void)?
     private override init() { super.init() }
 
     func activate() {
@@ -23,10 +27,30 @@ final class WatchPairingChallengeSigner: NSObject, WCSessionDelegate {
         WCSession.default.activate()
     }
 
-    // UI must call this after a *local watch screen confirmation*. Do not
-    // enable pairing by merely receiving a WatchConnectivity message.
-    func confirmPairingOnWatch(challengeId: String) {
-        pendingUserApproval = challengeId
+    // The watch itself displays the exact incoming request. The phone
+    // cannot confirm on the watch's behalf; a tap on this SwiftUI screen is
+    // required before any P-256 challenge signature can be produced.
+    func approvePendingChallenge() {
+        guard let message = pendingChallengeMessage,
+              let reply = pendingReplyHandler else { return }
+        pendingChallengeMessage = nil
+        pendingReplyHandler = nil
+        pendingChallengeId = nil
+        do {
+            reply(try signConfirmedChallenge(message))
+            pairingStatus = "Watch approved"
+        } catch {
+            reply(["error": "pairing_denied"])
+            pairingStatus = "Pairing denied"
+        }
+    }
+
+    func denyPendingChallenge() {
+        pendingReplyHandler?(["error": "watch_user_declined"])
+        pendingReplyHandler = nil
+        pendingChallengeMessage = nil
+        pendingChallengeId = nil
+        pairingStatus = "Pairing declined"
     }
 
     private func signingKey() throws -> P256.Signing.PrivateKey {
@@ -89,11 +113,9 @@ final class WatchPairingChallengeSigner: NSObject, WCSessionDelegate {
               let owner = body["ownerId"] as? String,
               let session = body["sessionId"] as? String,
               let ref = body["deviceRef"] as? String,
-              pendingUserApproval == challenge else {
-            throw WatchPairingError.userDidNotConfirm
+              challenge == messageChallengeId(body) else {
+            throw WatchPairingError.invalidRequest
         }
-        // Approval consumed once; a new challenge needs new watch action.
-        pendingUserApproval = nil
         let encoded = try encodeJSON([
             "ALL-IN-365-WATCH-PAIR-V1",challenge,owner,session,ref
         ])
@@ -101,19 +123,34 @@ final class WatchPairingChallengeSigner: NSObject, WCSessionDelegate {
         return ["watchSignatureB64url": b64url(signature.rawRepresentation)]
     }
 
+    private func messageChallengeId(_ message: [String: Any]) -> String? {
+        message["challengeId"] as? String
+    }
+
     func session(_ session: WCSession, didReceiveMessage message: [String: Any],
                  replyHandler: @escaping ([String: Any]) -> Void) {
-        do {
-            switch message["action"] as? String {
-            case "pairingKey":
-                replyHandler(try publicKeyResponse())
-            case "signPairingChallenge":
-                replyHandler(try signConfirmedChallenge(message))
-            default:
-                replyHandler(["error": "unsupported_pairing_action"])
+        switch message["action"] as? String {
+        case "pairingKey":
+            do { replyHandler(try publicKeyResponse()) }
+            catch { replyHandler(["error": "pairing_denied"]) }
+        case "signPairingChallenge":
+            guard let challenge = message["challengeId"] as? String,
+                  !challenge.isEmpty else {
+                replyHandler(["error": "invalid_pairing_challenge"])
+                return
             }
-        } catch {
-            replyHandler(["error": "pairing_denied"])
+            DispatchQueue.main.async {
+                if self.pendingReplyHandler != nil {
+                    replyHandler(["error": "pairing_already_pending"])
+                    return
+                }
+                self.pendingChallengeMessage = message
+                self.pendingReplyHandler = replyHandler
+                self.pendingChallengeId = challenge
+                self.pairingStatus = "Confirm pairing on this watch"
+            }
+        default:
+            replyHandler(["error": "unsupported_pairing_action"])
         }
     }
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
