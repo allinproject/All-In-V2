@@ -43,6 +43,24 @@ WITH failures AS (
  NOT EXISTS (SELECT 1 FROM public.allin_recipe_selector_options o
              WHERE o.selector_id=s.id AND o.option_key=s.default_option_key)
  UNION ALL
+ SELECT 'component_missing_selector_key',count(*)
+ FROM public.allin_recipe_component_mappings m
+ WHERE NOT EXISTS (SELECT 1 FROM public.allin_recipe_selectors s
+                   WHERE s.recipe_id=m.recipe_id AND s.selector_key=m.selector_key)
+ UNION ALL
+ SELECT 'component_missing_option_key',count(*)
+ FROM public.allin_recipe_component_mappings m
+ WHERE NOT EXISTS (
+   SELECT 1 FROM public.allin_recipe_selectors s
+   JOIN public.allin_recipe_selector_options o ON o.selector_id=s.id
+   WHERE s.recipe_id=m.recipe_id AND s.selector_key=m.selector_key
+     AND o.option_key=m.option_key)
+ UNION ALL
+ SELECT 'active_options_under_inactive_selectors',count(*)
+ FROM public.allin_recipe_selector_options o
+ JOIN public.allin_recipe_selectors s ON s.id=o.selector_id
+ WHERE o.active IS TRUE AND s.active IS FALSE
+ UNION ALL
  SELECT 'variant_missing_id',count(*)
  FROM public.allin_recipes r
  CROSS JOIN LATERAL jsonb_array_elements(
@@ -59,7 +77,7 @@ WITH failures AS (
        GROUP BY r.id,v.value->>'id' HAVING count(*)>1) repeated
 )
 SELECT check_name,defects,
-       CASE WHEN check_name='any_selector_missing_default_option'
+       CASE WHEN check_name IN ('any_selector_missing_default_option', 'active_options_under_inactive_selectors')
             THEN 'review_inactive_or_false_positive'
             WHEN defects=0 THEN 'pass' ELSE 'block_until_review' END AS verdict
 FROM failures ORDER BY check_name;
