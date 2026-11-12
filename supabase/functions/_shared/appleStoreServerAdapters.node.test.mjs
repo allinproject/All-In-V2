@@ -59,6 +59,16 @@ test('expired revoked and billing-retry statuses have no access',async()=>{
    assert.equal(current.accessUntil,null);
  }
 });
+test('Apple verified owner uses five-group UUID, never four-group alias',async()=>{
+ await assert.rejects(()=>setup().adapter.verifyCurrentStatus({
+  originalTransactionId:'1234567001',
+  ownerId:'00000000-0000-0000-000000000001',
+ }),/apple_identity_invalid/);
+ const valid=await setup().adapter.verifyCurrentStatus({
+  originalTransactionId:'1234567001',ownerId:owner,
+ });
+ assert.equal(valid.ownerId,owner);
+});
 test('wrong owner, product, missing verifier and unknown signed status fail closed',async()=>{
  assert.equal(createAppleStoreServerAdapters({}),null);
  for(const options of [
