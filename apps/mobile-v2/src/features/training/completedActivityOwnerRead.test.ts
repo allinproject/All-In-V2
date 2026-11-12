@@ -120,7 +120,8 @@ test('source and source-level sport applicability validated before display',()=>
 test('pool and indoor machine activities reject impossible GPS route sections',()=>{
  const section={key:'route',kind:'route' as const,title:'GPS route',sourceId:'watch-record',count:12};
  for(const [sport,sportSubtype] of [
-  ['swimming','pool'],['cycling','trainer'],['elliptical','machine'],['stair','stepper']
+  ['swimming','pool'],['cycling','trainer'],['elliptical','machine'],['stair','stepper'],
+  ['running','treadmill'],['strength','gym'],['yoga','studio'],['mobility','studio']
  ] as const){
   const raw={...base(),sport,sportSubtype,metrics:[],sections:[section]};
   assert.throws(()=>canonicalActivityToScreenInput(raw,'owner-A','activity-1'),
