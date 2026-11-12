@@ -265,3 +265,30 @@ test('a pinned catalog-only audit stays incomplete without private byte verifier
  assert.equal(result.bytesVerified,false);
  assert.equal(result.completeUserExport,false);
 });
+
+test('private media audit verifies route and time-series using their own canonical reader kinds',async()=>{
+ const routePath=owner+'/'+ 'c'.repeat(64)+'/route.geojson';
+ const route={
+  ...seriesRow(),id:'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  object_path:routePath,privacy_state:'private',format:'geojson',point_count:3,
+ };
+ const f=fixture({tables:{
+  v2_activity_series:[seriesRow()],
+  v2_activity_route_objects:[route],
+ }});
+ const result=await auditOwnerPrivateMediaCoverage({
+  ownerId:owner,requestId,
+  evidenceAdapter:createTrainingSupabaseEvidenceAdapter({supabase:f.supabase}),
+  listBucketCatalog:async()=>[{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false}],
+  listOwnerStorageObjects:async()=>({
+   ownerId:owner,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,exhaustive:true,
+   totalCount:2,paths:[path,routePath],
+  }),
+ });
+ assert.equal(result.referencedObjects,2);
+ assert.equal(result.bytesVerified,true);
+ assert.equal(result.completeUserExport,false);
+ const readTables=f.calls.filter(x=>x[0]==='single').map(x=>x[1]);
+ assert(readTables.includes('v2_activity_series'));
+ assert(readTables.includes('v2_activity_route_objects'));
+});
