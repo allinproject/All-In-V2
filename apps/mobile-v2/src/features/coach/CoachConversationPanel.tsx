@@ -16,7 +16,8 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
  const [notice,setNotice]=useState<string|null>(null);
  const [revision,setRevision]=useState(0);
  const mounted=useRef(true),saving=useRef(false);
- const candidate=useRef(secureId());
+ const candidate=useRef<string|null>(null);
+ if(candidate.current===null)candidate.current=secureId();
  const retry=useRef<{text:string;command:CoachSendCommand}|null>(null);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;retry.current=null}},[]);
  useEffect(()=>{
