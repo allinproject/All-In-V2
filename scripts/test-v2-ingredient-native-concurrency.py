@@ -170,27 +170,18 @@ def main():
         # The machine-qualification fixture is separate from the eight source
         # scenarios below. It uses genuine reviewed USDA digest/energy evidence,
         # not fabricated food data. The original canonical tables are reused.
-        item = bundle["records"][0]
-        proof = pinned[item["fdcId"]]
-        m_ingredient, m_profile, m_source = uuid(1, 10), uuid(2, 10), uuid(3, 10)
-        m_digest = proof["sourcePayloadSha256"]
+        item = rows[0][3]
+        m_ingredient, m_profile, m_source = uuid(1, 1), uuid(2, 10), rows[0][1]
+        m_digest = rows[0][2]
         m_form = states[item["profile"]]
-        admin("INSERT INTO public.v2_ingredients"
-              "(id,canonical_key,canonical_name,normalized_name,identity_kind,status) VALUES("
-              + ",".join(map(lit,[m_ingredient,"machine_"+item["profile"],item["v1"],
-                                  "machine "+item["profile"],"generic_food","active"])) + ")")
+        # Reuse the original mapped source identity and immutable evidence.
+        # Never create a second USDA source record for the same FDC identity.
         admin("INSERT INTO public.v2_ingredient_nutrition_profiles"
               "(id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,"
               "coverage_status,review_status,source_quality,profile_revision,required_nutrient_set_version,is_default) VALUES("
               + ",".join(map(lit,[m_profile,m_ingredient,m_form,"g",100,"100 g",
                                   "launch_core_complete","candidate","foundation",1,
                                   "cookbook-launch-macros-v1"])) + ",true)")
-        admin("INSERT INTO public.v2_ingredient_source_records"
-              "(id,ingredient_id,provider,source_data_type,external_record_id,source_description,"
-              "source_quality,source_license,mapping_status,payload_sha256) VALUES("
-              + ",".join(map(lit,[m_source,m_ingredient,"usda_fdc","Foundation",
-                                  item["fdcId"],item["source"],"foundation","CC0",
-                                  "mapped",m_digest])) + ")")
         admin("INSERT INTO public.v2_ingredient_profile_sources(profile_id,source_record_id,evidence_role)"
               f" VALUES({lit(m_profile)},{lit(m_source)},'primary')")
         admin("INSERT INTO public.v2_ingredient_aliases(id,ingredient_id,normalized_alias,locale,"
@@ -202,14 +193,7 @@ def main():
                              ("total_fat_g",item["fat"]),("sodium_mg",item["sodiumMg"])]:
             admin("INSERT INTO public.v2_ingredient_profile_nutrients(profile_id,nutrient_code,amount)"
                   f" VALUES({lit(m_profile)},{lit(code)},{amount})")
-        methods = [item["energy"]]
-        if item["energy"].get("alternative"):
-            methods.append(item["energy"]["alternative"])
-        for energy in methods:
-            admin("INSERT INTO allin_private.v2_ingredient_source_energy_evidence"
-                  "(source_record_id,source_payload_sha256,archive_sha256,fdc_nutrient_id,energy_kcal,source_review_reference)"
-                  f" VALUES({lit(m_source)},{lit(m_digest)},{lit(SOURCE_SHA)},"
-                  f"{int(energy['code'])},{energy['kcal']},'NATIVE-TEST-SOURCE-ENERGY-ONLY')")
+        # Reuse the original source-specific immutable energy evidence.
         # Real PostgreSQL TCP SCRAM authentication, distinct from admin and
         # athlete roles; check actual session_user and activated reviewer role.
         proof_session = client(workload, "SELECT session_user||':'||current_user")
