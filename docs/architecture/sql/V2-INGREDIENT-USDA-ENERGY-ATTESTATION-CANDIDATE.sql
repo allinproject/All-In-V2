@@ -93,13 +93,11 @@ BEGIN
   THEN
     RAISE EXCEPTION 'unauthorized ingredient energy reviewer' USING ERRCODE='42501';
   END IF;
-  -- Existing human energy-attestation API must never become an implicit
-  -- publication-adjacent privilege for automated source-ingest credentials.
-  IF EXISTS (SELECT 1 FROM allin_private.v2_ingredient_review_operators o
-             WHERE o.login_role=v_actor AND o.principal_kind='workload') THEN
-    RAISE EXCEPTION 'workload cannot issue human energy attestation'
-      USING ERRCODE='42501';
-  END IF;
+  -- Automated ingest workload may attest ONLY to stored, immutable source
+  -- evidence via the same identity-gated function. No caller-supplied energy,
+  -- archive digest, nutrient method or publication flag is accepted. This
+  -- records evidence only; calculation_ready remains unconditionally blocked
+  -- in the existing canonical status writer until separate release acceptance.
   IF p_profile_id IS NULL OR p_expected_revision IS NULL OR p_expected_revision<1
      OR p_expected_source_sha256 IS NULL OR p_expected_source_sha256 !~ '^[0-9a-fA-F]{64}$'
      OR p_reason IS NULL OR length(trim(p_reason))<12 OR length(p_reason)>2000
