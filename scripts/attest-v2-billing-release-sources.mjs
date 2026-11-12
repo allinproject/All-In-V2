@@ -11,7 +11,7 @@ export const sources=Object.freeze([
  'docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql',
 ]);
 const sha=s=>createHash('sha256').update(s,'utf8').digest('hex');
-const allowedGrant=/^grant\s+(?:select|insert|update|delete|usage|execute)(?:\s*,\s*(?:select|insert|update|delete|usage|execute))*\s+on\s+(?:table|sequence|function)\s+[\s\S]+?\s+to\s+service_role\s*$/i;
+const allowedGrant=/^grant\s+(?:select|insert|update|delete|usage|execute)(?:\s*,\s*(?:select|insert|update|delete|usage|execute))*\s+on\s+(?:(?:schema|table|sequence|function)\s+)?(?:allin_private|public)(?:\.|\b)[\s\S]*?\s+to\s+service_role\s*$/i;
 export function attestBillingCandidate(ledger,grants){
  const problems=[];
  if(!/create\s+table\s+allin_private\.v2_subscription_checkout_attempts\s*\(/i.test(ledger)||
