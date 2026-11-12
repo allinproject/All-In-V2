@@ -51,7 +51,7 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
  const [busy,setBusy]=useState(false);
  // An installed native runtime may not expose WebCrypto getRandomValues.
  // Block the editor BEFORE a user types a meal if action IDs cannot be
- // generated securely. Never substitute timestamps or Math.random.
+ // generated securely. Never substitute timestamps or insecure randomness.
  const [secureIdsAvailable,setSecureIdsAvailable]=useState(
   ()=>!V2_FUEL_MANUAL_WRITE_ENABLED||newFoodActionId()!==null,
  );
