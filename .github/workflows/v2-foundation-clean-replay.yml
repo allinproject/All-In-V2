@@ -38,6 +38,7 @@ on:
       - 'scripts/test-v2-billing-backup-restored-local.psql'
       - 'scripts/all12-recovery-domain-manifest.mjs'
       - 'scripts/all12-recovery-domain-manifest.test.mjs'
+      - 'scripts/test-all12-multidomain-logical-restore-local.sh'
       - 'scripts/verify-v2-billing-postdeploy-readonly.psql'
       - 'scripts/test-v2-billing-preupgrade-seed.psql'
       - 'scripts/test-v2-billing-schema-rollback-local.psql'
@@ -569,6 +570,13 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-account-deletion-worker-off-local.psql "$db_container:/tmp/v2-deletion-off.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-deletion-off.psql
+      - name: ALL-12 multi-domain local pg_dump and pg_restore acceptance
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          bash scripts/test-all12-multidomain-logical-restore-local.sh "$db_container"
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
