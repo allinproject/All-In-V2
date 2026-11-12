@@ -20,6 +20,12 @@ type OwnerGoalEvidence={
   startDate:string|null;targetDate:string|null;
 };
 export type CanonicalEventGoalApproval={
+  /** Exact revision-session version retained by the canonical Training owner.
+   * These are verified read receipts, not user-supplied URL matches. */
+  bindingSnapshot:{ownerId:string;authSessionGeneration:number;complete:boolean;
+    nextCursor:string|null;snapshotVersion:string;
+    bindings:readonly {eventId:string;eventVersion:number;eventTimezone:string;
+      planRevisionId:string;sessionId:string}[]};
   eventSnapshot:{ownerId:string;authSessionGeneration:number;complete:boolean;
     nextCursor:string|null;snapshotVersion:string;events:readonly OwnerEventEvidence[]};
   goalSnapshot:{ownerId:string;authSessionGeneration:number;complete:boolean;
@@ -46,14 +52,16 @@ export function certifySeasonAgainstGoalEventOwners(
     !input.expectedOwnerId?.trim()||
     !Number.isSafeInteger(input.activeSessionGeneration)||input.activeSessionGeneration<0)
   return no('owner_snapshot_not_certified');
- const snapshots=[owners.eventSnapshot,owners.goalSnapshot];
+ const snapshots=[owners.eventSnapshot,owners.goalSnapshot,owners.bindingSnapshot];
  if(snapshots.some(s=>!s||s.ownerId!==input.expectedOwnerId||
     s.authSessionGeneration!==input.activeSessionGeneration||
     !s.complete||s.nextCursor!==null||!s.snapshotVersion?.trim()))
   return no('owner_snapshot_incomplete_or_stale');
- if(!Array.isArray(owners.eventSnapshot.events)||!Array.isArray(owners.goalSnapshot.goals))
+ if(!Array.isArray(owners.eventSnapshot.events)||!Array.isArray(owners.goalSnapshot.goals)||
+    !Array.isArray(owners.bindingSnapshot.bindings))
   return no('owner_records_invalid');
  if(owners.eventSnapshot.snapshotVersion!==owners.goalSnapshot.snapshotVersion||
+    owners.eventSnapshot.snapshotVersion!==owners.bindingSnapshot.snapshotVersion||
     owners.eventSnapshot.snapshotVersion!==input.daySnapshot?.snapshotVersion||
     owners.eventSnapshot.snapshotVersion!==input.plannedSnapshot?.snapshotVersion||
     owners.eventSnapshot.snapshotVersion!==input.competitionSnapshot?.snapshotVersion)
@@ -78,14 +86,29 @@ export function certifySeasonAgainstGoalEventOwners(
    return no('goal_not_owner_certified');
   goals.set(g.goalId,g);
  }
+ const bindings=new Map<string,{eventId:string;eventVersion:number;eventTimezone:string;
+   planRevisionId:string;sessionId:string}>();
+ for(const binding of owners.bindingSnapshot.bindings){
+  if(!binding||!binding.eventId?.trim()||bindings.has(binding.eventId)||
+    binding.planRevisionId!==input.activePlanRevisionId||
+    !binding.sessionId?.trim()||!Number.isSafeInteger(binding.eventVersion)||
+    binding.eventVersion<1||!binding.eventTimezone?.includes('/'))
+   return no('training_event_version_binding_invalid');
+  bindings.set(binding.eventId,binding);
+ }
  const referenced=new Set<string>();
  for(const event of input.events){
   const e=events.get(event.id);
-  if(!e||e.date!==event.date||e.sport!==event.sport)
+  const b=bindings.get(event.id);
+  const committed=input.competitionSnapshot?.records.find(c=>c.eventId===event.id);
+  if(!e||!b||e.date!==event.date||e.sport!==event.sport||
+    b.eventVersion!==e.eventVersion||b.eventTimezone!==e.timezone||
+    !committed||b.sessionId!==committed.sessionId||
+    b.planRevisionId!==committed.planRevisionId)
    return no('event_identity_or_version_stale');
   referenced.add(e.eventId);
  }
- if(events.size!==referenced.size)
+ if(events.size!==referenced.size||bindings.size!==referenced.size)
   return no('unexpected_or_missing_owner_event');
  const bound=new Set<string>();
  for(const g of goals.values()){
