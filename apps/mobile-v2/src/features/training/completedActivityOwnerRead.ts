@@ -148,7 +148,12 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    routeIneligibleSports.has(display.sport)||
    // Indoor/machine rowing has no outdoor GPS track. Only an explicit
    // on-water canonical rowing subtype can qualify for a real route.
-   (raw.sport==='rowing'&&raw.sportSubtype!=='outdoor')
+   (raw.sport==='rowing'&&raw.sportSubtype!=='outdoor')||
+   // An unspecified swimming subtype cannot prove this is open water; pool
+   // activity routes are not an acceptable generic fallback.
+   (raw.sport==='swimming'&&
+    !['open_water','openwater','outdoor'].includes(raw.sportSubtype??''))||
+   (raw.sport==='walking'&&raw.sportSubtype==='indoor')
   ))throw new Error('Route evidence is incompatible with the canonical activity sport.');
   const allowedSports=sectionSportScopes[section.kind];
   if(allowedSports&&!allowedSports.has(display.sport))
