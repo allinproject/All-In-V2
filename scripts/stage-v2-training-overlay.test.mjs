@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {stripCandidateTransactionWrappers,stageOverlay} from './stage-v2-training-overlay.mjs';
+import {readFileSync} from 'node:fs';
+import {resolve,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 test('strips only standalone file-level transaction wrappers',()=>{
  const sql=[
@@ -66,4 +69,23 @@ test('stages exact ordered overlay inputs without duplicating or losing SQL',()=
  assert.throws(()=>stageOverlay(
   overlay+'\n\\i /tmp/allin/docs/architecture/sql/candidate0.sql',
   ()=>'',()=>{}),/unique ordered/);
+});
+
+test('all 30 checked-in candidate SQL files stage atomically without changing source',()=>{
+ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+ const overlay=readFileSync(resolve(root,'scripts/test-v2-foundation-training-overlay-postgres.psql'),'utf8');
+ const staged=new Map();
+ const result=stageOverlay(
+  overlay,
+  name=>readFileSync(resolve(root,'docs/architecture/sql',name),'utf8'),
+  (name,sql)=>staged.set(name,sql)
+ );
+ assert.equal(result.files,30);
+ assert.equal(staged.size,30);
+ assert.ok(result.removed>=10,'Expected existing file transaction wrappers to be removed');
+ const first=staged.get('V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql');
+ assert.ok(first,'Canonical identity owner must be in the overlay');
+ assert.match(first,/CREATE TABLE public\.v2_training_session_instances/);
+ assert.doesNotMatch(first,/^BEGIN;$/m);
+ assert.doesNotMatch(first,/^COMMIT;$/m);
 });
