@@ -38,7 +38,7 @@ test('requires fresh verified Auth user and exact approved DB request every time
  const f=fixture();
  const a=await f.services.authorizeExport(requestId);
  const b=await f.services.authorizeExport(requestId);
- assert.deepEqual(a,{ownerId:owner,activeSession:true,exportPermitted:true});
+ assert.deepEqual(a,{ownerId:owner,sessionId:session,activeSession:true,exportPermitted:true});
  assert.deepEqual(b,a);
  assert.deepEqual(f.counts,{authReads:2,dbReads:2});
 });
