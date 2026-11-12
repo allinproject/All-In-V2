@@ -119,6 +119,8 @@ test('visible confidence warnings distinguish partial measurement, provider and 
   'Partial measurement and source quality');
  assert.equal(metricEvidenceQualityNotice({...metric,provenance:'estimated'}),
   'Estimated value');
+ assert.equal(metricEvidenceQualityNotice({...metric,provenance:'estimated',quality:'partial',sourceQuality:'partial'}),
+  'Estimated value · Partial measurement and source quality');
  const projected=projectCompletedActivityDetail({sport:'outdoor_run',
   metrics:[{...metric,quality:'partial',sourceQuality:'trusted'}]});
  assert.equal(metricEvidenceQualityNotice(projected.details[0]),'Partial measurement quality');
