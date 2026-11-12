@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 /**
  * ALL-251 REVIEW ONLY: trusted Supabase adapter for the existing private
  * account-export staging workflow. NOT a deployed Edge endpoint.
@@ -127,7 +128,7 @@ export function createTrainingSupabaseEvidenceAdapter({ supabase }) {
  */
 export async function auditOwnerPrivateMediaCoverage({
   ownerId,requestId,evidenceAdapter,listCanonicalMediaReferences,
-  listBucketCatalog,listOwnerStorageObjects,
+  listBucketCatalog,listOwnerStorageObjects,downloadPrivateObject,
 }) {
   checkOwner(ownerId);
   if(!UUID.test(requestId??'')
@@ -188,11 +189,29 @@ export async function auditOwnerPrivateMediaCoverage({
   }
   if(seen.size!==expected.size)
     throw Error('Canonical media reference has no corresponding Storage object');
+  // A verified catalog is not proof of private file bytes. Reuse the existing
+  // restricted evidence downloader, with exact owner/path re-authorization.
+  // The read is bounded per object and hashed immediately, never returned.
+  const downloader=downloadPrivateObject ?? evidenceAdapter?.downloadPrivateObject;
+  if(downloader!==undefined && typeof downloader!=='function')
+    throw Error('Untrusted media byte verification dependency');
+  let bytesVerified=false;
+  if(typeof downloader==='function'){
+    for(const row of sources){
+      const kind=row.kind==='route'?'route':'series';
+      const bytes=await downloader({ownerId,requestId,path:row.object_path,kind});
+      if(!(bytes instanceof Uint8Array)||bytes.byteLength<1
+        ||bytes.byteLength>MAX_OBJECT_BYTES
+        ||createHash('sha256').update(bytes).digest('hex')!==row.checksum_sha256)
+        throw Error('Private media bytes missing or checksum mismatch');
+    }
+    bytesVerified=true;
+  }
   return Object.freeze({
     ownerId,requestId,referencedObjects:expected.size,
     observedObjects:seen.size,sourceBuckets:[TRAINING_PRIVATE_EVIDENCE_BUCKET],
     exportArchiveBucketPresent:buckets.some(b=>b.id==='v2-private-account-exports'),
     referencesReconciled:true,
-    bytesVerified:false,completeUserExport:false,
+    bytesVerified,completeUserExport:false,
   });
 }
