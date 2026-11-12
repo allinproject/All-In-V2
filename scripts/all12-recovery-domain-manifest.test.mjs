@@ -43,3 +43,16 @@ test('new V2 data tables cannot silently escape recovery inventory',()=>{
  assert.equal(result.complete,false);
  assert.deepEqual(result.untrackedTables,['public.v2_new_nutrition_records']);
 });
+
+test('hosted V2 foundation inventory is fully classified',()=>{
+ const hosted=[
+  'public.v2_profiles','public.v2_profile_settings','public.v2_onboarding_progress',
+  'public.v2_legal_documents','public.v2_legal_acceptances',
+  'allin_private.v2_profile_settings_actions','allin_private.v2_provider_cache',
+  'allin_private.v2_onboarding_actions','allin_private.v2_health_considerations',
+  'allin_private.v2_account_deletion_requests',
+  'allin_private.v2_account_deletion_processor_config',
+  'allin_private.v2_account_deletion_execution_audit'
+ ];
+ assert.deepEqual(findUntrackedRecoveryTables(hosted),[]);
+});
