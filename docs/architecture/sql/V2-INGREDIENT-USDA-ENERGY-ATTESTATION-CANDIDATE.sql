@@ -66,7 +66,7 @@ CREATE OR REPLACE FUNCTION allin_private.v2_attest_ingredient_energy(
   p_reason text
 ) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = pg_catalog, public, allin_private, pg_temp
+SET search_path = pg_catalog, pg_temp
 AS $attestation$
 DECLARE
   v_actor name := session_user;
