@@ -16,7 +16,7 @@ create table public.v2_food_log_entries (
   created_at timestamptz not null default now(),
   constraint v2_food_manual_source_consistent check (
     (nutrition_source = 'unknown' and kcal is null) or
-    (nutrition_source = 'user_entered')
+    (nutrition_source = 'user_entered' and kcal is not null)
   )
 );
 create index v2_food_log_entries_owner_day_idx on public.v2_food_log_entries(user_id,local_date,consumed_at,id);
@@ -67,10 +67,12 @@ begin
     p_timezone_name is null or length(p_timezone_name) not between 1 and 80 or
     p_meal_slot is null or p_meal_slot not in ('breakfast','lunch','dinner','snack','other') or
     p_label is null or length(btrim(p_label)) not between 1 and 200 or
-    p_quantity is null or p_quantity <= 0 or p_quantity > 9999999999 or
+    p_quantity is null or p_quantity <= 0 or p_quantity > 1000000 or
     p_unit is null or p_unit not in ('g','ml','oz','fl_oz','serving','each') or
     p_nutrition_source is null or p_nutrition_source not in ('user_entered','unknown') or
     (p_nutrition_source = 'unknown' and p_kcal is not null) or
+    (p_nutrition_source = 'user_entered' and p_kcal is null) or
+    not exists(select 1 from pg_catalog.pg_timezone_names where name=p_timezone_name) or
     p_kcal < 0 or
     p_local_date is distinct from (p_consumed_at at time zone p_timezone_name)::date then
    raise exception 'Invalid food log entry' using errcode='22023';
