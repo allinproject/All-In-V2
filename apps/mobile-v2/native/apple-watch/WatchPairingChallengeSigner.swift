@@ -1,5 +1,5 @@
-// ALL-243 STAGED watchOS source. Not yet included in an Xcode target.
-// Add to the native watchOS target when EAS/Expo Watch companion is provisioned.
+// ALL-243 watchOS source added to an opted-in native target after Expo prebuild.
+// No signed binary / physical-device acceptance is implied.
 // This is watch-app key possession, NOT an Apple hardware identity claim.
 import Foundation
 import CryptoKit
@@ -108,12 +108,12 @@ final class WatchPairingChallengeSigner: NSObject, WCSessionDelegate, Observable
         return ["watchPublicKeySpkiB64url": b64url(spki)]
     }
 
-    func signConfirmedChallenge(_ body: [String: Any]) throws -> [String: Any] {
+    private func signConfirmedChallenge(_ body: [String: Any]) throws -> [String: Any] {
         guard let challenge = body["challengeId"] as? String,
               let owner = body["ownerId"] as? String,
               let session = body["sessionId"] as? String,
               let ref = body["deviceRef"] as? String,
-              challenge == messageChallengeId(body) else {
+              !challenge.isEmpty, !owner.isEmpty, !session.isEmpty, !ref.isEmpty else {
             throw WatchPairingError.invalidRequest
         }
         let encoded = try encodeJSON([
@@ -121,10 +121,6 @@ final class WatchPairingChallengeSigner: NSObject, WCSessionDelegate, Observable
         ])
         let signature = try signingKey().signature(for: encoded)
         return ["watchSignatureB64url": b64url(signature.rawRepresentation)]
-    }
-
-    private func messageChallengeId(_ message: [String: Any]) -> String? {
-        message["challengeId"] as? String
     }
 
     func session(_ session: WCSession, didReceiveMessage message: [String: Any],
