@@ -267,6 +267,9 @@ BEGIN
     '''follower_id'',t.follower_id,''state'',t.state,'||
     '''requested_at'',t.requested_at,''approved_at'',t.approved_at) '||
     'FROM allin_private.v2_community_follows t WHERE t.followed_id=$1 '||
+    'AND NOT EXISTS (SELECT 1 FROM allin_private.v2_community_blocks b '||
+    'WHERE (b.blocker_id=t.follower_id AND b.blocked_id=$1) '||
+    'OR (b.blocker_id=$1 AND b.blocked_id=t.follower_id)) '||
     'ORDER BY t.follower_id LIMIT $2 OFFSET $3';
   ELSE
    v_query:=pg_catalog.format('SELECT pg_catalog.to_jsonb(t) FROM %I.%I t '||
