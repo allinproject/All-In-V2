@@ -60,6 +60,23 @@ BEGIN
  IF EXISTS(SELECT 1 FROM allin_private.v2_goal_acceptance_actions
    WHERE user_id=b AND goal_id=g)
  THEN RAISE EXCEPTION 'Cross-owner Goal action receipt leaked'; END IF;
+ IF pg_catalog.to_regprocedure(
+     'allin_private.v2_goal_accept_revision_candidate(uuid,uuid,uuid,uuid,bigint,text)'
+   ) IS NULL
+   OR pg_catalog.to_regprocedure(
+     'public.v2_goal_accept_revision_candidate(uuid,uuid,uuid,uuid,bigint,text)'
+   ) IS NOT NULL
+ THEN RAISE EXCEPTION 'Goal privileged writer must exist only in private schema'; END IF;
+ IF pg_catalog.has_function_privilege('anon',
+       'allin_private.v2_goal_accept_revision_candidate(uuid,uuid,uuid,uuid,bigint,text)',
+       'EXECUTE')
+   OR pg_catalog.has_function_privilege('authenticated',
+       'allin_private.v2_goal_accept_revision_candidate(uuid,uuid,uuid,uuid,bigint,text)',
+       'EXECUTE')
+   OR pg_catalog.has_function_privilege('service_role',
+       'allin_private.v2_goal_accept_revision_candidate(uuid,uuid,uuid,uuid,bigint,text)',
+       'EXECUTE')
+ THEN RAISE EXCEPTION 'Goal writer exposed before security review'; END IF;
  RAISE NOTICE 'PASS Goal writer: owner CAS, revisions, history, action replay, payload fencing';
 END $goal_writer$;
 -- Verify PostgreSQL API roles cannot invoke this review-only writer. PUBLIC is
