@@ -6,8 +6,28 @@ const request=()=>({ownerId:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",threadId:"bbb
  assistantMessageId:"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",userContent:"Help me train"});
 const clients=()=>{
  const calls=[];
- const userClient={auth:{getUser:async token=>({data:{user:{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}},error:null})},
- rpc:async(name,args)=>{calls.push({from:"user",name,args});return {data:[],error:null}}};
+ let authenticatedOwner="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+ const userMessage={
+  message_id:"dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  user_id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  thread_id:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  client_request_id:"cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  role:"user",content:"Help me train",created_at:"2026-11-12T12:00:00.000Z"
+ };
+ const assistantMessage={
+  message_id:"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  user_id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  thread_id:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  client_request_id:"cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  role:"assistant",content:"Provider output",created_at:"2026-11-12T11:59:00.000Z"
+ };
+ const userClient={auth:{getUser:async token=>({data:{user:{id:authenticatedOwner}},error:null})},
+ rpc:async(name,args)=>{
+  calls.push({from:"user",name,args});
+  if(name==="v2_coach_create_thread")return {data:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",error:null};
+  if(name==="v2_coach_read_messages")return {data:[userMessage,assistantMessage],error:null};
+  return {data:[],error:null};
+ }};
  const serverClient={rpc:async(name,args)=>{calls.push({from:"server",name,args});
   if(name==="v2_coach_claim_turn")return {data:{action:"claimed",execution_version:2},error:null};
   if(name==="v2_coach_finish_turn")return {data:{completed:true},error:null};
@@ -15,7 +35,7 @@ const clients=()=>{
  }};
  const deps=createCoachSupabaseDependencies({userClient,serverClient,bearerToken:"signed-jwt",
   providerGenerate:async()=>({message:"Provider output"})});
- return {deps,calls,userClient,serverClient};
+ return {deps,calls,userClient,serverClient,setAuthenticatedOwner:id=>{authenticatedOwner=id}};
 };
 test("server SHA256 fingerprint binds exact owner/thread/IDs/content",async()=>{
  const r=request();const first=await hashCoachRequestTuple(r);
@@ -68,4 +88,83 @@ test("an incomplete client or absent provider cannot construct trusted host",()=
  assert.throws(()=>createCoachSupabaseDependencies({userClient,serverClient,bearerToken:"jwt"}),/not_configured/);
  assert.throws(()=>createCoachSupabaseDependencies({userClient,serverClient,
   providerGenerate:async()=>{}}),/not_configured/);
+});
+
+
+test("first-open on a second device resumes the single canonical thread through the owner JWT",async()=>{
+ const {deps,calls}=clients(),r=request();
+ const result=await deps.createOrResumeThread({
+  ownerId:r.ownerId,candidateThreadId:"ffffffff-ffff-4fff-8fff-ffffffffffff"
+ });
+ assert.deepEqual(result,{ownerId:r.ownerId,threadId:r.threadId});
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].from,"user");
+ assert.equal(calls[0].name,"v2_coach_create_thread");
+ assert.equal(calls[0].args.p_expected_user_id,r.ownerId);
+ assert.equal(calls[0].args.p_thread_id,"ffffffff-ffff-4fff-8fff-ffffffffffff");
+});
+
+test("paginated transcript reads are owner-scoped, bounded and decoded in canonical order",async()=>{
+ const {deps,calls}=clients(),r=request();
+ const result=await deps.readTranscriptPage({ownerId:r.ownerId,threadId:r.threadId,limit:2});
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].from,"user");
+ assert.equal(calls[0].name,"v2_coach_read_messages");
+ assert.deepEqual(calls[0].args,{
+  p_expected_user_id:r.ownerId,p_thread_id:r.threadId,
+  p_before_created_at:null,p_before_message_id:null,p_limit:2
+ });
+ assert.deepEqual(result.messages.map(x=>x.role),["user","assistant"]);
+ assert.equal(result.messages[0].content,"Help me train");
+ assert.equal(result.hasMore,true);
+ assert.deepEqual(result.nextCursor,{
+  beforeCreatedAt:"2026-11-12T11:59:00.000Z",
+  beforeMessageId:r.assistantMessageId
+ });
+});
+
+test("transcript continuation passes both stable cursor components",async()=>{
+ const {deps,calls}=clients(),r=request();
+ await deps.readTranscriptPage({
+  ownerId:r.ownerId,threadId:r.threadId,
+  beforeCreatedAt:"2026-11-12T11:59:00.000Z",
+  beforeMessageId:r.assistantMessageId,limit:10
+ });
+ assert.deepEqual(calls[0].args,{
+  p_expected_user_id:r.ownerId,p_thread_id:r.threadId,
+  p_before_created_at:"2026-11-12T11:59:00.000Z",
+  p_before_message_id:r.assistantMessageId,p_limit:10
+ });
+});
+
+test("thread and transcript operations reject invalid identities and cursors before RPC",async()=>{
+ const {deps,calls}=clients(),r=request();
+ await assert.rejects(()=>deps.createOrResumeThread({ownerId:r.ownerId,candidateThreadId:"not-a-uuid"}),
+  /coach_thread_identity_invalid/);
+ await assert.rejects(()=>deps.readTranscriptPage({ownerId:r.ownerId,threadId:r.threadId,
+  beforeCreatedAt:"2026-11-12T12:00:00Z"}),/coach_transcript_cursor_invalid/);
+ await assert.rejects(()=>deps.readTranscriptPage({ownerId:r.ownerId,threadId:r.threadId,limit:51}),
+  /coach_transcript_cursor_invalid/);
+ assert.equal(calls.length,0);
+});
+
+test("thread and transcript operations fail closed on account switch or foreign rows",async()=>{
+ const r=request(),state=clients();
+ state.setAuthenticatedOwner("ffffffff-ffff-4fff-8fff-ffffffffffff");
+ await assert.rejects(()=>state.deps.createOrResumeThread({
+  ownerId:r.ownerId,candidateThreadId:r.threadId
+ }),/coach_account_changed/);
+ state.setAuthenticatedOwner(r.ownerId);
+ const original=state.userClient.rpc;
+ state.userClient.rpc=async(name,args)=>{
+  if(name==="v2_coach_read_messages"){
+   const response=await original(name,args);
+   response.data[0].user_id="ffffffff-ffff-4fff-8fff-ffffffffffff";
+   return response;
+  }
+  return original(name,args);
+ };
+ await assert.rejects(()=>state.deps.readTranscriptPage({
+  ownerId:r.ownerId,threadId:r.threadId
+ }),/coach_transcript_readback_invalid/);
 });

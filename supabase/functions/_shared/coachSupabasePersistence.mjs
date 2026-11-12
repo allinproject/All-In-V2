@@ -4,7 +4,11 @@
  * The caller creates userClient with the Bearer JWT and serverClient with
  * server-only service credentials. Never create either from request JSON.
  */
+import {decodeCoachTranscriptPage} from "../../../apps/mobile-v2/src/features/coach/coachOwnerWire.mjs";
+
 const valid=x=>typeof x==="string"&&x.trim().length>0;
+const uuid=x=>typeof x==="string"&&
+ /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(x);
 function unwrap(result){
  if(!result||result.error)throw Error("canonical_coach_owner_unavailable");
  return result.data;
@@ -33,11 +37,53 @@ export function createCoachSupabaseDependencies({userClient,serverClient,
  const verifyUser=async token=>{
    if(token!==bearerToken)throw Error("token_context_mismatch");
    const {data,error}=await userClient.auth.getUser(token);
-   if(error||!valid(data?.user?.id))throw Error("coach_session_invalid");
+   if(error||!uuid(data?.user?.id))throw Error("coach_session_invalid");
    return {id:data.user.id};
+ };
+ const assertOwner=async ownerId=>{
+   if(!uuid(ownerId))throw Error("coach_owner_invalid");
+   const current=await verifyUser(bearerToken);
+   if(current.id!==ownerId)throw Error("coach_account_changed");
  };
  return {
   verifyUser,
+  createOrResumeThread:async p=>{
+   if(!p||!uuid(p.ownerId)||!uuid(p.candidateThreadId))
+    throw Error("coach_thread_identity_invalid");
+   await assertOwner(p.ownerId);
+   const canonicalThreadId=unwrap(await userClient.rpc("v2_coach_create_thread",{
+    p_expected_user_id:p.ownerId,p_thread_id:p.candidateThreadId
+   }));
+   if(!uuid(canonicalThreadId))throw Error("coach_thread_readback_invalid");
+   await assertOwner(p.ownerId);
+   return {ownerId:p.ownerId,threadId:canonicalThreadId};
+  },
+  readTranscriptPage:async p=>{
+   const beforeCreatedAt=p?.beforeCreatedAt??null;
+   const beforeMessageId=p?.beforeMessageId??null;
+   const limit=p?.limit??40;
+   if(!p||!uuid(p.ownerId)||!uuid(p.threadId)||
+      !Number.isSafeInteger(limit)||limit<1||limit>50||
+      ((beforeCreatedAt===null)!==(beforeMessageId===null))||
+      (beforeCreatedAt!==null&&
+       (typeof beforeCreatedAt!=="string"||!Number.isFinite(Date.parse(beforeCreatedAt))||
+        !uuid(beforeMessageId))))
+    throw Error("coach_transcript_cursor_invalid");
+   await assertOwner(p.ownerId);
+   const rawRows=unwrap(await userClient.rpc("v2_coach_read_messages",{
+    p_expected_user_id:p.ownerId,p_thread_id:p.threadId,
+    p_before_created_at:beforeCreatedAt,
+    p_before_message_id:beforeMessageId,p_limit:limit
+   }));
+   const messages=decodeCoachTranscriptPage(rawRows,{ownerId:p.ownerId,threadId:p.threadId});
+   if(!messages||messages.length>limit)throw Error("coach_transcript_readback_invalid");
+   await assertOwner(p.ownerId);
+   const hasMore=messages.length===limit;
+   const oldest=messages.at(-1);
+   return {messages,hasMore,nextCursor:hasMore?{
+    beforeCreatedAt:oldest.createdAt,beforeMessageId:oldest.id
+   }:null};
+  },
   fingerprintTurn:payload=>hashCoachRequestTuple(payload,webCrypto),
   providerGenerate,
   claimTurn:async p=>{

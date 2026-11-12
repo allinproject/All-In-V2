@@ -207,6 +207,8 @@ jobs:
         run: npm run test:auth
       - name: Run Coach quality contract and scenario tests
         run: npm run test:coach-quality
+      - name: Run Coach Supabase owner adapter tests
+        run: node --test ../../supabase/functions/_shared/coachSupabasePersistence.test.mjs
       - name: Run Cookbook calculator tests
         run: npm run test:calculator
       - name: Run Community and Live Props contract tests
