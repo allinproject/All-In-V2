@@ -15,11 +15,15 @@ function fixture(config={}){
   authorizeExport:async()=>{authCalls++;events.push('authorize');
    const active=!(config.revokeAfter&&authCalls>=config.revokeAfter);
    return {ownerId:config.owner??owner,activeSession:active,exportPermitted:active};},
+  getCanonicalInventory:async({ownerId,requestId:rid})=>({ownerId,requestId:rid,
+    snapshotId:config.changedInventory&&authCalls>=4?another:requestId,
+    collections:config.missingCollection?['coach_messages']:collections,
+    complete:true}),
   resolveEncryptionKey:async()=>key,
   readPage:async({ownerId,collection,cursor})=>{
-   if(config.badCursor)return {ownerId,collection,rows:[{id:1}],done:false,nextCursor:'same'};
+   if(config.badCursor)return {ownerId,collection,snapshotId:requestId,rows:[{id:1}],done:false,nextCursor:'same'};
    const start=cursor===null?0:Number(cursor),rows=data[collection]?.slice(start,start+30)??[];
-   return {ownerId:config.pageOwner??owner,collection,rows,done:start+30>=data[collection].length,
+   return {ownerId:config.pageOwner??owner,collection,snapshotId:requestId,rows,done:start+30>=data[collection].length,
     nextCursor:start+30>=data[collection].length?null:String(start+30)};},
   writePrivatePage:async({ownerId,requestId:rid,collection,index,sealed})=>{
    events.push('write');stored.set(collection+'/'+index,sealed);
@@ -143,4 +147,18 @@ test('revoked Auth during an attachment makes the response body fail, not a vali
  };
  const response=await createLargeAccountDownloadResponse({requestId,collections,services:f.services});
  await assert.rejects(response.text(),/revoked/);
+});
+
+test('a partial collection request cannot claim complete account export',async()=>{
+ const f=fixture({missingCollection:true});
+ await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),
+   /Canonical owner export inventory incomplete/);
+ assert.equal(f.events.includes('write'),false);
+});
+test('download denies mutated canonical snapshot inventory before releasing pages',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ const original=f.services.getCanonicalInventory;
+ f.services.getCanonicalInventory=async(...args)=>({...await original(...args),snapshotId:another});
+ await assert.rejects(collect(requestId,f.services),/Unverified complete account export/);
 });
