@@ -1,0 +1,108 @@
+\set ON_ERROR_STOP on
+DO $guard$ BEGIN
+ IF current_database()<>'allin_kitchen_test' THEN
+  RAISE EXCEPTION 'Refusing Kitchen replay outside isolated database';
+ END IF;
+END $guard$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+DO $roles$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN BYPASSRLS; END IF;
+END $roles$;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
+ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid
+$$;
+\ir ../docs/architecture/sql/V2-KITCHEN-MEAL-PLAN-OWNER-CANDIDATE.sql
+INSERT INTO auth.users(id) VALUES
+ ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+ ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+DO $acl$ BEGIN
+ IF has_table_privilege('authenticated','public.v2_kitchen_plan_entries','INSERT')
+ OR has_table_privilege('authenticated','public.v2_kitchen_plan_entries','UPDATE')
+ OR has_table_privilege('authenticated','public.v2_kitchen_plan_entries','DELETE')
+ OR has_table_privilege('anon','public.v2_kitchen_plan_entries','SELECT') THEN
+  RAISE EXCEPTION 'Direct Kitchen table access unexpectedly allowed';
+ END IF;
+ IF NOT has_function_privilege('authenticated','public.v2_kitchen_replace_plan_week(uuid,date,bigint,uuid,jsonb)','EXECUTE')
+ OR has_function_privilege('anon','public.v2_kitchen_replace_plan_week(uuid,date,bigint,uuid,jsonb)','EXECUTE') THEN
+  RAISE EXCEPTION 'Kitchen RPC role grants invalid';
+ END IF;
+ IF NOT (SELECT bool_and(relrowsecurity) FROM pg_class WHERE oid IN
+ ('public.v2_kitchen_plan_entries'::regclass,
+ 'public.v2_kitchen_plan_weeks'::regclass,
+ 'allin_private.v2_kitchen_plan_actions'::regclass)) THEN
+  RAISE EXCEPTION 'Kitchen RLS missing';
+ END IF;
+END $acl$;
+SELECT set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',false);
+DO $test$ DECLARE
+ a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ action uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ payload jsonb:='[
+  {"id":"11111111-1111-4111-8111-111111111111","eatDate":"2026-11-16","mealSlot":"lunch","sourceKind":"food","sourceId":"banana-reviewed","portions":1,"executionMode":"planned_food"},
+  {"id":"22222222-2222-4222-8222-222222222222","eatDate":"2026-11-16","mealSlot":"lunch","sourceKind":"food","sourceId":"apple-reviewed","portions":1,"executionMode":"planned_food"},
+  {"id":"33333333-3333-4333-8333-333333333333","eatDate":"2026-11-16","mealSlot":"lunch","sourceKind":"food","sourceId":"protein-bar-reviewed","portions":1,"executionMode":"planned_food"},
+  {"id":"44444444-4444-4444-8444-444444444444","eatDate":"2026-11-17","mealSlot":"lunch","sourceKind":"recipe","sourceId":"bowl-reviewed","portions":1,"executionMode":"prep_ahead"}
+ ]'::jsonb;
+ v jsonb;
+ first_version bigint;
+ next_version bigint;
+BEGIN
+ first_version:=public.v2_kitchen_replace_plan_week(a,'2026-11-16',0,action,payload);
+ IF first_version<>2 THEN RAISE EXCEPTION 'Initial plan save version wrong: %',first_version; END IF;
+ v:=public.v2_kitchen_read_plan_week(a,'2026-11-16');
+ IF (v->>'version')::bigint<>2 OR jsonb_array_length(v->'entries')<>4
+ OR (SELECT count(*) FROM jsonb_array_elements(v->'entries') x
+     WHERE x->>'mealSlot'='lunch' AND x->>'eatDate'='2026-11-16')<>3 THEN
+  RAISE EXCEPTION 'Distinct individual foods not retained in one lunch';
+ END IF;
+ IF public.v2_kitchen_replace_plan_week(a,'2026-11-16',0,action,payload)<>first_version THEN
+  RAISE EXCEPTION 'Exact action replay changed version';
+ END IF;
+ BEGIN
+  PERFORM public.v2_kitchen_replace_plan_week(a,'2026-11-16',2,action,'[]'::jsonb);
+  RAISE EXCEPTION 'Reused action was allowed to change payload';
+ EXCEPTION WHEN data_exception THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_kitchen_replace_plan_week(b,'2026-11-16',0,
+   'dddddddd-dddd-4ddd-8ddd-dddddddddddd','[]'::jsonb);
+  RAISE EXCEPTION 'Wrong-owner plan mutation accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_kitchen_read_plan_week(b,'2026-11-16');
+  RAISE EXCEPTION 'Wrong-owner plan read accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_kitchen_replace_plan_week(a,'2026-11-16',1,
+   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',payload);
+  RAISE EXCEPTION 'Stale plan version accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_kitchen_replace_plan_week(a,'2026-11-16',2,
+   'ffffffff-ffff-4fff-8fff-ffffffffffff',
+   '[{"id":"11111111-1111-4111-8111-111111111111","eatDate":"2026-11-16","mealSlot":"lunch","sourceKind":"recipe","sourceId":"bowl-reviewed","portions":6,"executionMode":"prep_ahead"}]'::jsonb);
+  RAISE EXCEPTION 'Recipe occurrence accepted more than one serving';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ next_version:=public.v2_kitchen_replace_plan_week(a,'2026-11-16',2,
+  '10101010-1010-4010-8010-101010101010','[]'::jsonb);
+ IF next_version<>3 THEN RAISE EXCEPTION 'Clear planned week version incorrect'; END IF;
+ v:=public.v2_kitchen_read_plan_week(a,'2026-11-16');
+ IF jsonb_array_length(v->'entries')<>0 OR v->>'complete'<>'true' THEN
+  RAISE EXCEPTION 'Confirmed empty week not distinguished from missing data';
+ END IF;
+END $test$;
+-- Ensure second athlete sees an independent empty weekly plan.
+SELECT set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',false);
+DO $isolation$ DECLARE v jsonb; BEGIN
+ v:=public.v2_kitchen_read_plan_week(
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','2026-11-16');
+ IF jsonb_array_length(v->'entries')<>0 OR v->>'ownerId'<>
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' THEN
+   RAISE EXCEPTION 'Owner data leakage in Kitchen read';
+ END IF;
+END $isolation$;
+SELECT 'PASS ALL-248 KITCHEN PLAN ISOLATED POSTGRES17' AS result;
