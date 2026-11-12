@@ -6,3 +6,8 @@ test('valid reviewer session is narrow and read-only',()=>assert.equal(checkProo
 test('rejects mismatched identity or excessive privileges',()=>{for(const key of Object.keys(valid))assert.throws(()=>checkProof({...valid,[key]:!valid[key]}))});
 test('rejects unapproved staging and missing operator before connection',()=>{assert.throws(()=>assertConfig({}),/opt-in/);assert.throws(()=>assertConfig({ALLIN_ALLOW_HOSTED_REVIEWER_SMOKE:'1',ALLIN_SUPABASE_PROJECT_REF:'xarhuczrtzuiljmtdaeu'}),/staging/)});
 test('acceptance SQL is read-only and has scoped role activation',()=>{const sql=acceptanceQuery('allin_ing_reviewer_test_operator');assert.match(sql,/BEGIN READ ONLY/);assert.match(sql,/SET LOCAL ROLE/);assert.match(sql,/ROLLBACK/);assert.doesNotMatch(sql,/\b(?:INSERT|UPDATE\s+public|DELETE\s+FROM|CREATE\s+ROLE|ALTER\s+ROLE)\b/i)});
+
+test('staging cannot be redirected to a different direct Supabase project',()=>{
+ const fake={ALLIN_ALLOW_HOSTED_REVIEWER_SMOKE:'1',ALLIN_SUPABASE_PROJECT_REF:'fbtgknlxjyeqrxemskbl',PGHOST:'db.xarhuczrtzuiljmtdaeu.supabase.co',PGPORT:'5432',PGDATABASE:'postgres',PGSSLMODE:'verify-full',PGSSLROOTCERT:process.execPath,PGPASSFILE:process.execPath,ALLIN_REVIEWER_EXPECTED_DB_LOGIN:'allin_ing_reviewer_testoperator',PGUSER:'allin_ing_reviewer_testoperator'};
+ assert.throws(()=>assertConfig(fake),/outside approved staging/);
+});
