@@ -87,7 +87,7 @@ INSERT INTO allin_private.v2_apple_attested_companion_keys_candidate(
    authData[32]=0x01;new DataView(authData.buffer).setUint32(33,counter,false);
    const phoneInput=new Uint8Array([...authData,...hashedContext]);
    const signedPhone=new Uint8Array(await crypto.subtle.sign({
-    name:'ECDSA',hash:'SHA-256'},phone.privateKey,phoneInput.buffer));
+    name:'ECDSA',hash:'SHA-256'},phone.privateKey,(await digest(phoneInput)).buffer));
    return {challengeId:challenge.challengeId,
     watchPublicKeySpkiB64url:b64url(watchSpki),
     watchSignatureB64url:b64url(signedWatch),phoneAppAttestKeyId:keyId,
