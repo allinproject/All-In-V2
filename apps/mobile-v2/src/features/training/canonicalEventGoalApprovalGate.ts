@@ -15,7 +15,9 @@ type OwnerEventEvidence={
 };
 type OwnerGoalEvidence={
   goalId:string;ownerId:string;goalRevisionId:string;goalVersion:number;
-  goalKind:'race_event'|'other';
+  goalKind:'race_event'|'strength_performance'|'endurance_distance'|
+   'endurance_time'|'sport_benchmark'|'machine_capacity'|'nutrition_habit'|
+   'activity_habit'|'body_composition'|'general_wellbeing'|'exploratory_intention';
   status:'accepted'|'draft'|'archived';
   targetEventId:string|null;
   startDate:string|null;targetDate:string|null;

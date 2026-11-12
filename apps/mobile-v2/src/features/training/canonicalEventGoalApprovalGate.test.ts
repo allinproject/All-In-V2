@@ -116,7 +116,7 @@ test('different valid version tokens from separate Goal, Event and Training owne
 test('undated qualitative goal can coexist without manufacturing an event',()=>{
  const f=fixture();f.proofs.goalSnapshot.goals=[...f.proofs.goalSnapshot.goals,{
   goalId:'qualitative',ownerId:owner,goalRevisionId:'q-rev',goalVersion:1,
-  goalKind:'other',
+  goalKind:'general_wellbeing',
   status:'accepted',targetEventId:null,startDate:null,targetDate:null
  }];
  assert.equal(certifySeasonAgainstGoalEventOwners(f.input,f.proofs).status,'review_required');
@@ -124,12 +124,12 @@ test('undated qualitative goal can coexist without manufacturing an event',()=>{
 
 test('non-race goal cannot authorize a race, but independent qualitative goals remain valid',()=>{
  const wrong=fixture();
- wrong.proofs.goalSnapshot.goals[0]={...wrong.proofs.goalSnapshot.goals[0],goalKind:'other'};
+ wrong.proofs.goalSnapshot.goals[0]={...wrong.proofs.goalSnapshot.goals[0],goalKind:'strength_performance'};
  assert.equal(certifySeasonAgainstGoalEventOwners(wrong.input,wrong.proofs).status,'unavailable');
  const valid=fixture();
  valid.proofs.goalSnapshot.goals.push({
   goalId:'nutrition',ownerId:owner,goalRevisionId:'nutrition-rev',goalVersion:1,
-  goalKind:'other',status:'accepted',targetEventId:null,startDate:null,targetDate:null
+  goalKind:'nutrition_habit',status:'accepted',targetEventId:null,startDate:null,targetDate:null
  });
  assert.equal(certifySeasonAgainstGoalEventOwners(valid.input,valid.proofs).status,'review_required');
 });
@@ -170,7 +170,7 @@ test('Coach phase preview cannot use stale Goal/Event certification or non-race 
   {eventId:'event-a',effort:'supported' as const,taperDays:2,recoveryReviewDays:3,source:'athlete_confirmed' as const,evidenceRefs:[]},
   {eventId:'event-b',effort:'supported' as const,taperDays:2,recoveryReviewDays:3,source:'athlete_confirmed' as const,evidenceRefs:[]}
  ];
- f.proofs.goalSnapshot.goals[0]={...f.proofs.goalSnapshot.goals[0],goalKind:'other'};
+ f.proofs.goalSnapshot.goals[0]={...f.proofs.goalSnapshot.goals[0],goalKind:'strength_performance'};
  assert.equal(previewGoalEventCertifiedSeasonPhases({ownerSeason:f.input,goalEventOwners:f.proofs,
   expectedPlanRevisionId:revision,phaseDecisions}).status,'unavailable');
  const g=fixture();g.proofs.eventSnapshot.events[0]={...g.proofs.eventSnapshot.events[0],eventVersion:99};
