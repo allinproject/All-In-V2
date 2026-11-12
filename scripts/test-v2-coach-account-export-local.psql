@@ -31,6 +31,54 @@ INSERT INTO allin_private.v2_coach_message_actions
   'b2222222-6222-4222-8222-622222222222',
   'c2222222-6222-4222-8222-622222222222');
 
+
+-- Populate ALL nine previously uncovered owner tables, not merely their allowlist.
+-- The event/group identity is shared; membership, registrations and actions
+-- remain owner-scoped even when both athletes point at the same event.
+INSERT INTO public.v2_goals(id,user_id,goal_kind,title) VALUES
+ ('d1111111-6111-4111-8111-611111111111','61111111-6111-4111-8111-611111111111','endurance_distance','Owner A private goal'),
+ ('d2222222-6222-4222-8222-622222222222','62222222-6222-4222-8222-622222222222','endurance_distance','Owner B private goal');
+INSERT INTO public.v2_goal_revisions(id,goal_id,user_id,revision_number,source_kind) VALUES
+ ('e1111111-6111-4111-8111-611111111111','d1111111-6111-4111-8111-611111111111','61111111-6111-4111-8111-611111111111',1,'athlete_authored'),
+ ('e2222222-6222-4222-8222-622222222222','d2222222-6222-4222-8222-622222222222','62222222-6222-4222-8222-622222222222',1,'athlete_authored');
+INSERT INTO public.v2_goal_revision_behavior_targets
+ (id,user_id,goal_id,goal_revision_id,behavior_description,cadence_kind)
+VALUES
+ ('f1111111-6111-4111-8111-611111111111','61111111-6111-4111-8111-611111111111','d1111111-6111-4111-8111-611111111111','e1111111-6111-4111-8111-611111111111','Owner A running cadence','event_based'),
+ ('f2222222-6222-4222-8222-622222222222','62222222-6222-4222-8222-622222222222','d2222222-6222-4222-8222-622222222222','e2222222-6222-4222-8222-622222222222','Owner B cycling cadence','event_based');
+INSERT INTO allin_private.v2_goal_acceptance_actions
+ (user_id,session_id,action_id,goal_id,candidate_revision_id,payload_sha256,result_version)
+VALUES
+ ('61111111-6111-4111-8111-611111111111','91111111-6111-4111-8111-611111111111','81111111-6111-4111-8111-611111111111','d1111111-6111-4111-8111-611111111111','e1111111-6111-4111-8111-611111111111',repeat('a',64),2),
+ ('62222222-6222-4222-8222-622222222222','92222222-6222-4222-8222-622222222222','82222222-6222-4222-8222-622222222222','d2222222-6222-4222-8222-622222222222','e2222222-6222-4222-8222-622222222222',repeat('b',64),2);
+INSERT INTO allin_private.v2_goal_approval_reviews
+ (id,user_id,session_id,goal_id,goal_revision_id,action_id,expected_version,
+  payload_sha256,athlete_confirmed,approved_at,expires_at)
+VALUES
+ ('a1111111-7111-4111-8111-611111111111','61111111-6111-4111-8111-611111111111','91111111-6111-4111-8111-611111111111','d1111111-6111-4111-8111-611111111111','e1111111-6111-4111-8111-611111111111','81111111-7111-4111-8111-611111111111',1,repeat('a',64),true,now(),now()+interval '10 minutes'),
+ ('a2222222-7222-4222-8222-622222222222','62222222-6222-4222-8222-622222222222','92222222-6222-4222-8222-622222222222','d2222222-6222-4222-8222-622222222222','e2222222-6222-4222-8222-622222222222','82222222-7222-4222-8222-622222222222',1,repeat('b',64),true,now(),now()+interval '10 minutes');
+
+INSERT INTO public.v2_events(id,name,sport,event_kind)
+ VALUES ('71111111-6111-4111-8111-611111111111','Shared test race','running','race');
+INSERT INTO public.v2_event_groups(id,event_id,state)
+ VALUES ('72222222-6222-4222-8222-622222222222','71111111-6111-4111-8111-611111111111','active');
+INSERT INTO public.v2_event_group_memberships(user_id,event_id,group_id)
+ VALUES
+ ('61111111-6111-4111-8111-611111111111','71111111-6111-4111-8111-611111111111','72222222-6222-4222-8222-622222222222'),
+ ('62222222-6222-4222-8222-622222222222','71111111-6111-4111-8111-611111111111','72222222-6222-4222-8222-622222222222');
+INSERT INTO public.v2_event_participations(user_id,event_id,state,source_kind,source_note)
+ VALUES
+ ('61111111-6111-4111-8111-611111111111','71111111-6111-4111-8111-611111111111','interested','athlete_confirmed','Owner A private event note'),
+ ('62222222-6222-4222-8222-622222222222','71111111-6111-4111-8111-611111111111','interested','athlete_confirmed','Owner B private event note');
+INSERT INTO allin_private.v2_event_group_actions
+ (user_id,session_id,action_id,event_id,group_id,action_kind,expected_version,result_version)
+VALUES
+ ('61111111-6111-4111-8111-611111111111','91111111-6111-4111-8111-611111111111','81111111-8111-4111-8111-611111111111','71111111-6111-4111-8111-611111111111','72222222-6222-4222-8222-622222222222','join',1,2),
+ ('62222222-6222-4222-8222-622222222222','92222222-6222-4222-8222-622222222222','82222222-8222-4222-8222-622222222222','71111111-6111-4111-8111-611111111111','72222222-6222-4222-8222-622222222222','join',1,2);
+INSERT INTO allin_private.v2_community_visibility(user_id,profile_visibility)
+VALUES ('61111111-6111-4111-8111-611111111111','private'),
+       ('62222222-6222-4222-8222-622222222222','public');
+
 -- Diagnostic only: do not bypass this export guard. Log qualified missing
 -- table names so the canonical ALL-251 owner can add actual per-domain payloads.
 DO $export_coverage$
@@ -59,6 +107,19 @@ DECLARE
  v_part jsonb;
 BEGIN
  v_data := public.v2_export_my_account_snapshot('61111111-6111-4111-8111-611111111111');
+ IF v_data->'goals'->'goals'->0->>'title' <> 'Owner A private goal'
+    OR jsonb_array_length(v_data->'goals'->'revisions') <> 1
+    OR jsonb_array_length(v_data->'goals'->'behavior_targets') <> 1
+    OR jsonb_array_length(v_data->'goals'->'acceptance_actions') <> 1
+    OR jsonb_array_length(v_data->'goals'->'approval_reviews') <> 1
+    OR jsonb_array_length(v_data->'eventhub'->'group_memberships') <> 1
+    OR jsonb_array_length(v_data->'eventhub'->'participations') <> 1
+    OR jsonb_array_length(v_data->'eventhub'->'group_actions') <> 1
+    OR v_data->'community'->'visibility'->>'profile_visibility' <> 'private'
+    OR v_data::text LIKE '%Owner B private goal%'
+    OR v_data::text LIKE '%Owner B private event note%'
+    OR v_data::text LIKE '%Owner B cycling cadence%'
+ THEN RAISE EXCEPTION 'Owner A cross-domain export missing records or leaked B'; END IF;
  v_part := v_data->'coach_conversation';
  IF v_part IS NULL OR v_part->>'schema_version' <> 'v2-coach-account-fragment-candidate-v1'
     OR jsonb_array_length(v_part->'threads')<>1
@@ -76,8 +137,24 @@ END $coach_export$;
 SELECT set_config('request.jwt.claim.sub','62222222-6222-4222-8222-622222222222',true);
 DO $coach_export$
 DECLARE v_part jsonb;
+DECLARE v_data jsonb;
 BEGIN
- v_part := public.v2_export_my_account_snapshot('62222222-6222-4222-8222-622222222222')->'coach_conversation';
+ v_data := public.v2_export_my_account_snapshot('62222222-6222-4222-8222-622222222222');
+ v_part := v_data->'coach_conversation';
+ IF v_data->'goals'->'goals'->0->>'title' <> 'Owner B private goal'
+    OR jsonb_array_length(v_data->'goals'->'revisions') <> 1
+    OR jsonb_array_length(v_data->'goals'->'behavior_targets') <> 1
+    OR jsonb_array_length(v_data->'goals'->'acceptance_actions') <> 1
+    OR jsonb_array_length(v_data->'goals'->'approval_reviews') <> 1
+    OR jsonb_array_length(v_data->'eventhub'->'group_memberships') <> 1
+    OR jsonb_array_length(v_data->'eventhub'->'participations') <> 1
+    OR jsonb_array_length(v_data->'eventhub'->'group_actions') <> 1
+    OR v_data->'community'->'visibility'->>'profile_visibility' <> 'public'
+    OR v_data::text LIKE '%Owner A private goal%'
+    OR v_data::text LIKE '%Owner A private event note%'
+    OR v_data::text LIKE '%Owner A running cadence%'
+ THEN RAISE EXCEPTION 'Owner B cross-domain export missing records or leaked A'; END IF;
+ IF v_part IS NULL THEN RAISE EXCEPTION 'Owner B missing Coach export'; END IF;
  IF jsonb_array_length(v_part->'messages')<>1
     OR v_part->'messages'->0->>'content'<>'Athlete B private question'
     OR v_part::text LIKE '%Athlete A private question%'
