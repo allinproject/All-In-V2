@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,randomBytes} from 'node:crypto';
 import {createTrainingAccountExportWorkerCandidate} from './v2-training-account-export-worker-candidate.mjs';
+import {handleAccountExportDownload} from '../supabase/functions/_shared/trainingExportDownloadHandler.mjs';
+import {createAccountExportKeyLease} from '../supabase/functions/_shared/trainingExportKeyLease.mjs';
+import {verifyAccountExportDownload} from '../supabase/functions/_shared/trainingExportDownloadVerifier.mjs';
 import {decryptTrainingExportForVerification} from './v2-training-encrypted-export-envelope.mjs';
 const owner='11111111-1111-4111-8111-111111111111';
 const session='22222222-2222-4222-8222-222222222222';
@@ -31,7 +34,7 @@ function setup(options={}) {
      return {error:new Error('revoked')};
    if(options.revokeAfterSnapshot&&events.includes('snapshotClosed'))
      return {error:new Error('revoked after staging')};
-   return {data:{user:{id:owner}}};
+   return {data:{user:{id:options.asOwner??owner}}};
  }}};
  const data={v2_activity_series:[row()],v2_activity_route_objects:[]};
  const serviceClient={
@@ -188,7 +191,7 @@ function setup(options={}) {
  }:undefined;
  const worker=createTrainingAccountExportWorkerCandidate({
    bearerToken:token,authClient,serviceClient,
-   resolveEncryptionKey:async()=>key,...selectedPersistence,
+   resolveEncryptionKey:async args=>options.keyLease?options.keyLease(args):key,...selectedPersistence,
    canonicalPageReader:pinnedPageReader??canonicalPageReader,
  });
  return {worker,events,key,pagedArchives,get envelope(){return envelope;},
@@ -344,4 +347,71 @@ test('same ALL-251 pinned worker stages approved private media bytes alongside C
  assert.deepEqual(Buffer.from(media.dataBase64,'base64'),bytes);
  assert.equal(lines.at(-1).export_complete,true);
  assert.equal(f.events.filter(x=>x==='snapshotOpen').length,1);
+});
+
+test('ALL-251 full canonical worker HTTP integration: approved request, provider key lease, AES pages, terminal SHA and cross-account denial',async()=>{
+ const flags={useSupabasePersistence:true,pinnedReader:true};
+ const f=setup(flags);
+ let leaseReads=0,unwraps=0;
+ const lease=()=>{
+  leaseReads++;
+  return {ownerId:owner,requestId,status:'approved',cancelled:!!flags.revokeKey,
+   activeSession:true,keyPurpose:'account-export-v2',keyVersion:1,
+   kmsKeyId:'kms://isolated-test-provider/version-one',
+   wrappedDataKey:'test-only-wrapped-key-not-a-raw-secret',
+   expiresAt:new Date(Date.now()+3600000).toISOString()};
+ };
+ flags.keyLease=createAccountExportKeyLease({
+   readApprovedRequestKeyLease:async()=>lease(),
+   unwrapDataKey:async({context,purpose,keyVersion})=>{
+    unwraps++;
+    assert.deepEqual(context,{ownerId:owner,requestId});
+    assert.equal(purpose,'account-export-v2');
+    assert.equal(keyVersion,1);
+    return f.key;
+   },
+ }).resolveEncryptionKey;
+ const staged=await f.worker.stageApprovedLargeHistory(requestId);
+ assert.equal(staged.staged,true);
+ assert.equal(staged.encrypted,true);
+ assert.equal(staged.pageCount,1);
+ assert(unwraps>0&&leaseReads>=2);
+ function req(extra={}){
+  return new Request('https://localhost/functions/v1/v2-account-export-download',{
+    method:'POST',
+    headers:{authorization:'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({request_id:requestId,...extra}),
+  });
+ }
+ const opts={enabled:true,createAuthorizedWorker:async bearer=>{
+   assert.equal(bearer,token);
+   return f.worker;
+ }};
+ const good=await handleAccountExportDownload(req(),opts);
+ assert.equal(good.status,200);
+ assert.equal(good.headers.get('access-control-allow-origin'),null);
+ assert.match(good.headers.get('cache-control')??'',/no-store/);
+ const proof=await verifyAccountExportDownload({
+   stream:good.body,expectedOwnerId:owner,expectedCollections:['coach_messages'],
+ });
+ assert.equal(proof.verified,true);
+ assert.equal(proof.recordCount,1);
+ assert(unwraps>=2,'Provider key lease must be re-resolved at read');
+ // Mocked Auth lookup supplies a different real-user ID, while the database
+ // service refuses owner mismatch. No cross-owner data may reach HTTP.
+ flags.asOwner='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const foreign=await handleAccountExportDownload(req(),opts);
+ assert.equal(foreign.status,403);
+ assert.equal(foreign.headers.get('cache-control'),'no-store');
+ flags.asOwner=owner;
+ flags.denyRequest=true;
+ const cancelled=await handleAccountExportDownload(req(),opts);
+ assert.equal(cancelled.status,403);
+ flags.denyRequest=false;
+ flags.revokeKey=true;
+ const noKey=await handleAccountExportDownload(req(),opts);
+ assert.equal(noKey.status,403);
+ flags.revokeKey=false;
+ const forged=await handleAccountExportDownload(req({owner_id:owner}),opts);
+ assert.equal(forged.status,400);
 });
