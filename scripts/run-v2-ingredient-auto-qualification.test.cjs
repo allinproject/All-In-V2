@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createHash}=require('node:crypto');
-const {planAutomaticQualification,runAutomaticQualification,requestKey,WRITER,ENERGY_WRITER}=
+const {planAutomaticQualification,runAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,HOSTED_READINESS_SQL,checkHostedIngestReadiness}=
   require('./run-v2-ingredient-auto-qualification.cjs');
 const PROFILE='a4b12c65-9fe7-4a89-8c7b-2357656ac134';
 const nutrient=(id,amount,unitName='g')=>({nutrient:{id,unitName},amount});
@@ -131,4 +131,41 @@ test('energy attestation mode rejects caller coercion before transaction',async(
  await assert.rejects(runAutomaticQualification({client,...fixture(),attestEnergy:'true'}),
   /explicit boolean/);
  assert.equal(client.calls.length,0);
+});
+
+test('hosted preflight rejects uninstalled schema, postgres and unsafe privilege grants',async()=>{
+ const valid={
+  login:'allin_ing_workload_food_ingest_v1',
+  effective_role:'allin_v2_ingredient_reviewer',
+  ingredients:true,profiles:true,sources:true,review_events:true,
+  energy_attestations:true,review_writer:true,energy_writer:true,
+  reviewer_role:true,publisher_role:true,login_least_privileged:true,
+  reviewer_member:true,profiles_rls_enabled:true,
+  publisher_member:false,login_public_create:false
+ };
+ const client=rows=>({query:async sql=>{
+  assert.equal(sql,HOSTED_READINESS_SQL);
+  return {rows};
+ }});
+ assert.deepEqual(await checkHostedIngestReadiness(client([valid])),
+  {ready:true,login:valid.login,publicationEnabled:false});
+ await assert.rejects(checkHostedIngestReadiness(client([valid]),{requirePublisher:true}),
+  /Hosted ingest readiness denied/);
+ const published={...valid,publisher_member:true};
+ assert.deepEqual(await checkHostedIngestReadiness(client([published]),{requirePublisher:true}),
+  {ready:true,login:valid.login,publicationEnabled:true});
+ for(const change of [
+  {ingredients:false},{review_writer:false},{energy_attestations:false},
+  {login:'postgres'},{login_least_privileged:false},
+  {reviewer_member:false},{profiles_rls_enabled:false},
+  {login_public_create:true},{effective_role:'postgres'},
+  {publisher_member:true}
+ ]) {
+  await assert.rejects(checkHostedIngestReadiness(client([{...valid,...change}])),
+   /Hosted ingest readiness denied/);
+ }
+ await assert.rejects(checkHostedIngestReadiness(client([])),/readiness unavailable/);
+ await assert.rejects(checkHostedIngestReadiness(client([valid,valid])),/readiness unavailable/);
+ await assert.rejects(checkHostedIngestReadiness(client([valid]),{requirePublisher:'true'}),
+  /explicit boolean/);
 });
