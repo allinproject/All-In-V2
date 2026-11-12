@@ -1,6 +1,6 @@
 # ALL-251 — Hosted staging acceptance for complete private export
 
-**Current status:** Blocked on a dedicated, independently approved V2 staging Supabase project and exact legal/privacy scope. No live V1/V2 project may be repurposed. This is a review runbook, **not** deployment or approval.
+**Current status (2026-11-12):** The founder approved and created a separate temporary Supabase staging project. Initial private-bucket provisioning and database-role isolation checks passed; full real-media/authenticated-Edge/KMS/device acceptance is still open. This is a review runbook, **not** production deployment or legal approval.
 
 ## Existing source of truth
 
@@ -27,3 +27,13 @@ Current canonical source inventory reports **`complete=false`**. It must remain 
 - `docs/architecture/V2-ACCOUNT-EXPORT-COMMUNITY-RETENTION-POLICY-REVIEW.md` records the proposed minimum-disclosure policy and outstanding legal retention decision.
 
 These are not a substitute for the independently approved **hosted** staging and native-device acceptance. Never describe review-only file handling as a shipped feature.
+
+## Temporary hosted staging — verified baseline (2026-11-12)
+
+- **Isolated target:** `All-In-V2-Temporary-Staging` (`fbtgknlxjyeqrxemskbl`), Longrunlog, us-east-1, ACTIVE_HEALTHY at review time. Supabase quoted an additional **$10/month**. **Never** use live V2 `xarhuczrtzuiljmtdaeu` or V1 `impulecgsgaruvniuttc` as a test target.
+- **Approved temporary migration already applied ONLY to this staging project:** `all251_temporary_staging_private_buckets_no_client_policies`. Exactly two private `storage.buckets` records, `v2-private-workout-objects` and `v2-private-account-exports`, `public=false`, MIME `application/octet-stream`, 16 MiB per object. No additional Storage object access policies were granted.
+- **Live staging PostgreSQL readback:** `anon` and `authenticated` roles each saw **zero** private buckets and zero objects under RLS. `service_role` saw **exactly two private buckets**. This checks metadata isolation, NOT a network-level byte upload/download or real Auth bearer session.
+- **Existing staging state:** no user accounts or deployed Edge Functions at initial baseline. Do not claim cross-owner production Auth, Stage KMS, device file-save, or hosted binary readback acceptance from this configuration-only proof.
+- **Deletion safeguard:** An enabled one-time reminder for 2026-11-13, 10:14 AM America/Chicago, automation `Automation_fdfda9a82d9c81919613bb5d53d1c48a`, names **only** staging `fbtgknlxjyeqrxemskbl`. The connected Supabase tool **does not expose project deletion**. A human must delete the temporary project using the Supabase dashboard; verify deletion before claiming billing has stopped.
+- **Next execution:** Bind the server-side authenticated service client, a real key provider and approved complete source inventory; then test actual hosted file bytes, owner A/B sessions, revoked session, encrypted download, tampering, expiry, retention, PITR and iOS/Android download/share as outlined above. Never switch the canonical `complete=false` flag or grant production permissions until these pass.
+
