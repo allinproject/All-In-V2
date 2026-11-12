@@ -38,6 +38,8 @@ export type CompletedActivityCanonicalReader=(args:{activityId:string;expectedOw
 export type CurrentOwnerReader=()=>Promise<string|null>;
 const code=(x:unknown):x is string=>typeof x==='string'&&x.length>0&&x.length<=150&&/^[a-z0-9][a-z0-9._:-]*$/i.test(x);
 const text=(x:unknown,max=300):x is string=>typeof x==='string'&&x.trim().length>0&&x.length<=max;
+const metricCode=(x:unknown):x is string=>code(x)&&x.length<=100;
+const sectionKey=(x:unknown):x is string=>code(x)&&x.length<=120;
 const qualities=new Set(['trusted','partial','unverified','low_quality','rejected']);
 const kinds=new Set(['source_measured','provider_derived','user_reported','allin_derived','estimated']);
 const structuredKinds=new Set(['route','splits','laps','intervals','heart_rate_series','power_series',
@@ -96,7 +98,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
  if(!primary||primary.quality==='rejected')throw new Error('Canonical activity source is unavailable.');
  const definitions=new Map<string,CanonicalMetricDefinition>();
  for(const def of raw.definitions){
-  if(!code(def.code)||!Number.isSafeInteger(def.version)||def.version<1||
+  if(!metricCode(def.code)||!Number.isSafeInteger(def.version)||def.version<1||
    !text(def.displayName,120)||!text(def.canonicalUnit,50)||
    !Array.isArray(def.sportScope)||!def.sportScope.length||def.sportScope.length>20||
    !def.sportScope.every(isCanonicalActivitySport)||
@@ -110,7 +112,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
  const metrics:MetricEvidence[]=[];
  const seenCodes=new Set<string>();
  for(const m of raw.metrics){
-  if(!code(m.code)||!Number.isSafeInteger(m.definitionVersion)||m.definitionVersion<1||
+  if(!metricCode(m.code)||!Number.isSafeInteger(m.definitionVersion)||m.definitionVersion<1||
    !text(m.sourceId)||!sources.has(m.sourceId)||!qualities.has(m.quality)||!kinds.has(m.measurementKind))
    throw new Error('Unverifiable metric source or definition.');
   const definition=definitions.get(m.code+':'+m.definitionVersion);
@@ -134,11 +136,14 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    unit:definition.canonicalUnit});
  }
  const sections:StructuredEvidence[]=[];
+ const sectionKeys=new Set<string>();
  for(const section of raw.sections??[]){
   const source=sources.get(section.sourceId);
-  if(!source||source.quality!=='trusted'||!code(section.key)||!text(section.title,120)||
+  if(!source||source.quality!=='trusted'||!sectionKey(section.key)||!text(section.title,120)||
    !Number.isSafeInteger(section.count)||section.count<1||!structuredKinds.has(section.kind))
    throw new Error('Structured activity evidence is not verifiable.');
+  if(sectionKeys.has(section.key))throw new Error('Duplicate canonical activity section identity.');
+  sectionKeys.add(section.key);
   if(section.kind==='route'&&routeIneligibleSports.has(display.sport))
    throw new Error('Route evidence is incompatible with the canonical activity sport.');
   const allowedSports=sectionSportScopes[section.kind];
