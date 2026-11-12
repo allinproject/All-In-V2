@@ -1,0 +1,36 @@
+{
+  "source": "USDA FoodData Central",
+  "data_type": "Foundation Foods",
+  "release_date": "2026-10-29",
+  "official_download_url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_json_2026-10-29.zip",
+  "archive_filename": "FoodData_Central_foundation_food_json_2026-10-29.zip",
+  "archive_bytes": 696866,
+  "archive_sha256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579",
+  "archive_members": [
+    {
+      "name": "FoodData_Central_foundation_food_json_2026-10-29.json",
+      "uncompressed_bytes": 9349340,
+      "compressed_bytes": 696610
+    }
+  ],
+  "verified_at_utc": "2026-11-12T10:46:48.229837Z",
+  "phase": "source_archive_only_not_imported_not_reviewed",
+  "verification_evidence": {
+    "retrieval": "HTTPS 200 application/zip from exact USDA official URL via isolated hosted Python urllib",
+    "zip_crc_test": "pass",
+    "safe_unique_member_names": true,
+    "json_parsed": true,
+    "json_sha256": "990e7731dcec30cecbbb212896a0fe4333f38c65ce7f525e2b679f0dc27658a1",
+    "json_root": "FoundationFoods",
+    "foundation_record_count": 424,
+    "unique_fdc_ids": 424,
+    "missing_fdc_ids": 0,
+    "all_data_type_foundation": true,
+    "missing_descriptions": 0,
+    "foods_with_no_nutrient_entries": 0,
+    "total_nutrient_entries": 22138,
+    "zip_member_crc32": "8a8cde99",
+    "verification_scope": "source archive integrity and structural inventory only; no individual nutrient fact approval or V2 import",
+    "archive_bytes_retained_in_git": false
+  }
+}
