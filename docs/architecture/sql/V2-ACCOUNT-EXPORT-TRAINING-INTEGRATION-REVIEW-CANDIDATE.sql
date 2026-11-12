@@ -77,12 +77,21 @@ begin
        OR c.relname LIKE 'v2_recipe_%'
        OR c.relname LIKE 'v2_cookbook_%'
        OR c.relname LIKE 'v2_gear_%'
-       OR c.relname LIKE 'v2_shoe_%')
+       OR c.relname LIKE 'v2_shoe_%'
+       OR c.relname LIKE 'v2_meal_%'
+       OR c.relname LIKE 'v2_pantry_%'
+       OR c.relname LIKE 'v2_macro_%'
+       OR c.relname LIKE 'v2_body_%'
+       OR c.relname LIKE 'v2_equipment_%'
+       OR c.relname LIKE 'v2_race_%'
+       OR c.relname LIKE 'v2_personal_record_%'
+       OR c.relname LIKE 'v2_achievement_%')
  ) THEN RAISE EXCEPTION 'New domain requires explicit account export classification'
    USING ERRCODE='42501'; END IF;
- -- An unknown V2 domain can own personal records without a user_id.
- -- Mirror the paginated registry's alternate-key safety rule. Never treat
- -- future Nutrition, Progress, gear or Community posts as nonpersonal by name.
+ -- Future owner data can use owner_id / athlete_id / actor_id rather
+ -- than user_id.  Reject unknown V2 relations before a supposedly complete
+ -- export silently skips Nutrition, Progress, equipment or Community posts.
+ -- The four canonical directional relationship ledgers are reviewed below.
  IF EXISTS(
    SELECT 1 FROM pg_catalog.pg_class c
    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
@@ -90,7 +99,8 @@ begin
    WHERE n.nspname IN ('public','allin_private')
      AND c.relkind IN ('r','p') AND c.relname LIKE 'v2_%'
      AND a.attnum>0 AND NOT a.attisdropped
-     AND a.attname IN ('owner_id','athlete_id','actor_id','created_by_user_id')
+     AND a.attname IN ('owner_id','athlete_id','actor_id','created_by_user_id',
+       'account_id','profile_id','athlete_user_id')
      AND NOT EXISTS(
        SELECT 1 FROM pg_catalog.pg_attribute owned
        WHERE owned.attrelid=c.oid AND owned.attname='user_id'
