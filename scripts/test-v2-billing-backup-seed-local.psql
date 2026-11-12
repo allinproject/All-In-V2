@@ -1,0 +1,68 @@
+\set ON_ERROR_STOP on
+-- ALL-222 / ALL-266: synthetic billing backup fixture for disposable local
+-- Supabase PostgreSQL ONLY, after real V2 foundation and candidate grants.
+-- Never run on linked/remote Supabase or with actual customer receipts.
+DO $seed$
+DECLARE
+ owner_a constant uuid := '77777777-7777-4777-8777-777777777777';
+ owner_b constant uuid := '88888888-8888-4888-8888-888888888888';
+BEGIN
+ IF to_regclass('allin_private.v2_subscription_checkout_attempts') IS NULL
+    OR to_regclass('allin_private.v2_subscription_purchases') IS NULL
+ THEN RAISE EXCEPTION 'Billing candidate schema absent'; END IF;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases)
+ THEN RAISE EXCEPTION 'Billing restore fixture requires empty billing ledger'; END IF;
+ IF EXISTS(SELECT 1 FROM auth.users WHERE id IN(owner_a,owner_b))
+ THEN RAISE EXCEPTION 'Billing backup fixture owner collision'; END IF;
+ INSERT INTO auth.users(id,raw_user_meta_data)
+ VALUES(owner_a,'{"display_name":"Backup Owner A"}'::jsonb),
+       (owner_b,'{"display_name":"Backup Owner B"}'::jsonb);
+ IF (SELECT count(*) FROM public.v2_profiles
+      WHERE user_id IN(owner_a,owner_b))<>2 THEN
+   RAISE EXCEPTION 'Real V2 Auth triggers did not create both backup owners';
+ END IF;
+END $seed$;
+
+SET ROLE service_role;
+DO $events$
+DECLARE r text;
+BEGIN
+ SELECT public.v2_billing_commit_verified_native(
+ '77777777-7777-4777-8777-777777777777','app_store','sandbox',
+ 'restore_backup_apple_A','restore_backup_event_apple_A','paid',
+ '2027-12-01 UTC') INTO r;
+ IF r<>'committed' THEN RAISE EXCEPTION 'Apple backup fixture: %',r; END IF;
+ SELECT public.v2_billing_commit_verified_native(
+ '77777777-7777-4777-8777-777777777777','app_store','sandbox',
+ 'restore_backup_apple_A','restore_backup_refund_apple_A','refunded',NULL) INTO r;
+ IF r<>'committed' THEN RAISE EXCEPTION 'Refund backup fixture: %',r; END IF;
+ SELECT public.v2_billing_commit_verified_native(
+ '77777777-7777-4777-8777-777777777777','google_play','sandbox',
+ 'sha256:restore_backup_google_A','restore_backup_event_google_A','paid',
+ '2027-12-01 UTC') INTO r;
+ IF r<>'committed' THEN RAISE EXCEPTION 'Google A backup fixture: %',r; END IF;
+ SELECT public.v2_billing_commit_verified_native(
+ '88888888-8888-4888-8888-888888888888','google_play','sandbox',
+ 'sha256:restore_backup_google_B','restore_backup_event_google_B','trial',
+ '2027-12-01 UTC') INTO r;
+ IF r<>'committed' THEN RAISE EXCEPTION 'Google B backup fixture: %',r; END IF;
+END $events$;
+RESET ROLE;
+
+DO $verify$
+BEGIN
+ IF (SELECT count(*) FROM allin_private.v2_subscription_checkout_attempts)<>3 OR
+    (SELECT count(*) FROM allin_private.v2_subscription_purchases)<>3 OR
+    (SELECT count(*) FROM allin_private.v2_subscription_verified_events)<>4 THEN
+   RAISE EXCEPTION 'Unexpected backup fixture ledger cardinality';
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
+     WHERE owner_id='77777777-7777-4777-8777-777777777777' AND
+       provider='app_store' AND phase='refunded' AND revision=2 AND access_until IS NULL)
+ THEN RAISE EXCEPTION 'Apple refund not persisted before backup'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
+     WHERE owner_id='88888888-8888-4888-8888-888888888888' AND
+       provider='google_play' AND phase='trial' AND revision=1)
+ THEN RAISE EXCEPTION 'Other account trial missing before backup'; END IF;
+ RAISE NOTICE 'PASS ALL-222: two owner billing backup seed 3 purchases/4 events';
+END $verify$;
