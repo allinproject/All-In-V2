@@ -13,10 +13,10 @@ const sports=["running","walking","cycling","swimming","strength","hiking","ruck
 const categories=["exercise","equipment","schedule","pain_or_return","preference"];
 const sources=["explicit_user","approved_plan","system_inferred"];
 export function createCoachCanonicalTrainingReader({
- userClient,verifySession,readRestrictions,readAccessGate,resolveAthleteDate
+ userClient,verifySession,readRestrictions,readCompletedHistory,readAccessGate,resolveAthleteDate
 }={}){
  if(typeof userClient?.rpc!=="function"||
-    ![verifySession,readRestrictions,readAccessGate,resolveAthleteDate].every(f=>typeof f==="function"))
+    ![verifySession,readRestrictions,readCompletedHistory,readAccessGate,resolveAthleteDate].every(f=>typeof f==="function"))
   throw Error("coach_training_reader_not_configured");
  return async function readContext({ownerId,threadId,readAt}={}){
   if(!uuid(ownerId)||!uuid(threadId)||!time(readAt))die();
@@ -26,11 +26,15 @@ export function createCoachCanonicalTrainingReader({
    readAccessGate({ownerId}),resolveAthleteDate({ownerId,readAt})
   ]);
   if(gate?.ownerId!==ownerId||gate.ready!==true||!date(localDate))die();
-  const [d,r]=await Promise.all([
+  const start=new Date(localDate+"T12:00:00Z");
+  start.setUTCDate(start.getUTCDate()-29);
+  const fromDate=start.toISOString().slice(0,10);
+  const [d,r,completed]=await Promise.all([
    userClient.rpc("v2_training_day_read_candidate",{
     p_expected_user_id:ownerId,p_athlete_date:localDate
    }),
-   readRestrictions({ownerId,readAt})
+   readRestrictions({ownerId,readAt}),
+   readCompletedHistory({ownerId,fromDate,throughDate:localDate,readAt})
   ]);
   await verify();
   if(d?.error||!d?.data||d.data.ownerId!==ownerId||
@@ -38,7 +42,12 @@ export function createCoachCanonicalTrainingReader({
      !Array.isArray(d.data.plannedWorkouts)||d.data.calendarDays.length>64||
      d.data.plannedWorkouts.length>128||r?.ownerId!==ownerId||
      r.verified!==true||!Array.isArray(r.restrictions)||
-     r.restrictions.length>200)die();
+     r.restrictions.length>200||completed?.verified!==true||
+     completed.ownerId!==ownerId||completed.fromDate!==fromDate||
+     completed.throughDate!==localDate||
+     completed.coverage!=="partial_canonical_completed_identity"||
+     typeof completed.moreAvailable!=="boolean"||
+     !Array.isArray(completed.activities)||completed.activities.length>50)die();
   const revisions=new Set(),days=d.data.calendarDays;
   for(const day of days){
    if(!uuid(day.planId)||!uuid(day.revisionId)||day.localDate!==localDate||
@@ -58,6 +67,28 @@ export function createCoachCanonicalTrainingReader({
     occurredAt:readAt,recordedAt:readAt,source:"canonical_training",
     canonicalRef:w.revisionId,confidence:"verified",
     summary:(w.sessionKind+": "+w.purpose).slice(0,600)};
+  });
+  const completedEvents=completed.activities.map(a=>{
+   if(!uuid(a?.activityId)||a.ownerId!==ownerId||
+      !sports.includes(a.sport)||!date(a.localDate)||
+      a.localDate<fromDate||a.localDate>localDate||
+      !["completed","partial","needs_review"].includes(a.status)||
+      !["workout","race","competition","manual_entry","free_activity"].includes(a.kind)||
+      !["device_measured","provider_import","user_reported","manual_only","mixed_sources"].includes(a.captureKind)||
+      !Number.isSafeInteger(a.version)||a.version<1||
+      !time(a.recordedAt))die();
+   const occurredAt=a.startedAt??a.finishedAt??a.recordedAt;
+   if(!time(occurredAt)||Date.parse(occurredAt)>Date.parse(readAt)||
+      Date.parse(occurredAt)>Date.parse(a.recordedAt))die();
+   return {id:a.activityId,kind:a.status==="completed"?
+     "completed_session":"partial_or_unreviewed_session",
+    sport:a.sport,occurredAt,recordedAt:a.recordedAt,
+    source:"canonical_completed_activity_identity",
+    canonicalRef:a.activityId,confidence:a.status==="completed"?
+     "verified_identity_only":"partial_identity_only",
+    summary:a.status==="completed"?
+     "Recorded "+a.sport+" "+a.kind+" (metrics not certified)":
+     "Unconfirmed "+a.sport+" "+a.kind+" (review required)"};
   });
   // Preserve the accepted session-intent data exactly. The purpose string
   // alone cannot represent exercise order, pairings, rounds or prescription.
@@ -82,19 +113,22 @@ export function createCoachCanonicalTrainingReader({
    return {id:rule.id,category:rule.category,subject:rule.subject,
     status:"active",source:rule.source,updatedAt:rule.updatedAt};
   });
-  if(new Set(events.map(e=>e.id)).size!==events.length||
+  if(new Set(completedEvents.map(e=>e.id)).size!==completedEvents.length||
+     new Set(events.map(e=>e.id)).size!==events.length||
      new Set(restrictions.map(e=>e.id)).size!==restrictions.length)die();
-  const covered=[...new Set(["running","cycling","strength",...events.map(e=>e.sport)])];
+  const covered=[...new Set(["running","cycling","strength",
+   ...events.map(e=>e.sport),...completedEvents.map(e=>e.sport)])];
   return {ownerId,accessGateReady:true,restrictionsVerified:true,
    historyCertification:{verified:true,ownerId,
-    sourceRef:"canonical-v2-training-day:"+localDate,readAt},
+    sourceRef:"canonical-v2-training-and-completed:"+localDate,readAt},
    history:{version:1,generatedAt:readAt,
-    requested:{fromDate:localDate,throughDate:localDate,sports:covered},
+    requested:{fromDate,throughDate:localDate,sports:covered},
     completeness:"partial",
-    warnings:["Only the authenticated Training calendar day was read; complete workout history and recovery are not yet certified."],
+    warnings:["This is a partial recent Completed Activity identity slice plus today's accepted Training calendar; full synced history, performance metrics and recovery are not yet certified.",
+     ...(completed.moreAvailable?["Additional completed activities exist outside the bounded 50-record read."]:[])],
     // Never choose arbitrarily between multiple active plans.
     currentPlan:null,plannedDay,restrictions,
-    coverage:covered.map(sport=>({sport,fromDate:localDate,throughDate:localDate,
-     status:"partial",missingIntervals:[]})),events}};
+    coverage:covered.map(sport=>({sport,fromDate,throughDate:localDate,
+     status:"partial",missingIntervals:[]})),events:[...events,...completedEvents]}};
  };
 }
