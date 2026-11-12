@@ -111,7 +111,7 @@ test('actual PostgreSQL transaction: rollback, two immutable events, idempotent 
    await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_food_ingest_v1;SET ROLE allin_v2_ingredient_reviewer;');
    await assert.rejects(
      db.query("SELECT allin_private.v2_review_ingredient_profile_status('"+PROFILE+"',3,'"+x.digest+"','calculation_ready','Simulated machine publication denial','44444444-4444-4444-8444-444444444444')"),
-     e=>e?.code==='42501');
+     e=>e?.code==='0A000');
    await assert.rejects(
      db.query("SELECT allin_private.v2_review_ingredient_profile_status('"+PROFILE+"',3,'"+x.digest+"','retired','Simulated machine retirement denial','55555555-5555-4555-8555-555555555555')"),
      e=>e?.code==='42501');
