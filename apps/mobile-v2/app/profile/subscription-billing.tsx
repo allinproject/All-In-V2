@@ -6,6 +6,8 @@ import { useAuth } from '../../src/auth/AuthProvider';
 import { useAccessGate } from '../../src/auth/AccessGateProvider';
 import { v2AuthenticatedScreenKey } from '../../src/auth/authRoute';
 import { createNativeBillingServerClient } from '../../src/features/subscriptions/nativeBillingServerClient';
+import { NativeBillingActions } from '../../src/features/subscriptions/NativeBillingActions';
+import { nativeBillingReleaseGate } from '../../src/features/subscriptions/nativeBillingRuntime';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
 
@@ -83,6 +85,13 @@ function OwnedSubscriptionBillingScreen() {
           <Text style={styles.heading}>Purchases and restoration</Text>
           <Text style={styles.body}>Native purchases and Restore Purchases are not yet available in this build. No charge can be initiated from this screen.</Text>
           <Text style={styles.body}>Once enabled, iPhone subscriptions will be managed through Apple and Android subscriptions through Google Play. Restoring a purchase will require verification against the original account.</Text>
+          {nativeBillingReleaseGate.enabled &&
+           nativeBillingReleaseGate.signedNativeBuild &&
+           nativeBillingReleaseGate.storeCatalogApproved &&
+           nativeBillingReleaseGate.serverSecurityApproved ? (
+            <NativeBillingActions ownerId={ownerId}
+              onVerified={() => setRetry(value => value + 1)} />
+          ) : null}
           <Text style={styles.note}>Your training, nutrition and account data are not deleted simply because subscription access changes.</Text>
         </View>
       </ScrollView>
