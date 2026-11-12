@@ -14,7 +14,14 @@ begin
  if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role nologin bypassrls;end if;
 end;
 $roles$;
-alter role service_role bypassrls;
+-- Supabase manages service_role as a reserved database role. The local
+-- bootstrap must inspect its existing privileges, never ALTER that role.
+do $role_guard$
+begin
+ if not exists (select 1 from pg_roles where rolname='service_role' and rolbypassrls)
+ then raise exception 'Disposable Supabase service_role is not BYPASSRLS'; end if;
+end;
+$role_guard$;
 create schema auth;
 create schema allin_private;
 grant usage on schema public,auth to authenticated;
@@ -24,7 +31,7 @@ create function auth.uid() returns uuid language sql stable security invoker
 set search_path='' as $uid$
  select nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
 $uid$;
-\ir ../docs/architecture/sql/V2-COACH-OWNER-MIGRATION-CANDIDATE.sql
+\ir v2-coach-owner.sql
 insert into auth.users(id) values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 set role authenticated;
 select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',false);
