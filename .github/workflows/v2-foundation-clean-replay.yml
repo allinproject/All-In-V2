@@ -43,6 +43,8 @@ on:
       - 'scripts/all12-recovery-domain-manifest.test.mjs'
       - 'scripts/all12-verify-logical-archive.mjs'
       - 'scripts/all12-verify-logical-archive.test.mjs'
+      - 'scripts/all12-capture-approved-logical-backup.mjs'
+      - 'scripts/all12-capture-approved-logical-backup.test.mjs'
       - 'scripts/test-all12-live-schema-inventory-local.mjs'
       - 'scripts/test-all12-candidate-dump-inventory-local.mjs'
       - 'scripts/test-all12-auth-logical-backup-local.mjs'
@@ -137,6 +139,7 @@ jobs:
         run: |
           node --test scripts/all12-recovery-domain-manifest.test.mjs
           node --test scripts/all12-verify-logical-archive.test.mjs
+          node --test scripts/all12-capture-approved-logical-backup.test.mjs
       - name: Verify applied foundation SQL has not drifted
         run: |
           node --test scripts/check-v2-applied-migration-integrity.test.mjs
