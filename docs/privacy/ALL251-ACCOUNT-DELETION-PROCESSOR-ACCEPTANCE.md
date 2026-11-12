@@ -149,3 +149,32 @@ The first user-facing [Profile → Account → Export My Data](../../apps/mobile
 - Future-schema coverage guards: `20261111123939_v2_deletion_claim_fail_closed_storage_and_owner_coverage.sql`
 
 Every listed migration was applied to V2, copied from the actual Supabase migration ledger into this branch, and checked. There is **no** general-purpose cascade deletion worker or active recurring job.
+
+## 2026-11-12 — Community and Fuel owner-cascade review
+
+**Review-only, rollback-only:** the existing ALL-251 foundation acceptance fixtures now
+cover the four prospective Fuel owner tables and the indirect Community post owner
+chain without activating any destructive deletion service.
+
+- `scripts/test-all251-food-log-export-projection-local.psql`: exact ALL-247
+  review schemas; synthetic Auth account C owns one Food event, one hydration
+  event, and one action receipt in each private ledger. Local Auth deletion
+  must cascade all four rows; Account A/B fixtures must remain intact and
+  `execution_enabled=false`. Full `ROLLBACK` restores the isolated database.
+- `scripts/test-all251-community-post-export-projection-local.psql`:
+  exact ALL-244 post source; synthetic Auth C owns one private post through
+  `public.v2_profiles(user_id)`. Local Auth deletion must remove the profile
+  and post while retaining A/B posts and the worker OFF switch. Full
+  `ROLLBACK` restores the isolated database.
+
+**Important limitation:** these tests verify database FK cascades in
+disposable PostgreSQL, not an authenticated production deletion, storage cleanup,
+worker orchestration or legal retention. The **currently applied deletion
+claim/completion preflight primarily enumerates `user_id` columns**. It does
+not by itself verify every alternate owner, recipient, actor or relationship
+column (for example `owner_id` in Community), nor does it prove cleanup of
+orphaned private files or third-party relationship privacy. Release acceptance
+must extend the existing canonical claim and completion coverage to reviewed
+indirect owner graphs, while preserving the default-off processor and existing
+audit/retention system. Do not modify historical applied migrations or enable
+deletion processing merely because the cascade fixtures pass.
