@@ -75,6 +75,9 @@ on:
       - 'supabase/functions/_shared/trainingExportSupabaseArchive.node.test.mjs'
       - 'scripts/v2-training-account-export-worker-candidate.mjs'
       - 'scripts/v2-training-account-export-worker-candidate.test.mjs'
+      - 'supabase/migrations/**'
+      - 'scripts/check-v2-applied-migration-integrity.mjs'
+      - 'scripts/check-v2-applied-migration-integrity.test.mjs'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -86,6 +89,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  applied-foundation-source-integrity:
+    name: V2 applied foundation migration hashes (no deploy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify immutable applied-migration source manifest and guard tests
+        run: |
+          node --test scripts/check-v2-applied-migration-integrity.test.mjs
+          node scripts/check-v2-applied-migration-integrity.mjs
   review-only:
     name: PostgreSQL 17 Training, Completed Activity and Competition owner replay
     runs-on: ubuntu-latest
