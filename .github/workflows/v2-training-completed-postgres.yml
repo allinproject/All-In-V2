@@ -52,6 +52,7 @@ on:
       - 'supabase/functions/_shared/appleWatchOwnershipVerifier.test.mjs'
       - 'supabase/functions/_shared/appleWatchOwnershipPostgres.ts'
       - 'docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql'
+      - 'scripts/test-v2-apple-attested-phone-trust-postgres.psql'
       - 'apps/mobile-v2/native/apple-watch/**'
       - 'scripts/test-v2-device-pairing-postgres-runtime.ts'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql'
@@ -315,6 +316,8 @@ jobs:
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-device-pairing-postgres.psql
           docker cp docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql"
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql
+          docker cp scripts/test-v2-apple-attested-phone-trust-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-apple-attested-phone-trust-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-apple-attested-phone-trust-postgres.psql
       - name: Run actual trusted pairing adapter through dedicated DB role
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
