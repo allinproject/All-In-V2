@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createHash}=require('node:crypto');
-const {planAutomaticQualification,runAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,HOSTED_READINESS_SQL,checkHostedIngestReadiness}=
+const {planAutomaticQualification,runAutomaticQualification,runHostedAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,HOSTED_READINESS_SQL,checkHostedIngestReadiness}=
   require('./run-v2-ingredient-auto-qualification.cjs');
 const PROFILE='a4b12c65-9fe7-4a89-8c7b-2357656ac134';
 const nutrient=(id,amount,unitName='g')=>({nutrient:{id,unitName},amount});
@@ -172,4 +172,24 @@ test('hosted preflight rejects uninstalled schema, postgres and unsafe privilege
  await assert.rejects(checkHostedIngestReadiness(client([valid,valid])),/readiness unavailable/);
  await assert.rejects(checkHostedIngestReadiness(client([valid]),{requirePublisher:'true'}),
   /explicit boolean/);
+});
+
+test('hosted entrypoint aborts before BEGIN when reviewer connection is untrusted',async()=>{
+ const statements=[];
+ const client={query:async(sql)=>{
+   statements.push(sql);
+   if(sql===HOSTED_READINESS_SQL)return {rows:[{
+     login:'postgres',effective_role:'postgres',ingredients:false,profiles:false,
+     sources:false,review_events:false,energy_attestations:false,
+     review_writer:false,energy_writer:false,reviewer_role:false,publisher_role:false,
+     login_least_privileged:false,reviewer_member:false,publisher_member:false,
+     profiles_rls_enabled:false,login_public_create:true,
+     login_direct_profile_write:false,login_private_audit_read:false,
+     login_review_execute:false,login_energy_execute:false
+   }]};
+   throw Error('must not send write query to untrusted host');
+ }};
+ await assert.rejects(runHostedAutomaticQualification({client,...fixture(),attestEnergy:true}),
+   /Hosted ingest readiness denied/);
+ assert.deepEqual(statements,[HOSTED_READINESS_SQL]);
 });
