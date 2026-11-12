@@ -13,6 +13,12 @@ import {shiftCalendarDate} from '../src/features/training/calendarDayView';
 import {colors} from '../src/theme/tokens';
 
 type FuelSection='food-log'|'recipes'|'food-plan'|'daily';
+type FoodPlanSection='plan'|'shopping'|'pantry';
+const foodPlanSections:readonly {id:FoodPlanSection;label:string}[]=[
+ {id:'plan',label:'Plan'},
+ {id:'shopping',label:'Shopping'},
+ {id:'pantry',label:'Pantry'},
+];
 const sections:readonly {id:FuelSection;label:string}[]=[
  {id:'food-log',label:'Food Log'},
  {id:'recipes',label:'Recipes'},
@@ -32,6 +38,7 @@ function OwnedFuelScreen(){
  const gate=useAccessGate();
  const [day,setDay]=useState(()=>context?.date??deviceLocalToday()??'');
  const [section,setSection]=useState<FuelSection>(()=>context?.section??'food-log');
+ const [foodPlanSection,setFoodPlanSection]=useState<FoodPlanSection>('plan');
  useEffect(()=>{
   if(context?.date)setDay(context.date);
   if(context?.section)setSection(context.section);
@@ -84,8 +91,28 @@ function OwnedFuelScreen(){
      </View>:
      <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.subhead}>Food Plan</Text>
-      <Text style={styles.description}>Plan · Shopping · Pantry</Text>
-      <Text style={styles.description}>Meal planning and pantry-aware shopping are not connected yet. Nothing has been added to a meal plan or shopping list.</Text>
+      <View accessibilityRole="tablist" style={styles.tabs}>
+       {foodPlanSections.map(tab=><Pressable key={tab.id}
+        accessibilityRole="tab" accessibilityLabel={tab.label}
+        accessibilityState={{selected:foodPlanSection===tab.id}}
+        style={[styles.tab,foodPlanSection===tab.id&&styles.selected]}
+        onPress={()=>setFoodPlanSection(tab.id)}>
+        <Text style={[styles.tabLabel,foodPlanSection===tab.id&&styles.tabActive]}>{tab.label}</Text>
+       </Pressable>)}
+      </View>
+      {foodPlanSection==='plan'?<>
+       <Text style={styles.description}>Choose the recipes and individual foods you intend to eat on specific days and at breakfast, lunch, dinner or snacks.</Text>
+       <Text style={styles.description}>A banana, an apple and a protein bar may each be planned as separate foods for the same lunch. Planning is not logging food as eaten.</Text>
+       <Text style={styles.note}>Meal Plan data is not connected yet. No days or foods have been added. Start Meal Prep will become available only with a verified plan and an authenticated session.</Text>
+      </>:foodPlanSection==='shopping'?<>
+       <Text style={styles.description}>Shopping will combine missing ingredients from planned recipes with individual scheduled foods, including fruit, snacks and drinks.</Text>
+       <Text style={styles.description}>Only verified shortages after usable Pantry quantities and reservations are considered belong on this list. Purchases must be confirmed before changing Pantry.</Text>
+       <Text style={styles.note}>Shopping data is not connected yet. No shopping cart or purchase has been created.</Text>
+      </>:<>
+       <Text style={styles.description}>Pantry will track actual available stock, reserved quantities, and food stored in the pantry, fridge or freezer.</Text>
+       <Text style={styles.description}>Planning and Shopping never assume an item was purchased or eaten. Only verified inventory writes change available stock.</Text>
+       <Text style={styles.note}>Pantry data is not connected yet. Existing stock is not assumed empty.</Text>
+      </>}
      </View>}
    </ScrollView>
    <V2BottomNavigation/>
@@ -111,4 +138,5 @@ const styles=StyleSheet.create({
  card:{padding:20,borderRadius:18,backgroundColor:colors.surface,gap:12},
  subhead:{color:colors.warmWhite,fontSize:21,fontWeight:'800'},
  linkText:{color:colors.goldSoft,fontSize:15,fontWeight:'700'},
+ note:{color:colors.goldSoft,fontSize:13,lineHeight:20},
 });
