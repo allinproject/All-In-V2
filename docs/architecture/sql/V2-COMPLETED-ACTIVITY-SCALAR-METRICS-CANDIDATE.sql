@@ -188,19 +188,20 @@ BEGIN
    RAISE EXCEPTION 'Canonical activity/source identity is immutable'
     USING ERRCODE='42501';
   END IF;
-  IF TG_TABLE_NAME='v2_activity_sources' AND
-   (NEW.activity_id IS DISTINCT FROM OLD.activity_id OR
-    NEW.provider IS DISTINCT FROM OLD.provider OR
-    NEW.source_kind IS DISTINCT FROM OLD.source_kind OR
-    NEW.source_record_id IS DISTINCT FROM OLD.source_record_id OR
-    NEW.captured_at IS DISTINCT FROM OLD.captured_at) THEN
-   RAISE EXCEPTION 'Registered source identity and activity binding are immutable'
-    USING ERRCODE='42501';
-  END IF;
-  IF TG_TABLE_NAME='v2_completed_activities' AND
-   NEW.sport IS DISTINCT FROM OLD.sport THEN
-   RAISE EXCEPTION 'Canonical completed activity sport is immutable'
-    USING ERRCODE='42501';
+  IF TG_TABLE_NAME='v2_activity_sources' THEN
+   IF NEW.activity_id IS DISTINCT FROM OLD.activity_id OR
+      NEW.provider IS DISTINCT FROM OLD.provider OR
+      NEW.source_kind IS DISTINCT FROM OLD.source_kind OR
+      NEW.source_record_id IS DISTINCT FROM OLD.source_record_id OR
+      NEW.captured_at IS DISTINCT FROM OLD.captured_at THEN
+    RAISE EXCEPTION 'Registered source identity and activity binding are immutable'
+     USING ERRCODE='42501';
+   END IF;
+  ELSIF TG_TABLE_NAME='v2_completed_activities' THEN
+   IF NEW.sport IS DISTINCT FROM OLD.sport THEN
+    RAISE EXCEPTION 'Canonical completed activity sport is immutable'
+     USING ERRCODE='42501';
+   END IF;
   END IF;
  END IF;
  PERFORM pg_catalog.pg_advisory_xact_lock(
