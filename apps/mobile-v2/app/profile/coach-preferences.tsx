@@ -45,7 +45,7 @@ function OwnedCoachPreferences() {
   const [notice,setNotice] = useState<string|null>(null);
   const [reload,setReload] = useState(0);
   const busy=useRef(false);
-  const scrollRef=useRef<ScrollView>(null);
+  const scrollRef=useRef<React.ElementRef<typeof ScrollView>>(null);
   const anchors=useRef<Partial<Record<CoachPreferencesGuideTarget,number>>>({});
   const activeTarget=useRef<CoachPreferencesGuideTarget|null>(null);
   const [highlight,setHighlight]=useState<CoachPreferencesGuideTarget|null>(null);
