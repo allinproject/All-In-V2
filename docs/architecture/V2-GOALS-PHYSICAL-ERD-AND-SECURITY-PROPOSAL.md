@@ -130,6 +130,25 @@ erDiagram
 
 The evidence child tables are a proposed typed relationship pattern. Their final identifiers and foreign keys depend on the canonical ALL-243 activity schema and ALL-234 race/result schema. They are not authorization to add polymorphic, unchecked source references.
 
+## Review-only first physical identity slice (2026-11-11)
+
+The existing Goals owner now has a narrow proposed SQL file:
+`docs/architecture/sql/V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql`.
+It models stable owner-bound `public.v2_goals`, immutable-intent revision
+identities in `public.v2_goal_revisions`, same-goal composite active-revision
+FK, an at-most-one-current-accepted-revision index **per goal**, and private-by-default
+RLS/REVOKE. Multiple simultaneous primary goals and undated qualitative goals
+are intentionally valid. A rollback-only local Supabase smoke fixture lives at
+`scripts/test-v2-goals-owner-local-postgres.psql` and is included in the
+existing V2 local-foundation workflow.
+
+**This is not a deployed or owner-approved migration.** The proposed SQL has
+no approved client/Coach acceptance writer, no final immutable-history triggers,
+no Goal metric/behavior/typed Event evidence child tables, and no Training FK
+to an unavailable authoritative Event owner. Those remain dependent on ALL-239,
+ALL-243, ALL-244 and ALL-222 review. A passing SQL replay demonstrates only
+the stated identities, ownership constraints, role isolation and replayability.
+
 ## 3. Table-by-table proposed contract
 
 ### 3.1 public.v2_goals — stable goal identity
