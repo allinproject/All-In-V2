@@ -101,6 +101,90 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-applied-foundation-local-postgres.psql "$db_container:/tmp/v2-foundation-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-foundation-qa.psql
+      - name: Seed populated V2 owner accounts before billing candidate upgrade
+        run: |
+          set -euo pipefail
+          # Seed committed owner rows AFTER foundation migrations but BEFORE
+          # installing the review-only billing candidate in disposable local PG.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp scripts/test-v2-billing-preupgrade-seed.psql "$db_container:/tmp/v2-billing-preupgrade-seed.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-preupgrade-seed.psql
+      - name: Prove populated billing DDL and service grants can rollback atomically
+        run: |
+          set -euo pipefail
+          # Review-only rollback rehearsal, inside disposable local Supabase.
+          # No migration files or remote connection are involved.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql \
+            docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+          done
+          docker cp scripts/test-v2-billing-schema-rollback-local.psql "$db_container:/tmp/v2-billing-schema-rollback.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-schema-rollback.psql
+      - name: Verify billing candidate against real local foundation Auth and two accounts
+        run: |
+          set -euo pipefail
+          # Review-only DDL and exact service permissions on ephemeral local
+          # Supabase. NEVER use --remote, --linked, --db-url or db push.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql \
+            docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
+          done
+          docker cp scripts/test-v2-billing-local-foundation.psql "$db_container:/tmp/v2-billing-foundation-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-foundation-qa.psql
+      - name: Restore synthetic billing ledger from a real local PostgreSQL backup
+        run: |
+          set -euo pipefail
+          # This is strictly the disposable Supabase CLI container created
+          # above. Never run pg_dump/restore on a linked or remote database.
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp scripts/test-v2-billing-backup-seed-local.psql "$db_container:/tmp/v2-billing-backup-seed.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-backup-seed.psql
+          # Explicitly include the generated receipt identity SEQUENCE.
+          # With filtered -t archives, dependency sequences may be omitted.
+          # A recovery of rows without sequence state risks reused event IDs.
+          docker exec "$db_container" pg_dump -U postgres -d postgres -Fc --data-only \
+            -t allin_private.v2_subscription_checkout_attempts \
+            -t allin_private.v2_subscription_purchases \
+            -t allin_private.v2_subscription_verified_events \
+            -t allin_private.v2_subscription_verified_events_id_seq \
+            -f /tmp/v2-local-synthetic-billing.dump
+          docker exec "$db_container" pg_restore -l /tmp/v2-local-synthetic-billing.dump |
+            grep -E 'SEQUENCE SET.*v2_subscription_verified_events_id_seq'
+          docker exec -i "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          -- Simulate an accidental missing ledger, inside the ephemeral
+          -- database only. Auth profiles remain, so FKs are valid on restore.
+          DELETE FROM allin_private.v2_subscription_checkout_attempts
+           WHERE owner_id IN
+            ('77777777-7777-4777-8777-777777777777',
+             '88888888-8888-4888-8888-888888888888');
+          DO $depleted$
+          BEGIN
+            IF EXISTS(SELECT 1 FROM allin_private.v2_subscription_checkout_attempts)
+              OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases)
+              OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_verified_events) THEN
+              RAISE EXCEPTION 'Local ledger rows were not removed before restore';
+            END IF;
+          END $depleted$;
+          -- Simulate an identity sequence that was reset or recreated after
+          -- the backup. A correct restore must recover monotonic sequence state.
+          ALTER SEQUENCE allin_private.v2_subscription_verified_events_id_seq RESTART WITH 1;
+          SQL
+          docker exec "$db_container" pg_restore -U postgres -d postgres \
+            --data-only --no-owner --no-privileges --exit-on-error \
+            /tmp/v2-local-synthetic-billing.dump
+          docker cp scripts/test-v2-billing-backup-restored-local.psql "$db_container:/tmp/v2-billing-backup-restored.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-backup-restored.psql
+          docker exec "$db_container" rm -f /tmp/v2-local-synthetic-billing.dump
       - name: Replay canonical Goals identity owner candidate
         run: |
           set -euo pipefail
@@ -324,90 +408,6 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-training-local-populated-owner-deletion.psql "$db_container:/tmp/v2-owner-deletion.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-owner-deletion.psql
-      - name: Seed populated V2 owner accounts before billing candidate upgrade
-        run: |
-          set -euo pipefail
-          # Seed committed owner rows AFTER foundation migrations but BEFORE
-          # installing the review-only billing candidate in disposable local PG.
-          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
-          test -n "$db_container"
-          docker cp scripts/test-v2-billing-preupgrade-seed.psql "$db_container:/tmp/v2-billing-preupgrade-seed.psql"
-          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-preupgrade-seed.psql
-      - name: Prove populated billing DDL and service grants can rollback atomically
-        run: |
-          set -euo pipefail
-          # Review-only rollback rehearsal, inside disposable local Supabase.
-          # No migration files or remote connection are involved.
-          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
-          test -n "$db_container"
-          for file in \
-            docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql \
-            docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql; do
-            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
-          done
-          docker cp scripts/test-v2-billing-schema-rollback-local.psql "$db_container:/tmp/v2-billing-schema-rollback.psql"
-          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-schema-rollback.psql
-      - name: Verify billing candidate against real local foundation Auth and two accounts
-        run: |
-          set -euo pipefail
-          # Review-only DDL and exact service permissions on ephemeral local
-          # Supabase. NEVER use --remote, --linked, --db-url or db push.
-          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
-          test -n "$db_container"
-          for file in \
-            docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql \
-            docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql; do
-            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
-            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
-          done
-          docker cp scripts/test-v2-billing-local-foundation.psql "$db_container:/tmp/v2-billing-foundation-qa.psql"
-          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-foundation-qa.psql
-      - name: Restore synthetic billing ledger from a real local PostgreSQL backup
-        run: |
-          set -euo pipefail
-          # This is strictly the disposable Supabase CLI container created
-          # above. Never run pg_dump/restore on a linked or remote database.
-          test "${CI}" = "1"
-          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
-          test -n "$db_container"
-          docker cp scripts/test-v2-billing-backup-seed-local.psql "$db_container:/tmp/v2-billing-backup-seed.psql"
-          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-backup-seed.psql
-          # Explicitly include the generated receipt identity SEQUENCE.
-          # With filtered -t archives, dependency sequences may be omitted.
-          # A recovery of rows without sequence state risks reused event IDs.
-          docker exec "$db_container" pg_dump -U postgres -d postgres -Fc --data-only \
-            -t allin_private.v2_subscription_checkout_attempts \
-            -t allin_private.v2_subscription_purchases \
-            -t allin_private.v2_subscription_verified_events \
-            -t allin_private.v2_subscription_verified_events_id_seq \
-            -f /tmp/v2-local-synthetic-billing.dump
-          docker exec "$db_container" pg_restore -l /tmp/v2-local-synthetic-billing.dump |
-            grep -E 'SEQUENCE SET.*v2_subscription_verified_events_id_seq'
-          docker exec -i "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-          -- Simulate an accidental missing ledger, inside the ephemeral
-          -- database only. Auth profiles remain, so FKs are valid on restore.
-          DELETE FROM allin_private.v2_subscription_checkout_attempts
-           WHERE owner_id IN
-            ('77777777-7777-4777-8777-777777777777',
-             '88888888-8888-4888-8888-888888888888');
-          DO $depleted$
-          BEGIN
-            IF EXISTS(SELECT 1 FROM allin_private.v2_subscription_checkout_attempts)
-              OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases)
-              OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_verified_events) THEN
-              RAISE EXCEPTION 'Local ledger rows were not removed before restore';
-            END IF;
-          END $depleted$;
-          -- Simulate an identity sequence that was reset or recreated after
-          -- the backup. A correct restore must recover monotonic sequence state.
-          ALTER SEQUENCE allin_private.v2_subscription_verified_events_id_seq RESTART WITH 1;
-          SQL
-          docker exec "$db_container" pg_restore -U postgres -d postgres \
-            --data-only --no-owner --no-privileges --exit-on-error \
-            /tmp/v2-local-synthetic-billing.dump
-          docker cp scripts/test-v2-billing-backup-restored-local.psql "$db_container:/tmp/v2-billing-backup-restored.psql"
-          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-backup-restored.psql
-          docker exec "$db_container" rm -f /tmp/v2-local-synthetic-billing.dump
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
