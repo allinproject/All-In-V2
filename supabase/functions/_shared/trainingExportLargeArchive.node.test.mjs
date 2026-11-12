@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes,createHash} from 'node:crypto';
 import {stageLargeAccountExport,streamLargeAccountExport,createLargeAccountDownloadResponse} from './trainingExportLargeArchive.mjs';
+import {verifyAccountExportDownload} from './trainingExportDownloadVerifier.mjs';
 const owner='11111111-1111-4111-8111-111111111111';
 const another='22222222-2222-4222-8222-222222222222';
 const requestId='33333333-3333-4333-8333-333333333333';
@@ -187,4 +188,32 @@ test('missing canonical server owner proof blocks a page before encryption',asyn
  await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),
   /Invalid canonical account export page/);
  assert.equal(f.events.includes('write'),false);
+});
+
+test('independent download verifier accepts real worker stream only after exact terminal digest',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ const response=await createLargeAccountDownloadResponse({requestId,collections,services:f.services});
+ const accepted=await verifyAccountExportDownload({
+  stream:response.body,expectedOwnerId:owner,expectedCollections:collections,
+ });
+ assert.equal(accepted.verified,true);
+ assert.equal(accepted.recordCount,251);
+});
+test('interrupted real paged worker response is not a verified account export',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ const response=await createLargeAccountDownloadResponse({requestId,collections,services:f.services});
+ const reader=response.body.getReader();
+ const first=await reader.read();
+ const second=await reader.read();
+ await reader.cancel();
+ const partial=new ReadableStream({start(controller){
+  controller.enqueue(first.value);
+  controller.enqueue(second.value);
+  controller.close();
+ }});
+ await assert.rejects(verifyAccountExportDownload({
+  stream:partial,expectedOwnerId:owner,expectedCollections:collections,
+ }),/truncated|completion/);
 });
