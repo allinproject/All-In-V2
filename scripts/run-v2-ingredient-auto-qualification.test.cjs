@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createHash}=require('node:crypto');
-const {planAutomaticQualification,runAutomaticQualification,requestKey,WRITER}=
+const {planAutomaticQualification,runAutomaticQualification,requestKey,WRITER,ENERGY_WRITER}=
   require('./run-v2-ingredient-auto-qualification.cjs');
 const PROFILE='a4b12c65-9fe7-4a89-8c7b-2357656ac134';
 const nutrient=(id,amount,unitName='g')=>({nutrient:{id,unitName},amount});
@@ -19,13 +19,19 @@ function fixture() {
     documents:[{source_profile_key:'red_onion_raw',payload_utf8,
       payload_sha256:createHash('sha256').update(payload_utf8).digest('hex')}]};
 }
-function fakeClient({failAt=0,replay=false,badReceipt=false,rollbackFails=false,commitFails=false}={}) {
+function fakeClient({failAt=0,replay=false,badReceipt=false,rollbackFails=false,commitFails=false,energyFail=false,badEnergyReceipt=false}={}) {
   const calls=[],events=new Set();
   let writerCount=0;
   return {calls,events,async query(sql,args) {
     calls.push({sql,args});
     if(sql==='ROLLBACK'&&rollbackFails)throw Error('rollback lost');
     if(sql==='COMMIT'&&commitFails)throw Error('connection lost at commit');
+    if(sql===ENERGY_WRITER) {
+      if(energyFail)throw Error('source energy evidence missing');
+      return {rows:[{result:badEnergyReceipt?
+        {status:'attested',attestation_id:0,calculation_ready:true}:
+        {status:'attested',attestation_id:31,calculation_ready:false}}]};
+    }
     if(sql===WRITER) {
       writerCount+=1;
       if(failAt===writerCount)throw Error('writer transaction rejected');
@@ -99,4 +105,30 @@ test('ambiguous commit acknowledgement is never mislabeled rolled back',async()=
  const client=fakeClient({commitFails:true});
  await assert.rejects(runAutomaticQualification({client,...fixture()}),/COMMIT outcome unknown/);
  assert.deepEqual(client.calls.map(x=>x.sql),['BEGIN',WRITER,WRITER,'COMMIT']);
+});
+
+test('optional energy attestation uses canonical evidence function inside same transaction',async()=>{
+ const client=fakeClient();
+ const result=await runAutomaticQualification({client,...fixture(),attestEnergy:true});
+ assert.deepEqual(client.calls.map(c=>c.sql),
+   ['BEGIN',WRITER,WRITER,ENERGY_WRITER,'COMMIT']);
+ assert.equal(client.calls[3].args[1],3);
+ assert.equal(result.energyAttestation.attestation_id,31);
+ assert.equal(result.calculationReady,false);
+ assert.equal(result.publicationApproved,false);
+});
+test('missing or invalid energy evidence rolls back BOTH profile review stages',async()=>{
+ for(const props of [{energyFail:true},{badEnergyReceipt:true}]) {
+   const client=fakeClient(props);
+   await assert.rejects(runAutomaticQualification({client,...fixture(),attestEnergy:true}),
+     /source energy evidence missing|invalid receipt/);
+   assert.deepEqual(client.calls.map(c=>c.sql),
+     ['BEGIN',WRITER,WRITER,ENERGY_WRITER,'ROLLBACK']);
+ }
+});
+test('energy attestation mode rejects caller coercion before transaction',async()=>{
+ const client=fakeClient();
+ await assert.rejects(runAutomaticQualification({client,...fixture(),attestEnergy:'true'}),
+  /explicit boolean/);
+ assert.equal(client.calls.length,0);
 });
