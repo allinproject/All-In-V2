@@ -167,4 +167,13 @@ async function runAutomaticQualification({client,attestEnergy=false,...inputs}) 
     throw error;
   }
 }
-module.exports={planAutomaticQualification,runAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,HOSTED_READINESS_SQL,checkHostedIngestReadiness};
+// The hosted entrypoint never executes the canonical transaction until a
+// real restricted role has passed the read-only schema and permission gate.
+// The low-level adapter remains available for isolated transactional tests.
+async function runHostedAutomaticQualification({client,...inputs}) {
+  await checkHostedIngestReadiness(client,{requirePublisher:false});
+  return runAutomaticQualification({client,...inputs});
+}
+module.exports={planAutomaticQualification,runAutomaticQualification,
+  runHostedAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,
+  HOSTED_READINESS_SQL,checkHostedIngestReadiness};
