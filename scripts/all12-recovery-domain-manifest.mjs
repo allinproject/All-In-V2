@@ -15,7 +15,7 @@ export const recoveryDomains=Object.freeze([
  {name:'private_media',tables:[],kind:'storage'},
  {name:'auth_configuration',tables:[],kind:'configuration'}
 ]);
-export function assessRecoveryCoverage({presentTables=[],verifiedTables=[],verifiedExternal=[]}={}){
+export function assessRecoveryCoverage({presentTables=[],verifiedTables=[],verifiedExternal=[],actualTables=[]}={}){
  const present=new Set(presentTables),verified=new Set(verifiedTables),external=new Set(verifiedExternal);
  const result=recoveryDomains.map(domain=>{
   const absent=domain.tables.filter(t=>!present.has(t));
@@ -24,5 +24,6 @@ export function assessRecoveryCoverage({presentTables=[],verifiedTables=[],verif
     absent.length?'absent':unverified.length?'unverified':'verified';
   return {name:domain.name,status,absent,unverified};
  });
- return {complete:result.every(d=>d.status==='verified'),domains:result};
+ const untrackedTables=findUntrackedRecoveryTables(actualTables);
+ return {complete:untrackedTables.length===0 && result.every(d=>d.status==='verified'),domains:result,untrackedTables};
 }
