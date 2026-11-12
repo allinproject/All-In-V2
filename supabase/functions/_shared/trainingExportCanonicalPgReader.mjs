@@ -13,7 +13,7 @@
  * to release these pages until those domains have passed their release gates.
  */
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const COLLECTION=/^(?:public|allin_private)\.v2_[a-z0-9_]+$|^auth\.users$|^community\.(?:outgoing_follows|incoming_follow_requests|outgoing_blocks|my_action_receipts)$/;
+const COLLECTION=/^(?:public|allin_private)\.v2_[a-z0-9_]+$|^auth\.users$|^community\.(?:outgoing_follows|incoming_follow_requests|outgoing_blocks|my_action_receipts)$|^billing\.(?:checkout_attempts|purchases|verified_events)$/;
 
 export function createCanonicalPgAccountReaderCandidate({pool}) {
  if(typeof pool?.connect!=='function')
