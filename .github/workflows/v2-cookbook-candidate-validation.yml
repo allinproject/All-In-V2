@@ -14,6 +14,10 @@ on:
       - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
       - 'scripts/review-v2-usda-source-admission.cjs'
       - 'scripts/review-v2-usda-source-admission.test.cjs'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'
+      - 'scripts/check-v2-ingredient-writer-candidate.test.cjs'
+      - 'scripts/test-v2-ingredient-review-writer-isolated.cjs'
       - 'apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts'
       - 'apps/mobile-v2/src/features/cookbook/recipeNutritionCalculator.ts'
       - 'docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'
@@ -34,6 +38,10 @@ on:
       - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
       - 'scripts/review-v2-usda-source-admission.cjs'
       - 'scripts/review-v2-usda-source-admission.test.cjs'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'
+      - 'scripts/check-v2-ingredient-writer-candidate.test.cjs'
+      - 'scripts/test-v2-ingredient-review-writer-isolated.cjs'
       - 'apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts'
       - 'apps/mobile-v2/src/features/cookbook/recipeNutritionCalculator.ts'
       - 'docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'
@@ -70,5 +78,7 @@ jobs:
         run: node --test scripts/check-v2-usda-nutrient-policy.test.cjs
       - name: Test source-to-canonical-review-to-calculator staging path (no writes)
         run: node --experimental-strip-types --test scripts/review-v2-usda-source-admission.test.cjs
+      - name: Verify canonical ingredient SQL writer guards without deployment
+        run: node --test scripts/check-v2-ingredient-writer-candidate.test.cjs
       - name: Test pinned USDA reconciliation and no-auto-approval gates
         run: node --test scripts/reconcile-usda-foundation-identities.test.cjs
