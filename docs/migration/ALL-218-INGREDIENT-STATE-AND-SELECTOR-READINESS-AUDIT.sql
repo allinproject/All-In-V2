@@ -114,3 +114,20 @@ SELECT id,title,metadata->'preparation_modes'->'freezer_kit' AS source_freezer_k
 FROM public.allin_recipes
 WHERE metadata->'preparation_modes' ? 'freezer_kit'
 ORDER BY id;
+
+-- Embedded version completeness: these may be inherited/default variants,
+-- not necessarily corrupt data. Require explicit source semantic review.
+WITH v AS (
+ SELECT r.id AS recipe_id, x.value AS variant
+ FROM public.allin_recipes r
+ CROSS JOIN LATERAL jsonb_array_elements(
+   CASE WHEN jsonb_typeof(r.metadata->'recipe_versions_v2')='array'
+        THEN r.metadata->'recipe_versions_v2' ELSE '[]'::jsonb END
+ ) x
+)
+SELECT count(*) AS source_variants,
+       count(*) FILTER (WHERE variant->'ingredients' IS NULL) AS without_own_ingredients,
+       count(*) FILTER (WHERE variant->'instructions' IS NULL) AS without_own_instructions,
+       count(*) FILTER (WHERE variant->'servings' IS NULL) AS without_own_servings,
+       count(DISTINCT recipe_id) FILTER (WHERE variant->'ingredients' IS NULL) AS affected_recipes
+FROM v;
