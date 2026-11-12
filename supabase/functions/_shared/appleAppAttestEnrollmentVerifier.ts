@@ -70,7 +70,7 @@ export function inspectAppAttestCredentialPayload(authData:Uint8Array,
  if(kty!==2||alg!==-7||curve!==1||
    !(x instanceof Uint8Array)||!(y instanceof Uint8Array)||
    x.length!==32||y.length!==32||
-   !same(Buffer.concat([Buffer.from([4]),Buffer.from(x),Buffer.from(y)),expectedPublicPoint))
+   !same(Buffer.concat([Buffer.from([4]),Buffer.from(x),Buffer.from(y)]),expectedPublicPoint))
   throw Error('App Attest COSE P-256 key differs from certificate');
  let category:unknown=null,bundleVersion:unknown=null;
  if(values.length===2){
