@@ -49,9 +49,9 @@ async function setup({withEnergyEvidence=true,archiveDigest='dd414cc9f1a132626ba
    "'Black beans canned drained','black beans canned drained','generic_food','active');");
  await db.exec("INSERT INTO public.v2_ingredient_nutrition_profiles"+
    "(id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,"+
-   "review_status,profile_revision,coverage_status,source_quality,required_nutrient_set_version)"+
+   "review_status,profile_revision,coverage_status,source_quality,required_nutrient_set_version,is_default)"+
    "VALUES('"+PROFILE+"','"+ING+"','cooked_drained','g',100,'100 g','candidate',1,"+
-   "'launch_core_complete','foundation','cookbook-launch-macros-v1');");
+   "'launch_core_complete','foundation','cookbook-launch-macros-v1',true);");
  await db.exec("INSERT INTO public.v2_ingredient_source_records"+
    "(id,ingredient_id,provider,source_data_type,external_record_id,source_description,"+
    "source_quality,source_license,mapping_status,payload_sha256) VALUES('"+SOURCE+"',"+
@@ -59,6 +59,9 @@ async function setup({withEnergyEvidence=true,archiveDigest='dd414cc9f1a132626ba
    "'foundation','CC0','mapped','"+x.digest+"');");
  await db.exec("INSERT INTO public.v2_ingredient_profile_sources(profile_id,source_record_id,evidence_role)"+
    " VALUES('"+PROFILE+"','"+SOURCE+"','primary');");
+ await db.exec("INSERT INTO public.v2_ingredient_aliases(id,ingredient_id,normalized_alias,locale,preparation_state,alias_kind,resolution_scope,status) VALUES"+
+   "('77777777-7777-4777-8777-777777777777','"+ING+"','black beans canned sodium added drained and rinsed','en','cooked_drained','source_description','exact','active');");
+
  await db.exec("INSERT INTO public.v2_nutrient_definitions(code,display_name,canonical_unit,launch_core,is_published) VALUES"+
    "('energy_kcal','Energy','kcal',true,true),('protein_g','Protein','g',true,true),"+
    "('carbohydrate_g','Carbohydrate','g',true,true),('total_fat_g','Fat','g',true,true);");
@@ -149,4 +152,36 @@ test('missing or unapproved source archive aborts machine review and rolls back 
      assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations')).rows[0].n,0);
    }finally{await db.close()}
  }
+});
+
+test('publisher capability is absent by default, then allows ONLY fully attested scoped transition in disposable DB',async()=>{
+ const {db,x}=await setup();
+ const decision="SELECT allin_private.v2_review_ingredient_profile_status('"+PROFILE+"',3,'"+x.digest+"','calculation_ready','Automated source, alias and attestation publication checks','66666666-6666-4666-8666-666666666666') AS result";
+ try{
+   const reviewed=await runAutomaticQualification({client:db,...x,attestEnergy:true});
+   assert.equal(reviewed.calculationReady,false);
+   await assert.rejects(db.query(decision),e=>e?.code==='0A000');
+   await db.exec('SET SESSION AUTHORIZATION postgres');
+   const pre=(await db.query("SELECT review_status FROM public.v2_ingredient_nutrition_profiles WHERE id='"+PROFILE+"'")).rows[0];
+   assert.equal(pre.review_status,'reviewed');
+   // These grants are TEST-ONLY inside disposable PGlite. Never prod/staging.
+   await db.exec('GRANT allin_v2_ingredient_publisher TO allin_ing_workload_food_ingest_v1 WITH INHERIT FALSE, SET TRUE');
+   await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_food_ingest_v1;SET ROLE allin_v2_ingredient_reviewer;');
+   const published=(await db.query(decision)).rows[0].result;
+   assert.equal(published.review_status,'calculation_ready');
+   assert.equal(published.profile_revision,4);
+   const repeat=(await db.query(decision)).rows[0].result;
+   assert.equal(repeat.status,'replayed');
+   await db.exec('SET SESSION AUTHORIZATION postgres');
+   const final=(await db.query("SELECT review_status,profile_revision FROM public.v2_ingredient_nutrition_profiles WHERE id='"+PROFILE+"'")).rows[0];
+   assert.equal(final.review_status,'calculation_ready');
+   assert.equal(final.profile_revision,4);
+   assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_review_events')).rows[0].n,3);
+   // A qualified profile becomes readable by athlete accounts only after
+   // passing the canonical transition; no direct client write grant exists.
+   await db.exec('SET SESSION AUTHORIZATION authenticated');
+   const visible=(await db.query("SELECT id FROM public.v2_ingredient_nutrition_profiles WHERE id='"+PROFILE+"'")).rows;
+   assert.equal(visible.length,1);
+   await assert.rejects(db.query("UPDATE public.v2_ingredient_nutrition_profiles SET review_status='retired' WHERE id='"+PROFILE+"'"),e=>e?.code==='42501');
+ }finally{await db.close()}
 });
