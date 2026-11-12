@@ -130,28 +130,28 @@ function reviewAliasAndPreparationAcceptance(aliasDocument, bindingsDocument) {
   const approved=new Map([
     ['milk_cottage_2pct',{name:'2% Cottage Cheese — Generic',state:'prepared',
       exact:['cottage cheese, lowfat, 2% milkfat','2% milkfat cottage cheese, generic'],
-      excluded:['Daisy cottage cheese']}],
+      search:['cottage cheese','2% cottage cheese'],excluded:['Daisy cottage cheese']}],
     ['red_onion_raw',{name:'Red Onion — Raw',state:'raw',
       exact:['red onion, raw edible portion','onions, red, raw'],
-      excluded:['yellow onion','cooked red onion']}],
+      search:['red onion','diced red onion'],excluded:['yellow onion','cooked red onion']}],
     ['cabbage_green_raw',{name:'Green Cabbage — Raw',state:'raw',
       exact:['green cabbage, raw','cabbage, green, raw'],
-      excluded:['cabbage, cooked','1 cup chopped green cabbage']}],
+      search:['green cabbage','shredded cabbage'],excluded:['cabbage, cooked','1 cup chopped green cabbage']}],
     ['black_beans_canned_drained',{name:'Black Beans — Canned, Drained & Rinsed, Sodium Added',state:'cooked_drained',
       exact:['black beans, canned, sodium added, drained and rinsed'],
-      excluded:['unsalted black beans','dry black beans']}],
+      search:['black beans','canned black beans','black beans, drained'],excluded:['unsalted black beans','dry black beans']}],
     ['chickpeas_canned_drained_rinsed',{name:'Chickpeas — Canned, Drained & Rinsed, Sodium Added',state:'cooked_drained',
       exact:['chickpeas, canned, sodium added, drained and rinsed','garbanzo beans, canned, sodium added, drained and rinsed'],
-      excluded:['dried chickpeas']}],
+      search:['chickpeas','canned chickpeas','garbanzo beans'],excluded:['dried chickpeas']}],
     ['beans_kidney_canned_drained',{name:'Kidney Beans — Dark Red, Canned, Sodium & Sugar Added, Drained & Rinsed',state:'cooked_drained',
       exact:['kidney beans, dark red, canned, sodium added, sugar added, drained and rinsed'],
-      excluded:[]}],
+      search:['kidney beans','canned kidney beans','dark red kidney beans','kidney beans, drained'],excluded:[]}],
     ['tomato_paste_canned_unsalted',{name:'Tomato Paste — Canned, No Salt Added',state:'prepared',
       exact:['tomato paste, canned, without salt added'],
-      excluded:['double concentrated tomato paste','salted tomato paste']}],
+      search:['tomato paste','tomato paste, unsalted'],excluded:['double concentrated tomato paste','salted tomato paste']}],
     ['tomatoes_crushed_canned',{name:'Crushed Tomatoes — Canned, Generic',state:'prepared',
       exact:['tomatoes, crushed, canned','crushed tomatoes, canned, generic'],
-      excluded:['tomato sauce','unsalted crushed tomatoes']}]
+      search:['crushed tomatoes','canned tomatoes'],excluded:['tomato sauce','unsalted crushed tomatoes']}]
   ]);
   const refs=new Map(bindingsDocument.bindings.map(b=>[b.source_profile_key,b]));
   const seenKeys=new Set(),exactNames=new Map();
@@ -206,6 +206,8 @@ function reviewAliasAndPreparationAcceptance(aliasDocument, bindingsDocument) {
       if(previous&&previous!==key) flag(key,'cross_source_exact_alias_collision');
       exactNames.set(scope,key);
     }
+    if(normalized((record.search_only_not_exact_aliases||[]).map(a=>a?.value))!==normalized(policy.search))
+      flag(key,'approved_search_only_scope_changed');
     const excluded=(record.excluded_incompatible_queries||[]);
     if(!Array.isArray(record.excluded_incompatible_queries) ||
       normalized(excluded.map(x=>x?.value))!==normalized(policy.excluded))
