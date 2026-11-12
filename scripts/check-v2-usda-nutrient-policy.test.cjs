@@ -33,7 +33,7 @@ test('source does not invent missing macros, units or optional micronutrients',(
  assert(r.issues.includes('missing_protein_g'));
  assert.equal(r.facts.protein_g,null);
  assert(r.coverage.missing_core.includes('protein_g'));
- const wrong=sample([nutrient(2048,115,'kJ')]);
+ const wrong=validateFdcNutrients(sample([nutrient(2048,115,'kJ')]));
  assert(wrong.issues.includes('incorrect_nutrient_unit:2048'));
  assert(wrong.issues.includes('no_permitted_energy_method'));
  const optional=sample([nutrient(2048,115,'kcal')]);optional.require_sodium=false;
