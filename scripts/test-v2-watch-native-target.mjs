@@ -22,13 +22,12 @@ const phoneAssertion='X'.repeat(200);
 test('canonical native sources are wired to both targets and watch is embedded',()=>{
  const script=read('scripts/integrate-apple-watch-target.rb');
  for(const required of [
-  'project.new_target(:watch2_app','ALLIN365WatchApp.swift',
+  'project.new_target(:application','ALLIN365WatchApp.swift',
   'WatchPairingChallengeSigner.swift','IPhoneWatchPairingCoordinator.swift',
   'IPhoneAppAttestEnrollment.swift','ALLINWatchPairingModule.swift',
   'ALLINWatchPairingModule.m','Embed Watch Content',
-  'iphone.add_dependency(watch)','watch.bundle',
+  'iphone.add_dependency(watch)',"phase.dst_subfolder_spec = '13'",
  ]) {
-  if(required==='watch.bundle')continue;
   assert.ok(script.includes(required),required);
  }
  assert.ok(read('apps/mobile-v2/native/apple-watch/ALLIN365WatchApp.swift').includes('@main'));
