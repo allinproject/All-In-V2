@@ -41,7 +41,7 @@ function fixture(){
     planRevisionId:revision,sessionId:'session-'+i}))},
   eventSnapshot:{ownerId:owner,authSessionGeneration:generation,complete:true,nextCursor:null,
     snapshotVersion:token,events:events.map(e=>({eventId:e.id,ownerId:owner,eventVersion:2,
-     date:e.date,timezone:'America/Chicago',sport:e.sport,
+     date:e.date,timezone:'America/Chicago',sport:e.sport,cancelled:false,
      verification:'organizer_verified',participation:'registered',
      participationSource:'athlete_confirmed',
      evidenceGeneration:generation}))},
@@ -89,6 +89,13 @@ test('withdrawn participation or missing athlete/organizer evidence cannot certi
  },unverified.proofs.eventSnapshot.events[1]];
  assert.equal(certifySeasonAgainstGoalEventOwners(unverified.input,unverified.proofs).status,
   'unavailable');
+});
+test('cancelled organizer event cannot certify a Training plan even if previously registered',()=>{
+ const f=fixture();
+ f.proofs.eventSnapshot.events=[{
+  ...f.proofs.eventSnapshot.events[0],cancelled:true
+ },f.proofs.eventSnapshot.events[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(f.input,f.proofs).status,'unavailable');
 });
 test('stale event version/date and uncoupled goal are not accepted',()=>{
  const f=fixture();f.proofs.eventSnapshot.events=[{...f.proofs.eventSnapshot.events[0],date:'2027-04-11'},
