@@ -350,6 +350,54 @@ BEGIN
     'WHERE t.%I=$1 ORDER BY pg_catalog.to_jsonb(t)::text LIMIT $2 OFFSET $3',
     v_schema,v_table,v_column);
   END IF;
+ ELSIF p_collection='public.v2_training_athlete_restrictions' THEN
+  -- ALL-230 / ALL-251 REVIEW ONLY / NOT INVENTORIED.
+  -- The athlete's own active AND retired restrictions are portable; no
+  -- unapproved client RPC or Training writer grant follows from this code.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''id'',t.id,''user_id'',t.user_id,''category'',t.category,'||
+    '''subject'',t.subject,''source'',t.source,''status'',t.status,'||
+    '''source_ref'',t.source_ref,''revision'',t.revision,'||
+    '''created_at'',t.created_at,''updated_at'',t.updated_at) '||
+    'FROM public.v2_training_athlete_restrictions t '||
+    'WHERE t.user_id=$1 ORDER BY t.created_at,t.id LIMIT $2 OFFSET $3';
+ ELSIF p_collection='allin_private.v2_training_restriction_certifications' THEN
+  -- The certification is portable owner data; no private source tokens.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''user_id'',t.user_id,''certified_revision'',t.certified_revision,'||
+    '''certified_at'',t.certified_at) '||
+    'FROM allin_private.v2_training_restriction_certifications t '||
+    'WHERE t.user_id=$1 ORDER BY t.certified_at,t.user_id LIMIT $2 OFFSET $3';
+ ELSIF p_collection='allin_private.v2_training_restriction_action_receipts' THEN
+  -- Exact-action history is user-portable, but the idempotency request hash
+  -- is operational data and never enters a downloadable account archive.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''user_id'',t.user_id,''action_id'',t.action_id,'||
+    '''result_revision'',t.result_revision,''created_at'',t.created_at) '||
+    'FROM allin_private.v2_training_restriction_action_receipts t '||
+    'WHERE t.user_id=$1 ORDER BY t.created_at,t.action_id LIMIT $2 OFFSET $3';
+ ELSIF p_collection='allin_private.v2_coach_budget_periods' THEN
+  -- Show athlete's actual budget accounting; no provider secrets or
+  -- privileged process metadata. Financial totals are server owned.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''user_id'',t.user_id,''period_start'',t.period_start,'||
+    '''cap_usd'',t.cap_usd,''held_usd'',t.held_usd,'||
+    '''spent_usd'',t.spent_usd) '||
+    'FROM allin_private.v2_coach_budget_periods t '||
+    'WHERE t.user_id=$1 ORDER BY t.period_start LIMIT $2 OFFSET $3';
+ ELSIF p_collection='allin_private.v2_coach_budget_reservations' THEN
+  -- Never export internal reservation identifiers or replay correlation.
+  -- Usage counts and reviewed accounting are athlete-owned.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''user_id'',t.user_id,''period_start'',t.period_start,'||
+    '''maximum_usd'',t.maximum_usd,'||
+    '''output_token_limit'',t.output_token_limit,'||
+    '''status'',t.status,''metered_input_tokens'',t.metered_input_tokens,'||
+    '''metered_output_tokens'',t.metered_output_tokens,'||
+    '''settled_usd'',t.settled_usd,''created_at'',t.created_at,'||
+    '''settled_at'',t.settled_at) '||
+    'FROM allin_private.v2_coach_budget_reservations t '||
+    'WHERE t.user_id=$1 ORDER BY t.created_at,t.client_request_id LIMIT $2 OFFSET $3';
  ELSIF p_collection='allin_private.v2_account_export_requests_candidate' THEN
   -- An export is a user-facing data portability artifact. The internal
   -- Auth session ID must never be serialized from the worker request ledger.
