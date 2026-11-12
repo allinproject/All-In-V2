@@ -83,3 +83,34 @@ test('Community action export excludes replay hashes and pair CAS internals in B
  assert(!reader.includes("UNION ALL SELECT 'community.pair_revisions'"));
  assert(!reader.includes("UNION ALL SELECT 'community.incoming_blocks'"));
 });
+
+function guardSegment(sql){
+ const start=sql.indexOf(' -- Future Nutrition, Progress');
+ assert(start>=0,'Future-domain guard missing');
+ const stop=sql.indexOf(' -- An unknown V2 domain',start);
+ // The paginated source uses a different comment; isolate through the
+ // specific final error/END IF rather than depending on prose.
+ const end=sql.indexOf("USING ERRCODE='42501'; END IF;",sql.indexOf(
+  'Unreviewed alternate-key owner table requires export coverage',start));
+ assert(end>start,'Alternate owner guard missing');
+ return sql.slice(start,end+"USING ERRCODE='42501'; END IF;".length);
+}
+test('inline and paginated account exports use identical future-domain and alternate-owner safeguards',()=>{
+ assert.equal(guardSegment(source),guardSegment(reader),
+  'Export protection drift: do not let a new owner table bypass either reader');
+});
+test('both export paths deny newly introduced food, activity, Progress, race and non-user_id owner relations',()=>{
+ for(const sql of [source,reader]){
+  const guard=guardSegment(sql);
+  for(const name of ['v2_nutrition_%','v2_meal_%','v2_pantry_%','v2_macro_%',
+   'v2_body_%','v2_equipment_%','v2_race_%','v2_personal_record_%',
+   'v2_achievement_%']){
+   assert(guard.includes("'"+name+"'"),'Missing unapproved domain '+name);
+  }
+  for(const col of ['owner_id','athlete_id','actor_id','created_by_user_id',
+   'account_id','profile_id','athlete_user_id']){
+   assert(guard.includes("'"+col+"'"),'Missing alternate-owner field '+col);
+  }
+  assert(guard.includes('Unreviewed alternate-key owner table requires export coverage'));
+ }
+});
