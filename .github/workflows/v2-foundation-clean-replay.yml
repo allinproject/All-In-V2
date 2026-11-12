@@ -1,6 +1,10 @@
 name: V2 foundation clean Supabase replay (manual, local only)
 
 on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - '.github/workflows/v2-foundation-clean-replay.yml'
   workflow_dispatch:
 
 permissions:
