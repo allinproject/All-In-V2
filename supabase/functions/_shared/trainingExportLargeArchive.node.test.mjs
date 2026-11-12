@@ -21,9 +21,9 @@ function fixture(config={}){
     complete:true}),
   resolveEncryptionKey:async()=>key,
   readPage:async({ownerId,collection,cursor})=>{
-   if(config.badCursor)return {ownerId,collection,snapshotId:requestId,rows:[{id:1}],done:false,nextCursor:'same'};
+   if(config.badCursor)return {ownerId,collection,snapshotId:requestId,ownerVerified:true,rows:[{id:1}],done:false,nextCursor:'same'};
    const start=cursor===null?0:Number(cursor),rows=data[collection]?.slice(start,start+30)??[];
-   return {ownerId:config.pageOwner??owner,collection,snapshotId:requestId,rows,done:start+30>=data[collection].length,
+   return {ownerId:config.pageOwner??owner,collection,snapshotId:requestId,ownerVerified:true,rows,done:start+30>=data[collection].length,
     nextCursor:start+30>=data[collection].length?null:String(start+30)};},
   writePrivatePage:async({ownerId,requestId:rid,collection,index,sealed})=>{
    events.push('write');stored.set(collection+'/'+index,sealed);
@@ -167,4 +167,24 @@ test('download denies mutated canonical snapshot inventory before releasing page
  const original=f.services.getCanonicalInventory;
  f.services.getCanonicalInventory=async(...args)=>({...await original(...args),snapshotId:another});
  await assert.rejects(collect(requestId,f.services),/Unverified complete account export/);
+});
+
+test('a foreign user_id row cannot enter an otherwise owner-verified page',async()=>{
+ const foreign=fixture({data:{
+  coach_messages:[{user_id:another,id:'forged',content:'Private B'}],
+  completed_activities:[],
+ }});
+ await assert.rejects(stageLargeAccountExport({
+  requestId,collections,services:foreign.services
+ }),/Invalid canonical account export page/);
+ assert.equal(foreign.events.includes('commit'),false);
+ assert.equal(foreign.purges,1);
+});
+test('missing canonical server owner proof blocks a page before encryption',async()=>{
+ const f=fixture();
+ const original=f.services.readPage;
+ f.services.readPage=async args=>({...await original(args),ownerVerified:false});
+ await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),
+  /Invalid canonical account export page/);
+ assert.equal(f.events.includes('write'),false);
 });
