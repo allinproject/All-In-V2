@@ -118,7 +118,69 @@ function reviewSourceBindings(bindingDocument, sourceEvidence) {
     calculationReady:false,publicationApproved:false,authorizedToWrite:false};
 }
 
-module.exports={normalize,review,reviewSourceBindings};
+
+function reviewAliasAndPreparationAcceptance(aliasDocument, bindingsDocument) {
+  if(!aliasDocument || !Array.isArray(aliasDocument.records) ||
+     !bindingsDocument || !Array.isArray(bindingsDocument.bindings))
+    throw Error('alias and source binding review records required');
+  const issues=[],flag=(key,code)=>issues.push({source_profile_key:key,code});
+  const refs=new Map(bindingsDocument.bindings.map(b=>[b.source_profile_key,b]));
+  const seenKeys=new Set(),exactNames=new Map();
+  if(aliasDocument.authoritativeSource!=='docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json' ||
+     aliasDocument.canonicalIdentityApproved!==false||aliasDocument.calculationReady!==false||
+     aliasDocument.publicationApproved!==false||aliasDocument.writeAuthorized!==false||
+     aliasDocument.status!=='pending_domain_owner_acceptance')
+     flag(null,'alias_document_claims_unapproved_authority');
+  for(const record of aliasDocument.records) {
+    if(!record || typeof record!=='object'){flag(null,'invalid_alias_record');continue;}
+    const key=record.source_profile_key;
+    if(typeof key!=='string'||seenKeys.has(key)){flag(key,'duplicate_or_invalid_source_key');continue;}
+    seenKeys.add(key);
+    const bound=refs.get(key);
+    if(!bound){flag(key,'unrecognized_source_key');continue;}
+    if(record.source_fdc_id!==bound.reviewed_source_reference.external_record_id||
+       record.source_description!==bound.reviewed_source_reference.source_food_description||
+       record.preparation_state!==bound.proposed_preparation_state||
+       record.identity_kind!==bound.proposed_identity_kind||
+       record.locale!=='en'||
+       record.canonical_identity_approved!==false||
+       record.profile_calculation_ready!==false||
+       record.approved_for_publication!==false)
+      flag(key,'source_identity_or_preparation_scope_mismatch');
+    if(!Array.isArray(record.exact_alias_candidates)||!record.exact_alias_candidates.length||
+       !Array.isArray(record.search_only_not_exact_aliases)||!Array.isArray(record.incompatible_form_conditions)||
+       !record.incompatible_form_conditions.length||typeof record.review_note!=='string')
+      flag(key,'missing_alias_scope_or_form_restrictions');
+    const exactSet=new Set(),searchSet=new Set();
+    for(const a of record.exact_alias_candidates||[]) {
+      const name=normalize(a?.value);
+      if(!name || exactSet.has(name)||a.kind!=='source_scoped_exact'||
+         a.preparation_state!==record.preparation_state||
+         a.selection_scope!=='requires_explicit_source_form_confirmation'||
+         a.status!=='pending_owner_acceptance')
+        flag(key,'invalid_or_duplicate_exact_alias');
+      exactSet.add(name);
+      const scope=JSON.stringify([name,record.locale,record.preparation_state]);
+      const previous=exactNames.get(scope);
+      if(previous&&previous!==key) flag(key,'cross_source_exact_alias_collision');
+      exactNames.set(scope,key);
+    }
+    for(const a of record.search_only_not_exact_aliases||[]) {
+      const name=normalize(a?.value);
+      if(!name||searchSet.has(name)||a.behavior!=='search_only_requires_user_or_reviewer_form_selection')
+        flag(key,'invalid_search_only_alias');
+      searchSet.add(name);
+      if(exactSet.has(name)) flag(key,'search_only_alias_promoted_to_exact');
+    }
+  }
+  if(seenKeys.size!==refs.size) flag(null,'incomplete_source_alias_coverage');
+  return {recordCount:aliasDocument.records.length,sourceBindingCount:refs.size,
+    issues,structuralScopePassed:issues.length===0,
+    canonicalIdentityApproved:false,calculationReady:false,publicationApproved:false,
+    writeAuthorized:false,requiresDomainOwnerAcceptance:true};
+}
+
+module.exports={normalize,review,reviewSourceBindings,reviewAliasAndPreparationAcceptance};
 if(require.main===module) {
   const fs=require('node:fs'),file=process.argv[2];
   if(!file) {console.error('Usage: node scripts/review-v2-ingredient-identities.cjs candidates.json');process.exitCode=2;}
