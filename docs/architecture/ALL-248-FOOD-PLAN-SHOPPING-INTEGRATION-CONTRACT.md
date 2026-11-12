@@ -47,6 +47,18 @@
 - `apps/mobile-v2/src/features/kitchen/kitchenShoppingView.ts` combines planned shortages and manual extras for read-only display, preserving origin identities and excluding ambiguous quantities pending review. It never writes duplicate automatic shopping rows.
 - Test ownership: `test:calculator` includes Stock owner, Shopping view, Plan-to-demand and Pantry projection tests; the existing no-deploy workflow replays real disposable PostgreSQL Kitchen owner, manual Shopping, reviewed purchase, rollback, and Auth deletion.
 
+## Canonical food and product identity reconciliation
+
+The current ALL-228 review-only Ingredient Database defines **`public.v2_ingredients.id`** for canonical identity and **`identity_kind`** with two distinct types: `generic_food` (e.g., an ordinary banana or apple) and `branded_product` (e.g., the athlete's exact protein bar). `v2_ingredient_source_records` stores provider, external ID, brand owner, provenance and its mapped `ingredient_id`; reviewed portion/measurement evidence belongs to `v2_ingredient_nutrition_profiles` and `v2_ingredient_measure_conversions`. DO NOT invent a second shopping-only Food/Product catalog or treat a raw barcode/USDA/OFF result as an already accepted canonical ingredient.
+
+Before adapting the review-only ALL-248 SQL for migration:
+
+1. Replace temporary `source_id` and `food_source_id` text references with **approved canonical UUID foreign keys**. A Plan `food` entry and Pantry lot can reference a reviewed `v2_ingredients.id`, retaining brand-specific exact identity where needed. Preserve `source_record_id` provenance only when it is a reviewed mapping; generic and branded identities must not be merged just because the display name matches.
+2. Plan `recipe` entries must reference the eventual ALL-218 **real Cookbook recipe ID**, and `prepared_meal` must reference the actual ALL-248 prepared portion/batch ID with owner and remaining-stock checks. Neither table is yet an installed V2 physical owner, so their FK admission is a release gate rather than reason to invent placeholder copies.
+3. Plan / Food Log must also support athlete-owned saved/custom foods when those are approved under ALL-247: their owning IDs should be resolved through the canonical Food source registry, not smuggled into Ingredient Database product rows without evidence.
+4. Never calculate a Shopping requirement from the product name alone, assume a banana = exact packaged bar, or convert `each` to grams without the reviewed item/label weight. Pantry inventory and meal-plan quantities use the exact matching identity + preparation state + unit; fallback must remain unresolved and visible for review.
+5. Purchase confirmation requires the reviewed identity/units and explicit athlete confirmation. The review-only candidate currently uses temporary text references solely to enable isolated transaction testing and MUST NOT be deployed with that unresolved identity model.
+
 ## Canonical integration gates not yet satisfied
 
 1. Under ALL-222/248, settle a single physical owner schema and typed owner-guarded read + versioned/idempotent plan writer for day/slot/source occurrence identities. No generic meal-plan JSON blob and no duplicate store. Integrate with ALL-228/218 canonical food and recipe identities.
