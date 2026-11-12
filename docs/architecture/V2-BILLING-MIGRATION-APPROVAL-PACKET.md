@@ -79,3 +79,12 @@ Read-only Stripe account inspection of the connected `Durben Ventures sandbox` (
 **Remaining Stripe sandbox setup gaps:** no classic webhook endpoints or V2 event destinations configured; Stripe Tax status is pending with head office missing, and the active price has unspecified tax behavior. An unrelated $15/month test product exists and must not be used for ALL IN 365. Do not deploy a webhook before the approved V2 endpoint exists; do not invent an address or tax handling. No Stripe objects or settings were changed during the inventory.
 
 This inventory is not sufficient to launch web billing: the V2 verified subscription ledger and service grants are not yet deployed, checkout/webhook flags remain default OFF, and signed webhook delivery must be validated end to end after explicit approvals.
+
+
+## Expanded Stripe and recovery-sequence candidate (2026-11-12)
+
+The local-only backup fixture now includes a verified **Stripe web checkout** alongside Apple and Google: **four purchases, four checkout attempts and five original provider events**. The original service-only Stripe claim → pending → finalized → current-event operations are used, not manually fabricated ledger rows. Recovery verifies Stripe's original checkout ID and owner, denial of cross-owner finalization, idempotent provider event replay, and a sixth event from a post-restore Google renewal. Event counts are deliberately **five after restore and six after the renewal**.
+
+The recovery workflow also selects the event identity sequence explicitly in its `pg_dump -Fc --data-only` archive, verifies the presence of a `SEQUENCE SET` entry, deliberately resets the local sequence to 1 before restoring, and requires a new event after restore to succeed. This guards against restoring receipt rows but losing identity sequence state.
+
+**Acceptance not yet proven for this expansion:** the previous [green local recovery run #43142378420](https://github.com/allinproject/All-In-V2/actions/runs/43142378420) predates the Stripe-inclusive and reset-sequence tests. New local CI must pass before they can be marked validated. Billing checks now run directly after the canonical foundation verification, ahead of unrelated Goals/Coach candidates; none of those later checks are skipped. This remains a synthetic local review-only rehearsal, not remote data recovery, production migration approval or permission to activate billing.
