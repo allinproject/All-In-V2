@@ -16,7 +16,6 @@ spec.loader.exec_module(module)
 class ProvisionSafety(unittest.TestCase):
     def test_only_temporary_project_is_targeted(self):
         self.assertEqual(module.PROJECT, "fbtgknlxjyeqrxemskbl")
-        self.assertEqual(module.HOST, "db." + module.PROJECT + ".supabase.co")
         self.assertEqual(module.ENVIRONMENT, "all251-temporary-staging")
         self.assertEqual(module.LOGIN, "allin_ing_workload_temp_all228")
 
@@ -34,7 +33,7 @@ class ProvisionSafety(unittest.TestCase):
              patch.object(module, "safe_environment", return_value={"PGSSLMODE": "verify-full"}), \
              patch.object(module.subprocess, "run", side_effect=run), \
              patch.object(module.sys, "stdin", FakeInput()), \
-             patch("builtins.input", return_value="TEMP"), \
+             patch("builtins.input", side_effect=["aws-0-us-east-1.pooler.supabase.com","TEMP"]), \
              patch("builtins.print"):
             module.provision()
 
@@ -45,8 +44,10 @@ class ProvisionSafety(unittest.TestCase):
         self.assertEqual(secret_command[:3], ["gh", "secret", "set"])
         self.assertIn("--env", secret_command)
         self.assertIn(module.ENVIRONMENT, secret_command)
-        self.assertTrue(secret_io["input"].startswith(module.HOST + ":5432:postgres:" + module.LOGIN + ":"))
+        self.assertTrue(secret_io["input"].startswith("aws-0-us-east-1.pooler.supabase.com:5432:postgres:" + module.LOGIN + "." + module.PROJECT + ":"))
         self.assertEqual(sql_command[0], "psql")
+        self.assertIn("postgres." + module.PROJECT,sql_command)
+        self.assertIn("session_pooler_host=aws-0-us-east-1.pooler.supabase.com",workflow_command)
         self.assertEqual(sql_command[-2:], ["-f", "-"])
         self.assertEqual(sql_io["env"]["PGSSLMODE"], "verify-full")
         self.assertIn("ALTER ROLE " + module.LOGIN, sql_io["input"])
@@ -62,7 +63,7 @@ class ProvisionSafety(unittest.TestCase):
         with patch.object(module, "require_tools"), \
              patch.object(module, "safe_environment", return_value={}), \
              patch.object(module.sys.stdin, "isatty", return_value=True), \
-             patch("builtins.input", return_value="no"), \
+             patch("builtins.input", side_effect=["aws-0-us-east-1.pooler.supabase.com","no"]), \
              patch.object(module.subprocess, "run") as command, \
              patch("builtins.print"):
             with self.assertRaisesRegex(RuntimeError, "Cancelled"):
