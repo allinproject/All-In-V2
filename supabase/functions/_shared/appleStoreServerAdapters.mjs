@@ -6,7 +6,7 @@
  * decoded JWS from a client as proof.
  */
 const uuid=v=>typeof v==='string'&&
-  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
 const numericId=v=>typeof v==='string'&&/^[0-9]{1,24}$/.test(v);
 export function createAppleStoreServerAdapters({
  verifier,serverApi,expectedBundleId,expectedProductId,
