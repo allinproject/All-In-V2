@@ -14,11 +14,22 @@ BEGIN
  OR EXISTS(SELECT 1 FROM allin_private.v2_profile_settings_actions)
  OR EXISTS(SELECT 1 FROM allin_private.v2_onboarding_actions)
  OR EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_requests)
+ OR EXISTS(SELECT 1 FROM public.v2_legal_documents)
+ OR EXISTS(SELECT 1 FROM public.v2_legal_acceptances)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_execution_audit)
  THEN RAISE EXCEPTION 'ALL-12 requires empty isolated foundation tables'; END IF;
  IF EXISTS(SELECT 1 FROM auth.users WHERE id='e1212121-2121-4121-8121-212121212121')
  THEN RAISE EXCEPTION 'ALL-12 fixture owner already exists'; END IF;
 END $gate$;
 INSERT INTO auth.users(id) VALUES('e1212121-2121-4121-8121-212121212121');
+INSERT INTO public.v2_legal_documents(document_key,version,title,content_markdown,status,effective_at)
+VALUES ('terms','all12-test','Synthetic terms','ALL-12 test terms','draft',NULL),
+       ('privacy','all12-test','Synthetic privacy','ALL-12 test privacy','draft',NULL),
+       ('founder_beta_terms','all12-test','Synthetic beta terms','ALL-12 test beta','draft',NULL);
+INSERT INTO public.v2_legal_acceptances(user_id,terms_version,privacy_version,founder_beta_terms_version,age_18_confirmed,client_action_id)
+VALUES('e1212121-2121-4121-8121-212121212121','all12-test','all12-test','all12-test',true,'all12-legal');
+INSERT INTO allin_private.v2_account_deletion_execution_audit(request_id,user_id,status)
+VALUES('e3434343-3434-4434-8434-343434343434','e1212121-2121-4121-8121-212121212121','processing');
 INSERT INTO public.v2_profiles(user_id,display_name) VALUES('e1212121-2121-4121-8121-212121212121','Recovery athlete')
 ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name;
 INSERT INTO public.v2_profile_settings(user_id,settings) VALUES('e1212121-2121-4121-8121-212121212121','{"units":"metric"}')
@@ -45,18 +56,27 @@ SELECT domain||'|'||n||'|'||digest FROM (
  UNION ALL SELECT 'settings_actions',count(*),md5(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY client_action_id),'')) FROM allin_private.v2_profile_settings_actions t WHERE user_id='e1212121-2121-4121-8121-212121212121'
  UNION ALL SELECT 'onboarding_actions',count(*),md5(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY client_action_id),'')) FROM allin_private.v2_onboarding_actions t WHERE user_id='e1212121-2121-4121-8121-212121212121'
  UNION ALL SELECT 'deletion_request',count(*),md5(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY request_id),'')) FROM allin_private.v2_account_deletion_requests t WHERE user_id='e1212121-2121-4121-8121-212121212121'
+ UNION ALL SELECT 'legal_documents',count(*),md5(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY document_key),'')) FROM public.v2_legal_documents t WHERE version='all12-test'
+ UNION ALL SELECT 'legal_acceptance',count(*),md5(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY id),'')) FROM public.v2_legal_acceptances t WHERE user_id='e1212121-2121-4121-8121-212121212121'
+ UNION ALL SELECT 'deletion_audit',count(*),md5(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY request_id),'')) FROM allin_private.v2_account_deletion_execution_audit t WHERE request_id='e3434343-3434-4434-8434-343434343434'
 ) q ORDER BY domain;
 SQL
 manifest(){ docker exec -i "$db" psql -X -qAt -U postgres -d postgres -v ON_ERROR_STOP=1 <<<"$sql"; }
 before="$(manifest)"
-test "$(printf '%s\n' "$before" | wc -l | tr -d ' ')" = 7
-test "$(printf '%s\n' "$before" | grep -c '|1|')" = 7
+test "$(printf '%s\n' "$before" | wc -l | tr -d ' ')" = 10
+test "$(printf '%s\n' "$before" | grep -c '|1|')" = 9
+test "$(printf '%s\n' "$before" | grep -c '|3|')" = 1
 docker exec "$db" pg_dump -U postgres -d postgres -Fc --data-only \
  -t public.v2_profiles -t public.v2_profile_settings -t public.v2_onboarding_progress \
  -t allin_private.v2_health_considerations -t allin_private.v2_profile_settings_actions \
  -t allin_private.v2_onboarding_actions -t allin_private.v2_account_deletion_requests \
+ -t public.v2_legal_documents -t public.v2_legal_acceptances \\
+ -t allin_private.v2_account_deletion_execution_audit \\
  -f /tmp/all12-foundation.dump
 docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+DELETE FROM allin_private.v2_account_deletion_execution_audit WHERE request_id='e3434343-3434-4434-8434-343434343434';
+DELETE FROM public.v2_legal_acceptances WHERE user_id='e1212121-2121-4121-8121-212121212121';
+DELETE FROM public.v2_legal_documents WHERE version='all12-test';
 DELETE FROM allin_private.v2_account_deletion_requests WHERE user_id='e1212121-2121-4121-8121-212121212121';
 DELETE FROM allin_private.v2_onboarding_actions WHERE user_id='e1212121-2121-4121-8121-212121212121';
 DELETE FROM allin_private.v2_profile_settings_actions WHERE user_id='e1212121-2121-4121-8121-212121212121';
@@ -69,4 +89,4 @@ docker exec "$db" pg_restore -U postgres -d postgres --data-only --exit-on-error
 after="$(manifest)"
 test "$before" = "$after" || { echo 'FAIL ALL-12 foundation row digest mismatch'; exit 1; }
 docker exec "$db" rm -f /tmp/all12-foundation.dump
-echo 'PASS ALL-12: seven populated foundation owner tables restored with exact row digests'
+echo 'PASS ALL-12: ten populated foundation tables restored with exact row digests'
