@@ -150,7 +150,19 @@ function setup(options={}) {
      const receipt=await fn({
       getCanonicalInventory:async({ownerId:o,requestId:r})=>({
        ownerId:o,requestId:r,snapshotId:requestId,
-       complete:!options.unapprovedDomain,collections:['coach_messages'],
+       complete:!options.unapprovedDomain,
+       collections:options.pinnedMedia?['coach_messages','private_media']:['coach_messages'],
+      }),
+      listBucketCatalog:async()=>[
+       {id:'v2-private-workout-objects',public:false},
+       {id:'v2-private-account-exports',public:false},
+      ],
+      listOwnerStorageObjects:async({ownerId:o,requestId:r,bucketId})=>({
+       ownerId:o,requestId:r,bucketId,exhaustive:true,
+       totalCount:1,paths:[path],
+      }),
+      listCanonicalMediaReferences:async()=>({
+       ownerId:owner,requestId,series:[row()],routes:[],
       }),
       readPage:async({ownerId:o,collection})=>({
        ownerId:o,collection,snapshotId:requestId,ownerVerified:true,
@@ -313,4 +325,23 @@ test('media audit never runs from an unleased legacy export worker',async()=>{
  const f=setup();
  await assert.rejects(f.worker.auditApprovedPrivateMediaCoverage(requestId),/approved request lease/);
  assert.equal(f.events.includes('download'),false);
+});
+
+test('same ALL-251 pinned worker stages approved private media bytes alongside Coach and verifies download',async()=>{
+ const f=setup({useSupabasePersistence:true,pinnedReader:true,pinnedMedia:true});
+ const staged=await f.worker.stageApprovedLargeHistory(requestId);
+ assert.equal(staged.staged,true);
+ assert.equal(staged.recordCount,2);
+ assert.equal(f.events.filter(x=>x==='snapshotOpen').length,1);
+ assert(f.events.filter(x=>x==='ownerPathProof').length>=1);
+ assert(f.events.includes('download'));
+ const result=await f.worker.openApprovedLargeHistoryDownload(requestId);
+ const lines=(await result.text()).trim().split('\n').map(x=>JSON.parse(x));
+ const media=lines.find(x=>x.collection==='private_media')?.record;
+ assert.equal(media.user_id,owner);
+ assert.equal(media.fileSha256,digest);
+ assert.equal(media.path,path);
+ assert.deepEqual(Buffer.from(media.dataBase64,'base64'),bytes);
+ assert.equal(lines.at(-1).export_complete,true);
+ assert.equal(f.events.filter(x=>x==='snapshotOpen').length,1);
 });
