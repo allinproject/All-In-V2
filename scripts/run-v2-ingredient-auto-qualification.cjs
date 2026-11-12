@@ -43,7 +43,7 @@ async function runAutomaticQualification({client,...inputs}) {
   // authenticated restricted DB session. No public RPC, service_role or anon.
   if(!client||typeof client.query!=='function')throw Error('Trusted database session required');
   const plan=planAutomaticQualification(inputs);
-  let begun=false;
+  let begun=false,commitAttempted=false;
   try {
     await client.query('BEGIN');begun=true;
     // Existing canonical writer, including its actor authorization, source
@@ -61,10 +61,15 @@ async function runAutomaticQualification({client,...inputs}) {
         throw Error('Canonical writer returned inconsistent status/revision receipt');
       outputs.push(result);
     }
+    commitAttempted=true;
     await client.query('COMMIT');begun=false;
     return {status:'source_qualified_not_published',profileId:plan.profileId,
       events:outputs,calculationReady:false,publicationApproved:false};
   } catch(error) {
+    // COMMIT can succeed even if its response is lost. Do NOT claim rollback
+    // or send a compensating write after an ambiguous commit acknowledgement.
+    if(commitAttempted)
+      throw Error('Canonical qualification COMMIT outcome unknown: discard connection and inspect idempotent audit');
     if(begun) {
       try {await client.query('ROLLBACK')} catch {
         throw Error('Canonical qualification failed; rollback outcome unknown: discard connection and verify database');
