@@ -114,7 +114,7 @@ permissions:
 
 concurrency:
   group: v2-auth-smoke-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   auth-smoke:
