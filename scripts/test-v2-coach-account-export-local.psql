@@ -173,4 +173,35 @@ BEGIN
  THEN RAISE EXCEPTION 'Coach deletion cascade failed or damaged other owner'; END IF;
  RAISE NOTICE 'PASS ALL-222/251: existing export includes only own Coach history and receipts; owner deletion cascades';
 END $coach_delete$;
+
+DO $all_domains_delete$
+DECLARE
+  v_rel text;
+  v_a_count bigint;
+  v_b_count bigint;
+BEGIN
+  FOREACH v_rel IN ARRAY ARRAY[
+    'public.v2_goals',
+    'public.v2_goal_revisions',
+    'public.v2_goal_revision_behavior_targets',
+    'allin_private.v2_goal_acceptance_actions',
+    'allin_private.v2_goal_approval_reviews',
+    'public.v2_event_group_memberships',
+    'public.v2_event_participations',
+    'allin_private.v2_event_group_actions',
+    'allin_private.v2_community_visibility'
+  ] LOOP
+    EXECUTE pg_catalog.format('SELECT count(*) FROM %I.%I WHERE user_id=$1',
+      pg_catalog.split_part(v_rel,'.',1),pg_catalog.split_part(v_rel,'.',2))
+      INTO v_a_count USING '61111111-6111-4111-8111-611111111111'::uuid;
+    EXECUTE pg_catalog.format('SELECT count(*) FROM %I.%I WHERE user_id=$1',
+      pg_catalog.split_part(v_rel,'.',1),pg_catalog.split_part(v_rel,'.',2))
+      INTO v_b_count USING '62222222-6222-4222-8222-622222222222'::uuid;
+    IF v_a_count<>0 OR v_b_count<>1 THEN
+      RAISE EXCEPTION 'Deleted A or surviving B violated owner cascade in %: A=% B=%',
+        v_rel,v_a_count,v_b_count;
+    END IF;
+  END LOOP;
+  RAISE NOTICE 'PASS ALL-251: nine owner relations after deletion preserve only B records';
+END $all_domains_delete$;
 ROLLBACK;
