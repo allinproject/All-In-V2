@@ -24,7 +24,8 @@ export function createCoachArmedRuntime({
  const auth=createCoachTrainingAuthServices({userClient,bearerToken});
  const readContext=createCoachCanonicalTrainingReader({
   userClient,verifySession:auth.verifySession,
-  readRestrictions:auth.readRestrictions,readAccessGate:auth.readAccessGate,
+  readRestrictions:auth.readRestrictions,
+  readCompletedHistory:auth.readCompletedHistory,readAccessGate:auth.readAccessGate,
   resolveAthleteDate:auth.resolveAthleteDate
  });
  const budget=createCoachBudgetSupabase({serviceClient:serverClient});
