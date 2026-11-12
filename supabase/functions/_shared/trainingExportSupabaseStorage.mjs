@@ -166,6 +166,8 @@ export async function auditOwnerPrivateMediaCoverage({
   for(const row of sources){
     if(row?.user_id!==ownerId||typeof row?.object_path!=='string'
       ||!row.object_path.startsWith(ownerId+'/')||!SHA.test(row.checksum_sha256??'')
+      ||row.state!=='ready'
+      ||(row.kind==='route'&&!['private','redacted'].includes(row.privacy_state))
       ||expected.has(row.object_path))
       throw Error('Invalid or duplicated canonical media reference');
     expected.add(row.object_path);
