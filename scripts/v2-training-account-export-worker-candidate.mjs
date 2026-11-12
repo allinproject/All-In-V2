@@ -92,25 +92,50 @@ export function createTrainingAccountExportWorkerCandidate({
       if(!gate?.sessionId)throw new Error('Verified export session missing');
       // The actual canonical SQL inventory and every page must share ONE
       // repeatable-read snapshot. An independent REST RPC per page is unsafe.
-      return canonicalPageReader.withRepeatableReadSnapshot({
-        ownerId:gate.ownerId,sessionId:gate.sessionId,requestId,
-      },async scoped=>{
-        const inventory=await scoped.getCanonicalInventory({
-          ownerId:gate.ownerId,requestId,
+      let archiveCommitted=false;
+      try {
+        const receipt=await canonicalPageReader.withRepeatableReadSnapshot({
+          ownerId:gate.ownerId,sessionId:gate.sessionId,requestId,
+        },async scoped=>{
+          const inventory=await scoped.getCanonicalInventory({
+            ownerId:gate.ownerId,requestId,
+          });
+          if(inventory?.complete!==true||inventory?.ownerId!==gate.ownerId
+            ||inventory?.requestId!==requestId
+            ||!Array.isArray(inventory.collections)) {
+            throw new Error('Canonical export source coverage or privacy review incomplete');
+          }
+          const result=await stageLargeAccountExport({
+            requestId,collections:inventory.collections,
+            services:{...largeServices,
+              getCanonicalInventory:scoped.getCanonicalInventory,
+              readPage:scoped.readPage,
+            },
+          });
+          // The encrypted manifest is written before the database commit.
+          // A failed COMMIT must not leave a releasable complete archive.
+          archiveCommitted=true;
+          return result;
         });
-        if(inventory?.complete!==true||inventory?.ownerId!==gate.ownerId
-          ||inventory?.requestId!==requestId
-          ||!Array.isArray(inventory.collections)) {
-          throw new Error('Canonical export source coverage or privacy review incomplete');
+        // A revoked session immediately after the snapshot COMMIT must not
+        // leave an archive reported as available to the account holder.
+        const finalGate=await services.authorizeExport(requestId);
+        if(finalGate.ownerId!==gate.ownerId||finalGate.sessionId!==gate.sessionId)
+          throw new Error('Export session changed after staging');
+        return receipt;
+      }catch(error){
+        if(archiveCommitted){
+          try {
+            if(await largeServices.purgePrivateRequest({
+              ownerId:gate.ownerId,requestId,
+            })!==true)throw new Error('Archive removal unconfirmed');
+          }catch{
+            throw new Error('Export snapshot failed; private archive cleanup unresolved',
+              {cause:error});
+          }
         }
-        return stageLargeAccountExport({
-          requestId,collections:inventory.collections,
-          services:{...largeServices,
-            getCanonicalInventory:scoped.getCanonicalInventory,
-            readPage:scoped.readPage,
-          },
-        });
-      });
+        throw error;
+      }
     },
     async openApprovedLargeHistoryDownload(requestId) {
       if(!largeServices)throw new Error('Large export source inventory not configured');
