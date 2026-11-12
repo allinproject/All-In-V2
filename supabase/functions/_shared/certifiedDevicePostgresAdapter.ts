@@ -82,7 +82,8 @@ WHERE sess.id=$1::uuid AND sess.user_id=$2::uuid
   AND act.id=$4::uuid AND act.status<>'invalidated'
   AND src.id=$5::uuid AND src.provider=$6 AND src.source_kind=$7
   AND src.source_record_id=$8 AND src.quality<>'rejected'
-  AND reg.revoked_at IS NULL AND reg.provider=src.provider
+  AND reg.revoked_at IS NULL AND reg.certified_at<=pg_catalog.now()
+  AND reg.provider=src.provider
   AND ($9::uuid IS NULL OR act.training_session_instance_id=$9::uuid)`,[
       x.sessionId,x.ownerId,x.nowMs,x.activityId,x.sourceId,
       x.provider,x.sourceKind,x.sourceRecordId,
