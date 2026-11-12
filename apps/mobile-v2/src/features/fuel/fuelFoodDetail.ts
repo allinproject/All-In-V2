@@ -103,3 +103,15 @@ export function newFoodActionId(
   return [hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-');
  }catch{return null;}
 }
+
+/** Validate the native Expo crypto UUID at the boundary rather than trusting
+ * an arbitrary string. An unavailable native implementation fails closed.
+ */
+export function foodActionIdFromNative(generate:()=>string):string|null{
+ try{
+  const value=generate();
+  return typeof value==='string'
+   &&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+   ?value.toLowerCase():null;
+ }catch{return null;}
+}
