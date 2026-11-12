@@ -45,7 +45,7 @@ function SportsOwnerRoute() {
   const [notice, setNotice] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const busy = useRef(false);
-  const scroller=useRef<ScrollView>(null);
+  const scroller=useRef<React.ElementRef<typeof ScrollView>>(null);
   const targets=useRef<Partial<Record<SportsGuideTarget,number>>>({});
   const activeTarget=useRef<SportsGuideTarget|null>(null);
   const [highlighted,setHighlighted]=useState<SportsGuideTarget|null>(null);
