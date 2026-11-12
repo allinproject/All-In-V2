@@ -4,6 +4,28 @@
 -- Candidate ledger + exact service grants must already be applied to the
 -- disposable local PostgreSQL instance. All synthetic rows roll back.
 BEGIN;
+-- The following committed accounts must have been seeded before either
+-- billing candidate was installed. This is an upgrade, not a fresh database.
+DO $preupgrade_read$
+DECLARE
+  owner_a constant uuid := '55555555-5555-4555-8555-555555555555';
+  owner_b constant uuid := '66666666-6666-4666-8666-666666666666';
+BEGIN
+  IF NOT EXISTS(SELECT 1 FROM public.v2_profiles
+       WHERE user_id=owner_a AND display_name='Billing Upgrade A') OR
+     NOT EXISTS(SELECT 1 FROM public.v2_profiles
+       WHERE user_id=owner_b AND display_name='Billing Upgrade B') OR
+     (SELECT count(*) FROM public.v2_profile_settings
+       WHERE user_id IN (owner_a,owner_b) AND version=1)<>2 OR
+     (SELECT count(*) FROM public.v2_onboarding_progress
+       WHERE user_id IN (owner_a,owner_b) AND version=1)<>2 THEN
+    RAISE EXCEPTION 'Candidate upgrade lost previously committed V2 account data';
+  END IF;
+  IF EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
+            WHERE owner_id IN (owner_a,owner_b)) THEN
+    RAISE EXCEPTION 'Upgrade fabricated subscription purchases for existing users';
+  END IF;
+END $preupgrade_read$;
 DO $setup$
 DECLARE first_owner uuid:='33333333-3333-4333-8333-333333333333';
         second_owner uuid:='44444444-4444-4444-8444-444444444444';
@@ -100,4 +122,69 @@ BEGIN
   THEN RAISE EXCEPTION 'Owner A deletion damaged owner B billing rows'; END IF;
   RAISE NOTICE 'PASS ALL-222: two owners, service-only subscription binding, refund, Auth deletion and cross-environment isolation on real Supabase foundation';
 END $deletion$;
+-- A committed account created before the candidate must be able to
+-- receive a server-verified purchase after the candidate install, without
+-- leaking access to a distinct pre-existing account.
+SET ROLE service_role;
+DO $upgraded_owner$
+DECLARE result text;
+BEGIN
+  SELECT public.v2_billing_commit_verified_native(
+    '55555555-5555-4555-8555-555555555555',
+    'app_store','sandbox','preupgrade_sub_A',
+    'preupgrade_verified_event_A','paid','2027-12-01 UTC') INTO result;
+  IF result<>'committed' THEN
+    RAISE EXCEPTION 'Billing candidate could not bind existing profile: %',result;
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+      '55555555-5555-4555-8555-555555555555','sandbox') WHERE entitled) OR
+     EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+      '66666666-6666-4666-8666-666666666666','sandbox') WHERE entitled) THEN
+    RAISE EXCEPTION 'Upgraded owner entitlement crossed account boundary';
+  END IF;
+END $upgraded_owner$;
+RESET ROLE;
+
 ROLLBACK;
+
+-- The upgrade DDL remains in this disposable database. The transaction's
+-- purchase events and deleted synthetic accounts must roll back, but the
+-- two genuine pre-upgrade account rows must survive unchanged.
+DO $upgrade_rollback$
+DECLARE owner_a constant uuid := '55555555-5555-4555-8555-555555555555';
+        owner_b constant uuid := '66666666-6666-4666-8666-666666666666';
+BEGIN
+  IF EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases)
+     OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_verified_events)
+     OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_checkout_attempts) THEN
+    RAISE EXCEPTION 'Rollback left durable synthetic billing events';
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.v2_profiles
+      WHERE user_id=owner_a AND display_name='Billing Upgrade A') OR
+     NOT EXISTS(SELECT 1 FROM public.v2_profiles
+      WHERE user_id=owner_b AND display_name='Billing Upgrade B') OR
+     (SELECT count(*) FROM public.v2_profile_settings
+       WHERE user_id IN (owner_a,owner_b) AND version=1)<>2 OR
+     (SELECT count(*) FROM public.v2_onboarding_progress
+       WHERE user_id IN (owner_a,owner_b) AND version=1)<>2 THEN
+    RAISE EXCEPTION 'Rollback damaged existing accounts or profile state';
+  END IF;
+  RAISE NOTICE 'PASS ALL-222: populated preupgrade accounts survived candidate schema, binding and rollback';
+END $upgrade_rollback$;
+
+-- The preupgrade seed is only local CI fixture data. Remove it explicitly
+-- after checking that the real Auth cascade still owns profile cleanup.
+DELETE FROM auth.users WHERE id IN
+  ('55555555-5555-4555-8555-555555555555',
+   '66666666-6666-4666-8666-666666666666');
+DO $preupgrade_cleanup$
+BEGIN
+  IF EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id IN
+       ('55555555-5555-4555-8555-555555555555',
+        '66666666-6666-4666-8666-666666666666')) OR
+     EXISTS(SELECT 1 FROM public.v2_profile_settings WHERE user_id IN
+       ('55555555-5555-4555-8555-555555555555',
+        '66666666-6666-4666-8666-666666666666')) THEN
+    RAISE EXCEPTION 'Preupgrade fixture cleanup failed Auth cascade';
+  END IF;
+END $preupgrade_cleanup$;
