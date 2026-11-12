@@ -32,8 +32,10 @@ try{
   const {id}=await created.json();users.push({id});
   const login=await req('POST','/auth/v1/token?grant_type=password',anon,null,{email,password});
   assert.equal(login.status,200,'real local password sign-in');
-  users.at(-1).token=(await login.json()).access_token;
-  assert.ok(users.at(-1).token);
+  const signedIn=await login.json();
+  users.at(-1).token=signedIn.access_token;
+  users.at(-1).refresh=signedIn.refresh_token;
+  assert.ok(users.at(-1).token && users.at(-1).refresh);
  }
  const [a,b]=users;
  const created=await req('POST','/storage/v1/bucket',admin,null,{id:bucket,name:bucket,public:false});
@@ -61,6 +63,25 @@ try{
  assert.equal(hash(Buffer.from(await ownRestored.arrayBuffer())),hash(bytes),'restored SHA-256 mismatch');
  const foreignRestored=await req('GET','/storage/v1/object/authenticated/'+bucket+'/'+path,anon,b.token);
  assert.ok([400,401,403,404].includes(foreignRestored.status),'foreign session downloaded RESTORED file');
+ // Refresh the independent foreign session, then repeat the denial with
+ // its newly issued access token (not merely the original login token).
+ const refresh=await req('POST','/auth/v1/token?grant_type=refresh_token',anon,null,{refresh_token:b.refresh});
+ assert.equal(refresh.status,200,'valid User B refresh token must work');
+ const refreshed=await refresh.json();
+ assert.ok(refreshed.access_token && refreshed.refresh_token,'rotated session tokens required');
+ b.token=refreshed.access_token;b.refresh=refreshed.refresh_token;
+ const bIdentity=await req('GET','/auth/v1/user',anon,b.token);
+ assert.equal(bIdentity.status,200,'refreshed User B session must be authenticated');
+ assert.equal((await bIdentity.json()).id,b.id,'refreshed token must remain bound to B');
+ const foreignRotated=await req('GET','/storage/v1/object/authenticated/'+bucket+'/'+path,anon,b.token);
+ assert.ok([400,401,403,404].includes(foreignRotated.status),
+  'refreshed User B token downloaded restored User A file');
+ const logout=await req('POST','/auth/v1/logout',anon,b.token);
+ assert.ok([200,204].includes(logout.status),'User B logout must succeed');
+ const replay=await req('POST','/auth/v1/token?grant_type=refresh_token',anon,null,{refresh_token:b.refresh});
+ assert.ok([400,401,403].includes(replay.status),'logged-out refresh token remained reusable');
+ // Access JWTs may remain valid until expiration: logout revokes refresh
+ // credentials, not necessarily already-issued bearer JWTs.
  console.log('PASS ALL-12: valid second Auth session denied restored private bytes; owner read and SHA-256 verified');
 }finally{
  if(policy)sql(`DROP POLICY IF EXISTS "all12_${nonce}" ON storage.objects`);
