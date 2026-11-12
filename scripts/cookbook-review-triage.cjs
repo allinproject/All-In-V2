@@ -20,7 +20,7 @@ function inspectRecipe(candidate) {
   flag('source_origin_missing',!hasText(candidate.source_origin));
   // Legacy merges and imported-source identities need explicit content ownership
   // and duplicate resolution; these are review signals, not definitive labels.
-  flag('legacy_merge_identity_review',typeof candidate.title==='string' && /^\\[Merged\\]/i.test(candidate.title.trim()));
+  flag('legacy_merge_identity_review',typeof candidate.title==='string' && /^\[Merged\]/i.test(candidate.title.trim()));
   flag('external_import_provenance_review',/^recipe-import-/i.test(candidate.source_recipe_id));
   flag('ingredients_missing',!Array.isArray(ingredients) || ingredients.length === 0);
   flag('free_text_ingredient_lines',Array.isArray(ingredients) && ingredients.some(line=>typeof line === 'string'));
