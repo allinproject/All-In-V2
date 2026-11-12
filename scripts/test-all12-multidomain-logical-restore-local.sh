@@ -92,7 +92,7 @@ test "$(printf '%s\n' "$before" | wc -l | tr -d ' ')" = 12 || { echo 'Unexpected
 docker exec "$db" pg_dump -U postgres -d postgres -Fc --data-only \
   -t public.v2_training_session_instances -t public.v2_completed_activities \
   -t public.v2_activity_sources -t public.v2_coach_threads \
-  -t public.v2_coach_messages -t public.v2_goals \\
+  -t public.v2_coach_messages -t public.v2_goals \
   -t public.v2_goal_revisions -f /tmp/all12-multidomain.dump
 docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
 DELETE FROM public.v2_goal_revisions WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121');
