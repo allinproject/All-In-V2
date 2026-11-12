@@ -71,7 +71,7 @@ export function createCoachOpenAiResponsesTransport({
   // Round UP to a micro-dollar to avoid under-reserving due to floating error.
   const raw=(body.usage.input_tokens*inputUsdPerMillion+
     body.usage.output_tokens*outputUsdPerMillion)/1000000;
-  const costUsd=Math.ceil((raw+1e-12)*1000000)/1000000;
+  const costUsd=Math.ceil(raw*1000000-1e-9)/1000000;
   if(!Number.isFinite(costUsd))deny();
   return {message,usage:{inputTokens:body.usage.input_tokens,
    outputTokens:body.usage.output_tokens,costUsd}};
