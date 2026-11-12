@@ -23,7 +23,9 @@ jobs:
       ALL251_STAGING_REF: fbtgknlxjyeqrxemskbl
       ALL251_STAGING_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
       ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
-      ALL251_TEMP_STAGING_PUBLISHABLE_KEY: ${{ secrets.ALL251_TEMP_STAGING_PUBLISHABLE_KEY }}
+      # Publishable API keys are safe for public clients; fallback is pinned to this
+      # temporary project's dedicated key if GitHub secret is not configured.
+      ALL251_TEMP_STAGING_PUBLISHABLE_KEY: ${{ secrets.ALL251_TEMP_STAGING_PUBLISHABLE_KEY || 'sb_publishable_KxiqTVkZkWh1NUQhEMq_3A_594QKycX' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
