@@ -25,12 +25,15 @@ end
 projects = Dir.glob(File.join(ios_dir, '*.xcodeproj'))
 abort 'Expected exactly one Expo-generated Xcode project' unless projects.length == 1
 project = Xcodeproj::Project.open(projects.fetch(0))
+watch_name = 'ALLIN365Watch'
 app_target = project.targets.select do |target|
-  target.product_type == 'com.apple.product-type.application'
+  target.product_type == 'com.apple.product-type.application' &&
+    target.name != watch_name
 end
+# Modern watchOS single-target applications share the app product type;
+# exclude our own Watch target on subsequent idempotent prebuild runs.
 abort 'Expected exactly one Expo iPhone application target' unless app_target.length == 1
 iphone = app_target.fetch(0)
-watch_name = 'ALLIN365Watch'
 watch_bundle = "#{bundle_id}.watchkitapp"
 
 watch_files = %w[ALLIN365WatchApp.swift WatchPairingChallengeSigner.swift]
