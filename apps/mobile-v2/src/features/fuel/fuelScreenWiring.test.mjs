@@ -85,10 +85,18 @@ test('founder build configurations do not enable unaccepted Fuel read or write f
  const eas=JSON.parse(source('../../../eas.json'));
  assert.match(example,/^EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED=false$/m);
  assert.match(example,/^EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED=false$/m);
+ for(const flag of ['PLAN_ENABLED','STOCK_READ_ENABLED',
+  'MANUAL_SHOPPING_WRITE_ENABLED','PURCHASE_CONFIRM_ENABLED']){
+  assert.ok(example.includes('EXPO_PUBLIC_V2_KITCHEN_'+flag+'=false'));
+ }
  for(const profile of Object.values(eas.build??{})){
   const env=profile?.env??{};
   assert.notEqual(env.EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED,'true');
   assert.notEqual(env.EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED,'true');
+  for(const flag of ['PLAN_ENABLED','STOCK_READ_ENABLED',
+   'MANUAL_SHOPPING_WRITE_ENABLED','PURCHASE_CONFIRM_ENABLED']){
+   assert.notEqual(env['EXPO_PUBLIC_V2_KITCHEN_'+flag],'true');
+  }
  }
 });
 
