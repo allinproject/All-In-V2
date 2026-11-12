@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
-import {stageLargeAccountExport,streamLargeAccountExport} from './trainingExportLargeArchive.mjs';
+import {stageLargeAccountExport,streamLargeAccountExport,createLargeAccountDownloadResponse} from './trainingExportLargeArchive.mjs';
 const owner='11111111-1111-4111-8111-111111111111';
 const another='22222222-2222-4222-8222-222222222222';
 const requestId='33333333-3333-4333-8333-333333333333';
@@ -105,4 +105,42 @@ test('incomplete manifest, wrong collection contract and invalid cursor fail clo
  const cursor=fixture({badCursor:true});
  await assert.rejects(stageLargeAccountExport({requestId,collections,services:cursor.services}),/Unstable/);
  assert.equal(cursor.purges,1);
+});
+
+test('direct attachment has no signed URL, token, cache, or public CORS headers',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ const response=await createLargeAccountDownloadResponse({requestId,collections,services:f.services});
+ assert.equal(response.status,200);
+ assert.equal(response.headers.get('cache-control'),'private, no-store, max-age=0');
+ assert.equal(response.headers.get('content-type'),'application/x-ndjson; charset=utf-8');
+ assert.equal(response.headers.get('x-content-type-options'),'nosniff');
+ assert.match(response.headers.get('content-disposition'),/attachment/);
+ assert.equal(response.headers.get('access-control-allow-origin'),null);
+ const data=await response.text();
+ assert(data.length>5*1024*1024);
+ assert(!JSON.stringify([...response.headers]).includes('signed'));
+});
+test('invalid Auth or missing private manifest refuses HTTP success before headers',async()=>{
+ const f=fixture();
+ await assert.rejects(createLargeAccountDownloadResponse({
+  requestId,collections,services:f.services
+ }),/Unverified/);
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ f.services.authorizeExport=async()=>({ownerId:another,activeSession:false,exportPermitted:false});
+ await assert.rejects(createLargeAccountDownloadResponse({
+  requestId,collections,services:f.services
+ }),/revoked/);
+});
+test('revoked Auth during an attachment makes the response body fail, not a valid complete download',async()=>{
+ const f=fixture();
+ await stageLargeAccountExport({requestId,collections,services:f.services});
+ let n=0;
+ const original=f.services.authorizeExport;
+ f.services.authorizeExport=async (...args)=>{
+  n++;const current=await original(...args);
+  return n>2?{...current,activeSession:false}:current;
+ };
+ const response=await createLargeAccountDownloadResponse({requestId,collections,services:f.services});
+ await assert.rejects(response.text(),/revoked/);
 });
