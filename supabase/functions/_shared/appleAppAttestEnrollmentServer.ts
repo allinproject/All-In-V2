@@ -36,6 +36,10 @@ export type VerifiedAppleReceiptService={
  verifyAppleSignedReceipt(input:{
   receiptB64url:string;appId:string;keyId:string;
   publicKeySpkiBase64url:string;nowMs:number;
+  /** SHA-256 of the exact authenticated challenge passed to attestKey. */
+  clientDataHashBase64url:string;
+  /** Signed receipt must belong to the same Apple environment as attestation. */
+  environment:'sandbox'|'production';
  }):Promise<{trusted:true;receiptSha256:string}>;
 };
 function requireSession(s:AppleEnrollmentSession|null,nowMs:number){
@@ -84,17 +88,19 @@ export async function completeAppAttestEnrollment(
     challenge.sessionId!==identity.sessionId||
     challenge.consumedAtMs!==null||challenge.expiresAtMs<=nowMs)
    throw Error('App Attest challenge missing, expired or consumed');
+  const challengeData=appAttestChallengeData(
+   identity.ownerId,identity.sessionId,input.challengeId,challenge.appId);
   const review=inspectAppleAppAttestation({
    attestationB64url:input.attestationObjectB64url,keyId:input.keyId,
-   appId:challenge.appId,
-   challengeData:appAttestChallengeData(
-    identity.ownerId,identity.sessionId,input.challengeId,challenge.appId),
+   appId:challenge.appId,challengeData,
    environment:challenge.environment,nowMs,
   });
   const receipt=await receiptService.verifyAppleSignedReceipt({
    receiptB64url:review.receiptB64url,appId:review.appId,
    keyId:review.keyId,publicKeySpkiBase64url:review.publicKeySpkiBase64url,
-   nowMs,
+   clientDataHashBase64url:createHash('sha256').update(challengeData)
+    .digest('base64url'),
+   environment:challenge.environment,nowMs,
   });
   if(!receipt||receipt.trusted!==true||
     !/^[a-f0-9]{64}$/.test(receipt.receiptSha256))
