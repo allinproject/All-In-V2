@@ -144,7 +144,7 @@ BEGIN
     RAISE EXCEPTION 'source ingredient identity not active'
       USING ERRCODE='23514';
   END IF;
-  SELECT count(*),min(s.id) INTO v_source_count,v_source
+  SELECT count(*),(array_agg(s.id))[1] INTO v_source_count,v_source
     FROM public.v2_ingredient_profile_sources ps
     JOIN public.v2_ingredient_source_records s ON s.id=ps.source_record_id
     WHERE ps.profile_id=p_profile_id AND ps.evidence_role='primary'
