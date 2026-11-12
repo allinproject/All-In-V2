@@ -5,12 +5,14 @@ import {supabase} from '../../lib/supabase.ts';
 import {colors} from '../../theme/tokens.ts';
 import {coachServicesForSupabase,createCoachOwnerClient,
  V2_COACH_READ_ENABLED,V2_COACH_SEND_ENABLED,
- type CoachMessage,type CoachSendCommand} from './coachOwnerClient.ts';
+ type CoachMessage,type CoachSendCommand,type CoachHistoryCursor} from './coachOwnerClient.ts';
 const secureId=()=>{try{return randomUUID()}catch{return null}};
 const offline='Coach is not connected yet. Existing conversations are not assumed empty.';
 export function CoachConversationPanel({ownerId}:{ownerId:string}){
  const [thread,setThread]=useState<string|null>(null);
  const [messages,setMessages]=useState<CoachMessage[]|null>(null);
+ const [olderCursor,setOlderCursor]=useState<CoachHistoryCursor|null>(null);
+ const [loadingOlder,setLoadingOlder]=useState(false);
  const [draft,setDraft]=useState('');
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState<string|null>(null);
@@ -22,7 +24,7 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;retry.current=null}},[]);
  useEffect(()=>{
   let current=true;
-  setThread(null);setMessages(null);
+  setThread(null);setMessages(null);setOlderCursor(null);setLoadingOlder(false);
   if(!V2_COACH_READ_ENABLED||!candidate.current){
    setNotice(offline);return()=>{current=false};
   }
@@ -38,11 +40,37 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
    if(!current||!mounted.current)return;
    if(history.status!=='ready'){setNotice(offline);return;}
    setMessages([...history.messages].reverse());
+   setOlderCursor(history.nextCursor);
    setNotice(history.hasMore?'Showing recent saved history. Older paging is pending.':null);
   })().catch(()=>{if(current&&mounted.current)setNotice(offline)})
    .finally(()=>{if(current&&mounted.current)setBusy(false)});
   return()=>{current=false};
  },[ownerId,revision]);
+ const loadOlder=()=>{
+  if(!thread||!olderCursor||loadingOlder||busy)return;
+  const capturedCursor=olderCursor,capturedThread=thread;
+  setLoadingOlder(true);
+  const client=createCoachOwnerClient(coachServicesForSupabase(supabase),
+   ownerId,()=>mounted.current);
+  void client.history(capturedThread,capturedCursor).then(page=>{
+   if(!mounted.current)return;
+   if(page.status!=='ready'){
+    setNotice('Older saved Coach history could not be verified.');
+    return;
+   }
+   setMessages(previous=>{
+    if(!previous)return previous;
+    const known=new Set(previous.map(m=>m.id));
+    if(page.messages.some(m=>known.has(m.id))){
+     setNotice('Coach history changed during paging. Refresh to reconcile.');
+     return previous;
+    }
+    return [...page.messages].reverse().concat(previous);
+   });
+   setOlderCursor(page.nextCursor);
+  }).catch(()=>{if(mounted.current)setNotice('Older history is unavailable.')})
+   .finally(()=>{if(mounted.current)setLoadingOlder(false)});
+ };
  const send=()=>{
   if(!V2_COACH_SEND_ENABLED||!V2_COACH_READ_ENABLED||!thread||!messages||
      !draft.trim()||saving.current)return;
@@ -70,17 +98,23 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
   <Text accessibilityRole="header" style={styles.heading}>Your Coach</Text>
   <Text style={styles.muted}>Private conversation. Verified plans and restrictions outrank old suggestions.</Text>
   {messages===null?<Text style={styles.notice}>{notice??(busy?'Loading saved Coach history…':offline)}</Text>:
+   <View style={styles.historyShell}>
+    {olderCursor?<Pressable accessibilityRole="button" accessibilityLabel="Load older saved Coach messages"
+     disabled={loadingOlder||busy} onPress={loadOlder}>
+     <Text style={styles.link}>{loadingOlder?'Loading older messages…':'Load older saved messages'}</Text>
+    </Pressable>:null}
    <ScrollView style={styles.scroll} contentContainerStyle={styles.messages}>
     {messages.length===0?<Text style={styles.muted}>No messages in the verified conversation.</Text>:
      messages.map(m=><View key={m.id} style={styles.bubble}>
       <Text style={styles.role}>{m.role==='user'?'You':'Coach'}</Text>
       <Text style={styles.body}>{m.content}</Text>
      </View>)}
-   </ScrollView>}
+   </ScrollView>
+   </View>}
   {notice&&messages!==null?<Text style={styles.notice}>{notice}</Text>:null}
   {V2_COACH_READ_ENABLED&&thread?<Pressable accessibilityRole="button"
    accessibilityLabel="Refresh saved Coach history" disabled={busy}
-   onPress={()=>{retry.current=null;setRevision(v=>v+1)}}>
+   onPress={()=>setRevision(v=>v+1)}>
    <Text style={styles.link}>Refresh saved messages</Text></Pressable>:null}
   {V2_COACH_SEND_ENABLED&&V2_COACH_READ_ENABLED&&thread&&messages?
    <View style={styles.compose}>
@@ -100,7 +134,7 @@ const styles=StyleSheet.create({
  heading:{color:colors.warmWhite,fontSize:24,fontWeight:'800'},
  muted:{color:colors.mutedText,fontSize:14,lineHeight:22},
  notice:{color:colors.goldSoft,fontSize:14,lineHeight:22},
- scroll:{maxHeight:450},messages:{gap:10,paddingBottom:6},
+ historyShell:{gap:6},scroll:{maxHeight:450},messages:{gap:10,paddingBottom:6},
  bubble:{backgroundColor:colors.surfaceRaised,padding:13,borderRadius:12,gap:6},
  role:{fontSize:12,fontWeight:'800',color:colors.goldSoft},
  body:{color:colors.warmWhite,fontSize:15,lineHeight:22},
