@@ -195,6 +195,31 @@ BEGIN
 END $coach_export$;
 RESET ROLE;
 
+-- A large accumulated Coach history must NEVER be silently truncated by
+-- the inline JSON snapshot. Keep the existing 5 MB fail-closed boundary until
+-- the separately approved streaming, encrypted downloadable export is ready.
+INSERT INTO public.v2_coach_messages
+ (user_id,thread_id,role,content,client_action_id)
+SELECT '61111111-6111-4111-8111-611111111111'::uuid,
+       'a1111111-6111-4111-8111-611111111111'::uuid,
+       'user',repeat('L',30000),gen_random_uuid()
+FROM generate_series(1,180);
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','61111111-6111-4111-8111-611111111111',true);
+DO $large_export$
+BEGIN
+ BEGIN
+  PERFORM public.v2_export_my_account_snapshot('61111111-6111-4111-8111-611111111111');
+  RAISE EXCEPTION 'Oversized Coach export was incorrectly returned inline';
+ EXCEPTION WHEN SQLSTATE '54000' THEN NULL;
+ END;
+ RAISE NOTICE 'PASS: large owner history must use a secure non-inline export';
+END $large_export$;
+RESET ROLE;
+DELETE FROM public.v2_coach_messages
+ WHERE user_id='61111111-6111-4111-8111-611111111111'
+   AND octet_length(content)=30000;
+
 -- Owner A deletion must remove ALL Coach rows and leave B intact.
 DELETE FROM auth.users WHERE id='61111111-6111-4111-8111-611111111111';
 DO $coach_delete$
