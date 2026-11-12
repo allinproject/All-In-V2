@@ -214,6 +214,43 @@ The standalone rollback-only behavior/approval tests are tracked under
 Supabase replay workflow. The candidate still lacks final behavior source
 proof and published app UI acceptance, so it is not deployable.
 
+## Durable reviewed Goal acceptance candidate (2026-11-12)
+
+The **same canonical Goals owner** now has an additional review-only
+`docs/architecture/sql/V2-GOALS-DURABLE-REVIEW-GATE-CANDIDATE.sql`.
+It introduces an internal `allin_private.v2_goal_approval_reviews` record for
+the *exact* athlete, Auth session, Goal, candidate revision, action UUID,
+expected version, reviewed payload SHA-256, explicit athlete confirmation,
+review time, and strictly bounded expiration. It does **not** create another
+Goal, Training plan, calendar, habit engine, EventHub registry or consent UI.
+
+The private `v2_goal_commit_reviewed_candidate` gateway locks the current
+Auth session and reviewed record, checks exact match and time bounds, then
+invokes the existing canonical revision writer **in the same transaction**.
+Exact retries return the existing action receipt; changed fingerprints,
+cross-account sessions, expired reviews and revoked sessions fail closed.
+The completed review and idempotent acceptance evidence are retained until
+actual account deletion. Client and service-role EXECUTE grants are withheld.
+
+The existing source-only
+`supabase/functions/_shared/goalAcceptanceAuthServices.mjs` passes the
+exact persisted `reviewId` and server-derived fingerprint to that gateway,
+not a client-supplied owner or digest. It remains default-off with no deployed
+Edge Function. The **trusted issuance path remains an explicit blocker**:
+an authenticated UI confirmation must be independently verified by the
+canonical server owner, and the exact visible preview and approved digest
+must be recorded before the review row can be issued. This candidate uses
+synthetic receipts solely for disposable local SQL acceptance; the
+existence of a row does **not** establish that any real user reviewed a Goal.
+
+Validation inputs:
+`scripts/test-v2-goals-durable-review-local-postgres.psql` and existing
+`.github/workflows/v2-foundation-clean-replay.yml`. No actual hosted
+tables, grants, private gateway, user account, or installed device are
+changed by these source files. Final publication requires security owner
+approval, audited issuance with live session and rate-limit controls,
+approved migrations, and real two-account installed-app acceptance.
+
 ## 3. Table-by-table proposed contract
 
 ### 3.1 public.v2_goals — stable goal identity
