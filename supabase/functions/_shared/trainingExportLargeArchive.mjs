@@ -101,7 +101,8 @@ export async function stageLargeAccountExport({requestId,collections,services}){
     if(pages.length>=MAX_CHUNKS)throw Error('Account export page limit exceeded');
     await ownerGate(services,requestId,ownerId);
     const page=await services.readPage({ownerId,requestId,collection,cursor,limit:MAX_PAGE_ROWS});
-    if(!page||!Array.isArray(page.rows)||page.rows.length>MAX_PAGE_ROWS
+    if(!page||page.ownerId!==ownerId||page.collection!==collection
+      ||!Array.isArray(page.rows)||page.rows.length>MAX_PAGE_ROWS
       ||page.rows.some(row=>!row||typeof row!=='object'||Array.isArray(row))
       ||typeof page.done!=='boolean')throw Error('Invalid canonical account export page');
     if(!page.done && (page.rows.length===0||typeof page.nextCursor!=='string'
