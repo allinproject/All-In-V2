@@ -10,7 +10,7 @@ import {verifyAppleStoreTransaction} from './appleStoreTransactionVerification.m
 import {verifyGooglePlaySubscription} from './googlePlaySubscriptionVerification.mjs';
 import {obfuscatedGoogleBillingAccountId} from './googleBillingAccountBinding.mjs';
 const uuid=v=>typeof v==='string'&&
- /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
+ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
 
 export async function verifyNativePurchaseForBinding({
  platform,authenticatedOwnerId,rawEvidence,
