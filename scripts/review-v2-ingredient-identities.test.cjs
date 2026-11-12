@@ -130,7 +130,7 @@ test('cannot promote ambiguous canned bean aliases or yield across states',()=>{
  const clone=()=>JSON.parse(JSON.stringify(original));
  const badAlias=clone(),beans=badAlias.records.find(x=>x.source_profile_key==='beans_kidney_canned_drained');
  beans.exact_alias_candidates.push({value:'kidney beans',kind:'source_scoped_exact',preparation_state:'cooked_drained',
- selection_scope:'requires_explicit_source_form_confirmation',status:'pending_owner_acceptance'});
+ selection_scope:'requires_explicit_source_form_confirmation',status:'founder_approved_source_scoped_alias_policy'});
  assert(reviewAliasAndPreparationAcceptance(badAlias,sources).issues.some(x=>x.code==='search_only_alias_promoted_to_exact'));
  const badState=clone();badState.records[0].preparation_state='raw';
  assert(reviewAliasAndPreparationAcceptance(badState,sources).issues.some(x=>x.code==='source_identity_or_preparation_scope_mismatch'));
@@ -145,7 +145,7 @@ test('cross-source exact alias collisions, missing records and premature documen
  const clone=()=>JSON.parse(JSON.stringify(original));
  const collisions=clone(),a=collisions.records[0].exact_alias_candidates[0];
  collisions.records[1].exact_alias_candidates.push({...a,preparation_state:collisions.records[1].preparation_state});
- assert.equal(reviewAliasAndPreparationAcceptance(collisions,sources).structuralScopePassed,true); // separate preparation-state scopes
+ assert(!reviewAliasAndPreparationAcceptance(collisions,sources).issues.some(x=>x.code==='cross_source_exact_alias_collision')); // separate state scopes; still fails approved alias allowlist
  collisions.records[2].exact_alias_candidates.push({...collisions.records[1].exact_alias_candidates[0]});
  assert(reviewAliasAndPreparationAcceptance(collisions,sources).issues.some(x=>x.code==='cross_source_exact_alias_collision'));
  const missing=clone();missing.records.pop();
