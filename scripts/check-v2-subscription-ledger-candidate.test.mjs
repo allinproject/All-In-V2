@@ -210,3 +210,18 @@ test('release-source attestation binds exact review-only ledger and grants', asy
  assert.equal(broad.ok,false);
  assert.match(broad.problems.join('; '),/Unreviewed grant|Disallowed client grant/);
 });
+
+test('readonly postdeploy catalog audit cannot mutate or authorize purchases',()=>{
+ const audit=readFileSync(new URL('./verify-v2-billing-postdeploy-readonly.psql',import.meta.url),'utf8');
+ const executable=audit.replace(/^\s*--[^\n]*$/gm,'');
+ assert.match(executable,/\bBEGIN READ ONLY\s*;/);
+ assert.match(executable,/\bCOMMIT\s*;/);
+ assert.match(executable,/has_schema_privilege\(/);
+ assert.match(executable,/has_function_privilege\(/);
+ assert.match(executable,/has_sequence_privilege\(/);
+ assert.match(executable,/has_table_privilege\(/);
+ assert.match(executable,/pg_policy/);
+ assert.match(executable,/search_path=""/);
+ assert.doesNotMatch(executable,/^\s*(?:CREATE|ALTER|DROP|GRANT|REVOKE|TRUNCATE|INSERT|UPDATE|DELETE|SET ROLE|CALL)\b/im);
+ assert.doesNotMatch(executable,/pg_catalog\.setval\(|dblink|http_post|net\.http_post/i);
+});
