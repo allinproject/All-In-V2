@@ -380,3 +380,27 @@ The existing proposed canonical Ingredient Database continues to own identities.
 **Implemented candidate identity preflight:** `scripts/review-v2-ingredient-identities.cjs` and `.test.cjs` are a temporary *offline validation/check* on **separately reviewed** candidate JSON objects. They do not assign stable V2 IDs, write any database, call a provider, grant reviewer credentials or resolve ambiguous aliases. Required review fields: source profile key; proposed canonical name, identity kind `generic_food|branded_product`, preparation state `raw|cooked|cooked_drained|dry|as_sold|prepared`, locale, aliases; reviewed brand identity for branded goods; full external record tuple `provider+source_data_type+external_record_id` if present. GTINs stay strings with leading zeros. If an exact alias+locale+state belongs to different source identities, or an external source identity maps to competing candidates, surface a conflict rather than merging. Same food may have distinct raw/cooked profiles; ingredient identity and state-specific nutrition profile remain separate levels. Zero issues means **only structural preflight**; every output still has `calculationReady:false`, `publicationApproved:false`, `validForAutomaticMerge:false`.
 
 The identity candidate preflight uses the existing targeted Cookbook no-deploy CI workflow rather than creating a competing job; script/test changes are path-triggered. The latest 12 committed tests passed in an isolated JavaScript harness, **not confirmed GitHub Actions/Node CI**. All code lives on `integration/v2-foundation`, no schema migration or seed applied. Real USDA Foundation source archive remains unacquired/unvalidated per the ALL-228 PC checkpoint. Ingredient source-ownership review, final physical schema/RLS review under ALL-222, source revisions and approved canonical writer are outstanding. This is progress on identity review **not final identity certification**.
+
+
+## USDA October 2026 Foundation Foods archive — ACTUAL BYTE VERIFICATION (2026-11-12)
+
+**This updates the earlier 'not acquired / DNS failed' checkpoint above, without granting schema, seed, identity or nutrient approval.** The official [USDA download listing](https://fdc.nal.usda.gov/download-datasets/) names Foundation Foods October 2026 JSON (~681K ZIP, ~9M uncompressed). A separate hosted Python environment successfully downloaded the actual file directly from the exact official [2026-10-29 ZIP URL](https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_json_2026-10-29.zip) twice, with matching independent SHA-256, HTTP 200 and content type application/zip.
+
+| Verification property | Observed actual source bytes |
+|---|---|
+| Archive bytes | 696,866 |
+| Archive SHA-256 | `dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579` |
+| ZIP members | Exactly 1, safe filename `FoodData_Central_foundation_food_json_2026-10-29.json` |
+| Uncompressed JSON bytes | 9,349,340 |
+| Member CRC32 | `8a8cde99` |
+| Full ZIP CRC check | Passed (`ZipFile.testzip() is None`) |
+| Uncompressed JSON SHA-256 | `990e7731dcec30cecbbb212896a0fe4333f38c65ce7f525e2b679f0dc27658a1` |
+| JSON root | `FoundationFoods` |
+| Actual food records / distinct FDC IDs | 424 / 424 |
+| `dataType` | All 424 equal `Foundation` |
+| Missing food descriptions / foods without nutrient entries | 0 / 0 |
+| Total per-food nutrient entries | 22,138 |
+
+The evidence record is versioned at `docs/evidence/ALL-228-USDA-FOUNDATION-2026-10-29-SOURCE-VERIFICATION.json`; it matches the manifest contract already used by `scripts/verify-v2-usda-foundation-manifest.mjs`. **The full 696,866 ZIP bytes were verified in an isolated hosted environment but are not deposited in this Git repository, the V2 Supabase project, or the user's PC.** The committed record provides a reference SHA against which any subsequent on-PC download can be checked, rather than pretending a locally retained archive exists.
+
+**Remaining acceptance:** official ZIP byte integrity and JSON structural inventory are verified; individual nutrient mappings, approved ingredient identities/preparation state/source rights, canonical database writer and RLS (ALL-222), USDA profile review, seed idempotency, application integration, and production migration are **not** verified or authorized. No USDA records were ingested or marked calculation-ready. If the official URL later serves different bytes, treat it as source change requiring new evidence and review—not a silent manifest replacement.
