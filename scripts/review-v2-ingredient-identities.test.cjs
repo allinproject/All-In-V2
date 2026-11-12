@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {normalize,review,reviewSourceBindings,reviewAliasAndPreparationAcceptance}=require('./review-v2-ingredient-identities.cjs');
+const {normalize,review,reviewSourceBindings,reviewAliasAndPreparationAcceptance,assessAutomaticSourceEvidence}=require('./review-v2-ingredient-identities.cjs');
 function food(key,state='cooked') {return {source_profile_key:key,canonical_name:'Chicken breast',
   identity_kind:'generic_food',preparation_state:state,locale:'en',
   aliases:['Chicken breast, boneless']};}
@@ -184,4 +184,51 @@ test('approved names and incompatible food forms cannot be broadened into aliase
  value:'red onion',kind:'source_scoped_exact',preparation_state:'raw',
  selection_scope:'requires_explicit_source_form_confirmation',status:'founder_approved_source_scoped_alias_policy'});
  assert(reviewAliasAndPreparationAcceptance(broadExact,sources).issues.some(x=>x.code==='approved_display_name_state_or_exact_alias_changed'));
+});
+
+test('automatic ingredient evidence preflight combines exact SHA, USDA nutrients and scoped identity',()=>{
+ const {createHash}=require('node:crypto');
+ const candidate=(key,fdcId,label='Green Cabbage')=>({
+   source_profile_key:key,canonical_name:label,identity_kind:'generic_food',
+   preparation_state:'raw',locale:'en',aliases:[label+' raw'],
+   sources:[{provider:'usda_fdc',source_data_type:'Foundation',external_record_id:String(fdcId)}]
+ });
+ const doc=(key,fdcId,values)=> {
+   const nutrition={provider:'usda_fdc',dataType:'Foundation',fdcId,
+     basis_quantity:100,basis_unit:'g',
+     foodNutrients:values || [
+       {nutrient:{id:2048,unitName:'kcal'},amount:30},
+       {nutrient:{id:1003,unitName:'g'},amount:2},
+       {nutrient:{id:1005,unitName:'g'},amount:5},
+       {nutrient:{id:1004,unitName:'g'},amount:0.3}]
+   };
+   const payload_utf8=JSON.stringify(nutrition);
+   return {source_profile_key:key,payload_utf8,
+      payload_sha256:createHash('sha256').update(payload_utf8,'utf8').digest('hex')};
+ };
+ const identity=candidate('cabbage_raw',2346407);
+ const evidence=doc('cabbage_raw',2346407);
+ const success=assessAutomaticSourceEvidence([identity],[evidence]);
+ assert.equal(success.automaticPreflightPassed,true);
+ assert.equal(success.results[0].automatedChecksPassed,true);
+ assert.equal(success.results[0].exceptionQueueRequired,false);
+ assert.equal(success.results[0].calculationReady,false);
+ assert.equal(success.results[0].authorizedToWrite,false);
+ const tampered=assessAutomaticSourceEvidence([identity],[{...evidence,payload_sha256:'0'.repeat(64)}]);
+ assert(tampered.results[0].issues.includes('source_payload_sha256_mismatch'));
+ const mismatch=assessAutomaticSourceEvidence([identity],[doc('cabbage_raw',790577)]);
+ assert(mismatch.results[0].issues.includes('source_reference_payload_mismatch'));
+ const missingMacro=doc('cabbage_raw',2346407,[{nutrient:{id:2048,unitName:'kcal'},amount:30}]);
+ const invalid=assessAutomaticSourceEvidence([identity],[missingMacro]);
+ assert(invalid.results[0].issues.includes('nutrition:missing_protein_g'));
+ const conflict=assessAutomaticSourceEvidence(
+   [identity,candidate('another_cabbage',790577)],
+   [evidence,doc('another_cabbage',790577)]);
+ assert(conflict.results.every(x=>x.exceptionQueueRequired));
+ assert(conflict.results.some(x=>x.issues.includes('identity:alias_scope_conflict')));
+ const duplicate=assessAutomaticSourceEvidence([identity],[evidence,evidence]);
+ assert(duplicate.results[0].issues.includes('duplicate_source_document'));
+ const orphan=assessAutomaticSourceEvidence([identity],[evidence,doc('orphan',123)]);
+ assert(orphan.results.some(x=>x.issues.includes('orphan_source_document')));
+ assert.equal(orphan.publicationApproved,false);
 });
