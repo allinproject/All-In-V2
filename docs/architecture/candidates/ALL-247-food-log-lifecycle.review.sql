@@ -3,6 +3,10 @@
 alter table public.v2_food_log_entries
  add column deleted_at timestamptz,
  add column updated_at timestamptz not null default now();
+-- Ordinary owner reads must hide tombstones; retention/export is handled by ALL-251.
+alter policy v2_food_log_entries_select_own on public.v2_food_log_entries
+ using ((select auth.uid())=user_id and deleted_at is null);
+
 create index v2_food_log_entries_active_day_idx
  on public.v2_food_log_entries(user_id,local_date)
  where deleted_at is null;
