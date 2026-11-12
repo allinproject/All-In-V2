@@ -27,7 +27,7 @@ export type PairingBackend={
 };
 const encoder=new TextEncoder();
 const uuid=(s:unknown):s is string=>typeof s==='string'&&
- /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+ /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 const deviceRef=(s:unknown):s is string=>typeof s==='string'&&
  s.length>=1&&s.length<=250&&s.trim()===s;
 const providers=new Set(['apple_watch','apple_healthkit','supported_equipment']);
