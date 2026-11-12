@@ -24,8 +24,12 @@ test('paid V2 engineering validation cannot run automatically on integration pus
     assert.match(pushBlock[1], /branches: \[integration\/v2-foundation\]/);
     assert.match(pushBlock[1], /paths:\n\s+- '\.github\/workflows\/v2-engineering\.yml'/);
     const allowedPaths=[...pushBlock[1].matchAll(/^\s+- '([^']+)'/gm)].map(m=>m[1]);
-    assert.deepEqual(allowedPaths,['.github/workflows/v2-engineering.yml'],
-      'Engineering push must be restricted to its own workflow file');
+    assert.deepEqual(allowedPaths,[
+      '.github/workflows/v2-engineering.yml',
+      'apps/mobile-v2/eas.json',
+      'scripts/check-v2-founder-ios-build.mjs',
+      'scripts/check-v2-founder-ios-build.test.mjs',
+    ], 'Engineering push must be restricted to reviewed CI and founder-build configuration files');
   }
   assert.match(events, /^  pull_request:/m);
   assert.match(events, /ready_for_review/);
