@@ -55,6 +55,11 @@ def main():
                     "-X", "-v", "ON_ERROR_STOP=1", "-At", "-d", database,
                     "-c", statement], check=check)
     def client(actor, statement, *, check=False):
+        # Dedicated reviewer logins have NOINHERIT. Explicit SET ROLE
+        # activates only the scoped function grant; session_user remains the
+        # human login that the SECURITY DEFINER function verifies.
+        if actor in actors:
+            statement = "SET ROLE allin_v2_ingredient_reviewer; " + statement
         env = {**os.environ, "PGPASSWORD": passwords[actor]}
         return run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-At",
                     "-h", "127.0.0.1", "-p", "5432",
@@ -72,7 +77,7 @@ def main():
             run(["runuser", "-u", "postgres", "--", "psql", "-X", "-v",
                  "ON_ERROR_STOP=1", "-d", db], input_text=content)
         for actor in logins:
-            admin(f"CREATE ROLE {ident(actor)} LOGIN PASSWORD {lit(passwords[actor])}")
+            admin(f"CREATE ROLE {ident(actor)} LOGIN NOINHERIT PASSWORD {lit(passwords[actor])}")
             admin(f"GRANT CONNECT ON DATABASE {ident(db)} TO {ident(actor)}")
         for actor in actors:
             admin(f"GRANT allin_v2_ingredient_reviewer TO {ident(actor)}")
