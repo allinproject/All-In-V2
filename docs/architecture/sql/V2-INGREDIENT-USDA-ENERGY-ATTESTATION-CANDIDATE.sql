@@ -83,7 +83,12 @@ BEGIN
   IF v_actor::text IN ('anon','authenticated','service_role','authenticator','postgres')
     OR NOT pg_has_role(v_actor::text,'allin_v2_ingredient_reviewer','member')
     OR NOT EXISTS (SELECT 1 FROM allin_private.v2_ingredient_review_operators o
-       WHERE o.login_role=v_actor AND o.enabled)
+       WHERE o.login_role=v_actor AND o.enabled=true
+         AND o.identity_issuer IS NOT NULL AND o.identity_subject IS NOT NULL
+         AND o.identity_verified_at IS NOT NULL
+         AND o.credential_vault_reference IS NOT NULL
+         AND o.credential_expires_at > clock_timestamp()
+         AND o.revoked_at IS NULL)
   THEN
     RAISE EXCEPTION 'unauthorized ingredient energy reviewer' USING ERRCODE='42501';
   END IF;
