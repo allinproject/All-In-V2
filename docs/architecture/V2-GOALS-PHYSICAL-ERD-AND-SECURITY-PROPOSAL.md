@@ -154,6 +154,38 @@ to an unavailable authoritative Event owner. Those remain dependent on ALL-239,
 ALL-243, ALL-244 and ALL-222 review. A passing SQL replay demonstrates only
 the stated identities, ownership constraints, role isolation and replayability.
 
+## Review-only Goal acceptance writer (2026-11-11)
+
+`docs/architecture/sql/V2-GOALS-REVISION-ACCEPTANCE-WRITER-CANDIDATE.sql`
+extends the **same** canonical Goals owner with a private, per-user action
+receipt ledger and a proposed `public.v2_goal_accept_revision_candidate`
+writer. This is source-only review work, **not a migration, deployed API,
+activated app action or approval to grant access**.
+
+The candidate writer locks the current goal first, verifies the owner still
+exists, requires an exact expected version, ensures the candidate is owned by
+that goal and the next numbered revision, supersedes only the previous
+accepted revision and atomically sets the new active revision/version.
+A repeated exact action returns its original version; a changed fingerprint,
+revision, goal or stale new action fails closed. The existing history guard
+still prevents in-place updates of published content. No source metric,
+Training plan or EventHub record is created by accepting a Goal.
+
+**Service trust boundary:** App roles have no EXECUTE permission. The
+candidate is SECURITY DEFINER and must be invoked ONLY through a future
+reviewed server adapter that independently authenticates the live user,
+authorizes user intent, binds that owner to `p_user_id`, validates the
+approved preview/fingerprint, enforces rate limits and handles receipts.
+The proposed RPC's role check is defense in depth, **not** a substitute for
+the server verifying the athlete's actual session or explicit approval.
+No `service_role` EXECUTE grant is issued by this candidate.
+
+The disposable Supabase validation file
+`scripts/test-v2-goals-acceptance-local-postgres.psql` must pass before
+owner review can proceed. Live publication also requires a second-session
+concurrency race, complete metric/behavior evidence owner approvals, exact
+Goal/Event binding and independent least-privilege security acceptance.
+
 ## 3. Table-by-table proposed contract
 
 ### 3.1 public.v2_goals — stable goal identity
