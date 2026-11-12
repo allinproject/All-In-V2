@@ -16,6 +16,7 @@ function validateFdcNutrients(input) {
      !/^[1-9][0-9]*$/.test(String(input.fdcId||''))||
      input.basis_quantity!==100||input.basis_unit!=='g'||!Array.isArray(input.foodNutrients))
     return {status:'review_required',issues:['invalid_source_identity_or_basis'],
+      automatedSourceChecksPassed:false,exceptionQueueRequired:true,
       calculationReady:false,publicationApproved:false};
   const values=new Map();
   for(const row of input.foodNutrients) {
@@ -61,9 +62,13 @@ function validateFdcNutrients(input) {
     missing_core:CORE.filter(key=>facts[key]===null),
     missing_conditional:sodiumRequired&&sodium===null?['sodium_mg']:[],
     optional_nutrients_not_reported_as_zero:true};
-  // A passing *source preflight* is not enough to mark a profile validated.
+  // Source preflight is automated. Human review is for exceptions, not every
+  // passing USDA food. Passing still does not authorize a canonical write or
+  // calculation_ready; identity mapping, source digest and writer gates remain.
+  const automatedSourceChecksPassed=issues.length===0;
   return {status:issues.length?'review_required':'source_core_present_review_only',
-    issues,energyPolicyVersion:ENERGY_POLICY_VERSION,energyMethods:methods,
+    issues,automatedSourceChecksPassed,exceptionQueueRequired:!automatedSourceChecksPassed,
+    energyPolicyVersion:ENERGY_POLICY_VERSION,energyMethods:methods,
     chosenEnergyMethod:selected?.fdc_nutrient_id===ID.energy_specific?'atwater_specific':
       selected?.fdc_nutrient_id===ID.energy_legacy?'legacy_energy':null,
     chosenEnergyNutrientId:selected?.fdc_nutrient_id??null,
