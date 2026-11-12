@@ -159,6 +159,9 @@ jobs:
         run: node --test ../../scripts/prepare-v2-usda-foundation-snapshot.test.mjs
       - name: Test USDA archive manifest verification
         run: node --test ../../scripts/verify-v2-usda-foundation-manifest.test.mjs
+      - name: Validate disabled account-deletion worker policy and non-retry execution
+        run: |
+          node --experimental-strip-types --test ../../supabase/functions/v2-account-deletion-worker/policy.test.mjs ../../supabase/functions/v2-account-deletion-worker/execution.test.mjs
       - name: Validate private account-export Storage and retention adapters
         run: |
           node --test ../../supabase/functions/_shared/trainingExportSupabaseArchive.node.test.mjs
