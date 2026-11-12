@@ -16,6 +16,7 @@ jobs:
     if: github.ref == 'refs/heads/integration/v2-foundation'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: all251-temporary-staging
     env:
       CI: '1'
       ALL251_ALLOW_HOSTED_TEST: 'true'
@@ -30,8 +31,8 @@ jobs:
           node-version: '22.16.0'
       - name: Require isolated staging credentials
         run: |
-          test -n "$ALL251_HOSTED_SERVICE_ROLE_KEY"
-          test -n "$ALL251_HOSTED_ANON_KEY"
+          test -n "$ALL251_HOSTED_SECRET_KEY"
+          test -n "$ALL251_HOSTED_PUBLISHABLE_KEY"
           test "$ALL251_HOSTED_PROJECT_REF" = fbtgknlxjyeqrxemskbl
       - name: Run existing encrypted private Storage acceptance with synthetic files
         run: node scripts/test-v2-account-export-real-local-storage.mjs
