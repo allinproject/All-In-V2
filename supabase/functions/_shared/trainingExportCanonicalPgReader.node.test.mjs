@@ -85,3 +85,70 @@ test('missing trusted DB pool and invalid Auth session rejected',async()=>{
   .withRepeatableReadSnapshot({ownerId:owner,sessionId:'not-a-session',requestId},async()=>{}),/Verified/);
  assert.equal(f.calls.length,0);
 });
+
+test('private media and Storage catalog are read through the same pinned snapshot',async()=>{
+ const calls=[];
+ const client={
+  async query(sql,args){
+   calls.push({sql,args});
+   if(sql.startsWith('BEGIN')||sql.startsWith('SET LOCAL')||['COMMIT','ROLLBACK'].includes(sql))
+    return {rows:[]};
+   if(sql.includes('FROM storage.buckets'))return {rows:[
+    {id:'v2-private-workout-objects',public:false},
+    {id:'v2-private-account-exports',public:false},
+   ]};
+   if(sql.includes('FROM storage.objects'))return {rows:[{
+    name:owner+'/a'.repeat(64)+'/series.fit',
+   }]};
+   if(sql.includes('FROM public.v2_activity_series'))return {rows:[
+    {kind:'series',user_id:owner,object_path:owner+'/a'.repeat(64)+'/series.fit',
+     checksum_sha256:'b'.repeat(64)},
+   ]};
+   throw Error('Unapproved media SQL');
+  },
+  release(){},
+ };
+ const reader=createCanonicalPgAccountReaderCandidate({pool:{connect:async()=>client}});
+ let after;
+ await reader.withRepeatableReadSnapshot({ownerId:owner,sessionId,requestId},async scoped=>{
+  after=scoped;
+  const buckets=await scoped.listBucketCatalog({ownerId:owner,requestId});
+  assert.equal(buckets.length,2);
+  const objects=await scoped.listOwnerStorageObjects({
+    ownerId:owner,requestId,bucketId:'v2-private-workout-objects',
+  });
+  const refs=await scoped.listCanonicalMediaReferences({ownerId:owner,requestId});
+  assert.equal(objects.totalCount,1);
+  assert.equal(objects.paths[0],refs.series[0].object_path);
+  assert.equal(refs.routes.length,0);
+  await assert.rejects(scoped.listOwnerStorageObjects({
+    ownerId:other,requestId,bucketId:'v2-private-workout-objects',
+  }),/Unreviewed/);
+  await assert.rejects(scoped.listOwnerStorageObjects({
+    ownerId:owner,requestId,bucketId:'v2-progress-photos',
+  }),/Unreviewed/);
+ });
+ assert.equal(calls.filter(x=>x.sql.startsWith('BEGIN')).length,1);
+ assert.equal(calls.filter(x=>x.sql==='COMMIT').length,1);
+ assert(calls.some(x=>x.sql.includes('FROM storage.objects')
+   &&x.args[1]===owner+'/%'));
+ await assert.rejects(after.listBucketCatalog({ownerId:owner,requestId}),/closed/);
+});
+test('owner media scan refuses more than the approved 128 objects',async()=>{
+ const client={
+  async query(sql){
+   if(sql.startsWith('BEGIN')||sql.startsWith('SET LOCAL')||['COMMIT','ROLLBACK'].includes(sql))
+    return {rows:[]};
+   if(sql.includes('FROM storage.objects'))return {rows:Array.from({length:129},(_,i)=>({
+    name:owner+'/'+i,
+   }))};
+   throw Error('Unexpected query');
+  },release(){},
+ };
+ const reader=createCanonicalPgAccountReaderCandidate({pool:{connect:async()=>client}});
+ await assert.rejects(reader.withRepeatableReadSnapshot({
+  ownerId:owner,sessionId,requestId,
+ },async scoped=>scoped.listOwnerStorageObjects({
+  ownerId:owner,requestId,bucketId:'v2-private-workout-objects',
+ })),/exceeds review bound/);
+});
