@@ -14,7 +14,7 @@
  */
 import {createHash} from 'node:crypto';
 
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[0-9a-f]{64}$/;
 const PRIVATE_EVIDENCE='v2-private-workout-objects';
 const PRIVATE_OUTPUT='v2-private-account-exports';
