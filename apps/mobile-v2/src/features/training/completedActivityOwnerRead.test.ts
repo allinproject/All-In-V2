@@ -104,12 +104,12 @@ test('partial metric and provider confidence remain distinguishable from trusted
  assert.equal(fromMetric.metrics[0].value,'0');
  const partialProvider=canonicalActivityToScreenInput({...a,sources:[
   {...a.sources[0],quality:'partial'}
- ],metrics:[a.metrics[0]]},'owner-A','activity-1');
+ ],metrics:[a.metrics[0]],sections:[]},'owner-A','activity-1');
  assert.equal(partialProvider.metrics[0].quality,'trusted');
  assert.equal(partialProvider.metrics[0].sourceQuality,'partial');
  const unverifiedProvider=canonicalActivityToScreenInput({...a,sources:[
   {...a.sources[0],quality:'unverified'}
- ],metrics:[a.metrics[0]]},'owner-A','activity-1');
+ ],metrics:[a.metrics[0]],sections:[]},'owner-A','activity-1');
  assert.equal(unverifiedProvider.metrics.length,0);
 });
 
