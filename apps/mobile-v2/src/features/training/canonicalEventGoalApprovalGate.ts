@@ -10,7 +10,10 @@ type OwnerEventEvidence={
   eventId:string; ownerId:string; eventVersion:number;
   date:string; timezone:string; sport:string;
   verification:'organizer_verified'|'partial'|'unverified';
-  participation:'registered'|'athlete_confirmed'|'none'|'group_member';
+  /** Canonical EventParticipation state, never EventHub group membership. */
+  participation:'interested'|'registered'|'attended'|'completed'|
+    'withdrawn'|'none'|'group_member';
+  participationSource:'athlete_confirmed'|'organizer_verified'|null;
   evidenceGeneration:number;
 };
 type OwnerGoalEvidence={
@@ -50,6 +53,8 @@ function validTimezone(value:unknown):value is string{
 }
 /** Cross-domain gate; only authoritative snapshots can pass. No client-supplied
  * EventHub URL/group membership is event registration or race certification.
+ * An athlete-confirmed 'interested' Event permits preview/review only; it
+ * must never appear as organizer-certified registration or a race result.
  */
 export function certifySeasonAgainstGoalEventOwners(
  input:SeasonInput,owners:CanonicalEventGoalApproval|null,
@@ -82,7 +87,8 @@ export function certifySeasonAgainstGoalEventOwners(
     e.ownerId!==input.expectedOwnerId||!Number.isSafeInteger(e.eventVersion)||e.eventVersion<1||
     !validDate(e.date)||!e.date||!validTimezone(e.timezone)||
     e.verification!=='organizer_verified'||e.evidenceGeneration!==input.activeSessionGeneration||
-    !['registered','athlete_confirmed'].includes(e.participation))
+    !['interested','registered','attended','completed'].includes(e.participation)||
+    !['athlete_confirmed','organizer_verified'].includes(e.participationSource))
    return no('event_not_owner_certified');
   events.set(e.eventId,e);
  }
