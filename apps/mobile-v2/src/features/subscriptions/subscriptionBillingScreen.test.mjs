@@ -31,11 +31,16 @@ test('staged subscription screen has no unsafe client checkout or entitlement wr
 test('native account purchase controls mount only behind all four approvals',()=>{
  const actions=readFileSync(new URL('./NativeBillingActions.tsx',import.meta.url),'utf8');
  const runtime=readFileSync(new URL('./nativeBillingRuntime.ts',import.meta.url),'utf8');
+ assert.match(screen,/Platform\.OS === 'ios' \|\| Platform\.OS === 'android'/);
  assert.match(screen,/nativeBillingReleaseGate\.enabled &&/);
  assert.match(screen,/nativeBillingReleaseGate\.signedNativeBuild &&/);
  assert.match(screen,/nativeBillingReleaseGate\.storeCatalogApproved &&/);
- assert.match(screen,/nativeBillingReleaseGate\.serverSecurityApproved/);
+ assert.match(screen,/nativeBillingReleaseGate\.serverSecurityApproved;/);
+ assert.match(screen,/nativeStoreReady \? \(/);
  assert.match(screen,/<NativeBillingActions ownerId=\{ownerId\}/);
+ assert.match(screen,/No charge can be initiated from this screen/);
+ assert.match(screen,/Subscribe or restore using your device's official store/);
+ assert.match(screen,/We confirm access with the billing service/);
  assert.match(runtime,/enabled:false/);
  assert.match(runtime,/signedNativeBuild:false/);
  assert.match(runtime,/storeCatalogApproved:false/);
