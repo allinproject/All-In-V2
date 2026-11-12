@@ -47,6 +47,35 @@ test('Foundation calorie nutrient preference is deterministic', () => {
   assert.equal(result?.calories, 152);
 });
 
+test('conflicting same-nutrient USDA observations cannot silently become calculator evidence', () => {
+  const first = food();
+  const conflict = [
+    ...first.foodNutrients,
+    { nutrientId: 1008, unitName: 'KCAL', value: 999 },
+  ];
+  const forward = normalizeFdcGenericFood(food({ foodNutrients: conflict }), at);
+  const reverse = normalizeFdcGenericFood(food({ foodNutrients: [...conflict].reverse() }), at);
+  for (const result of [forward, reverse]) {
+    assert.equal(result?.calories, null);
+    assert.equal(result?.usable, false);
+    assert.equal(result?.review_required, true);
+    assert.equal(result?.protein_g, 31);
+  }
+});
+
+test('duplicate identical observation is deterministic but invalid duplicate stays unknown', () => {
+  const rows = food().foodNutrients;
+  const same = normalizeFdcGenericFood(food({
+    foodNutrients: [...rows, { nutrientId: 1008, unitName: 'KCAL', value: 165 }],
+  }), at);
+  assert.equal(same?.calories, 165);
+  const invalid = normalizeFdcGenericFood(food({
+    foodNutrients: [...rows, { nutrientId: 1008, unitName: 'KCAL', value: -1 }],
+  }), at);
+  assert.equal(invalid?.calories, null);
+  assert.equal(invalid?.usable, false);
+});
+
 test('missing nutrients remain null and make the candidate unusable', () => {
   const result = normalizeFdcGenericFood(food({
     foodNutrients: [{ nutrientId: 1008, unitName: 'KCAL', value: 100 }],
