@@ -151,5 +151,57 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_device_pair_verified_candidate(
  uuid,uuid,uuid,uuid,text,text,text,text,uuid) TO allin_v2_device_registrar;
 GRANT EXECUTE ON FUNCTION allin_private.v2_device_revoke_candidate(
  uuid,uuid,uuid,uuid) TO allin_v2_device_registrar;
+-- Irreversible private provenance: even a registrar credential cannot
+-- reopen a consumed challenge, un-revoke a device or alter certified identity.
+-- Only fresh server verification may create a new record (unique device scope
+-- requires separate explicit transfer/recovery review).
+CREATE FUNCTION allin_private.v2_device_pairing_immutability_guard_candidate()
+RETURNS trigger LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=''
+AS $guard$
+BEGIN
+ IF TG_TABLE_NAME='v2_device_pairing_challenges_candidate' THEN
+  IF NEW.id IS DISTINCT FROM OLD.id OR
+   NEW.owner_id IS DISTINCT FROM OLD.owner_id OR
+   NEW.session_id IS DISTINCT FROM OLD.session_id OR
+   NEW.device_ref IS DISTINCT FROM OLD.device_ref OR
+   NEW.provider IS DISTINCT FROM OLD.provider OR
+   NEW.issued_at IS DISTINCT FROM OLD.issued_at OR
+   NEW.expires_at IS DISTINCT FROM OLD.expires_at OR
+   OLD.consumed_at IS NOT NULL OR NEW.consumed_at IS NULL THEN
+   RAISE EXCEPTION 'Pairing challenge cannot be reopened or rebound'
+    USING ERRCODE='42501';
+  END IF;
+ ELSIF TG_TABLE_NAME='v2_device_registrations_candidate' THEN
+  IF NEW.id IS DISTINCT FROM OLD.id OR
+   NEW.user_id IS DISTINCT FROM OLD.user_id OR
+   NEW.device_ref IS DISTINCT FROM OLD.device_ref OR
+   NEW.provider IS DISTINCT FROM OLD.provider OR
+   NEW.certified_at IS DISTINCT FROM OLD.certified_at OR
+   NEW.attestation_kind IS DISTINCT FROM OLD.attestation_kind OR
+   NEW.attestation_reference_hash IS DISTINCT FROM OLD.attestation_reference_hash OR
+   OLD.revoked_at IS NOT NULL OR NEW.revoked_at IS NULL THEN
+   RAISE EXCEPTION 'Certified device cannot be transferred or un-revoked'
+    USING ERRCODE='42501';
+  END IF;
+ ELSE
+  RAISE EXCEPTION 'Unexpected device provenance table'
+   USING ERRCODE='42501';
+ END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('v2-metric:'||
+  CASE WHEN TG_TABLE_NAME='v2_device_pairing_challenges_candidate'
+    THEN OLD.owner_id::text ELSE OLD.user_id::text END,0));
+ RETURN NEW;
+END;
+$guard$;
+REVOKE ALL ON FUNCTION allin_private.v2_device_pairing_immutability_guard_candidate()
+ FROM PUBLIC,anon,authenticated,service_role;
+CREATE TRIGGER v2_pairing_challenge_immutable_guard
+ BEFORE UPDATE ON allin_private.v2_device_pairing_challenges_candidate
+ FOR EACH ROW EXECUTE FUNCTION allin_private.v2_device_pairing_immutability_guard_candidate();
+CREATE TRIGGER v2_registered_device_immutable_guard
+ BEFORE UPDATE ON allin_private.v2_device_registrations_candidate
+ FOR EACH ROW EXECUTE FUNCTION allin_private.v2_device_pairing_immutability_guard_candidate();
+
 -- No client can invoke these functions or obtain registrar membership.
 -- No SECURITY DEFINER bypass; no client INSERT on registry/challenge/audit.
