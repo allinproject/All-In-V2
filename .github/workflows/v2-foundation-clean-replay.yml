@@ -337,13 +337,17 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-billing-backup-seed-local.psql "$db_container:/tmp/v2-billing-backup-seed.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-backup-seed.psql
-          # Store a custom-format database backup of ONLY the three candidate
-          # billing tables. Receipts and users are entirely synthetic.
+          # Explicitly include the generated receipt identity SEQUENCE.
+          # With filtered -t archives, dependency sequences may be omitted.
+          # A recovery of rows without sequence state risks reused event IDs.
           docker exec "$db_container" pg_dump -U postgres -d postgres -Fc --data-only \
             -t allin_private.v2_subscription_checkout_attempts \
             -t allin_private.v2_subscription_purchases \
             -t allin_private.v2_subscription_verified_events \
+            -t allin_private.v2_subscription_verified_events_id_seq \
             -f /tmp/v2-local-synthetic-billing.dump
+          docker exec "$db_container" pg_restore -l /tmp/v2-local-synthetic-billing.dump |
+            grep -E 'SEQUENCE SET.*v2_subscription_verified_events_id_seq'
           docker exec -i "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
           -- Simulate an accidental missing ledger, inside the ephemeral
           -- database only. Auth profiles remain, so FKs are valid on restore.
@@ -359,6 +363,9 @@ jobs:
               RAISE EXCEPTION 'Local ledger rows were not removed before restore';
             END IF;
           END $depleted$;
+          -- Simulate an identity sequence that was reset or recreated after
+          -- the backup. A correct restore must recover monotonic sequence state.
+          ALTER SEQUENCE allin_private.v2_subscription_verified_events_id_seq RESTART WITH 1;
           SQL
           docker exec "$db_container" pg_restore -U postgres -d postgres \
             --data-only --no-owner --no-privileges --exit-on-error \
