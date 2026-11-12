@@ -42,6 +42,10 @@ function ok(result, label) {
 function denied(result, label) {
   assert.ok([401, 403].includes(result.status), `${label}: expected access denied, HTTP ${result.status}`);
 }
+function invalid(result, expectedCode, label) {
+  assert.ok(result.status >= 400, `${label}: rejected status required`);
+  assert.equal(result.body?.code, expectedCode, `${label}: SQLSTATE ${expectedCode} required`);
+}
 async function rpc(name, token, data) {
   return call(`/rest/v1/rpc/${name}`, { token, data });
 }
@@ -83,7 +87,7 @@ try {
   denied(await rpc('v2_claim_account_deletion_for_processing', a.token, {
     p_expected_user_id: a.id, p_expected_request_id: '00000000-0000-4000-8000-000000000000'
   }), 'client service-only claim');
-  denied(await request(a, a.id, 'no'), 'wrong confirmation');
+  invalid(await request(a, a.id, 'no'), '22023', 'wrong confirmation');
   denied(await status.call(null, { ...a, id: b.id }), 'A reads B');
   denied(await request(a, b.id), 'A requests B');
   denied(await cancel(a, b.id, '00000000-0000-4000-8000-000000000000'), 'A cancels B');
@@ -103,7 +107,7 @@ try {
   const aSecond = ok(await request(a), 'A re-request');
   assert.equal(aSecond.status, 'requested');
   assert.notEqual(aSecond.request_id, aFirst.request_id, 'new request must rotate ID');
-  denied(await cancel(a, a.id, aFirst.request_id), 'stale cancellation');
+  invalid(await cancel(a, a.id, aFirst.request_id), '40001', 'stale cancellation');
   assert.equal(ok(await status(b), 'B independent').request_id, bFirst.request_id);
   assert.equal(ok(await cancel(b, b.id, bFirst.request_id), 'B own cancel').status, 'cancelled');
   assert.equal(ok(await cancel(a, a.id, aSecond.request_id), 'A second own cancel').status, 'cancelled');
