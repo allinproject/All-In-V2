@@ -88,3 +88,11 @@ The committed `ALL-218-REVIEW-ONLY-NO-MACRO-CANDIDATE-PROJECTION.sql` contains f
 | Component candidates | 2,855 | 0 | 0 |
 
 The projection retains **source IDs and source review states** but labels unnormalized ingredient and selector values review-only. This proves the projection does not carry the two forbidden legacy macro JSON key types across the observed V1 rows; it does not establish correct nutrition arithmetic, complete legal provenance, cooked-state compliance or V2 public readiness. The candidate SQL remains read-only and has not been used to write V2.
+
+## Recipe hero transfer / source asset review
+
+The V1 source has **893** recipes with an `image` metadata object, **875** with a `public_url`, **830** with a `source_type`, but only **443** with an explicit `hosted_path` and **137** with a `hosted_sha256`. **881** metadata objects claim `primary_hero_approved=true`; this assertion is not evidence that the referenced object exists in V2 Storage, has acceptable rights, or matches the dish.
+
+The reviewed candidate projection now preserves an explicit **source-only** hero reference (`hosted_bucket`, `hosted_path`, `hosted_sha256`, `public_url`, `source_type`, approval marker and provenance), plus separate legacy visual QA markers. It does not assign a V2 Storage object/path or rehost content. Exact SQL re-execution on 907 candidate rows passed: **0** nested `nutrition` keys, **0** `nutrition_delta` keys, **443** source paths and **536** original `card_completion=production_ready` markers.
+
+Before showing recipe imagery in V2, verify source object rights, object bytes/checksum when available, V2 upload destination and card-to-image association. A source `public_url` should remain a reference, not a new V2-owned canonical asset path.
