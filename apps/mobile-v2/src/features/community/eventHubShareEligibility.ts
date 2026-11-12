@@ -48,7 +48,7 @@ function requireEvidence(e:EventHubShareEvidence,b:EventHubCandidateBatch):void{
   typeof e.postedAfterExplicitApproval!=='boolean'||
   typeof e.confirmedEventDayWorkout!=='boolean'||
   !(e.explicitlyLinkedGroupId===null||valid(e.explicitlyLinkedGroupId))||
-  !Array.isArray(e.optedOutGroupIds)||e.optedOutGroupIds.some(x=>!valid(x))||
+  !Array.isArray(e.optedOutGroupIds)||e.optedOutGroupIds.some((x:string)=>!valid(x))||
   b.athleteId!==e.athleteId||!b.complete||b.nextCursor!==null||
   !Array.isArray(b.candidates)||b.candidates.length>1000)
   throw new Error('Incomplete or invalid canonical EventHub share evidence.');
