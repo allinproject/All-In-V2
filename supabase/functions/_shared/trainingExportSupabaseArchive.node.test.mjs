@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createSupabasePrivateArchivePersistence,purgeExpiredAccountExportArchives,PRIVATE_ACCOUNT_EXPORT_BUCKET}
+import {createSupabasePrivateArchivePersistence,createSupabasePagedAccountExportStorage,purgeExpiredAccountExportArchives,PRIVATE_ACCOUNT_EXPORT_BUCKET}
  from './trainingExportSupabaseArchive.mjs';
 const owner='11111111-1111-4111-8111-111111111111';
 const requestId='22222222-2222-4222-8222-222222222222';
@@ -145,4 +145,51 @@ test('ambiguous archive removal or missing audit receipt never signals successfu
   deletePrivateRequest:good.adapter.deletePrivateRequest,
   recordPurgeReceipt:async()=>null,
  }),/manual reconciliation/);
+});
+
+test('paged account archive uses fixed private bucket, owner/request paths, manifest and Storage-only cleanup',async()=>{
+ const files=new Map(),events=[];
+ const store={
+  storage:{
+   getBucket:async id=>({data:{id,public:false},error:null}),
+   from:bucket=>{
+    assert.equal(bucket,PRIVATE_ACCOUNT_EXPORT_BUCKET);
+    return {
+     upload:async(path,blob)=>{events.push('upload:'+path);files.set(path,await blob.text());return {data:{path},error:null};},
+     download:async path=>files.has(path)?{data:new Blob([files.get(path)]),error:null}:{data:null,error:Error('missing')},
+     list:async(prefix)=>({data:[...files.keys()].filter(path=>path.startsWith(prefix+'/'))
+        .map(path=>({name:path.slice(prefix.length+1)})),error:null}),
+     remove:async paths=>{events.push('remove');const data=[];for(const path of paths)
+        if(files.delete(path))data.push({name:path});return {data,error:null};},
+    };
+   },
+  },
+ };
+ const adapter=createSupabasePagedAccountExportStorage({
+  serviceClient:store,readApprovedRequestExpiry:async()=>lease(),
+ });
+ const sealed={ciphertext:'encrypted',iv:'nonce',tag:'tag',plaintextSha256:'a'.repeat(64),plaintextLength:5};
+ assert.equal((await adapter.writePrivatePage({ownerId:owner,requestId,collection:'coach_messages',index:0,sealed})).stored,true);
+ const manifest={ownerId:owner,requestId,completeUserExport:true,pages:[{collection:'coach_messages',index:0}]};
+ assert.equal((await adapter.commitPrivateManifest({ownerId:owner,requestId,manifest})).committed,true);
+ assert.deepEqual(await adapter.readPrivatePage({ownerId:owner,requestId,collection:'coach_messages',index:0}),sealed);
+ assert.deepEqual(await adapter.readPrivateManifest({ownerId:owner,requestId}),manifest);
+ assert.equal(files.size,2);
+ assert.equal(await adapter.purgePrivateRequest({ownerId:owner,requestId}),true);
+ assert.equal(files.size,0);
+ assert(events.every(x=>!x.includes('http')));
+});
+test('paged archive requires approved owner lease and never reads public bucket',async()=>{
+ let reads=0;
+ const client={storage:{
+  getBucket:async id=>{reads++;return {data:{id,public:true},error:null};},
+  from:()=>({upload:async()=>{throw Error('should not upload');}}),
+ }};
+ const adapter=createSupabasePagedAccountExportStorage({serviceClient:client,
+  readApprovedRequestExpiry:async()=>lease()});
+ await assert.rejects(adapter.writePrivatePage({
+  ownerId:owner,requestId,collection:'messages',index:0,sealed:{ciphertext:'opaque'}
+ }),/not private/);
+ assert.equal(reads,1);
+ await assert.rejects(adapter.readPrivatePage({ownerId:'not-owner',requestId,collection:'messages',index:0}),/Exact owner/);
 });
