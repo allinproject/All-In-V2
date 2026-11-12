@@ -251,3 +251,16 @@ test('ALL-251 gated Hydration and Fuel action projections retain owner privacy w
     assert(!inv.includes(collection),'Unapproved Fuel table was prematurely registered: '+collection);
  assert(inv.includes("'complete',false"));
 });
+
+test('Community indirect Auth deletion cascade requires both canonical foreign-key links',()=>{
+ const foundation=readFileSync(
+  'supabase/migrations/20261110021548_v2_auth_profile_legal_foundation.sql','utf8');
+ assert.match(foundation,
+  /create table if not exists public\.v2_profiles\s*\([\s\S]*?user_id uuid primary key references auth\.users\(id\) on delete cascade/i,
+  'Profile owner must cascade from Auth');
+ assert.match(communityPosts,
+  /CREATE TABLE allin_private\.v2_community_posts\s*\([\s\S]*?owner_id uuid NOT NULL REFERENCES public\.v2_profiles\(user_id\) ON DELETE CASCADE/i,
+  'Community post must cascade through the canonical Profile owner');
+ assert(reader.includes("WHERE p.owner_id=$1"),
+  'Community export must use the same exact owner key as cascade');
+});
