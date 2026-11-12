@@ -100,6 +100,11 @@ export function createCoachModelGenerator({
   if(settled?.confirmed!==true||settled.ownerId!==ownerId||
       settled.clientRequestId!==clientRequestId)
    rejected("coach_model_spend_unconfirmed");
+  // The requested output ceiling is a hard server admission limit. Even if
+  // the model transport reports a larger completion, settle actual metered
+  // spend first, then reject it rather than displaying an over-limit answer.
+  if(answer.usage.outputTokens>maxOutputTokens)
+    rejected("coach_model_output_token_limit_exceeded");
   // A proposal must be handled through ALL-240, not this read-only channel.
   if(!text(answer.message,20000)||Object.hasOwn(answer,"proposed_action"))
     rejected("coach_model_output_or_metering_invalid");

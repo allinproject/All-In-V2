@@ -102,6 +102,13 @@ test("metered but rejected model responses still settle their real spend",async(
   assert.equal(x.calls.settle,expectedSettlements);
  }
 });
+test("output-token overruns are charged but never returned to the client",async()=>{
+ const x=setup();x.options.invokeModel=async()=>({
+  message:"This must not be displayed.",
+  usage:{inputTokens:100,outputTokens:257,costUsd:0.0005}});
+ await assert.rejects(()=>x.generate()(turn),/output_token_limit_exceeded/);
+ assert.equal(x.calls.settle,1);
+});
 test("hard-restricted movement in a generated answer is blocked pre-display",async()=>{
  const x=setup();x.options.invokeModel=async()=>({
   message:"Do lying leg curls today.",usage:{inputTokens:10,outputTokens:10,costUsd:0.0001}});
