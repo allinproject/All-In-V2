@@ -6,15 +6,9 @@
 BEGIN;
 
 -- Supabase Auth user trigger creates the linked V2 profile/settings rows.
-INSERT INTO auth.users (instance_id,id,aud,role,email,encrypted_password,
-  email_confirmed_at,created_at,updated_at)
-VALUES
-('00000000-0000-0000-0000-000000000000',
- 'a1111111-1111-4111-8111-111111111111','authenticated','authenticated',
- 'coach-fixture-a@invalid.example','','2026-11-11 12:00+00',now(),now()),
-('00000000-0000-0000-0000-000000000000',
- 'b2222222-2222-4222-8222-222222222222','authenticated','authenticated',
- 'coach-fixture-b@invalid.example','','2026-11-11 12:00+00',now(),now());
+INSERT INTO auth.users(id) VALUES
+ ('a1111111-1111-4111-8111-111111111111'),
+ ('b2222222-2222-4222-8222-222222222222');
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', 'a1111111-1111-4111-8111-111111111111', true);
