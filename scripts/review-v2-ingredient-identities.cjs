@@ -124,12 +124,44 @@ function reviewAliasAndPreparationAcceptance(aliasDocument, bindingsDocument) {
      !bindingsDocument || !Array.isArray(bindingsDocument.bindings))
     throw Error('alias and source binding review records required');
   const issues=[],flag=(key,code)=>issues.push({source_profile_key:key,code});
+  // Founder-approved product policy: this is NOT an identity/nutrition approval.
+  // Pin allowed exact names and forbidden in-profile suggestions so a later
+  // source change cannot quietly widen which nutrition profile a phrase selects.
+  const approved=new Map([
+    ['milk_cottage_2pct',{name:'2% Cottage Cheese — Generic',state:'prepared',
+      exact:['cottage cheese, lowfat, 2% milkfat','2% milkfat cottage cheese, generic'],
+      excluded:['Daisy cottage cheese']}],
+    ['red_onion_raw',{name:'Red Onion — Raw',state:'raw',
+      exact:['red onion, raw edible portion','onions, red, raw'],
+      excluded:['yellow onion','cooked red onion']}],
+    ['cabbage_green_raw',{name:'Green Cabbage — Raw',state:'raw',
+      exact:['green cabbage, raw','cabbage, green, raw'],
+      excluded:['cabbage, cooked','1 cup chopped green cabbage']}],
+    ['black_beans_canned_drained',{name:'Black Beans — Canned, Drained & Rinsed, Sodium Added',state:'cooked_drained',
+      exact:['black beans, canned, sodium added, drained and rinsed'],
+      excluded:['unsalted black beans','dry black beans']}],
+    ['chickpeas_canned_drained_rinsed',{name:'Chickpeas — Canned, Drained & Rinsed, Sodium Added',state:'cooked_drained',
+      exact:['chickpeas, canned, sodium added, drained and rinsed','garbanzo beans, canned, sodium added, drained and rinsed'],
+      excluded:['dried chickpeas']}],
+    ['beans_kidney_canned_drained',{name:'Kidney Beans — Dark Red, Canned, Sodium & Sugar Added, Drained & Rinsed',state:'cooked_drained',
+      exact:['kidney beans, dark red, canned, sodium added, sugar added, drained and rinsed'],
+      excluded:[]}],
+    ['tomato_paste_canned_unsalted',{name:'Tomato Paste — Canned, No Salt Added',state:'prepared',
+      exact:['tomato paste, canned, without salt added'],
+      excluded:['double concentrated tomato paste','salted tomato paste']}],
+    ['tomatoes_crushed_canned',{name:'Crushed Tomatoes — Canned, Generic',state:'prepared',
+      exact:['tomatoes, crushed, canned','crushed tomatoes, canned, generic'],
+      excluded:['tomato sauce','unsalted crushed tomatoes']}]
+  ]);
   const refs=new Map(bindingsDocument.bindings.map(b=>[b.source_profile_key,b]));
   const seenKeys=new Set(),exactNames=new Map();
   if(aliasDocument.authoritativeSource!=='docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json' ||
      aliasDocument.canonicalIdentityApproved!==false||aliasDocument.calculationReady!==false||
      aliasDocument.publicationApproved!==false||aliasDocument.writeAuthorized!==false||
-     aliasDocument.status!=='pending_domain_owner_acceptance')
+     aliasDocument.status!=='founder_approved_alias_and_preparation_policy_only'||
+     aliasDocument.stage!=='founder_approved_product_policy_review_contract'||
+     aliasDocument.product_policy_approval?.issue!=='ALL-228'||
+     aliasDocument.product_policy_approval?.linear_comment_id!=='15ed915f-973d-4deb-84ae-cfbafe97103e')
      flag(null,'alias_document_claims_unapproved_authority');
   for(const record of aliasDocument.records) {
     if(!record || typeof record!=='object'){flag(null,'invalid_alias_record');continue;}
@@ -138,6 +170,15 @@ function reviewAliasAndPreparationAcceptance(aliasDocument, bindingsDocument) {
     seenKeys.add(key);
     const bound=refs.get(key);
     if(!bound){flag(key,'unrecognized_source_key');continue;}
+    const policy=approved.get(key);
+    if(!policy){flag(key,'unapproved_product_identity');continue;}
+    const normalized=(items)=>items.map(x=>normalize(x)).sort().join('|');
+    const actualExact=(record.exact_alias_candidates||[]).map(a=>a?.value);
+    if(record.display_name!==policy.name || record.preparation_state!==policy.state ||
+      record.product_policy_status!=='approved_display_name_preparation_and_alias_scope' ||
+      record.preparation_state_policy_status!=='approved_product_classification_only' ||
+      normalized(actualExact)!==normalized(policy.exact))
+      flag(key,'approved_display_name_state_or_exact_alias_changed');
     if(record.source_fdc_id!==bound.reviewed_source_reference.external_record_id||
        record.source_description!==bound.reviewed_source_reference.source_food_description||
        record.preparation_state!==bound.proposed_preparation_state||
@@ -157,7 +198,7 @@ function reviewAliasAndPreparationAcceptance(aliasDocument, bindingsDocument) {
       if(!name || exactSet.has(name)||a.kind!=='source_scoped_exact'||
          a.preparation_state!==record.preparation_state||
          a.selection_scope!=='requires_explicit_source_form_confirmation'||
-         a.status!=='pending_owner_acceptance')
+         a.status!=='founder_approved_source_scoped_alias_policy')
         flag(key,'invalid_or_duplicate_exact_alias');
       exactSet.add(name);
       const scope=JSON.stringify([name,record.locale,record.preparation_state]);
@@ -165,15 +206,30 @@ function reviewAliasAndPreparationAcceptance(aliasDocument, bindingsDocument) {
       if(previous&&previous!==key) flag(key,'cross_source_exact_alias_collision');
       exactNames.set(scope,key);
     }
+    const excluded=(record.excluded_incompatible_queries||[]);
+    if(!Array.isArray(record.excluded_incompatible_queries) ||
+      normalized(excluded.map(x=>x?.value))!==normalized(policy.excluded))
+      flag(key,'incompatible_form_exclusion_changed');
+    const excludedSet=new Set();
+    for(const a of excluded) {
+      const name=normalize(a?.value);
+      if(!name || excludedSet.has(name) ||
+         a.behavior!=='exclude_from_this_profile_targeted_search_route_to_separate_food_search')
+        flag(key,'invalid_incompatible_form_exclusion');
+      excludedSet.add(name);
+      if(exactSet.has(name)) flag(key,'incompatible_form_used_as_exact_alias');
+    }
     for(const a of record.search_only_not_exact_aliases||[]) {
       const name=normalize(a?.value);
       if(!name||searchSet.has(name)||a.behavior!=='search_only_requires_user_or_reviewer_form_selection')
         flag(key,'invalid_search_only_alias');
       searchSet.add(name);
       if(exactSet.has(name)) flag(key,'search_only_alias_promoted_to_exact');
+      if(excludedSet.has(name)) flag(key,'incompatible_form_reentered_targeted_search');
     }
   }
-  if(seenKeys.size!==refs.size) flag(null,'incomplete_source_alias_coverage');
+  if(seenKeys.size!==refs.size || seenKeys.size!==approved.size)
+    flag(null,'incomplete_source_alias_coverage');
   return {recordCount:aliasDocument.records.length,sourceBindingCount:refs.size,
     issues,structuralScopePassed:issues.length===0,
     canonicalIdentityApproved:false,calculationReady:false,publicationApproved:false,
