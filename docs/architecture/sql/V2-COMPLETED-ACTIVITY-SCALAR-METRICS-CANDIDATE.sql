@@ -76,7 +76,7 @@ CREATE FUNCTION allin_private.v2_activity_append_scalar_candidate(
  p_user_id uuid,p_activity_id uuid,p_source_id uuid,p_value_id uuid,
  p_metric_code text,p_definition_version integer,p_measurement_kind text,
  p_value_numeric numeric,p_value_text text,p_value_boolean boolean,
- p_source_payload_hash text
+ p_source_payload_hash text,p_measurement_quality text DEFAULT NULL
 ) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=''
 AS $writer$
@@ -123,7 +123,18 @@ BEGIN
  OR (v_definition.value_kind='boolean' AND
     (p_value_boolean IS NULL OR p_value_numeric IS NOT NULL OR p_value_text IS NOT NULL))
  THEN RAISE EXCEPTION 'Metric value kind mismatch' USING ERRCODE='22023'; END IF;
- v_quality:=v_source.quality;
+ -- The adapter may report a worse sample than its parent source. A NULL
+ -- legacy argument conservatively inherits source quality; no caller may
+ -- claim a sample more reliable than its source.
+ IF p_measurement_quality IS NOT NULL AND
+    p_measurement_quality NOT IN ('trusted','partial','unverified','low_quality','rejected') THEN
+   RAISE EXCEPTION 'Invalid measurement quality' USING ERRCODE='22023'; END IF;
+ v_quality:=COALESCE(p_measurement_quality,v_source.quality);
+ IF (v_source.quality='rejected' AND v_quality<>'rejected') OR
+    (v_source.quality='low_quality' AND v_quality IN ('trusted','partial','unverified')) OR
+    (v_source.quality='unverified' AND v_quality IN ('trusted','partial')) OR
+    (v_source.quality='partial' AND v_quality='trusted') THEN
+   RAISE EXCEPTION 'Measurement quality exceeds source certification' USING ERRCODE='22023'; END IF;
  SELECT * INTO v_existing FROM public.v2_activity_metric_values
    WHERE activity_id=p_activity_id AND user_id=p_user_id
      AND segment_id IS NULL AND source_id=p_source_id AND metric_code=p_metric_code
@@ -134,7 +145,8 @@ BEGIN
     v_existing.value_numeric IS DISTINCT FROM p_value_numeric OR
     v_existing.value_text IS DISTINCT FROM p_value_text OR
     v_existing.value_boolean IS DISTINCT FROM p_value_boolean OR
-    v_existing.source_payload_hash<>p_source_payload_hash THEN
+    v_existing.source_payload_hash<>p_source_payload_hash OR
+    v_existing.quality<>v_quality THEN
     RAISE EXCEPTION 'Conflicting metric source replay' USING ERRCODE='23505';
   END IF;
   RETURN pg_catalog.jsonb_build_object('metricId',v_existing.id,
@@ -151,7 +163,7 @@ BEGIN
 END;
 $writer$;
 REVOKE ALL ON FUNCTION allin_private.v2_activity_append_scalar_candidate(
- uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text)
+ uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
  FROM PUBLIC,anon,authenticated,service_role;
 -- No client/Coach/competition execution grants. The trusted device
 -- adapter/metric-review process must perform actual source authentication
