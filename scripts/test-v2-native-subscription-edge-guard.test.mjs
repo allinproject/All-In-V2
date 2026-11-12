@@ -26,3 +26,10 @@ test('native account context binds store purchases, never client-supplied owner'
   assert.match(edge,/p_owner_id:owner/);
   assert.doesNotMatch(edge,/p_owner_id:\s*(?:evidence|payload|request)\./);
 });
+
+test('pending native acknowledgment is non-entitling HTTP 202, not a Supabase transport error',()=>{
+  assert.match(edge,/if\(result\.status==="acknowledgement_required"\)\s*(?:\/\/[^\n]*\n\s*)*return reply\(202,"acknowledgement_required"\)/);
+  assert.match(edge,/return reply\(503,"verification_unavailable"\)/);
+  assert.match(edge,/return reply\(503,"native_billing_disabled"\)/);
+  assert.doesNotMatch(edge,/return reply\(200,"acknowledgement_required"\)/);
+});
