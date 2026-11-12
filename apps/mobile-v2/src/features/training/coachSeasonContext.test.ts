@@ -53,3 +53,30 @@ test('overlong/unbounded phase output cannot leak into Coach context',()=>{
  names.draft.events[0].name='x'.repeat(161);
  assert.equal(prepareCoachSeasonContext({...input(),preview:names}).kind,'blocked');
 });
+
+test('malformed or forged season evidence is rejected before reaching Coach',()=>{
+ const duplicate=preview();
+ if(duplicate.status==='unavailable')throw Error('bad fixture');
+ duplicate.draft.events.push({...duplicate.draft.events[0]});
+ assert.deepEqual(prepareCoachSeasonContext({...input(),preview:duplicate}),{kind:'blocked',reason:'invalid_season'});
+ const priority=preview();
+ if(priority.status==='unavailable')throw Error('bad fixture');
+ priority.draft.events[0].priority='D' as 'A';
+ assert.equal(prepareCoachSeasonContext({...input(),preview:priority}).kind,'blocked');
+ const date=preview();
+ if(date.status==='unavailable')throw Error('bad fixture');
+ date.draft.events[0].date='2027-02-30';
+ assert.equal(prepareCoachSeasonContext({...input(),preview:date}).kind,'blocked');
+ const receipt=preview();
+ if(receipt.status==='unavailable')throw Error('bad fixture');
+ receipt.snapshotVersion='';
+ assert.equal(prepareCoachSeasonContext({...input(),preview:receipt}).kind,'blocked');
+ const write=preview();
+ if(write.status==='unavailable')throw Error('bad fixture');
+ write.canWriteAcceptedPlan=true as false;
+ assert.equal(prepareCoachSeasonContext({...input(),preview:write}).kind,'blocked');
+ const phase=preview();
+ if(phase.status==='unavailable')throw Error('bad fixture');
+ phase.phases.annotations.push({date:'2027-02-30',kind:'taper_review',eventId:'goal',priority:'A'});
+ assert.equal(prepareCoachSeasonContext({...input(),preview:phase}).kind,'blocked');
+});
