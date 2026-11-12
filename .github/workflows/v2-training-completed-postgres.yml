@@ -629,3 +629,15 @@ jobs:
           docker cp docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-LIFECYCLE-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-LIFECYCLE-REVIEW-CANDIDATE.sql"
           docker cp scripts/test-v2-account-export-request-lifecycle-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-account-export-request-lifecycle-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_request_lifecycle -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-request-lifecycle-postgres.psql
+      - name: ALL-96 populated upgrade ordering, preservation, owner FK and retry (disposable PG17)
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          # Clone the populated integration fixture; no writes to the source DB.
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_complete_integration all96_populated_upgrade
+          docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql"
+          docker cp scripts/test-v2-representative-populated-upgrade-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-representative-populated-upgrade-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -X -U "$PGUSER" -d all96_populated_upgrade -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-representative-populated-upgrade-postgres.psql
+          # Re-run against the same populated target to prove ledger-guarded retry.
+          docker exec "$PG_CONTAINER" psql -X -U "$PGUSER" -d all96_populated_upgrade -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-representative-populated-upgrade-postgres.psql
