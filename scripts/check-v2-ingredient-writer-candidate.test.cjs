@@ -76,7 +76,7 @@ test('reviewer identity requires a verified issuer, subject, vault reference, ex
   assertHas(lifecycle,term);
  }
  for(const term of ['o.credential_expires_at > clock_timestamp()','o.revoked_at IS NULL',
-  'o.identity_subject IS NOT NULL','pg_has_role']){
+  'o.identity_subject IS NOT NULL','pg_has_role','FOR SHARE OF o']){
   assertHas(writer,term);
   assertHas(energy,term);
  }
