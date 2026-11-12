@@ -51,8 +51,12 @@ async function login(u){
  return data.access_token;
 }
 let failed=false;
+// Fixed checkpoint names reveal the failing assertion without tokens, IDs or bodies.
+let acceptanceStep='setup';
 try{
+ acceptanceStep='synthetic Auth creation';
  const a=await user(),b=await user();
+ acceptanceStep='synthetic Auth login';
  const aToken=await login(a),bToken=await login(b);
  assert.notEqual(aToken,bToken);
  process.stdout.write('PASS: two real isolated synthetic GoTrue sessions\\n');
@@ -62,6 +66,7 @@ try{
  const sessionId=JSON.parse(Buffer.from(aToken.split('.')[1],'base64url').toString()).session_id;
  assert(/^[a-f0-9-]{36}$/i.test(sessionId??''),'Missing real Auth session claim');
  const args={p_user_id:a.id,p_session_id:sessionId,p_request_id:randomUUID()};
+ acceptanceStep='restricted export authorization';
  for(const name of ['v2_account_export_worker_authorize_candidate',
                     'v2_account_export_worker_approve_candidate']){
   const deniedUser=await request('/rest/v1/rpc/'+name,{
@@ -74,6 +79,7 @@ try{
     'Privileged RPC authorized nonexistent request or missing deletion gate');
  }
  process.stdout.write('PASS: hosted user RPC denies client execution and server RPC rejects missing approval\\n');
+ acceptanceStep='optional ALL251 approved request';
  if(env.ALL251_TEST_REAL_APPROVAL==='true'){
   // Synthetic real hosted owner workflow, ONLY while the canonical owner-begin
   // RPC is temporarily granted to authenticated on this isolated staging DB.
@@ -118,6 +124,7 @@ try{
  }
 
 
+ acceptanceStep='ALL247 anonymous owner-reader denial';
  if(env.ALL247_TEST_FOOD_RPC==='true'){
   // ALL-247 single canonical Food Log, tested with genuine Auth JWTs against
   // the installed TEMPORARY staging schema only. No other project permitted.
@@ -142,20 +149,24 @@ try{
    p_expected_user_id:a.id,p_local_date:day,
   });
   assert([401,403,404].includes(anonymous.status),'Anonymous Food Log RPC unexpectedly readable');
+  acceptanceStep='ALL247 foreign owner-reader denial';
   const foreign=await rpc('v2_food_log_read_complete_day',{
    p_expected_user_id:a.id,p_local_date:day,
   },bToken);
   assert([400,401,403].includes(foreign.status),'Other owner accessed Food Log');
+  acceptanceStep='ALL247 owner food add';
   const addition=await rpc('v2_food_log_add_manual',food,aToken);
   assert.equal(addition.status,200,'Owner could not add food via real RPC');
   const added=await addition.json();
   assert.equal(added.id,entryId);
   assert.equal(added.revision,1);
   process.stdout.write('ALL247 owner add shape passed\n');
+  acceptanceStep='ALL247 exact add replay';
   const retry=await rpc('v2_food_log_add_manual',food,aToken);
   assert.equal(retry.status,200,'Idempotent exact add retry failed');
   assert.equal((await retry.json()).replayed,true);
   process.stdout.write('ALL247 exact retry shape passed\n');
+  acceptanceStep='ALL247 changed-payload replay denial';
   const changed=await rpc('v2_food_log_add_manual',{
    ...food,p_kcal:301,
   },aToken);
@@ -163,6 +174,7 @@ try{
   const reader=async(token,ownerId,date)=>rpc('v2_food_log_read_complete_day',{
    p_expected_user_id:ownerId,p_local_date:date,
   },token);
+  acceptanceStep='ALL247 complete owner-day read';
   const before=await reader(aToken,a.id,day);
   assert.equal(before.status,200,'Authorized Food Log day reader unavailable');
   const first=await before.json();
@@ -172,14 +184,17 @@ try{
   assert.equal(first.entries[0]?.id,entryId);
   assert.equal(first.entries[0]?.user_id,a.id);
   process.stdout.write('ALL247 own-day output passed\n');
+  acceptanceStep='ALL247 second-owner empty day';
   const bDay=await reader(bToken,b.id,day);
   assert.equal(bDay.status,200,'Other owner cannot read own day');
   assert.equal((await bDay.json()).entries?.length,0,'A food leaked into B day');
+  acceptanceStep='ALL247 owner delete';
   const deleted=await rpc('v2_food_log_mutate_manual',{
    p_expected_user_id:a.id,p_action_id:randomUUID(),p_entry_id:entryId,
    p_expected_revision:1,p_operation:'delete',
   },aToken);
   assert.equal(deleted.status,200,'Owner could not delete synthetic Food Log entry');
+  acceptanceStep='ALL247 post-delete day read';
   const after=await reader(aToken,a.id,day);
   assert.equal(after.status,200,'Food Log day unavailable after delete');
   const final=await after.json();
@@ -190,6 +205,7 @@ try{
   process.stdout.write('PASS: hosted Food Log owner add/replay/read/delete; anon and foreign owner denied\n');
  }
 
+ acceptanceStep='ALL251 disabled download route';
  for(const token of [aToken,bToken]){
   const res=await request('/functions/v1/v2-account-export-download',{
     method:'POST',userJwt:token,apiKey:anon,body:{request_id:randomUUID()}});
@@ -199,11 +215,13 @@ try{
   assert(/no-store/i.test(res.headers.get('cache-control')??''));
  }
  process.stdout.write('PASS: authenticated HTTP route rejects export while worker disabled\\n');
+ acceptanceStep='synthetic Auth logout';
  const logout=await request('/auth/v1/logout',{method:'POST',userJwt:bToken,apiKey:anon});
  assert([200,204].includes(logout.status),'Auth logout failed');
  process.stdout.write('PASS: synthetic Auth session revoked\\n');
 }catch{
- failed=true;process.stderr.write('FAIL: Auth/HTTP staging smoke; no tokens disclosed\\n');
+ failed=true;
+ process.stderr.write('FAIL staging checkpoint: '+acceptanceStep+' (no credentials or response data disclosed)\\n');
 }finally{
  for(const id of ids.reverse()){
   try{
