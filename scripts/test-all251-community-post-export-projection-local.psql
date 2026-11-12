@@ -131,6 +131,43 @@ BEGIN
  RAISE NOTICE 'PASS ALL-251 two-owner gated Community post projection: 31 A over 2 pages, private body, B isolation, real Auth request gate, no completed export';
 END $two_owner$;
 RESET ROLE;
+-- Independently review indirect cascade reachability and unknown relationship
+-- columns with the NON-DEPLOYED ALL-251 graph scanner. A real Community post
+-- owner must be reached by Auth -> Profile -> Post without granting APIs.
+\ir V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql
+CREATE TABLE allin_private.v2_all251_unreviewed_owner_probe (
+ id uuid PRIMARY KEY,owner_id uuid NOT NULL
+);
+CREATE TABLE allin_private.v2_all251_unreviewed_pair_probe (
+ id uuid PRIMARY KEY,
+ follower_id uuid REFERENCES auth.users(id) ON DELETE CASCADE
+);
+DO $graph$
+BEGIN
+ IF EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+   WHERE schema_name='allin_private' AND table_name='v2_community_posts'
+     AND owner_column='owner_id')
+ THEN RAISE EXCEPTION 'Known Profile-to-Community Auth cascade not recognized'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+   WHERE table_name='v2_all251_unreviewed_owner_probe'
+     AND owner_column='owner_id'
+     AND reason='no_verified_auth_cascade_path')
+ THEN RAISE EXCEPTION 'Unknown indirect-owner table was not flagged'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+   WHERE table_name='v2_all251_unreviewed_pair_probe'
+     AND owner_column='follower_id'
+     AND reason='relationship_or_actor_retention_policy_required')
+ THEN RAISE EXCEPTION 'Relationship retention was inferred solely from FK cascade'; END IF;
+ IF has_function_privilege('authenticated',
+   'allin_private.v2_deletion_owner_graph_gaps_review()','EXECUTE')
+   OR has_function_privilege('anon',
+   'allin_private.v2_deletion_owner_graph_gaps_review()','EXECUTE')
+ THEN RAISE EXCEPTION 'Reviewer graph scanner exposed to clients'; END IF;
+ RAISE NOTICE 'PASS ALL-251 graph review: Community Auth chain proven, unknown owner and relationship policy gaps flagged, no client API';
+END $graph$;
+DROP TABLE allin_private.v2_all251_unreviewed_owner_probe;
+DROP TABLE allin_private.v2_all251_unreviewed_pair_probe;
+
 -- Separate synthetic C proves the real indirect chain
 -- auth.users -> public.v2_profiles -> allin_private.v2_community_posts.
 -- No worker is enabled; deletion is local and fully rolled back.
