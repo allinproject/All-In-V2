@@ -255,7 +255,7 @@ test('a pinned catalog-only audit stays incomplete without private byte verifier
  const result=await auditOwnerPrivateMediaCoverage({
   ownerId:owner,requestId,
   listBucketCatalog:async()=>[{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false}],
-  listCanonicalMediaReferences:async()=>({ownerId,requestId,series:[seriesRow()],routes:[]}),
+  listCanonicalMediaReferences:async()=>({ownerId:owner,requestId,series:[seriesRow()],routes:[]}),
   listOwnerStorageObjects:async()=>({
    ownerId:owner,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,
    exhaustive:true,totalCount:1,paths:[path],
