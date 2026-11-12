@@ -90,21 +90,19 @@ BEGIN
    repeat('c',100),repeat('a',64),repeat('b',64));
   RAISE EXCEPTION 'Duplicate enrollment key unexpectedly accepted';
  EXCEPTION WHEN unique_violation THEN NULL; END;
- IF (SELECT consumed_at IS NOT NULL
-     FROM allin_private.v2_appattest_enrollment_challenges_candidate
-     WHERE id='99999999-9999-4999-8999-999999999998') THEN
-  RAISE EXCEPTION 'Failed key insert consumed enrollment challenge';
- END IF;
- IF (SELECT count(*) FROM allin_private.v2_apple_attested_companion_keys_candidate
-     WHERE key_id='fixture-apple-appattest-enrolled-key')<>1 THEN
-  RAISE EXCEPTION 'Failed enrollment modified trusted key registry';
- END IF;
- RAISE NOTICE 'PASS ALL-243 failed key insert rolls back challenge consumption';
  RAISE NOTICE 'PASS ALL-243 trusted-only one-use App Attest enrollment writer';
 END $enroll$;
 RESET ROLE;
 DO $audit$
 BEGIN
+ IF (SELECT consumed_at IS NOT NULL
+     FROM allin_private.v2_appattest_enrollment_challenges_candidate
+     WHERE id='99999999-9999-4999-8999-999999999998') OR
+    (SELECT count(*) FROM allin_private.v2_apple_attested_companion_keys_candidate
+     WHERE key_id='fixture-apple-appattest-enrolled-key')<>1 THEN
+  RAISE EXCEPTION 'Failed key insert did not roll back atomically';
+ END IF;
+ RAISE NOTICE 'PASS ALL-243 duplicate key rolls back challenge consumption';
  IF (SELECT count(*) FROM allin_private.v2_apple_attested_companion_keys_candidate
   WHERE key_id='fixture-apple-appattest-enrolled-key'
    AND owner_id='11111111-1111-4111-8111-111111111111'
