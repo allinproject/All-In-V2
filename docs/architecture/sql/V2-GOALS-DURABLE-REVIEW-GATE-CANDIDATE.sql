@@ -128,6 +128,14 @@ BEGIN
    RAISE EXCEPTION 'Active Goal review session required'
      USING ERRCODE='42501';
  END IF;
+ -- All canonical Goal operations lock in the same order:
+ -- live Auth session -> Goal -> review row -> revision/behavior children.
+ -- This prevents issuer/commit lock-order inversion on the same review.
+ PERFORM 1 FROM public.v2_goals
+   WHERE id=p_goal_id AND user_id=p_user_id FOR UPDATE;
+ IF NOT FOUND THEN
+   RAISE EXCEPTION 'Current reviewed Goal unavailable' USING ERRCODE='42501';
+ END IF;
  SELECT * INTO approval FROM allin_private.v2_goal_approval_reviews
   WHERE user_id=p_user_id AND id=p_review_id FOR UPDATE;
  IF NOT FOUND OR approval.athlete_confirmed IS NOT TRUE
@@ -145,11 +153,6 @@ BEGIN
  -- Candidate row lock blocks new behavior FK children; each current behavior
  -- row's SHARE lock blocks edits until this transaction has accepted the Goal.
  IF approval.completed_at IS NULL THEN
-   PERFORM 1 FROM public.v2_goals
-     WHERE id=p_goal_id AND user_id=p_user_id FOR UPDATE;
-   IF NOT FOUND THEN
-     RAISE EXCEPTION 'Current reviewed Goal unavailable' USING ERRCODE='42501';
-   END IF;
    PERFORM 1 FROM public.v2_goal_revisions
      WHERE id=p_candidate_id AND goal_id=p_goal_id AND user_id=p_user_id
      FOR UPDATE;
