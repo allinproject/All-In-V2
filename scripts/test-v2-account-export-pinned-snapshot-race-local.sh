@@ -29,7 +29,7 @@ INSERT INTO public.v2_coach_messages
  VALUES ('$owner','$thread','user','before-snapshot',gen_random_uuid());
 SQL
 # Session A begins a read-only RR transaction and pins its snapshot before B.
-pg >"$work/a.out" 2>&1 <<SQL &
+docker exec -e PGAPPNAME=all251_pinned_export -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 >"$work/a.out" 2>&1 <<SQL &
 BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL ROLE service_role;
 SELECT public.v2_account_export_inventory_review_candidate(
@@ -49,7 +49,19 @@ END \$snapshot_assert\$;
 COMMIT;
 SQL
 pid_a=$!
-sleep 1
+# Wait for the *real* backend to reach pg_sleep AFTER its first inventory
+# read, rather than assuming that one second is long enough on a CI runner.
+snapshot_ready=false
+for attempt in $(seq 1 60); do
+  waiting="$(docker exec "$db" psql -X -U postgres -d postgres -At -c \
+    "SELECT count(*) FROM pg_stat_activity WHERE application_name='all251_pinned_export' AND wait_event='PgSleep'" | tr -d '\r')"
+  if [[ "$waiting" == "1" ]]; then snapshot_ready=true; break; fi
+  if ! kill -0 "$pid_a" 2>/dev/null; then break; fi
+  sleep 0.1
+done
+if [[ "$snapshot_ready" != true ]]; then
+  cat "$work/a.out"; echo 'Pinned export did not reach its established snapshot' >&2; exit 1;
+fi
 # B writes while A's snapshot remains open.
 pg >"$work/b.out" 2>&1 <<SQL &
 INSERT INTO public.v2_coach_messages
