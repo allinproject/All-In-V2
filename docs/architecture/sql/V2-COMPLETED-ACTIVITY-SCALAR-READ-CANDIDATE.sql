@@ -24,6 +24,7 @@ BEGIN
  WITH rows AS (
   SELECT m.metric_code,m.definition_version,d.canonical_unit,
    m.value_numeric,m.value_text,m.value_boolean,m.measurement_kind,
+   m.quality AS measurement_quality,s.quality AS source_quality,
    CASE
       WHEN m.quality IN ('trusted','partial') AND s.quality IN ('trusted','partial')
        THEN CASE WHEN m.quality='partial' OR s.quality='partial'
@@ -50,7 +51,16 @@ BEGIN
  )
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
    'metricCode',g.metric_code,'definitionVersion',g.definition_version,
-   'canonicalUnit',g.canonical_unit,'quality',
+   'canonicalUnit',g.canonical_unit,
+   'measurementQuality',CASE WHEN EXISTS(
+     SELECT 1 FROM rows r WHERE r.metric_code=g.metric_code
+      AND r.definition_version=g.definition_version AND r.measurement_quality='partial'
+    ) THEN 'partial' ELSE 'trusted' END,
+   'sourceQuality',CASE WHEN EXISTS(
+     SELECT 1 FROM rows r WHERE r.metric_code=g.metric_code
+      AND r.definition_version=g.definition_version AND r.source_quality='partial'
+    ) THEN 'partial' ELSE 'trusted' END,
+   'quality',
       CASE WHEN EXISTS(SELECT 1 FROM rows r
         WHERE r.metric_code=g.metric_code
           AND r.definition_version=g.definition_version
