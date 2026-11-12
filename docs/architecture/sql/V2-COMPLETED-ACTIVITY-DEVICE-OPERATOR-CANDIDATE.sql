@@ -14,6 +14,10 @@ GRANT SELECT ON allin_private.v2_device_registrations_candidate
  TO allin_v2_ingest_operator;
 GRANT INSERT ON allin_private.v2_device_ingest_nonce_candidate
  TO allin_v2_ingest_operator;
+-- PostgreSQL INSERT ... ON CONFLICT DO NOTHING RETURNING nonce_hash requires
+-- narrow SELECT on exactly this owner-scoped field; never read callback hashes.
+GRANT SELECT(nonce_hash) ON allin_private.v2_device_ingest_nonce_candidate
+ TO allin_v2_ingest_operator;
 -- Operator's activity/source reads have the SAME owner-scoped RLS predicate
 -- as the restricted device writer; no global athlete data reader.
 CREATE POLICY v2_ingest_operator_activity_owner_candidate
@@ -30,6 +34,10 @@ CREATE POLICY v2_ingest_operator_nonce_insert_candidate
  ON allin_private.v2_device_ingest_nonce_candidate
  FOR INSERT TO allin_v2_ingest_operator
  WITH CHECK(owner_id=(SELECT auth.uid()));
+CREATE POLICY v2_ingest_operator_nonce_hash_read_candidate
+ ON allin_private.v2_device_ingest_nonce_candidate
+ FOR SELECT TO allin_v2_ingest_operator
+ USING(owner_id=(SELECT auth.uid()));
 GRANT EXECUTE ON FUNCTION auth.uid() TO allin_v2_ingest_operator;
 -- Trust boundary: server authenticates bearer via Auth.getUser, then uses
 -- a DEDICATED credential to establish request.jwt.claim.sub locally.
