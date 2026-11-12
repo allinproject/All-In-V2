@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {resolveActivityPresentationSport as resolve} from './completedActivitySportAdapter.ts';
+import {isCanonicalActivitySport,resolveActivityPresentationSport as resolve} from './completedActivitySportAdapter.ts';
 test('road and trail remain metadata, not launch prompts or different canonical sports',()=>{
  assert.deepEqual(resolve('running','road'),{sport:'outdoor_run',terrain:'road',fallback:false});
  assert.deepEqual(resolve('running','trail'),{sport:'outdoor_run',terrain:'trail',fallback:false});
@@ -32,4 +32,14 @@ test('approved HIIT and one-parent multisport stay distinct from generic activit
  assert.deepEqual(resolve('multisport','brick'),{sport:'hybrid',terrain:null,fallback:false});
  assert.throws(()=>resolve('multisport','treadmill'),/Unsupported activity sport/);
  assert.throws(()=>resolve('hiit','pool'),/Unsupported activity sport/);
+});
+
+test('only database canonical sport IDs qualify as metric registry scopes',()=>{
+ for(const sport of ['running','walking','hiking','rucking','cycling','swimming','strength','rowing',
+  'elliptical','stair','yoga','mobility','hiit','multisport','other'])
+  assert.equal(isCanonicalActivitySport(sport),true,sport);
+ for(const sport of ['outdoor_run','pool_swim','indoor_trainer','hybrid','all','__proto__','constructor','toString'])
+  assert.equal(isCanonicalActivitySport(sport),false,sport);
+ assert.throws(()=>resolve('__proto__'),/Unsupported activity sport/);
+ assert.throws(()=>resolve('constructor'),/Unsupported activity sport/);
 });
