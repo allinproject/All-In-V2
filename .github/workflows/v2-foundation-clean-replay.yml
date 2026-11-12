@@ -8,6 +8,8 @@ on:
       - 'docs/architecture/sql/V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-EVENTHUB-IDENTITY-MEMBERSHIP-PARTICIPATION-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-EVENTHUB-OWNER-EVENT-PLAN-READER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-EVENTHUB-MEMBERSHIP-WRITER-CANDIDATE.sql'
+      - 'scripts/test-v2-eventhub-membership-writer-local-postgres.psql'
       - 'scripts/test-v2-eventhub-owner-reader-local-postgres.psql'
       - 'scripts/test-v2-eventhub-local-postgres.psql'
       - 'docs/architecture/sql/V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql'
@@ -244,6 +246,10 @@ jobs:
           docker cp scripts/test-v2-eventhub-owner-reader-local-postgres.psql "$db_container:/tmp/v2-eventhub-reader-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-reader.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-reader-qa.psql
+          docker cp docs/architecture/sql/V2-EVENTHUB-MEMBERSHIP-WRITER-CANDIDATE.sql "$db_container:/tmp/v2-eventhub-membership.sql"
+          docker cp scripts/test-v2-eventhub-membership-writer-local-postgres.psql "$db_container:/tmp/v2-eventhub-membership-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-membership.sql
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-membership-qa.psql
       - name: Validate Coach conversation persistence and cross-owner isolation in disposable DB
         run: |
           set -euo pipefail
