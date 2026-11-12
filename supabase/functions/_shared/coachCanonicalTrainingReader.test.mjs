@@ -39,9 +39,12 @@ const input={ownerId:owner,threadId:thread,readAt};
 test("authenticated Training reader retrieves restrictions and accurately marks partial scope",async()=>{
  const x=fixture(),a=await x.reader()(input);
  assert.deepEqual(x.counts(),{verifies:2,reads:1});
- assert.equal(a.history.events[0].canonicalRef,revision);
- assert.equal(a.history.events[1].kind,"completed_session");
- assert.equal(a.history.events[1].confidence,"verified_identity_only");
+ assert.equal(a.history.events.length,1);
+ assert.equal(a.history.events[0].kind,"completed_session");
+ assert.equal(a.history.events[0].confidence,"verified_identity_only");
+ assert.equal(a.history.events[0].canonicalRef,"22222222-2222-4222-8222-222222222222");
+ assert.equal(a.history.events.some(e=>e.id===session),false,
+  "Accepted planned exercise is not completed activity");
  assert.equal(a.history.requested.fromDate,"2026-10-14");
  assert.equal(a.history.restrictions[0].subject,"lying leg curl");
  assert.equal(a.history.completeness,"partial");
@@ -101,4 +104,21 @@ test("completed owner history cannot be omitted, spoofed or claim full coverage"
   };
   await assert.rejects(()=>x.reader()(input),/read_unavailable/);
  }
+});
+
+test("planned strength work remains an exact accepted prescription, never synthetic activity",async()=>{
+ const x=fixture(),ctx=await x.reader()(input);
+ assert.equal(ctx.history.plannedDay.sessions[0].sessionId,session);
+ assert.deepEqual(ctx.history.plannedDay.sessions[0].intent,{blocks:4});
+ assert.equal(ctx.history.events.some(e=>e.kind==="planned_session"),false);
+ assert.equal(ctx.history.events.length,1);
+});
+test("future completed-activity recording timestamps are rejected",async()=>{
+ const x=fixture(),orig=x.deps.readCompletedHistory;
+ x.deps.readCompletedHistory=async args=>{
+  const data=await orig(args);
+  return {...data,activities:[{...data.activities[0],
+   recordedAt:"2026-11-20T00:00:00Z"}]};
+ };
+ await assert.rejects(()=>x.reader()(input),/read_unavailable/);
 });
