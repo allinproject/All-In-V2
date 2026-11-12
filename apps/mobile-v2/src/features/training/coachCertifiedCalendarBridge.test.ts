@@ -58,3 +58,25 @@ test('verified empty snapshots are not confused with missing or invalid calendar
  const duplicate=prepareCoachCertifiedCalendar(input([planned,{...planned}],[]));
  assert.deepEqual(duplicate,{kind:'blocked',reason:'calendar_unavailable'});
 });
+
+test('Coach never turns explicit rest/recovery days into workouts',()=>{
+ const rest:PlannedCalendarItem={...planned,id:'rest-1',sport:'rest',state:'rest'};
+ const recovery:PlannedCalendarItem={...planned,id:'recovery-1',sport:'recovery',state:'recovery'};
+ const result=prepareCoachCertifiedCalendar(input([rest,recovery],[]));
+ assert.equal(result.kind,'ready');
+ if(result.kind==='ready')assert.deepEqual(result.calendar.sessions,[]);
+});
+test('conflicting canonical completion links are blocked rather than shown as a clean calendar',()=>{
+ const mismatch=prepareCoachCertifiedCalendar(input([planned],[{...completed,sport:'cycling'}]));
+ assert.deepEqual(mismatch,{kind:'blocked',reason:'calendar_unavailable'});
+ const duplicate=prepareCoachCertifiedCalendar(input([planned],[completed,{...completed,id:'actual-2'}]));
+ assert.deepEqual(duplicate,{kind:'blocked',reason:'calendar_unavailable'});
+});
+test('Coach rejects out-of-range and unverified owner data',()=>{
+ const outside=input();outside.plannedSnapshot.records=[{...planned,athleteLocalDate:'2026-11-20'}];
+ assert.equal(prepareCoachCertifiedCalendar(outside).kind,'blocked');
+ const unverified=input();unverified.completedSnapshot.snapshotVersion='';
+ assert.equal(prepareCoachCertifiedCalendar(unverified).kind,'blocked');
+ const signedOut=input();signedOut.authenticatedOwnerId=null as unknown as string;
+ assert.equal(prepareCoachCertifiedCalendar(signedOut).kind,'blocked');
+});
