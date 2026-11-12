@@ -9,7 +9,7 @@ import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import postgres from 'npm:postgres@3.4.7';
 import {ingestVerifiedDeviceEnvelopeTransactional,
  type DeviceIngestEnvelope} from '../_shared/certifiedDeviceIngestServer.ts';
-import {createCertifiedDevicePostgresAdapter} from
+import {createCertifiedDevicePostgresAdapter,type TransactionalSql} from
  '../_shared/certifiedDevicePostgresAdapter.ts';
 
 const reply=(status:number,code:string)=>
@@ -81,7 +81,9 @@ Deno.serve(async req=>{
    auth:{persistSession:false,autoRefreshToken:false},
   });
   const backend=createCertifiedDevicePostgresAdapter({
-   db:sql,
+   // Driver's PendingQuery generics differ; transactional semantics are
+   // exercised against real PostgreSQL 17 in ALL-243 CI.
+   db:sql as unknown as TransactionalSql,
    auth:{getUser:async token=>{
     const {data,error}=await supabase.auth.getUser(token);
     return error||!uuid(data?.user?.id)?null:{id:data.user.id};
