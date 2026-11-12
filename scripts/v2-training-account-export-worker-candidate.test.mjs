@@ -29,6 +29,8 @@ function setup(options={}) {
    events.push('auth');
    if(options.revokeAfterWrite&&events.filter(x=>x==='auth').length>=3)
      return {error:new Error('revoked')};
+   if(options.revokeAfterSnapshot&&events.includes('snapshotClosed'))
+     return {error:new Error('revoked after staging')};
    return {data:{user:{id:owner}}};
  }}};
  const data={v2_activity_series:[row()],v2_activity_route_objects:[]};
@@ -132,7 +134,7 @@ function setup(options={}) {
     assert.equal(ownerId,owner);assert.equal(sessionId,session);assert.equal(rid,requestId);
     events.push('snapshotOpen');
     try {
-     return await fn({
+     const receipt=await fn({
       getCanonicalInventory:async({ownerId:o,requestId:r})=>({
        ownerId:o,requestId:r,snapshotId:requestId,
        complete:!options.unapprovedDomain,collections:['coach_messages'],
@@ -143,6 +145,8 @@ function setup(options={}) {
        done:true,nextCursor:null,
       }),
      });
+     if(options.snapshotCommitFails)throw Error('pinned DB COMMIT failed');
+     return receipt;
     } finally {events.push('snapshotClosed');}
    },
  }:undefined;
@@ -262,4 +266,18 @@ test('unreviewed Community or Storage source blocks worker before any archived p
  await assert.rejects(f.worker.stageApprovedLargeHistory(requestId),/coverage or privacy review incomplete/);
  assert.equal(f.pagedArchives.size,0);
  assert.deepEqual(f.events.filter(x=>x.startsWith('snapshot')),['snapshotOpen','snapshotClosed']);
+});
+
+test('database COMMIT failure after encrypted manifest staging purges the private archive',async()=>{
+ const f=setup({useSupabasePersistence:true,pinnedReader:true,snapshotCommitFails:true});
+ await assert.rejects(f.worker.stageApprovedLargeHistory(requestId),/COMMIT failed/);
+ assert.equal(f.pagedArchives.size,0);
+ assert.equal(f.events.filter(x=>x==='archiveRemove').length,1);
+ assert.equal(f.events.filter(x=>x==='snapshotClosed').length,1);
+});
+test('session revoked immediately after snapshot commit purges completed private pages',async()=>{
+ const f=setup({useSupabasePersistence:true,pinnedReader:true,revokeAfterSnapshot:true});
+ await assert.rejects(f.worker.stageApprovedLargeHistory(requestId),/unavailable/);
+ assert.equal(f.pagedArchives.size,0);
+ assert.equal(f.events.filter(x=>x==='archiveRemove').length,1);
 });
