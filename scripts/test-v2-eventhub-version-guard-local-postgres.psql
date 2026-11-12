@@ -1,0 +1,54 @@
+\set ON_ERROR_STOP on
+-- ALL-244: local Supabase Event owner version and history protection.
+BEGIN;
+DO $event_version$
+DECLARE
+ e uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ old_version bigint;
+BEGIN
+ INSERT INTO public.v2_events(id,name,sport,event_kind,start_local_date,
+   event_timezone,source_verification,source_revision)
+ VALUES(e,'Autumn Ultra','running','ultra',DATE '2027-10-03',
+  'America/Chicago','organizer_verified','organizer-v1');
+ BEGIN
+  UPDATE public.v2_events SET start_local_date=DATE '2027-10-10' WHERE id=e;
+  RAISE EXCEPTION 'Postponement silently changed Event without version';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ IF (SELECT start_local_date FROM public.v2_events WHERE id=e)<>DATE '2027-10-03'
+ THEN RAISE EXCEPTION 'Rejected Event postponement modified original date'; END IF;
+ UPDATE public.v2_events
+  SET start_local_date=DATE '2027-10-10',
+      source_revision='organizer-v2',event_version=2
+ WHERE id=e AND event_version=1;
+ IF (SELECT event_version FROM public.v2_events WHERE id=e)<>2
+ THEN RAISE EXCEPTION 'Accepted organizer revision did not advance Event version'; END IF;
+ BEGIN
+  UPDATE public.v2_events SET event_version=3 WHERE id=e;
+  RAISE EXCEPTION 'Event version advanced without changed organizer evidence';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ BEGIN
+  UPDATE public.v2_events SET cancelled=true,event_version=4 WHERE id=e;
+  RAISE EXCEPTION 'Event version was allowed to skip from two to four';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ UPDATE public.v2_events SET cancelled=true,event_version=3
+  WHERE id=e AND event_version=2;
+ IF NOT (SELECT cancelled FROM public.v2_events WHERE id=e)
+ THEN RAISE EXCEPTION 'Exact next-version cancellation was not retained'; END IF;
+ BEGIN
+  UPDATE public.v2_events SET id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+   event_version=4 WHERE id=e;
+  RAISE EXCEPTION 'Event identity was reassigned';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  DELETE FROM public.v2_events WHERE id=e;
+  RAISE EXCEPTION 'Canonical verified Event identity deleted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF NOT EXISTS(SELECT 1 FROM public.v2_events
+  WHERE id=e AND event_version=3 AND cancelled)
+ THEN RAISE EXCEPTION 'Event history guard did not preserve canonical identity'; END IF;
+ IF pg_catalog.has_function_privilege('authenticated',
+   'allin_private.v2_event_version_guard_candidate()','EXECUTE')
+ THEN RAISE EXCEPTION 'Private event history trigger leaked to app role'; END IF;
+ RAISE NOTICE 'PASS ALL-244: postponed/cancelled Event version monotonic and identity immutable';
+END $event_version$;
+ROLLBACK;
