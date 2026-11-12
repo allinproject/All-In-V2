@@ -10,7 +10,7 @@
 import {createCipheriv,createDecipheriv,createHash,randomBytes} from 'node:crypto';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const NAME=/^[a-z][a-z0-9_]{0,63}$/;
+const NAME=/^[a-z][a-z0-9_.]{0,63}$/;
 const MAX_PAGE_ROWS=200;
 const MAX_PAGE_BYTES=1024*1024;
 const MAX_CHUNKS=20000; // bounded work; not a promise of unlimited export
@@ -61,7 +61,7 @@ async function ownerGate(services,requestId,owner){
 }
 function checkedCollections(collections){
  if(!Array.isArray(collections)||collections.length===0||collections.length>64
-  ||new Set(collections).size!==collections.length||collections.some(x=>!NAME.test(x)))
+  ||new Set(collections).size!==collections.length||collections.some(x=>!NAME.test(x)||x.includes('..')))
    throw Error('Invalid reviewed export inventory');
  return collections;
 }
@@ -82,7 +82,7 @@ function checkedManifest(m,ownerId,requestId,collections,snapshotId){
  const seen=new Set();let total=0;
  for(const p of m.pages){
   const key=p?.collection+'/'+p?.index;
-  if(!NAME.test(p?.collection??'')||!collections.includes(p.collection)
+  if(!NAME.test(p?.collection??'')||p.collection.includes('..')||!collections.includes(p.collection)
     ||!Number.isInteger(p.index)||p.index<0||seen.has(key)
     ||!Number.isInteger(p.rows)||p.rows<1||p.rows>MAX_PAGE_ROWS
     ||! /^[a-f0-9]{64}$/.test(p.sha256??''))throw Error('Invalid account export manifest');
