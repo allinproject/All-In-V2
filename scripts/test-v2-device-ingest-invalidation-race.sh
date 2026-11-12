@@ -82,19 +82,14 @@ SELECT allin_private.v2_device_ingest_scalar_gateway_candidate(
  repeat('7',64),repeat('8',64),'$owner','$activity','$source',
  'abababab-abab-4aba-8aba-abababababab',
  'draft_metric',1,'source_measured',121,NULL,NULL,repeat('a',64),'partial');
-\\echo INGEST_HELD
+\echo INGEST_HELD
 SELECT pg_sleep(3);
 COMMIT;
 SQL
   pid=$!
   ready=0
   for _ in $(seq 1 60); do
-    if grep -q '^INGEST_HELD
-  echo "FAIL ALL-243: $failures/2 real two-session mutation races permit stale ingest; cross-writer lock contract required" >&2
-  exit 1
-fi
-echo 'PASS ALL-243 two-connection mutation / ingest race gate'
- "$a"; then ready=1; break; fi
+    if grep -q '^INGEST_HELD$' "$a"; then ready=1; break; fi
     if ! kill -0 "$pid" 2>/dev/null; then break; fi
     sleep 0.1
   done
