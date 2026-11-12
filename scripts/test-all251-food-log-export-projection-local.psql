@@ -79,7 +79,7 @@ BEGIN
  p1:=public.v2_account_export_page_review_candidate(a,sa,ra,'food.my_entries',NULL,25);
  p2:=public.v2_account_export_page_review_candidate(a,sa,ra,'food.my_entries',p1->>'nextCursor',25);
  pb:=public.v2_account_export_page_review_candidate(b,sb,rb,'food.my_entries',NULL,25);
- all_rows:=p1->'rows'||p2->'rows';
+ all_rows:=(p1->'rows')||(p2->'rows');
  RAISE NOTICE 'ALL-251 Food Log page diagnostics: p1_count=%, p2_count=%, p1_done=%, p1_cursor=%, p2_done=%, p2_cursor=%, b_count=%, combined_count=%',
   pg_catalog.jsonb_array_length(p1->'rows'),pg_catalog.jsonb_array_length(p2->'rows'),
   p1->>'done',p1->>'nextCursor',p2->>'done',p2->>'nextCursor',
