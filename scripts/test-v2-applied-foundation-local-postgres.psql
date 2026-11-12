@@ -1,0 +1,97 @@
+\set ON_ERROR_STOP on
+-- ALL-222 / ALL-251: read-only, disposable LOCAL Supabase Postgres replay QA.
+-- Supabase CLI applies the 18 real migrations in order before this is run.
+-- This script performs no DDL, data writes, account actions, or remote calls.
+DO $foundation_parity$
+DECLARE
+ v_count integer;
+BEGIN
+ WITH expected(version) AS (VALUES
+  ('20261110021548'),
+  ('20261110022457'),
+  ('20261110032039'),
+  ('20261110101200'),
+  ('20261110105423'),
+  ('20261110122952'),
+  ('20261110124420'),
+  ('20261111110324'),
+  ('20261111120805'),
+  ('20261111121605'),
+  ('20261111123133'),
+  ('20261111123642'),
+  ('20261111123939'),
+  ('20261111124645'),
+  ('20261111130824'),
+  ('20261111131212'),
+  ('20261111133540'),
+  ('20261111134456')
+ ), actual AS (
+   SELECT version FROM supabase_migrations.schema_migrations
+ )
+ SELECT (SELECT count(*) FROM actual) INTO v_count;
+ IF v_count<>18
+    OR EXISTS(SELECT version FROM expected EXCEPT SELECT version FROM actual)
+    OR EXISTS(SELECT version FROM actual EXCEPT SELECT version FROM expected)
+ THEN
+   RAISE EXCEPTION 'Applied foundation migration versions diverge; found %',v_count;
+ END IF;
+
+ -- All existing owner tables remain RLS-protected after ordered replay.
+ IF EXISTS (
+   SELECT 1
+   FROM (VALUES
+    ('public','v2_profiles'),
+    ('public','v2_profile_settings'),
+    ('public','v2_onboarding_progress'),
+    ('public','v2_legal_documents'),
+    ('public','v2_legal_acceptances'),
+    ('allin_private','v2_profile_settings_actions'),
+    ('allin_private','v2_provider_cache'),
+    ('allin_private','v2_onboarding_actions'),
+    ('allin_private','v2_health_considerations'),
+    ('allin_private','v2_account_deletion_requests'),
+    ('allin_private','v2_account_deletion_processor_config'),
+    ('allin_private','v2_account_deletion_execution_audit')
+   ) AS required(schema_name,table_name)
+   LEFT JOIN pg_catalog.pg_namespace n ON n.nspname=required.schema_name
+   LEFT JOIN pg_catalog.pg_class c
+     ON c.relnamespace=n.oid AND c.relname=required.table_name AND c.relkind='r'
+   WHERE c.oid IS NULL OR c.relrowsecurity IS DISTINCT FROM true
+ ) THEN
+   RAISE EXCEPTION 'Existing foundation table missing or RLS disabled';
+ END IF;
+
+ -- Current production access contract: authenticated exports, private
+ -- deletion process, no accidental anonymous/service data snapshot.
+ IF NOT pg_catalog.has_function_privilege('authenticated',
+       'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('anon',
+       'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('service_role',
+       'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ OR NOT pg_catalog.has_function_privilege('service_role',
+       'public.v2_claim_account_deletion_for_processing(uuid,uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('authenticated',
+       'public.v2_claim_account_deletion_for_processing(uuid,uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('anon',
+       'public.v2_claim_account_deletion_for_processing(uuid,uuid)','EXECUTE')
+ THEN
+   RAISE EXCEPTION 'Existing V2 account export/deletion grant contract changed';
+ END IF;
+
+ -- The historical maintenance extension must be part of this replay.
+ IF NOT EXISTS(SELECT 1 FROM pg_catalog.pg_extension WHERE extname='pg_cron')
+ THEN RAISE EXCEPTION 'Foundation pg_cron extension absent'; END IF;
+ IF NOT EXISTS(
+   SELECT 1 FROM cron.job
+   WHERE jobname='allin-v2-provider-cache-expired-purge'
+ ) THEN RAISE EXCEPTION 'Local provider-cache maintenance schedule absent'; END IF;
+
+ -- These tables must not be silently introduced by a previously applied
+ -- foundation migration; new owner migrations need export/deletion review.
+ IF pg_catalog.to_regclass('public.v2_training_plans') IS NOT NULL
+ OR pg_catalog.to_regclass('public.v2_completed_activities') IS NOT NULL
+ THEN RAISE EXCEPTION 'Unapproved Training/Activity tables appeared in foundation'; END IF;
+
+ RAISE NOTICE 'PASS ALL-222: full 18-migration local Supabase baseline, RLS, grants and cron';
+END $foundation_parity$;
