@@ -5,6 +5,8 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {PGlite}=require(process.env.PGLITE_MODULE||'@electric-sql/pglite');
 const candidate=fs.readFileSync(path.join(__dirname,'../docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'),'utf8');
+const lifecycle=fs.readFileSync(path.join(__dirname,'../docs/architecture/sql/V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql'),'utf8');
+const attestation=fs.readFileSync(path.join(__dirname,'../docs/architecture/sql/V2-INGREDIENT-USDA-ENERGY-ATTESTATION-CANDIDATE.sql'),'utf8');
 const canonicalSchema=fs.readFileSync(path.join(__dirname,'../docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'),'utf8');
 const setup=['CREATE ROLE anon NOLOGIN','CREATE ROLE authenticated NOLOGIN','CREATE ROLE service_role NOLOGIN'].join(';')+';';
 const actorProfile='22222222-2222-4222-8222-222222222222',sourceHash='a'.repeat(64);
@@ -13,7 +15,7 @@ const fixture=[
   'CREATE ROLE ingredient_reviewer_b LOGIN',
   'CREATE ROLE ingredient_attacker LOGIN',
   'GRANT allin_v2_ingredient_reviewer TO ingredient_reviewer_a,ingredient_reviewer_b',
-  "INSERT INTO allin_private.v2_ingredient_review_operators(login_role,enabled,enrollment_reference) VALUES('ingredient_reviewer_a',true,'ISOLATED-TEST-ACTOR-A'),('ingredient_reviewer_b',false,'ISOLATED-TEST-ACTOR-B')",
+  "INSERT INTO allin_private.v2_ingredient_review_operators(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES('ingredient_reviewer_a',true,'ISOLATED-TEST-ACTOR-A','test-idp.example','test-subject-a','test-vault-reference-operator-a',now()-interval '1 hour',now()+interval '1 day'),('ingredient_reviewer_b',false,'ISOLATED-TEST-ACTOR-B','test-idp.example','test-subject-b','test-vault-reference-operator-b',now()-interval '1 hour',now()+interval '1 day')",
   "INSERT INTO public.v2_ingredients(id,canonical_key,canonical_name,normalized_name,identity_kind,status) VALUES('11111111-1111-4111-8111-111111111111','black_beans_canned_drained','Black Beans - Canned Drained and Rinsed','black beans canned drained rinsed','generic_food','active')",
   "INSERT INTO public.v2_ingredient_nutrition_profiles(id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,review_status,profile_revision,coverage_status,source_quality,required_nutrient_set_version,is_default) VALUES('"+actorProfile+"','11111111-1111-4111-8111-111111111111','cooked_drained','g',100,'100 g','candidate',1,'launch_core_complete','foundation_review','cookbook-launch-macros-v1',false)",
   "INSERT INTO public.v2_ingredient_source_records(id,ingredient_id,provider,source_data_type,external_record_id,source_description,source_quality,source_license,mapping_status,payload_sha256) VALUES('33333333-3333-4333-8333-333333333333','11111111-1111-4111-8111-111111111111','usda_fdc','Foundation','2644285','Beans, black, canned, sodium added, drained and rinsed','reviewed_foundation_source','CC0','mapped',repeat('a',64))",
@@ -30,7 +32,7 @@ const denied=async(db,sql,expectedCode)=>{
 test('reviewer role, enrollment, idempotency, source digest, status guards and audit all fail closed',async()=>{
  const db=new PGlite();
  try{
-  await db.waitReady;await db.exec(setup);await db.exec(canonicalSchema);await db.exec(candidate);await db.exec(fixture);
+  await db.waitReady;await db.exec(setup);await db.exec(canonicalSchema);await db.exec(candidate);await db.exec(lifecycle);await db.exec(attestation);await db.exec(fixture);
   const grants=(await db.query("SELECT has_function_privilege('anon','allin_private.v2_review_ingredient_profile_status(uuid,integer,text,text,text,uuid)','EXECUTE') AS anon,has_function_privilege('service_role','allin_private.v2_review_ingredient_profile_status(uuid,integer,text,text,text,uuid)','EXECUTE') AS service")).rows[0];
   assert.equal(grants.anon,false);assert.equal(grants.service,false);
   // The real proposed RLS policies expose neither source candidates nor
@@ -50,6 +52,12 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   await denied(db,call(1,'needs_review',k1),'42501');
   await denied(db,"UPDATE public.v2_ingredient_nutrition_profiles SET review_status='calculation_ready'",'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
+  // Even a role member with an expired credential must be denied.
+  await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET credential_expires_at=now()-interval '1 minute' WHERE login_role='ingredient_reviewer_a'");
+  await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await denied(db,call(1,'needs_review',k1),'42501');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET credential_expires_at=now()+interval '1 day' WHERE login_role='ingredient_reviewer_a'");
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_b');
   await denied(db,call(1,'needs_review',k1),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
@@ -99,6 +107,12 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   assert.equal(events.length,2);
   assert.deepEqual(events.map(e=>e.previous_status+'>'+e.next_status),['candidate>needs_review','needs_review>reviewed']);
   assert(events.every(e=>e.actor_db_login==='ingredient_reviewer_a'&&e.source_payload_sha256===sourceHash&&e.required_nutrient_set_version==='cookbook-launch-macros-v1'));
+  // Lifecycle events are immutable and actor names are permanently bound
+  // to an IdP issuer+subject; no over-the-air reviewer impersonation.
+  await denied(db,"UPDATE allin_private.v2_ingredient_review_operators SET identity_subject='forged-subject' WHERE login_role='ingredient_reviewer_a'",'23514');
+  await denied(db,"DELETE FROM allin_private.v2_ingredient_operator_credential_events",'42501');
+  const credentialEvents=(await db.query('SELECT event_type FROM allin_private.v2_ingredient_operator_credential_events')).rows;
+  assert(credentialEvents.length>=3);
   await denied(db,'DELETE FROM allin_private.v2_ingredient_review_events','42501');
   await denied(db,"UPDATE allin_private.v2_ingredient_review_events SET decision_reason='tampered'",'42501');
   // Search-only synonyms are not exact resolver aliases, even for a published
