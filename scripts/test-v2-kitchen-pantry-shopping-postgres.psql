@@ -1,0 +1,111 @@
+\set ON_ERROR_STOP on
+DO $guard$ BEGIN
+ IF current_database()<>'allin_kitchen_inventory_test' THEN
+  RAISE EXCEPTION 'Refusing Kitchen stock/shopping replay outside disposable database';
+ END IF;
+END $guard$;
+create schema auth;
+create schema allin_private;
+DO $roles$ BEGIN
+ IF NOT EXISTS(select 1 from pg_roles where rolname='anon') THEN create role anon nologin; END IF;
+ IF NOT EXISTS(select 1 from pg_roles where rolname='authenticated') THEN create role authenticated nologin; END IF;
+ IF NOT EXISTS(select 1 from pg_roles where rolname='service_role') THEN create role service_role nologin bypassrls; END IF;
+END $roles$;
+create table auth.users(id uuid primary key);
+create function auth.uid() returns uuid language sql stable as $$
+ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid
+$$;
+\ir ../docs/architecture/sql/V2-KITCHEN-PANTRY-SHOPPING-OWNER-CANDIDATE.sql
+insert into auth.users(id) values
+ ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+ ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+DO $acl$ BEGIN
+ IF has_table_privilege('authenticated','public.v2_kitchen_pantry_lots','UPDATE')
+ OR has_table_privilege('authenticated','public.v2_kitchen_shopping_manual_lines','INSERT')
+ OR has_table_privilege('authenticated','public.v2_kitchen_purchase_receipts','INSERT')
+ OR has_table_privilege('authenticated','public.v2_kitchen_purchase_receipt_lines','INSERT')
+ OR has_function_privilege('anon','public.v2_kitchen_write_manual_shopping(uuid,uuid,bigint,uuid,text,text,text,text,numeric,text)','EXECUTE')
+ OR NOT has_function_privilege('authenticated','public.v2_kitchen_write_manual_shopping(uuid,uuid,bigint,uuid,text,text,text,text,numeric,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Kitchen grants unsafe or incomplete'; END IF;
+ IF NOT (select bool_and(relrowsecurity) from pg_class where oid in (
+   'public.v2_kitchen_pantry_lots'::regclass,
+   'public.v2_kitchen_shopping_manual_lines'::regclass,
+   'public.v2_kitchen_purchase_receipts'::regclass,
+   'public.v2_kitchen_purchase_receipt_lines'::regclass,
+   'allin_private.v2_kitchen_manual_shopping_actions'::regclass))
+ THEN RAISE EXCEPTION 'Kitchen RLS missing'; END IF;
+END $acl$;
+select set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',false);
+DO $test$ DECLARE
+ a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ line uuid:='11111111-1111-4111-8111-111111111111';
+ action uuid:='22222222-2222-4222-8222-222222222222';
+ v bigint;
+ d jsonb;
+begin
+ v:=public.v2_kitchen_write_manual_shopping(
+  a,line,0,action,'Extra bananas','banana','as_sold','each',3,'needed');
+ IF v<>1 THEN RAISE EXCEPTION 'Manual Shopping new version incorrect'; END IF;
+ IF public.v2_kitchen_write_manual_shopping(
+  a,line,0,action,'Extra bananas','banana','as_sold','each',3,'needed')<>1
+ THEN RAISE EXCEPTION 'Exact replay not idempotent'; END IF;
+ BEGIN
+  PERFORM public.v2_kitchen_write_manual_shopping(
+   a,line,0,action,'Other bananas','banana','as_sold','each',3,'needed');
+  RAISE EXCEPTION 'Changed action replay succeeded';
+ EXCEPTION WHEN data_exception THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_kitchen_write_manual_shopping(
+   b,line,0,'33333333-3333-4333-8333-333333333333',
+   'Other bananas','banana','as_sold','each',3,'needed');
+  RAISE EXCEPTION 'Foreign-user mutation succeeded';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_kitchen_write_manual_shopping(
+   a,line,0,'44444444-4444-4444-8444-444444444444',
+   'Extra bananas','banana','as_sold','each',3,'in_cart');
+  RAISE EXCEPTION 'Stale revision succeeded';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ v:=public.v2_kitchen_write_manual_shopping(
+  a,line,1,'55555555-5555-4555-8555-555555555555',
+  'Extra bananas','banana','as_sold','each',3,'in_cart');
+ IF v<>2 THEN RAISE EXCEPTION 'Checked-state revision incorrect'; END IF;
+ d:=public.v2_kitchen_read_stock_and_manual_shopping(a);
+ IF d->>'ownerId'<>a::text OR d->>'complete'<>'true'
+   OR jsonb_array_length(d->'manualShopping')<>1
+   OR d->'manualShopping'->0->>'state'<>'in_cart'
+ THEN RAISE EXCEPTION 'Owner Shopping reader incorrect'; END IF;
+ IF jsonb_array_length(d->'pantryLots')<>0
+ OR (select count(*) from public.v2_kitchen_purchase_receipts where user_id=a)<>0
+ THEN RAISE EXCEPTION 'In cart was incorrectly counted as purchase or stock'; END IF;
+ BEGIN
+  PERFORM public.v2_kitchen_read_stock_and_manual_shopping(b);
+  RAISE EXCEPTION 'Cross-owner inventory read accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- A reserved Pantry lot is part of stock, independent of manual Shopping check state.
+ insert into public.v2_kitchen_pantry_lots(
+  user_id,id,food_source_id,preparation_state,unit,stock_location,on_hand,reserved)
+ values(a,'66666666-6666-4666-8666-666666666666','banana','as_sold','each','pantry',5,2);
+ d:=public.v2_kitchen_read_stock_and_manual_shopping(a);
+ IF jsonb_array_length(d->'pantryLots')<>1 OR
+    (d->'pantryLots'->0->>'reserved')::numeric<>2
+ THEN RAISE EXCEPTION 'Available/reserved Pantry facts were lost'; END IF;
+END $test$;
+select set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',false);
+DO $other$ DECLARE d jsonb;BEGIN
+ d:=public.v2_kitchen_read_stock_and_manual_shopping(
+ 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+ IF jsonb_array_length(d->'manualShopping')<>0 OR
+    jsonb_array_length(d->'pantryLots')<>0 THEN
+  RAISE EXCEPTION 'Other owner saw Shopping or Pantry data';
+ END IF;
+END $other$;
+delete from auth.users where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+DO $cascade$ BEGIN
+ IF exists(select 1 from public.v2_kitchen_pantry_lots)
+ OR exists(select 1 from public.v2_kitchen_shopping_manual_lines)
+ OR exists(select 1 from allin_private.v2_kitchen_manual_shopping_actions)
+ THEN RAISE EXCEPTION 'Auth owner deletion did not clear Kitchen records'; END IF;
+END $cascade$;
+select 'PASS ALL-248 KITCHEN PANTRY SHOPPING POSTGRES17' result;
