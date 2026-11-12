@@ -241,6 +241,37 @@ END $unknown_owner$;
 RESET ROLE;
 DROP TABLE allin_private.v2_future_sensitive_owner_data;
 
+-- Future V2 domains often carry owner_id/athlete_id/actor_id instead of
+-- user_id. The canonical inventory and inline snapshot must BOTH fail closed.
+-- No permissions are granted or migrations published by this rollback test.
+DO $new_domains$
+DECLARE
+ v_name text;
+ v_column text;
+BEGIN
+ FOR v_name,v_column IN
+  SELECT * FROM (VALUES
+   ('v2_nutrition_future_food_log','owner_id'),
+   ('v2_progress_future_milestones','athlete_id'),
+   ('v2_gear_future_inventory','created_by_user_id'),
+   ('v2_community_posts','owner_id')
+  ) AS future(name,owner_column)
+ LOOP
+  EXECUTE pg_catalog.format('CREATE TABLE allin_private.%I (%I uuid)',v_name,v_column);
+  EXECUTE 'SET LOCAL ROLE service_role';
+  BEGIN
+   PERFORM public.v2_account_export_inventory_review_candidate(
+    '91111111-9111-4111-8111-911111111111',
+    '93333333-9333-4333-8333-933333333333',
+    '95555555-9555-4555-8555-955555555555');
+   RAISE EXCEPTION 'Unreviewed alternate-key table % bypassed paginated inventory',v_name;
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  EXECUTE 'RESET ROLE';
+  EXECUTE pg_catalog.format('DROP TABLE allin_private.%I',v_name);
+ END LOOP;
+ RAISE NOTICE 'PASS ALL-251: Nutrition/Progress/gear/Community owner-key tables force export review';
+END $new_domains$;
+
 -- A directional relationship table without user_id is equally sensitive.
 CREATE TABLE allin_private.v2_community_unreviewed_directional (
  actor_id uuid, target_id uuid
