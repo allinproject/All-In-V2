@@ -46,11 +46,36 @@ function validate(files) {
   }
   assert(replay.includes('\\set ON_ERROR_STOP on'), 'replay must fail on SQL errors');
 }
+
+function validateCanonicalExportBridge(source) {
+  assert(source.includes('create or replace function public.v2_export_my_account_snapshot'),
+    'Coach export must extend the canonical owner RPC');
+  for (const key of ["'training_activity'", "'coach_conversation'", "'threads'", "'messages'",
+    "'message_actions'", "'v2_coach_threads'", "'v2_coach_messages'",
+    "'v2_coach_message_actions'"]) {
+    assert(source.includes(key), `Missing canonical Coach export contract: ${key}`);
+  }
+  const ownerFilters = (source.match(/where\s+[tma]\.user_id=v_user/g) ?? []).length;
+  assert(ownerFilters >= 3, 'Coach export arrays must each bind the authenticated owner');
+  assert(source.includes('p_expected_user_id is distinct from v_user'),
+    'Owner assertion must survive the export extension');
+  assert(source.includes('Account export needs Storage coverage'),
+    'Fail-closed Storage guard must survive');
+  assert(source.includes('New personal data tables require export coverage'),
+    'Fail-closed unknown owner-table guard must survive');
+  assert(source.includes('5000000'), 'Five megabyte inline cap must survive');
+  assert(!/grant execute on function public\.v2_export_my_account_snapshot\(uuid\) to anon;/i.test(source),
+    'Anonymous account export must stay denied');
+}
+
 if (process.argv.includes('--self-test')) {
   assert.throws(() => checkDollarQuotes('DO $$ BEGIN; END $;', 'bad'), /unclosed/);
   assert.throws(() => validate(['BEGIN; COMMIT;', 'x', 'ROLLBACK;']), /missing/);
+  assert.throws(() => validateCanonicalExportBridge(''), /canonical owner RPC/);
   console.log('PASS: Coach SQL static guard negative self-tests');
 } else {
   validate(names.map(name => readFileSync(root + name, 'utf8')));
+  validateCanonicalExportBridge(readFileSync(root + 'V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql', 'utf8'));
+
   console.log('PASS: Coach SQL source checks (not PostgreSQL execution)');
 }
