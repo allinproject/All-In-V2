@@ -70,7 +70,12 @@ BEGIN
     ('allin_private','v2_training_completion_outbox'),
     ('allin_private','v2_coach_message_actions'),
     ('allin_private','v2_training_plan_accept_receipts'),
-    ('allin_private','v2_account_export_requests_candidate')
+    ('allin_private','v2_account_export_requests_candidate'),
+    -- ALL-247 single canonical Food Log and hydration owner-data collections
+    ('public','v2_food_log_entries'),
+    ('allin_private','v2_food_log_write_actions'),
+    ('public','v2_hydration_events'),
+    ('allin_private','v2_hydration_actions')
  ) AS reviewed(schema_name,table_name);
  SELECT pg_catalog.array_agg(n.nspname||'.'||c.relname ORDER BY n.nspname,c.relname)
  INTO v_actual
@@ -96,7 +101,7 @@ BEGIN
    WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
      AND (c.relname LIKE 'v2_nutrition_%'
        OR c.relname LIKE 'v2_progress_%'
-       OR c.relname LIKE 'v2_food_%'
+       OR (c.relname LIKE 'v2_food_%' AND c.relname <> 'v2_food_log_entries')
        OR c.relname LIKE 'v2_recipe_%'
        OR c.relname LIKE 'v2_cookbook_%'
        OR c.relname LIKE 'v2_gear_%'
@@ -251,12 +256,8 @@ BEGIN
     ' JOIN allin_private.v2_subscription_purchases t ON t.id=e.purchase_id'||
     ' WHERE t.owner_id=$1 ORDER BY e.purchase_id,e.revision LIMIT $2 OFFSET $3';
   ELSE RAISE EXCEPTION 'Unknown billing export projection' USING ERRCODE='42501'; END IF;
- ELSIF p_collection='food.my_entries' THEN
-  -- REVIEW-ONLY / NOT REGISTERED: ALL-247 owner-visible consumed events
-  -- including deleted tombstones and revisions are portable history.
-  -- Do not apply the active-day user-facing RLS filter here: this trusted
-  -- owner/session/request-gated export must not silently erase old events.
-  -- Never export the private write-action fingerprint/replay ledger.
+ ELSIF p_collection='public.v2_food_log_entries' THEN
+  -- ALL-247: portability includes tombstones and original entered energy source.
   v_query:='SELECT pg_catalog.jsonb_build_object('||
     '''id'',e.id,''user_id'',e.user_id,'||
     '''consumed_at'',e.consumed_at,''local_date'',e.local_date,'||
@@ -267,6 +268,36 @@ BEGIN
     '''updated_at'',e.updated_at,''deleted_at'',e.deleted_at) '||
     'FROM public.v2_food_log_entries e '||
     'WHERE e.user_id=$1 ORDER BY e.consumed_at,e.id LIMIT $2 OFFSET $3';
+ ELSIF p_collection='public.v2_hydration_events' THEN
+  -- Preserve distinct refill and drink events; do not infer consumption.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''id'',h.id,''user_id'',h.user_id,''occurred_at'',h.occurred_at,'||
+    '''local_date'',h.local_date,''timezone_name'',h.timezone_name,'||
+    '''event_kind'',h.event_kind,''source_platform'',h.source_platform,'||
+    '''source_name'',h.source_name,''confidence'',h.confidence,'||
+    '''original_volume'',h.original_volume,''original_unit'',h.original_unit,'||
+    '''volume_ml'',h.volume_ml,''revision'',h.revision,'||
+    '''created_at'',h.created_at,''updated_at'',h.updated_at,'||
+    '''deleted_at'',h.deleted_at) FROM public.v2_hydration_events h '||
+    'WHERE h.user_id=$1 ORDER BY h.occurred_at,h.id LIMIT $2 OFFSET $3';
+ ELSIF p_collection IN ('allin_private.v2_food_log_write_actions',
+                        'allin_private.v2_hydration_actions') THEN
+  -- Owner-portable receipts, NOT internal replay/fingerprint secrets.
+  IF p_collection='allin_private.v2_food_log_write_actions' THEN
+   v_query:='SELECT pg_catalog.jsonb_build_object('||
+     '''user_id'',a.user_id,''action_id'',a.action_id,'||
+     '''result_id'',a.result_id,''result_revision'',a.result_revision,'||
+     '''created_at'',a.created_at) '||
+     'FROM allin_private.v2_food_log_write_actions a '||
+     'WHERE a.user_id=$1 ORDER BY a.created_at,a.action_id LIMIT $2 OFFSET $3';
+  ELSE
+   v_query:='SELECT pg_catalog.jsonb_build_object('||
+     '''user_id'',a.user_id,''action_id'',a.action_id,'||
+     '''result_id'',a.result_id,''result_revision'',a.result_revision,'||
+     '''created_at'',a.created_at) '||
+     'FROM allin_private.v2_hydration_actions a '||
+     'WHERE a.user_id=$1 ORDER BY a.created_at,a.action_id LIMIT $2 OFFSET $3';
+  END IF;
  ELSIF p_collection='community.my_posts' THEN
   -- REVIEW-ONLY / NOT REGISTERED: this owner-only projection is intentionally
   -- unreachable through the current inventory allowlist. Activating it
