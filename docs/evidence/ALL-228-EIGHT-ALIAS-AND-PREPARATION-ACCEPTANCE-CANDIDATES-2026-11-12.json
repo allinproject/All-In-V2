@@ -1,0 +1,409 @@
+{
+  "scope": "ALL-228 source-constrained identity and preparation-state review",
+  "stage": "alias_and_preparation_acceptance_proposal",
+  "status": "pending_domain_owner_acceptance",
+  "authoritativeSource": "docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json",
+  "rule": "These strings may be reviewed for exact source-scoped lookup only; no client can resolve them to a V2 canonical identity or nutrition profile until ALL-228 owner and ALL-222 writer policy approve. Unqualified source aliases remain search-only.",
+  "canonicalIdentityApproved": false,
+  "calculationReady": false,
+  "publicationApproved": false,
+  "writeAuthorized": false,
+  "records": [
+    {
+      "source_profile_key": "milk_cottage_2pct",
+      "source_fdc_id": "328841",
+      "source_description": "Cheese, cottage, lowfat, 2% milkfat",
+      "identity_kind": "generic_food",
+      "preparation_state": "prepared",
+      "locale": "en",
+      "exact_alias_candidates": [
+        {
+          "value": "cottage cheese, lowfat, 2% milkfat",
+          "kind": "source_scoped_exact",
+          "preparation_state": "prepared",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        },
+        {
+          "value": "2% milkfat cottage cheese, generic",
+          "kind": "source_scoped_exact",
+          "preparation_state": "prepared",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        }
+      ],
+      "search_only_not_exact_aliases": [
+        {
+          "value": "cottage cheese",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "2% cottage cheese",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "Daisy cottage cheese",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        }
+      ],
+      "incompatible_form_conditions": [
+        "as_sold_specific_brand",
+        "different_milkfat",
+        "specific_brand"
+      ],
+      "review_note": "2% lowfat cottage cheese is a generic prepared dairy profile, not any branded label",
+      "canonical_identity_approved": false,
+      "profile_calculation_ready": false,
+      "approved_for_publication": false
+    },
+    {
+      "source_profile_key": "red_onion_raw",
+      "source_fdc_id": "790577",
+      "source_description": "Onions, red, raw",
+      "identity_kind": "generic_food",
+      "preparation_state": "raw",
+      "locale": "en",
+      "exact_alias_candidates": [
+        {
+          "value": "red onion, raw edible portion",
+          "kind": "source_scoped_exact",
+          "preparation_state": "raw",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        },
+        {
+          "value": "onions, red, raw",
+          "kind": "source_scoped_exact",
+          "preparation_state": "raw",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        }
+      ],
+      "search_only_not_exact_aliases": [
+        {
+          "value": "red onion",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "diced red onion",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "yellow onion",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "cooked red onion",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        }
+      ],
+      "incompatible_form_conditions": [
+        "cooked",
+        "different_color",
+        "untrimmed_purchase_weight"
+      ],
+      "review_note": "Cut shape is not a state conversion; raw edible gram mass only",
+      "canonical_identity_approved": false,
+      "profile_calculation_ready": false,
+      "approved_for_publication": false
+    },
+    {
+      "source_profile_key": "cabbage_green_raw",
+      "source_fdc_id": "2346407",
+      "source_description": "Cabbage, green, raw",
+      "identity_kind": "generic_food",
+      "preparation_state": "raw",
+      "locale": "en",
+      "exact_alias_candidates": [
+        {
+          "value": "green cabbage, raw",
+          "kind": "source_scoped_exact",
+          "preparation_state": "raw",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        },
+        {
+          "value": "cabbage, green, raw",
+          "kind": "source_scoped_exact",
+          "preparation_state": "raw",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        }
+      ],
+      "search_only_not_exact_aliases": [
+        {
+          "value": "green cabbage",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "shredded cabbage",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "cabbage, cooked",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "1 cup chopped green cabbage",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        }
+      ],
+      "incompatible_form_conditions": [
+        "cooked",
+        "different_color",
+        "cup_to_grams_without_review"
+      ],
+      "review_note": "Raw green cabbage gram mass only; USDA RACC 85g is not a 1-cup conversion",
+      "canonical_identity_approved": false,
+      "profile_calculation_ready": false,
+      "approved_for_publication": false
+    },
+    {
+      "source_profile_key": "black_beans_canned_drained",
+      "source_fdc_id": "2644285",
+      "source_description": "Beans, black, canned, sodium added, drained and rinsed",
+      "identity_kind": "generic_food",
+      "preparation_state": "cooked_drained",
+      "locale": "en",
+      "exact_alias_candidates": [
+        {
+          "value": "black beans, canned, sodium added, drained and rinsed",
+          "kind": "source_scoped_exact",
+          "preparation_state": "cooked_drained",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        }
+      ],
+      "search_only_not_exact_aliases": [
+        {
+          "value": "black beans",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "canned black beans",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "black beans, drained",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "unsalted black beans",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "dry black beans",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        }
+      ],
+      "incompatible_form_conditions": [
+        "unrinsed",
+        "without_added_salt",
+        "dry",
+        "undrained",
+        "branded"
+      ],
+      "review_note": "USDA energy applies only to sodium-added drained and rinsed canned black beans",
+      "canonical_identity_approved": false,
+      "profile_calculation_ready": false,
+      "approved_for_publication": false
+    },
+    {
+      "source_profile_key": "chickpeas_canned_drained_rinsed",
+      "source_fdc_id": "2644288",
+      "source_description": "Chickpeas (garbanzo beans, bengal gram), canned, sodium added, drained and rinsed",
+      "identity_kind": "generic_food",
+      "preparation_state": "cooked_drained",
+      "locale": "en",
+      "exact_alias_candidates": [
+        {
+          "value": "chickpeas, canned, sodium added, drained and rinsed",
+          "kind": "source_scoped_exact",
+          "preparation_state": "cooked_drained",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        },
+        {
+          "value": "garbanzo beans, canned, sodium added, drained and rinsed",
+          "kind": "source_scoped_exact",
+          "preparation_state": "cooked_drained",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        }
+      ],
+      "search_only_not_exact_aliases": [
+        {
+          "value": "chickpeas",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "canned chickpeas",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "garbanzo beans",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "dried chickpeas",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        }
+      ],
+      "incompatible_form_conditions": [
+        "unrinsed",
+        "without_added_salt",
+        "dry",
+        "undrained",
+        "branded"
+      ],
+      "review_note": "USDA sample specifies sodium added, canned, drained and rinsed",
+      "canonical_identity_approved": false,
+      "profile_calculation_ready": false,
+      "approved_for_publication": false
+    },
+    {
+      "source_profile_key": "beans_kidney_canned_drained",
+      "source_fdc_id": "2644289",
+      "source_description": "Beans, kidney, dark red, canned, sodium added, sugar added, drained and rinsed",
+      "identity_kind": "generic_food",
+      "preparation_state": "cooked_drained",
+      "locale": "en",
+      "exact_alias_candidates": [
+        {
+          "value": "kidney beans, dark red, canned, sodium added, sugar added, drained and rinsed",
+          "kind": "source_scoped_exact",
+          "preparation_state": "cooked_drained",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        }
+      ],
+      "search_only_not_exact_aliases": [
+        {
+          "value": "kidney beans",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "canned kidney beans",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "dark red kidney beans",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "kidney beans, drained",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        }
+      ],
+      "incompatible_form_conditions": [
+        "light_red",
+        "without_added_salt",
+        "without_added_sugar",
+        "dry",
+        "undrained",
+        "branded"
+      ],
+      "review_note": "Do not let the broad V1 generic alias select dark-red sugar-added beans",
+      "canonical_identity_approved": false,
+      "profile_calculation_ready": false,
+      "approved_for_publication": false
+    },
+    {
+      "source_profile_key": "tomato_paste_canned_unsalted",
+      "source_fdc_id": "2685580",
+      "source_description": "Tomato, paste, canned, without salt added",
+      "identity_kind": "generic_food",
+      "preparation_state": "prepared",
+      "locale": "en",
+      "exact_alias_candidates": [
+        {
+          "value": "tomato paste, canned, without salt added",
+          "kind": "source_scoped_exact",
+          "preparation_state": "prepared",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        }
+      ],
+      "search_only_not_exact_aliases": [
+        {
+          "value": "tomato paste",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "tomato paste, unsalted",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "double concentrated tomato paste",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "salted tomato paste",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        }
+      ],
+      "incompatible_form_conditions": [
+        "with_added_salt",
+        "double_concentrated",
+        "branded",
+        "sodium_free_assumption"
+      ],
+      "review_note": "Without salt added does not mean zero intrinsic sodium; maintain explicit process qualifier",
+      "canonical_identity_approved": false,
+      "profile_calculation_ready": false,
+      "approved_for_publication": false
+    },
+    {
+      "source_profile_key": "tomatoes_crushed_canned",
+      "source_fdc_id": "2685581",
+      "source_description": "Tomatoes, crushed, canned",
+      "identity_kind": "generic_food",
+      "preparation_state": "prepared",
+      "locale": "en",
+      "exact_alias_candidates": [
+        {
+          "value": "tomatoes, crushed, canned",
+          "kind": "source_scoped_exact",
+          "preparation_state": "prepared",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        },
+        {
+          "value": "crushed tomatoes, canned, generic",
+          "kind": "source_scoped_exact",
+          "preparation_state": "prepared",
+          "selection_scope": "requires_explicit_source_form_confirmation",
+          "status": "pending_owner_acceptance"
+        }
+      ],
+      "search_only_not_exact_aliases": [
+        {
+          "value": "crushed tomatoes",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "canned tomatoes",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "tomato sauce",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        },
+        {
+          "value": "unsalted crushed tomatoes",
+          "behavior": "search_only_requires_user_or_reviewer_form_selection"
+        }
+      ],
+      "incompatible_form_conditions": [
+        "branded",
+        "with_specific_spices",
+        "low_sodium",
+        "undrained_to_drained"
+      ],
+      "review_note": "Generic canned crushed tomatoes is not specific brand, no-salt or altered spice formulation",
+      "canonical_identity_approved": false,
+      "profile_calculation_ready": false,
+      "approved_for_publication": false
+    }
+  ]
+}
