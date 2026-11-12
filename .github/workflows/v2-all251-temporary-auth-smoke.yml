@@ -1,11 +1,6 @@
 name: ALL-251 temporary staging Auth and HTTP smoke (manual only)
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - integration/v2-foundation
-    paths:
-      - .github/workflows/v2-all251-temporary-auth-smoke.yml
 permissions:
   contents: read
 concurrency:
@@ -20,7 +15,6 @@ jobs:
     env:
       CI: 'true'
       ALL251_STAGING_AUTH_ALLOW: 'true'
-      ALL251_TEST_REAL_APPROVAL: 'true'
       ALL251_STAGING_REF: fbtgknlxjyeqrxemskbl
       ALL251_STAGING_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
       ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
