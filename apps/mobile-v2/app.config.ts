@@ -10,7 +10,7 @@ const iosStoreBundleId = process.env.ALLIN_V2_IOS_BUNDLE_ID?.trim();
 const androidStorePackage = process.env.ALLIN_V2_ANDROID_PACKAGE?.trim();
 const sentryOrganization = process.env.SENTRY_ORG?.trim();
 const sentryProject = process.env.SENTRY_PROJECT?.trim();
-const plugins: NonNullable<ExpoConfig['plugins']> = ['expo-router', 'expo-sqlite'];
+const plugins: NonNullable<ExpoConfig['plugins']> = ['expo-router', 'expo-sqlite', 'expo-iap'];
 
 // Do not turn on native Sentry build hooks with guessed project identifiers.
 // Configure both values in the trusted build environment before native acceptance.
