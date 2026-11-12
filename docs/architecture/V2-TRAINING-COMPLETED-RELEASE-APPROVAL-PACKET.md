@@ -208,7 +208,7 @@ Obtain the **ALL-239 Goals and ALL-244 EventHub canonical owner key/version/part
 | Controlled migrations/operator | Audited schema/registry changes under explicit release process | Audited metric-definition seed/revision changes | No blanket client grants |
 
 - [ ] Check actual schema/table/column/sequence/function grants and RLS using PostgreSQL roles, not source-code inspection. For SECURITY DEFINER functions, explicitly audit owner, `search_path`, parameter validation, caller/owner session checks and revocations from PUBLIC/anon/authenticated.
-- [ ] The ALL-243 proposed `allin_v2_device_ingest` NOLOGIN role and gateway are **not yet operational**. Resolve its source/session-proof path, `auth.uid()` spoofable-GUC risk, `SELECT FOR UPDATE` vs UPDATE/RLS requirements, and replay/nonce lifetime *without* granting direct client metric-table writes.
+- [ ] The ALL-243 proposed `allin_v2_device_ingest` NOLOGIN role and gateway are **not yet operational**. Resolve its source/session-proof path, `auth.uid()` spoofable-GUC risk, authenticated role activation, and replay/nonce lifetime *without* granting direct client metric-table writes. The current `v2_activity_append_scalar_candidate` source already uses a transaction-scoped advisory lock and plain SELECT (not `SELECT FOR UPDATE`), so do not reintroduce an UPDATE privilege as a speculative fix; verify that exact current source in the fresh PostgreSQL test.
 - [ ] Test two concurrent owners, session expiry/revocation, owner switching, wrong session/plan revision, duplicate and changed-payload retries, race conditions, denial of cross-owner source/nonce, and transaction rollback under real roles.
 
 ### C. Evidence and application handoff
