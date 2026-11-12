@@ -13,8 +13,9 @@ function fixture(opts={}){
  const series=Buffer.alloc(520000,0x4a),route=Buffer.alloc(190000,0x5b);
  const a=owner+'/'+ 'a'.repeat(64)+'/series.fit';
  const b=owner+'/'+ 'b'.repeat(64)+'/route.geojson';
- const refs={ownerId:owner,requestId,series:[{user_id:owner,object_path:a,checksum_sha256:hash(series)}],
-  routes:[{user_id:owner,object_path:b,checksum_sha256:hash(route)}]};
+ const refs={ownerId:owner,requestId,series:[{user_id:owner,object_path:a,checksum_sha256:hash(series),state:'ready'}],
+  routes:[{user_id:owner,object_path:b,checksum_sha256:hash(route),
+   state:'ready',privacy_state:'private'}]};
  const paths=[a,b],files=new Map([[a,series],[b,route]]),calls=[];
  const scoped={
   listBucketCatalog:async()=>[{id:'v2-private-workout-objects',public:false}],
