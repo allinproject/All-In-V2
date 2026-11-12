@@ -10,6 +10,8 @@ on:
       - 'apps/mobile-v2/src/features/coach/**'
       - 'apps/mobile-v2/src/features/cookbook/**'
       - 'apps/mobile-v2/src/features/kitchen/**'
+      - 'docs/architecture/sql/V2-KITCHEN-MEAL-PLAN-OWNER-CANDIDATE.sql'
+      - 'scripts/test-v2-kitchen-plan-candidate.test.mjs'
       - 'apps/mobile-v2/src/features/fuel/**'
       - 'apps/mobile-v2/src/features/community/**'
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
@@ -80,6 +82,8 @@ on:
       - 'apps/mobile-v2/src/features/coach/**'
       - 'apps/mobile-v2/src/features/cookbook/**'
       - 'apps/mobile-v2/src/features/kitchen/**'
+      - 'docs/architecture/sql/V2-KITCHEN-MEAL-PLAN-OWNER-CANDIDATE.sql'
+      - 'scripts/test-v2-kitchen-plan-candidate.test.mjs'
       - 'apps/mobile-v2/src/features/fuel/**'
       - 'apps/mobile-v2/src/features/community/**'
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
@@ -219,6 +223,8 @@ jobs:
         run: npm run test:training-logic
       - name: Run Cookbook calculator tests
         run: npm run test:calculator
+      - name: Validate review-only Kitchen plan owner and permissions
+        run: node --test ../../scripts/test-v2-kitchen-plan-candidate.test.mjs
       - name: Run Community and Live Props contract tests
         run: npm run test:community
       - name: Run Coach quality contract and scenario tests
