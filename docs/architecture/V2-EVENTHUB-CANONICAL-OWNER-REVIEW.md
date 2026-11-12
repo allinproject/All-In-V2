@@ -32,6 +32,17 @@ versions fail closed. Joining defaults to participation **hidden**,
 does not create `v2_event_participations`, and does not publish a
 Community workout. Leaving always hides membership visibility.
 
+**Two-connection EventHub join contention was verified:** the local
+`scripts/test-v2-eventhub-membership-race-local.sh` opens independent
+PostgreSQL connections for the same athlete and group. One holds the
+owner/group advisory lock and commits the first join; the other must
+wait and fail its stale expected version. The accepted state retains
+exactly one hidden-by-default membership and one action receipt,
+without manufacturing `v2_event_participations`.
+[GitHub Actions #43193503346](https://github.com/allinproject/All-In-V2/actions/runs/43193503346)
+passed the EventHub candidate step, including this true contention
+test. No real account joins, production writers or API grants occurred.
+
 A not-yet-joined athlete has a **virtual, non-persisted**
 membership read snapshot with `version=1`, `joined=false` and hidden
 participation. The first explicit join inserts the canonical row with
