@@ -29,13 +29,19 @@ CREATE TABLE allin_private.v2_all251_unapproved_relationship_gate (
 DO $deny_graph$
 DECLARE reason text;
 BEGIN
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+  WHERE table_name='v2_all251_unapproved_owner_gate'
+    AND reason='no_verified_auth_cascade_path')
+  OR NOT EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+  WHERE table_name='v2_all251_unapproved_relationship_gate'
+    AND reason='relationship_or_actor_retention_policy_required')
+ THEN RAISE EXCEPTION 'Unknown-owner and bilateral relationship blockers must both be detected'; END IF;
  BEGIN
   PERFORM allin_private.v2_deletion_assert_approved_coverage_review();
   RAISE EXCEPTION 'Unknown owner/relationship was not denied';
  EXCEPTION WHEN insufficient_privilege THEN
   GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
-  IF reason NOT LIKE '%no_verified_auth_cascade_path%'
-   AND reason NOT LIKE '%relationship_or_actor_retention_policy_required%'
+  IF reason NOT LIKE 'Unapproved account deletion coverage: %'
   THEN RAISE EXCEPTION 'Unexpected gate reason %',reason; END IF;
  END;
 END $deny_graph$;
@@ -50,12 +56,17 @@ INSERT INTO storage.buckets(id,name,public)
 DO $deny_storage$
 DECLARE reason text;
 BEGIN
+ IF NOT EXISTS (SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+  WHERE schema_name='storage'
+    AND table_name='all251-claim-review-private-media'
+    AND reason='unreviewed_storage_bucket_cleanup')
+ THEN RAISE EXCEPTION 'Private Storage bucket was omitted from source graph findings'; END IF;
  BEGIN
   PERFORM allin_private.v2_deletion_assert_approved_coverage_review();
   RAISE EXCEPTION 'Unknown private Storage bucket was not denied';
  EXCEPTION WHEN insufficient_privilege THEN
   GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
-  IF reason NOT LIKE '%unreviewed_storage_bucket_cleanup%'
+  IF reason NOT LIKE 'Unapproved account deletion coverage: %'
   THEN RAISE EXCEPTION 'Unexpected Storage gate reason %',reason; END IF;
  END;
 END $deny_storage$;
@@ -70,7 +81,7 @@ BEGIN
   RAISE EXCEPTION 'Unapproved audit retention was not denied';
  EXCEPTION WHEN insufficient_privilege THEN
   GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
-  IF reason NOT LIKE '%audit_retention_policy_required%'
+  IF reason NOT LIKE 'Unapproved account deletion coverage: %'
   THEN RAISE EXCEPTION 'Unexpected audit release gate: %',reason; END IF;
  END;
 END $audit_block$;
@@ -96,7 +107,7 @@ BEGIN
   RAISE EXCEPTION 'Unapproved owner graph claim unexpectedly passed';
  EXCEPTION WHEN insufficient_privilege THEN
   GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
-  IF reason NOT LIKE '%audit_retention_policy_required%'
+  IF reason NOT LIKE 'Unapproved account deletion coverage: %'
    THEN RAISE EXCEPTION 'Review claim failed for wrong reason: %',reason; END IF;
  END;
  IF NOT EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_requests
@@ -119,7 +130,7 @@ BEGIN
   RAISE EXCEPTION 'Unapproved owner graph completion unexpectedly passed';
  EXCEPTION WHEN insufficient_privilege THEN
   GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
-  IF reason NOT LIKE '%audit_retention_policy_required%'
+  IF reason NOT LIKE 'Unapproved account deletion coverage: %'
    THEN RAISE EXCEPTION 'Review completion failed for wrong reason: %',reason; END IF;
  END;
  RAISE NOTICE 'PASS ALL-251 review-only claim and completion deny unapproved audit retention; owner graph rejects unknown relationships; no state written';
