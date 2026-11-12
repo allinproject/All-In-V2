@@ -21,14 +21,15 @@ export function createCoachOpenAiResponsesTransport({
    typeof fetchImpl!=="function"||
    !Number.isSafeInteger(timeoutMs)||timeoutMs<1000||timeoutMs>30000)
   throw Error("coach_model_transport_not_configured");
- return async function invokeModel({
-  instructions,userContent,context,maxOutputTokens,reservationId
- }={}){
+ // This deterministic local validation runs before reservation and again
+ // immediately before transport. It cannot spend tokens or make network calls.
+ const preflight=({instructions,userContent,context,maxOutputTokens}={})=>{
   if(!valid(instructions)||instructions.length>25000||
     !valid(userContent)||userContent.length>12000||
     !context||context.kind!=="ready"||context.noWriteAuthority!==true||
-    !valid(reservationId)||!Number.isSafeInteger(maxOutputTokens)||
+    !Number.isSafeInteger(maxOutputTokens)||
     maxOutputTokens<16||maxOutputTokens>1024)deny();
+
   const approvedContext=JSON.stringify({acceptedPlan:context.acceptedPlan,
    plannedDay:context.plannedDay,activeRestrictions:context.activeRestrictions,
    relevantHistory:context.relevantHistory,
@@ -42,6 +43,15 @@ export function createCoachOpenAiResponsesTransport({
   const worstCostUsd=(worstInputTokens*inputUsdPerMillion+
    maxOutputTokens*outputUsdPerMillion)/1000000;
   if(!Number.isFinite(worstCostUsd)||worstCostUsd>0.005)deny();
+  return {fullInstructions,worstCostUsd};
+ };
+ const invokeModel=async ({
+  instructions,userContent,context,maxOutputTokens,reservationId
+ }={})=>{
+  if(!valid(reservationId))deny();
+  const {fullInstructions}=preflight({
+   instructions,userContent,context,maxOutputTokens
+  });
   const controller=new AbortController();
   // AbortSignal timeout is available in Edge; keep control local and never
   // propagate tokens/keys, provider errors or private prompts in errors.
@@ -84,4 +94,6 @@ export function createCoachOpenAiResponsesTransport({
   return {message,usage:{inputTokens:body.usage.input_tokens,
    outputTokens:body.usage.output_tokens,costUsd}};
  };
+ invokeModel.preflight=preflight;
+ return invokeModel;
 }
