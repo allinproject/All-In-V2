@@ -145,3 +145,31 @@ owner-scoped Storage catalog and exact SHA-256 verification, remains bounded
 to the reviewed Training bucket and does not authorize or classify Community,
 Nutrition, Progress, or any future photo bucket. The all-domain inventory
 stays `complete=false` until those domains and legal policy are approved.
+
+## Step-3 Community, Nutrition, Progress media source reconciliation — 2026-11-12
+
+This is a **source-to-export inventory reconciliation**, not a new database,
+media bucket, upload system, legal approval, or whole-export release.
+
+| Domain | Actual canonical candidate | Owner identity | Media contract today | Export disposition |
+| --- | --- | --- | --- | --- |
+| Community posts | `docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql`, `allin_private.v2_community_posts` | `owner_id` references `v2_profiles(user_id)`; `source_id` links a shared workout/food source, not a media file | No bucket, path, byte checksum, ownership proof, photo redaction or retention model in this source | **Blocked.** Existing alternate-owner table guard rejects an installed post ledger until the owner-only post projection, audience/third-party privacy and relevant file reference graph are approved; do not infer photo ownership from `source_id` |
+| Food Log | `docs/architecture/candidates/ALL-247-food-log-first-writer.review.sql` and `ALL-247-food-log-lifecycle.review.sql`; `public.v2_food_log_entries` and `allin_private.v2_food_log_write_actions` | Both have `user_id`; Food Log includes `deleted_at` tombstones and versioned edits | No image reference or photo bucket in the reviewed lifecycle | **Blocked.** Preserve all approved owner-visible consumed events including deleted/tombstoned entries as reviewed, without exposing private action fingerprints. Existing `v2_food_%` inventory guard stops silent omission. No photo export can be claimed |
+| Progress | No canonical `v2_progress_*` media/owner-table migration in the inspected V2 foundation; Progress is still an owning product domain | Not established; do not guess `user_id`, `owner_id`, or `athlete_id` | No approved progress/photo object contract or Storage bucket | **Blocked.** The `v2_progress_%`, `v2_body_%`, `v2_personal_record_%`, `v2_achievement_%` guards and alternate owner-column checks require explicit owner-schema review when implemented |
+| Training evidence | Existing canonical activity series/routes and pinned `trainingExportSupabaseStorage.mjs` / `trainingExportPrivateMediaPages.mjs` | `user_id` and owner-prefixed object path; `state=ready`; route `privacy_state=private/redacted` | Private workout bucket, exact referenced bytes and SHA-256 checks in isolated tests | **Training-only test coverage**, not complete-account coverage; limits and snapshot consistency still apply |
+
+**Verified live distinction:** Live V2 has no Community, Food Log or Progress
+source tables and no Storage buckets as of this read-only check. These named
+SQL files are review candidates, not production migrations. The explicit
+ALL-251 catalog-alignment tests now link these **actual owner contracts**
+to the existing fail-closed SQL guards, and prohibit a future migration
+appearing without a refreshed export decision.
+
+**Next approval/implementation slices:** when the owning domain schema lands,
+register exact SQL collections and redacted per-owner projections in the
+existing ALL-251 canonical reader; only then add source-specific media
+reference rows (bucket, canonical owner, stable object path, size, SHA-256,
+privacy state, retention), exhaustive owner bucket listing, verified private
+byte pages and two-owner/third-party denial tests. An unknown or public
+bucket must still block ALL-251. Never invent a placeholder photo table,
+create a second export system, or set `complete=true` to pass tests.
