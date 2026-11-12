@@ -35,7 +35,10 @@ function CompletedActivityScreenInner({activity,onSaveLayout,onOpenCoach,onEditC
  const activeMetrics=pane?model.customization[pane]:[];
  const listed=tab==='Overview'?model.stats.overview:model.stats.details;
  const canEdit=Boolean(onSaveLayout)&&!savingPreferences&&!saving;
- function switchTab(next:CompletedActivityTab){setTab(next);setEditing(false);setDraft(null);setError(null);}
+ function switchTab(next:CompletedActivityTab){
+  if(saving||savingPreferences)return;
+  setTab(next);setEditing(false);setDraft(null);setError(null);
+ }
  async function save(next:MetricLayout|null){
   if(!pane||!onSaveLayout||saving||savingPreferences)return;
   setSaving(true);setError(null);
@@ -49,7 +52,8 @@ function CompletedActivityScreenInner({activity,onSaveLayout,onOpenCoach,onEditC
   <Text style={styles.source}>Source: {model.sourceLabel}</Text>
   {model.terrain?<Text style={styles.helper}>Terrain: {model.terrain==='trail'?'Trail':'Road'}</Text>:null}
   <View style={styles.tabs}>{model.tabs.map(next=><Pressable key={next} accessibilityRole="tab"
-    accessibilityState={{selected:tab===next}} style={[styles.tab,tab===next&&styles.selected]}
+    disabled={saving||savingPreferences}
+    accessibilityState={{selected:tab===next,disabled:saving||savingPreferences}} style={[styles.tab,tab===next&&styles.selected]}
     onPress={()=>switchTab(next)}><Text style={tab===next?styles.selectedText:styles.tabText}>{next}</Text></Pressable>)}</View>
   {pane?<View style={styles.content}>
    <View style={styles.headingRow}><Text style={styles.heading}>{tab==='Overview'?'Activity Summary':'All Recorded Statistics'}</Text>
