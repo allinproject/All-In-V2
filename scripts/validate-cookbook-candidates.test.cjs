@@ -93,3 +93,17 @@ test('avoids composite-key collisions when keys contain delimiters',()=>{
     mappings:[{source_mapping_id:5,source_recipe_id:'r1',selector_key:'a|b',option_key:'c',source_profile_key:'x'}]};
   const errors=[];checkReferences(records,errors);assert.deepEqual(errors,[]);
 });
+
+test('malformed null records fail inspection without crashing cross references',async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'all218-null-'));
+  try {
+    const inputs={recipes:[null,recipe()],selectors:[null],options:[null],mappings:[null]};
+    const paths=Object.fromEntries(Object.entries(inputs).map(([k,values])=>{
+      const p=path.join(dir,k+'.ndjson');fs.writeFileSync(p,values.map(JSON.stringify).join('\n')+'\n');return [k,p];
+    }));
+    const result=await validate(paths);
+    assert.equal(result.ok,false);
+    assert.equal(result.publicationApproved,false);
+    assert(result.errors.some(e=>e.includes('candidate must be an object')));
+  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});
