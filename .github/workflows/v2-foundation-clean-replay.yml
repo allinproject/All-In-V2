@@ -596,6 +596,13 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-all12-auth-identity-restore-local.psql "$db_container:/tmp/all12-auth-identity-restore.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/all12-auth-identity-restore.psql
+      - name: ALL-12 inspect actual disposable PostgreSQL recovery inventory
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          node scripts/test-all12-live-schema-inventory-local.mjs "$db_container"
       - name: ALL-12 populated foundation owner data backup and restore
         run: |
           set -euo pipefail
