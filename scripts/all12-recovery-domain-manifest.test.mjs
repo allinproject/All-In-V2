@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assessRecoveryCoverage,recoveryDomains,findUntrackedRecoveryTables} from './all12-recovery-domain-manifest.mjs';
+import {assessRecoveryCoverage,recoveryDomains,findUntrackedRecoveryTables,assessIndependentRecoveryEvidence} from './all12-recovery-domain-manifest.mjs';
 test('missing domains fail closed',()=>{
  const x=assessRecoveryCoverage();
  assert.equal(x.complete,false);
@@ -55,4 +55,65 @@ test('hosted V2 foundation inventory is fully classified',()=>{
   'allin_private.v2_account_deletion_execution_audit'
  ];
  assert.deepEqual(findUntrackedRecoveryTables(hosted),[]);
+});
+
+
+test('local logical restore evidence never constitutes provider physical restore acceptance',()=>{
+ const r=assessIndependentRecoveryEvidence({
+  sourceProjectRef:'v2-source',restoredProjectRef:'v2-source',
+  localLogicalRestorePassed:true,storageSyntheticPassed:true,authSyntheticPassed:true
+ });
+ assert.equal(r.accepted,false);
+ assert.ok(r.missing.includes('providerPhysicalRestore'));
+ assert.ok(r.missing.includes('independentDestination'));
+ assert.ok(r.missing.includes('preStartOutboundIsolationVerified'));
+ assert.ok(r.missing.includes('reviewedReleaseAuthorization'));
+});
+
+test('a provider completion claim without operational recovery evidence fails closed',()=>{
+ const r=assessIndependentRecoveryEvidence({
+  sourceProjectRef:'source',restoredProjectRef:'independent-target',
+  backupSnapshotId:'provider-snapshot',backupCutoffUtc:'2026-11-10T00:00:00Z',
+  restoreStartedUtc:'2026-11-10T01:00:00Z',
+  restoreCompletedUtc:'2026-11-10T01:10:00Z',
+  measuredRpoSeconds:3600,measuredRtoSeconds:600,providerPhysicalRestore:true
+ });
+ assert.equal(r.accepted,false);
+ for(const field of ['preStartOutboundIsolationVerified','restoredOwnerAuthBoundaryVerified',
+   'authConfigurationRecovered','privateStorageBytesAndMetadataRecovered',
+   'liveSchemaDomainInventoryReconciled','reviewedReleaseAuthorization']){
+  assert.ok(r.missing.includes(field),field);
+ }
+});
+
+test('invalid timing and same project cannot be accepted',()=>{
+ const r=assessIndependentRecoveryEvidence({
+  sourceProjectRef:'a',restoredProjectRef:'a',
+  backupCutoffUtc:'2026-11-12T02:00:00Z',
+  restoreStartedUtc:'2026-11-12T03:00:00Z',
+  restoreCompletedUtc:'2026-11-12T01:00:00Z',
+  measuredRpoSeconds:-1,measuredRtoSeconds:-1
+ });
+ assert.equal(r.accepted,false);
+ assert.ok(r.missing.includes('validRestoreTimeOrder'));
+ assert.ok(r.missing.includes('validSnapshotCutoff'));
+ assert.ok(r.missing.includes('independentDestination'));
+});
+
+test('complete independently reviewed physical recovery evidence can satisfy its own gate',()=>{
+ const r=assessIndependentRecoveryEvidence({
+  sourceProjectRef:'source',restoredProjectRef:'isolated-target',
+  backupSnapshotId:'provider-snapshot-123',
+  backupCutoffUtc:'2026-11-10T00:00:00Z',
+  restoreStartedUtc:'2026-11-10T01:00:00Z',
+  restoreCompletedUtc:'2026-11-10T01:10:00Z',
+  measuredRpoSeconds:3600,measuredRtoSeconds:600,
+  providerPhysicalRestore:true,preStartOutboundIsolationVerified:true,
+  scheduledWorkersQuarantinedBeforeStartup:true,
+  sourceTargetSnapshotCompared:true,restoredSchemaAndRlsVerified:true,
+  restoredOwnerAuthBoundaryVerified:true,restoredDataIntegrityVerified:true,
+  authConfigurationRecovered:true,privateStorageBytesAndMetadataRecovered:true,
+  liveSchemaDomainInventoryReconciled:true,reviewedReleaseAuthorization:true
+ });
+ assert.deepEqual(r,{accepted:true,missing:[]});
 });
