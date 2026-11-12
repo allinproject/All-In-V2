@@ -54,6 +54,17 @@ BEGIN
            'count_per_period','no_tracking');
   RAISE EXCEPTION 'Count target accepted without real frequency';
  EXCEPTION WHEN check_violation THEN NULL; END;
+ -- An unconfirmed supporting behavior cannot be adopted by a Goal
+ -- acceptance, even when a trusted caller tries a direct state transition.
+ BEGIN
+  UPDATE public.v2_goal_revisions
+    SET status='accepted',accepted_at=now() WHERE id=r2;
+  RAISE EXCEPTION 'Unconfirmed Goal behavior was silently accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE public.v2_goal_revision_behavior_targets
+   SET user_confirmed=true WHERE id=t3;
+ UPDATE public.v2_goal_revisions
+   SET status='accepted',accepted_at=now() WHERE id=r2;
  UPDATE public.v2_goal_revisions
  SET status='accepted',accepted_at=now() WHERE id=r1;
  BEGIN

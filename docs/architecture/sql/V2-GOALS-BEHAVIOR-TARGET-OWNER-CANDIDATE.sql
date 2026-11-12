@@ -77,6 +77,30 @@ CREATE TRIGGER v2_goal_behavior_history_guard
  BEFORE INSERT OR UPDATE OR DELETE ON public.v2_goal_revision_behavior_targets
  FOR EACH ROW EXECUTE FUNCTION allin_private.v2_goal_behavior_history_guard_candidate();
 
+-- A Goal may be accepted with no behavior targets, but a present behavior
+-- must reflect explicit athlete confirmation, never silent Coach activation.
+CREATE FUNCTION allin_private.v2_goal_behavior_approval_guard_candidate()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=''
+AS $approve$
+BEGIN
+ IF OLD.status='candidate' AND NEW.status='accepted'
+    AND EXISTS(
+      SELECT 1 FROM public.v2_goal_revision_behavior_targets b
+      WHERE b.goal_revision_id=NEW.id AND b.goal_id=NEW.goal_id
+        AND b.user_id=NEW.user_id AND b.user_confirmed IS NOT TRUE
+    )
+ THEN RAISE EXCEPTION 'All Goal behaviors require athlete confirmation before acceptance'
+    USING ERRCODE='42501';
+ END IF;
+ RETURN NEW;
+END;
+$approve$;
+CREATE TRIGGER v2_goal_behavior_approval_guard
+ BEFORE UPDATE OF status ON public.v2_goal_revisions
+ FOR EACH ROW EXECUTE FUNCTION allin_private.v2_goal_behavior_approval_guard_candidate();
+REVOKE ALL ON FUNCTION allin_private.v2_goal_behavior_approval_guard_candidate()
+ FROM PUBLIC,anon,authenticated,service_role;
+
 ALTER TABLE public.v2_goal_revision_behavior_targets ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.v2_goal_revision_behavior_targets
  FROM PUBLIC,anon,authenticated,service_role;
