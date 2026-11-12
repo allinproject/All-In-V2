@@ -168,6 +168,7 @@ jobs:
         run: |
           node --test ../../supabase/functions/_shared/trainingExportSupabaseArchive.node.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportLargeArchive.node.test.mjs
+          node --test ../../supabase/functions/_shared/trainingExportDownloadVerifier.node.test.mjs
           node --test ../../scripts/v2-training-account-export-worker-candidate.test.mjs
           node --test ../../scripts/v2-training-export-archive-writer.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportSupabaseStorage.node.test.mjs
