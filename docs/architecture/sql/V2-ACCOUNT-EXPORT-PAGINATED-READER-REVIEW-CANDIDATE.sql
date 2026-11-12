@@ -70,12 +70,13 @@ BEGIN
     ('allin_private','v2_training_completion_outbox'),
     ('allin_private','v2_coach_message_actions'),
     ('allin_private','v2_training_plan_accept_receipts'),
-    ('allin_private','v2_account_export_requests_candidate'),
-    -- ALL-247 single canonical Food Log and hydration owner-data collections
-    ('public','v2_food_log_entries'),
-    ('allin_private','v2_food_log_write_actions'),
-    ('public','v2_hydration_events'),
-    ('allin_private','v2_hydration_actions')
+    ('allin_private','v2_account_export_requests_candidate')
+    -- ALL-247 Food Log/Hydration candidate projections exist below, but
+    -- their four owner tables are not registered until ALL-222/247/251
+    -- approve the shared canonical export source and privacy contract.
+    -- See ALL-247-ALL-251-fuel-privacy-preflight.review.sql:
+    -- export_registered=false; the active 42-table inventory must fail
+    -- closed if any of those candidate owner tables are introduced.
  ) AS reviewed(schema_name,table_name);
  SELECT pg_catalog.array_agg(n.nspname||'.'||c.relname ORDER BY n.nspname,c.relname)
  INTO v_actual
@@ -101,7 +102,7 @@ BEGIN
    WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
      AND (c.relname LIKE 'v2_nutrition_%'
        OR c.relname LIKE 'v2_progress_%'
-       OR (c.relname LIKE 'v2_food_%' AND c.relname <> 'v2_food_log_entries')
+       OR c.relname LIKE 'v2_food_%'
        OR c.relname LIKE 'v2_recipe_%'
        OR c.relname LIKE 'v2_cookbook_%'
        OR c.relname LIKE 'v2_gear_%'
@@ -257,7 +258,9 @@ BEGIN
     ' WHERE t.owner_id=$1 ORDER BY e.purchase_id,e.revision LIMIT $2 OFFSET $3';
   ELSE RAISE EXCEPTION 'Unknown billing export projection' USING ERRCODE='42501'; END IF;
  ELSIF p_collection='public.v2_food_log_entries' THEN
-  -- ALL-247: portability includes tombstones and original entered energy source.
+  -- ALL-247 REVIEW ONLY / NOT REGISTERED. Portability includes tombstones
+  -- and original entered energy source; the real registry rejects this
+  -- collection until canonical owner and retention approval.
   v_query:='SELECT pg_catalog.jsonb_build_object('||
     '''id'',e.id,''user_id'',e.user_id,'||
     '''consumed_at'',e.consumed_at,''local_date'',e.local_date,'||
