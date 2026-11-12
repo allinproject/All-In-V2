@@ -200,3 +200,71 @@ test('previous owner verified purchase cannot be finished by a new account',asyn
  await assert.rejects(h.store.finishVerifiedPurchase(receipt),/owner_changed/);
  assert.equal(h.finished(),0);
 });
+
+test('two verification paths cannot finish the same native purchase concurrently',async()=>{
+ let releaseFinish;
+ let calls=0;
+ const h=harness('android');
+ h.api.finishTransaction=async()=>{
+  calls++;
+  await new Promise(resolve=>{releaseFinish=resolve;});
+ };
+ const receipt=(await h.store.restore())[0];
+ const first=h.store.finishVerifiedPurchase(receipt);
+ await waitForCheckpoint(()=>releaseFinish,'releaseFinish');
+ await assert.rejects(h.store.finishVerifiedPurchase(receipt),
+  /native_transaction_in_progress/);
+ assert.equal(calls,1);
+ releaseFinish();
+ await first;
+ await assert.rejects(h.store.finishVerifiedPurchase(receipt),
+  /native_transaction_not_found/);
+ assert.equal(calls,1);
+});
+
+test('failed native finish releases single-flight guard for a verified retry',async()=>{
+ let calls=0;
+ const h=harness('ios');
+ h.api.finishTransaction=async()=>{
+  calls++;
+  if(calls===1)throw Error('temporary_store_failure');
+ };
+ const receipt=(await h.store.restore())[0];
+ await assert.rejects(h.store.finishVerifiedPurchase(receipt),
+  /temporary_store_failure/);
+ await h.store.finishVerifiedPurchase(receipt);
+ assert.equal(calls,2);
+});
+
+test('store finish that succeeded during account switch is not acknowledged twice',async()=>{
+ let currentOwner=owner;
+ let releaseFinish;
+ let calls=0;
+ const api={
+  initConnection:async()=>true,
+  fetchProducts:async()=>[{id:productId}],
+  purchaseUpdatedListener:()=>({remove(){}}),
+  purchaseErrorListener:()=>({remove(){}}),
+  requestPurchase:async()=>{},
+  getAvailablePurchases:async()=>[{store:'apple',productId,purchaseToken:signed}],
+  finishTransaction:async()=>{
+   calls++;
+   await new Promise(resolve=>{releaseFinish=resolve;});
+  },
+ };
+ const store=createOpenIapStoreAdapter({
+  platform:'ios',productId,api,getOwner:()=>currentOwner,
+  getAccountContext:async()=>({ownerId:currentOwner,
+   ios:{productId,appAccountToken:currentOwner}}),
+ });
+ const receipt=(await store.restore())[0];
+ const finishing=store.finishVerifiedPurchase(receipt);
+ await waitForCheckpoint(()=>releaseFinish,'releaseFinish');
+ currentOwner='00000000-0000-0000-0000-000000000002';
+ releaseFinish();
+ await assert.rejects(finishing,/owner_changed/);
+ currentOwner=owner;
+ await assert.rejects(store.finishVerifiedPurchase(receipt),
+  /native_transaction_not_found/);
+ assert.equal(calls,1);
+});
