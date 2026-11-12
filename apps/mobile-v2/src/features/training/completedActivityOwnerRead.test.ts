@@ -198,6 +198,25 @@ test('all 15 canonical sports carry real owner metrics into V1 Overview and Deta
  }
 });
 
+test('registry and presentation identifiers share strict bounds and section identities',()=>{
+ const a=base();
+ const tooLongCode='metric.'+'x'.repeat(95); // 102 chars, exceeds SQL metric code cap
+ assert.throws(()=>canonicalActivityToScreenInput({...a,definitions:[
+  {...a.definitions[0],code:tooLongCode}],metrics:[{...a.metrics[0],code:tooLongCode}]},
+  'owner-A','activity-1'),/Invalid metric registry definition/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[
+  {...a.metrics[0],code:tooLongCode}]},'owner-A','activity-1'),
+  /Unverifiable metric source or definition/);
+ const tooLongSection='section.'+'x'.repeat(114); // 122 chars, exceeds display cap
+ assert.throws(()=>canonicalActivityToScreenInput({...a,sections:[
+  {...a.sections![0],key:tooLongSection}]},'owner-A','activity-1'),
+  /Structured activity evidence is not verifiable/);
+ assert.throws(()=>canonicalActivityToScreenInput({...a,sections:[
+  a.sections![0],{...a.sections![0],title:'Another section'}]},'owner-A','activity-1'),
+  /Duplicate canonical activity section identity/);
+ assert.equal(canonicalActivityToScreenInput(a,'owner-A','activity-1').sections?.length,1);
+});
+
 test('untrusted runtime enums and ambiguous numeric placeholders fail closed',()=>{
  const a=base();
  assert.throws(()=>canonicalActivityToScreenInput({...a,sources:[{...a.sources[0],quality:'invented' as 'trusted'}]},'owner-A','activity-1'),/Invalid or duplicate canonical source/);
