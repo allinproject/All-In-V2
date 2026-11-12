@@ -74,8 +74,12 @@ async function triageJsonl(file, {expectedRecipes=907}={}) {
     reviewLaneCounts:items.reduce((out,item)=>{
       out[item.reviewLane]=(out[item.reviewLane]||0)+1;return out;
     },{}),errors,
-    items:items.sort((a,b)=>a.reviewLane.localeCompare(b.reviewLane)
-      || String(a.source_recipe_id).localeCompare(String(b.source_recipe_id)))};
+    items:items.sort((a,b)=>{
+      const order=['source_identity_and_rights','ingredient_and_variant_structure',
+        'freezer_kit_method','standard_recipe_measurements'];
+      return order.indexOf(a.reviewLane)-order.indexOf(b.reviewLane)
+        || String(a.source_recipe_id).localeCompare(String(b.source_recipe_id));
+    })};
 }
 
 if(require.main===module) {
