@@ -124,6 +124,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    source.quality==='unverified'||source.quality==='low_quality')continue;
   metrics.push({key:m.code,label:definition.displayName,value:m.displayValue,
    source:source.provider,provenance:evidenceKind(m.measurementKind),
+   quality:m.quality,sourceQuality:source.quality,
    ...(definition.canonicalUnit?{unit:definition.canonicalUnit}:{})});
  }
  const sections:StructuredEvidence[]=[];
