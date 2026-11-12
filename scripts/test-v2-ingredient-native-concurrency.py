@@ -277,7 +277,8 @@ def main():
             require(admin("SELECT review_status||':'||profile_revision "
                           f"FROM public.v2_ingredient_nutrition_profiles WHERE id={lit(profile)}"
                           ).stdout.strip() == "needs_review:2", "race caused incorrect status/revision")
-            require(admin("SELECT count(*) FROM allin_private.v2_ingredient_review_events").stdout.strip() == "1",
+            require(admin("SELECT count(*) FROM allin_private.v2_ingredient_review_events "
+                          f"WHERE profile_id={lit(profile)}").stdout.strip() == "1",
                     "concurrent race produced duplicate audits")
             winner = actors[outcomes.index(next(r for r in outcomes if r.returncode == 0))]
             winner_key = uuid(4, outcomes.index(next(r for r in outcomes if r.returncode == 0)) + 1)
@@ -321,7 +322,8 @@ def main():
                   f"{lit(digest)} WHERE id={lit(source)}")
             accepted = client(actors[0], cmd(2, "reviewed", uuid(5, 2)))
             require(accepted.returncode == 0, "reviewed transition did not commit")
-            require(admin("SELECT count(*) FROM allin_private.v2_ingredient_review_events").stdout.strip() == "2",
+            require(admin("SELECT count(*) FROM allin_private.v2_ingredient_review_events "
+                          f"WHERE profile_id={lit(profile)}").stdout.strip() == "2",
                     "source race created an extra audit event")
             attested = 0
             for profile_id, _, source_digest, food in rows:
@@ -332,12 +334,15 @@ def main():
                         "energy attestation failed for "+str(food["fdcId"])+": "+result.stderr[:300])
                 attested += 1
             require(attested == 8, "not all source energy records attested")
+            original_ids = ",".join(lit(row[0]) for row in rows)
             selected = admin("SELECT selected_fdc_nutrient_id||':'||count(*) FROM "
                              "allin_private.v2_ingredient_energy_attestations "
+                             f"WHERE profile_id IN ({original_ids}) "
                              "GROUP BY selected_fdc_nutrient_id ORDER BY selected_fdc_nutrient_id").stdout.strip().splitlines()
             require(selected==["1008:2","2048:6"],
                     "USDA legacy/specific selection changed: "+repr(selected))
-            require(admin("SELECT count(*) FROM allin_private.v2_ingredient_energy_attestations").stdout.strip() == "8",
+            require(admin("SELECT count(*) FROM allin_private.v2_ingredient_energy_attestations "
+                          f"WHERE profile_id IN ({original_ids})").stdout.strip() == "8",
                     "expected eight immutable attestations")
             require(admin("SELECT count(*) FROM public.v2_ingredient_nutrition_profiles WHERE review_status='calculation_ready'").stdout.strip()=="0",
                     "attestation incorrectly published profile")
@@ -425,7 +430,7 @@ def main():
                               "fixtureFoods":len(rows),"independentConnections":2,
                               "competingCAS":"one-success-one-stale",
                               "sourceMutationRace":"blocked-until-commit-and-rejected",
-                              "idempotentReplay":"passed","auditEvents":2,
+                              "idempotentReplay":"passed","auditEventsOriginalRace":2,
                               "energyAttestations":attested,"generalOnlyEnergy":"rejected",
                               "expiredAndRevokedCredentials":"denied",
                               "concurrentCredentialRevocation":"waited_and_denied",
