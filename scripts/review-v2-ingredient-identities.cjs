@@ -30,13 +30,18 @@ function review(candidates) {
     if(record.identity_kind==='branded_product' && !normalize(record.brand_owner))
       flag(id,'branded_source_requires_brand_review');
     if(record.canonical_v2_id != null) flag(id,'v2_identity_assignment_requires_approved_writer');
+    if(record.aliases != null && (!Array.isArray(record.aliases) ||
+      record.aliases.some(alias=>!normalize(alias)))) flag(id,'invalid_alias_set');
+    if(typeof record.locale!=='string' || !/^[a-z]{2}(?:-[A-Z]{2})?$/.test(record.locale))
+      flag(id,'locale_scope_unresolved');
     const aliases=[record.canonical_name,...(Array.isArray(record.aliases)?record.aliases:[])];
     for(const alias of aliases) {
       const name=normalize(alias);
       if(name) add(labels,JSON.stringify([name,record.locale||'en',record.preparation_state||null]),id);
     }
     if(Array.isArray(record.sources)) for(const source of record.sources) {
-      if(!source || typeof source!=='object'||!normalize(source.provider)||!normalize(source.external_record_id)) {
+      if(!source || typeof source!=='object'||!normalize(source.provider)||
+         !normalize(source.source_data_type)||!normalize(source.external_record_id)) {
         flag(id,'invalid_source_reference');continue;
       }
       const ref=JSON.stringify([source.provider,source.source_data_type,source.external_record_id]);
