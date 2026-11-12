@@ -24,6 +24,16 @@ function tlv(b:Uint8Array,offset:number){
  if(offset+n>b.length)throw Error('Truncated DER');
  return {tag,body:b.slice(offset,offset+n),end:offset+n};
 }
+/** Apple's published guides describe both sandbox AAGUID spellings.
+ * Neither sandbox AAGUID is valid for a production enrollment. */
+export function matchesAppleAppAttestEnvironmentGuid(
+ guid:Uint8Array,environment:'sandbox'|'production'):boolean{
+ if(guid.length!==16)return false;
+ if(environment==='sandbox')return [
+  Buffer.from('appattestsandbox'),Buffer.from('appattestdevelop'),
+ ].some(expected=>same(guid,expected));
+ return same(guid,Buffer.concat([Buffer.from('appattest'),Buffer.alloc(7)]));
+}
 const nonceOid=Buffer.from('2a864886f763640802','hex');
 function appleNonce(leaf:Uint8Array){
  let found:Buffer|null=null;
@@ -117,13 +127,8 @@ export function inspectAppleAppAttestation(input:{
   a.readUInt32BE(33)!==0)
   throw Error('Wrong App Attest app identity, flags or counter');
  const guid=a.slice(37,53);
- // Apple documents 'appattestsandbox' for sandbox; earlier App Attest
- // examples also used 'appattestdevelop'. Neither is accepted in production.
- const validGuid=input.environment==='sandbox'?
-  [Buffer.from('appattestsandbox'),Buffer.from('appattestdevelop')]
-   .some(expected=>same(guid,expected)):
-  same(guid,Buffer.concat([Buffer.from('appattest'),Buffer.alloc(7)]));
- if(!validGuid||a.readUInt16BE(53)!==32)
+ if(!matchesAppleAppAttestEnvironmentGuid(guid,input.environment)||
+    a.readUInt16BE(53)!==32)
   throw Error('App Attest environment or credential length mismatch');
  const id=Buffer.from(input.keyId,'base64url');
  if(id.length!==32||!same(a.slice(55,87),id))
@@ -135,6 +140,11 @@ export function inspectAppleAppAttestation(input:{
  if(point.length!==65||!same(hash(point),id))
   throw Error('Apple certificate public key ID mismatch');
  const launch=inspectAppAttestCredentialPayload(a,point);
+ // Sandbox is development-signed; TestFlight and App Store releases
+ // always use production App Attest, regardless of entitlement settings.
+ if(input.environment==='sandbox'&&launch.validationCategory!==null&&
+    launch.validationCategory!==3)
+  throw Error('Apple launch category incompatible with sandbox attestation');
  const nonce=hash(Buffer.concat([a,hash(input.challengeData)]));
  if(!same(appleNonce(leaf.raw),nonce))
   throw Error('Apple certificate nonce/challenge mismatch');
