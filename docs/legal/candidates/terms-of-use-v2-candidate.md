@@ -96,7 +96,7 @@ Users may stop using ALL IN 365 at any time. ALL IN 365 may suspend/terminate ac
 
 ### Account Deletion
 
-If you would like to request deletion of an ALL IN 365 account or associated personal information during the founder beta, you may contact **durbenventures@gmail.com**. We will assess and handle such requests subject to applicable law and security verification. In-app account-deletion controls may be added as development continues. Deleting an ALL IN 365 account does not necessarily delete information independently maintained by Apple, another fitness platform, or another third party.
+The V2 application currently includes an in-app way for signed-in users to submit an account-deletion request, view its status and cancel a request before processing begins. **A recorded request does not itself delete an account.** At this stage, the secure deletion processor is not enabled; the end-to-end deletion process must be implemented and validated before completion can be represented as available. For privacy or deletion questions you may contact **durbenventures@gmail.com**; the handling of requests remains subject to identity verification and applicable law. Deleting an ALL IN 365 account does not necessarily delete information independently maintained by Apple, another fitness platform, or another third party.
 
 ### Availability and Changes
 
