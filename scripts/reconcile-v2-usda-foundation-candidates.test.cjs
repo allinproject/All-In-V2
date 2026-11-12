@@ -44,3 +44,15 @@ test('case, punctuation and whitespace are normalized without changing source id
   assert.deepEqual(tokens('Blueberries, raw'),['blueberry']);
   assert(compare('Corn, yellow, raw','Corn yellow raw')===1);
 });
+
+test('salt omitted as a seasoning qualifier cannot match standalone table salt',()=>{
+ const r=reconcile([food(1,'Kale, boiled, drained, without salt')],[profile('salt','Salt')]);
+ assert.equal(r.records[0].status,'no_lexical_candidate');
+});
+test('dried food versus raw profile is a flagged conflict, never accepted',()=>{
+ const r=reconcile([food(1,'Egg, white, dried')],[profile('egg_raw','Egg white, raw fresh')]);
+ assert.equal(r.records[0].status,'lexical_candidates_review_only');
+ assert.equal(r.records[0].suggestions[0].preparationConflict,true);
+ assert.equal(r.records[0].suggestions[0].status,'unreviewed_lexical_hint');
+ assert.equal(r.approvalGranted,false);
+});
