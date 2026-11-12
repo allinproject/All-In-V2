@@ -1,0 +1,131 @@
+\set ON_ERROR_STOP on
+-- ALL-251 local-only, rollback-only. This is a service-only candidate reader
+-- with a real approved Auth session and owner request on an isolated DB.
+BEGIN ISOLATION LEVEL REPEATABLE READ;
+INSERT INTO auth.users(id) VALUES
+ ('91111111-9111-4111-8111-911111111111'),
+ ('92222222-9222-4222-8222-922222222222');
+INSERT INTO auth.sessions(id,user_id) VALUES
+ ('93333333-9333-4333-8333-933333333333','91111111-9111-4111-8111-911111111111'),
+ ('94444444-9444-4444-8444-944444444444','92222222-9222-4222-8222-922222222222');
+INSERT INTO allin_private.v2_account_export_requests_candidate
+ (request_id,user_id,session_id,status,expires_at) VALUES
+ ('95555555-9555-4555-8555-955555555555','91111111-9111-4111-8111-911111111111',
+  '93333333-9333-4333-8333-933333333333','approved',now()+interval '1 hour'),
+ ('96666666-9666-4666-8666-966666666666','92222222-9222-4222-8222-922222222222',
+  '94444444-9444-4444-8444-944444444444','approved',now()+interval '1 hour');
+
+INSERT INTO public.v2_coach_threads(id,user_id) VALUES
+ ('97777777-9777-4777-8777-977777777777','91111111-9111-4111-8111-911111111111'),
+ ('98888888-9888-4888-8888-988888888888','92222222-9222-4222-8222-922222222222');
+INSERT INTO public.v2_coach_messages(user_id,thread_id,role,content,client_action_id)
+ SELECT '91111111-9111-4111-8111-911111111111'::uuid,
+  '97777777-9777-4777-8777-977777777777'::uuid,'user',
+  'Owner A Coach page '||lpad(i::text,3,'0'),gen_random_uuid()
+ FROM generate_series(1,53) i;
+INSERT INTO public.v2_coach_messages(user_id,thread_id,role,content,client_action_id)
+ VALUES('92222222-9222-4222-8222-922222222222',
+ '98888888-9888-4888-8888-988888888888','user','Owner B private Coach',gen_random_uuid());
+INSERT INTO public.v2_goals(id,user_id,goal_kind,title)
+ VALUES ('99999999-9999-4999-8999-999999999999','91111111-9111-4111-8111-911111111111',
+ 'endurance_distance','Owner A private goal');
+INSERT INTO allin_private.v2_community_visibility(user_id,profile_visibility)
+ VALUES ('91111111-9111-4111-8111-911111111111','private'),
+ ('92222222-9222-4222-8222-922222222222','public');
+INSERT INTO allin_private.v2_community_follows(follower_id,followed_id,state,approved_at)
+ VALUES('91111111-9111-4111-8111-911111111111',
+ '92222222-9222-4222-8222-922222222222','approved',now());
+INSERT INTO allin_private.v2_community_blocks(blocker_id,blocked_id)
+ VALUES ('91111111-9111-4111-8111-911111111111',
+ '92222222-9222-4222-8222-922222222222');
+SET LOCAL ROLE service_role;
+DO $all_domain$
+DECLARE
+ v_owner uuid:='91111111-9111-4111-8111-911111111111';
+ v_session uuid:='93333333-9333-4333-8333-933333333333';
+ v_request uuid:='95555555-9555-4555-8555-955555555555';
+ v jsonb;
+ v_page jsonb;
+ v_list jsonb;
+ v_collection text;
+ v_messages integer:=0;
+ v_token text:=NULL;
+ v_snap text:=NULL;
+ v_count integer:=0;
+BEGIN
+ v:=public.v2_account_export_inventory_review_candidate(v_owner,v_session,v_request);
+ v_list:=v->'collections';
+ IF v->>'ownerTableCount'<>'42'
+   OR pg_catalog.jsonb_array_length(v_list)<>47
+   OR v->>'paginationReady'<>'true'
+   OR v->>'complete'<>'false'
+ THEN RAISE EXCEPTION 'Owner inventory contract incomplete or prematurely marked complete: %',v; END IF;
+ v_snap:=v->>'snapshotId';
+ FOR v_collection IN SELECT pg_catalog.jsonb_array_elements_text(v_list) LOOP
+  v_page:=public.v2_account_export_page_review_candidate(
+   v_owner,v_session,v_request,v_collection,NULL,25);
+  IF v_page->>'ownerId'<>v_owner::text
+    OR v_page->>'snapshotId'<>v_snap
+    OR v_page->>'ownerVerified'<>'true'
+    OR v_page->>'completeUserExport'<>'false'
+    OR v_page->>'collection'<>v_collection
+  THEN RAISE EXCEPTION 'Unverified page: %',v_collection; END IF;
+  v_count:=v_count+1;
+ END LOOP;
+ IF v_count<>47 THEN RAISE EXCEPTION 'Not all 47 owner collections were probed'; END IF;
+ LOOP
+  v_page:=public.v2_account_export_page_review_candidate(
+    v_owner,v_session,v_request,'public.v2_coach_messages',v_token,25);
+  v_messages:=v_messages+pg_catalog.jsonb_array_length(v_page->'rows');
+  IF v_page->>'done'='true' THEN EXIT; END IF;
+  v_token:=v_page->>'nextCursor';
+ END LOOP;
+ IF v_messages<>53 THEN RAISE EXCEPTION 'Coach pagination lost or duplicated rows: %',v_messages; END IF;
+ v_page:=public.v2_account_export_page_review_candidate(
+  v_owner,v_session,v_request,'community.outgoing_blocks',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>1
+ THEN RAISE EXCEPTION 'Owner's block missing'; END IF;
+ v_page:=public.v2_account_export_page_review_candidate(
+  v_owner,v_session,v_request,'community.incoming_follow_requests',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>0
+ THEN RAISE EXCEPTION 'Owner received another athlete follower data'; END IF;
+ BEGIN
+  PERFORM public.v2_account_export_page_review_candidate(
+   v_owner,'94444444-9444-4444-8444-944444444444',v_request,
+   'public.v2_coach_messages',NULL,25);
+  RAISE EXCEPTION 'Foreign session unexpectedly authorized export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_account_export_page_review_candidate(
+   '92222222-9222-4222-8222-922222222222'::uuid,v_session,v_request,
+   'public.v2_coach_messages',NULL,25);
+  RAISE EXCEPTION 'Foreign owner unexpectedly authorized export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_account_export_page_review_candidate(
+   v_owner,v_session,v_request,'allin_private.v2_community_pair_revisions',NULL,25);
+  RAISE EXCEPTION 'Pair revision records unexpectedly exported';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_account_export_page_review_candidate(
+   v_owner,v_session,v_request,'public.v2_coach_messages',NULL,100);
+  RAISE EXCEPTION 'Unbounded page unexpectedly accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ RAISE NOTICE 'PASS ALL-251: 42 reviewed owner tables + 5 explicit sources, 53 Coach records over 3 owner pages, no complete claim, privacy and Auth rejection';
+END $all_domain$;
+RESET ROLE;
+-- An authenticated mobile client must not be granted the service reader,
+-- even if its JWT user ID and request are known.
+SET LOCAL ROLE authenticated;
+DO $api_gate$
+BEGIN
+ BEGIN
+  PERFORM public.v2_account_export_inventory_review_candidate(
+   '91111111-9111-4111-8111-911111111111',
+   '93333333-9333-4333-8333-933333333333',
+   '95555555-9555-4555-8555-955555555555');
+  RAISE EXCEPTION 'Mobile role was granted private inventory reader';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $api_gate$;
+RESET ROLE;
+ROLLBACK;
