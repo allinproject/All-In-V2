@@ -137,6 +137,28 @@ BEGIN
    RAISE EXCEPTION 'owner A missing canonical assistant reply';
  END IF;
 END $$;
+-- Both messages share transaction-start now(), exercising the (created_at,id)
+-- tie-breaker rather than a cursor based on timestamp alone.
+DO $cursor$
+DECLARE
+ first_page record;
+ second_page record;
+BEGIN
+ SELECT * INTO first_page
+   FROM public.v2_coach_read_messages((SELECT thread_id FROM _coach_a_thread), 1);
+ SELECT * INTO second_page
+   FROM public.v2_coach_read_messages(
+     (SELECT thread_id FROM _coach_a_thread), 1,
+     first_page.message_created_at, first_page.message_id
+   );
+ IF first_page.message_id IS NULL OR second_page.message_id IS NULL
+    OR first_page.message_id = second_page.message_id
+    OR first_page.message_created_at IS DISTINCT FROM second_page.message_created_at
+    OR (SELECT count(*) FROM public.v2_coach_read_messages(
+       (SELECT thread_id FROM _coach_a_thread), 1,
+       second_page.message_created_at, second_page.message_id)) <> 0
+ THEN RAISE EXCEPTION 'Coach equal-timestamp pagination lost or repeated rows'; END IF;
+END $cursor$;
 RESET ROLE;
 
 -- Database owner asserts exact durable rows + ledger then discards fixtures.
