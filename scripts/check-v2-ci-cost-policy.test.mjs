@@ -34,8 +34,14 @@ test('full V2 review gate requires committed lock and complete acceptance withou
     'npm run test:training-logic',
     'npm run typecheck',
     'expo config --type public',
-    'expo export --platform all',
   ]) assert.ok(engineering.includes(check), `Missing full CI gate: ${check}`);
+  // Bundles may be exported together or separately, but never skip a
+  // platform to satisfy the review gate.
+  const combined = engineering.includes('expo export --platform all');
+  const perPlatform = engineering.includes('expo export --platform ios') &&
+    engineering.includes('expo export --platform android');
+  assert.ok(combined || perPlatform,
+    'Missing full CI gate: both Expo iOS and Android exports required');
   assert.doesNotMatch(engineering, /npm install --package-lock-only|npm ci --legacy-peer-deps|npm ci --force/);
   assert.match(engineering, /contents: read/);
   assert.doesNotMatch(engineering, /\bsupabase\s+(db\s+push|functions\s+deploy|migration\s+up)\b/);
