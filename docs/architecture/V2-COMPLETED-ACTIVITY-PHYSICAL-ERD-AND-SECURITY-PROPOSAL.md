@@ -13,8 +13,8 @@
 ## 1. Binding ownership and product contracts
 
 1. Completed Activity owns one canonical record for each finished physical workout/activity, its sport identity, trusted facts, sport-specific detail and metric provenance.
-2. Product rule: **store everything trustworthy; show the important few first; place useful source-backed detail in Advanced Stats; explain meaning in Analysis; never fabricate unsupported data.**
-3. Overview, Advanced Stats and Analysis are projections of the same canonical activity and metric registry, not separate stores.
+2. Product rule: **store everything trustworthy; show the important few first; place every available eligible source-backed metric in Details; explain meaning in Coach; never fabricate unsupported data.** The approved visible tabs are **Overview / Details / Coach**, with a conditional Leaderboard only for qualified challenges.
+3. Overview, Details and Coach consume the same canonical activity, source and metric truth, not separate activity stores. Coach interpretation is a distinct consumer, not a second metric source or an implicit Training writer.
 4. A single physical activity can have multiple source records (for example Watch plus HealthKit) but only one canonical activity identity. Source merge/dedupe is evidence-based and idempotent.
 5. Planned workout, live execution and completed activity are different identities. Training owns the plan and active session; Completed Activity owns the finished record and metric registry.
 6. Strength set/exercise results, multisport legs/transitions, swim lengths/sets and semantic laps/splits remain explicit structured detail. Do not flatten them into meaningless scalar totals.
