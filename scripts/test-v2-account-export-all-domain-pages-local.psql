@@ -206,6 +206,16 @@ BEGIN
   v_count:=v_count+1;
  END LOOP;
  IF v_count<>50 THEN RAISE EXCEPTION 'Not all 50 owner collections were probed'; END IF;
+ -- The worker's own request ledger is portable history, not a raw Auth
+ -- session export. Verify the real SQL reader redacts session_id.
+ v_page:=public.v2_account_export_page_review_candidate(
+   v_owner,v_session,v_request,
+   'allin_private.v2_account_export_requests_candidate',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>1
+    OR v_page->'rows'->0 ? 'session_id'
+    OR v_page->'rows'->0->>'request_id' IS DISTINCT FROM v_request::text
+    OR v_page->'rows'->0->>'user_id' IS DISTINCT FROM v_owner::text
+ THEN RAISE EXCEPTION 'Account export request leaked internal session or lost ownership'; END IF;
  LOOP
   v_page:=public.v2_account_export_page_review_candidate(
     v_owner,v_session,v_request,'public.v2_coach_messages',v_token,25);
