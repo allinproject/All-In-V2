@@ -1,0 +1,42 @@
+\set ON_ERROR_STOP on
+-- ALL-251: representative PostgreSQL-backed export fixture.
+-- CI disposable Supabase only: generated accounts and records are ROLLED BACK.
+-- Authenticated page RPC, not privileged direct table SELECT, produces the data.
+BEGIN;
+INSERT INTO auth.users(id) VALUES
+ ('81111111-8111-4111-8111-811111111111'),
+ ('82222222-8222-4222-8222-822222222222');
+INSERT INTO public.v2_coach_threads(id,user_id) VALUES
+ ('a8111111-8111-4111-8111-811111111111','81111111-8111-4111-8111-811111111111'),
+ ('a8222222-8222-4222-8222-822222222222','82222222-8222-4222-8222-822222222222');
+INSERT INTO public.v2_coach_messages
+ (id,user_id,thread_id,role,content,client_action_id)
+SELECT gen_random_uuid(),'81111111-8111-4111-8111-811111111111'::uuid,
+       'a8111111-8111-4111-8111-811111111111'::uuid,'user',
+       repeat('representative-coach-history-',1000)||lpad(i::text,5,'0'),
+       gen_random_uuid()
+FROM generate_series(1,190) i;
+INSERT INTO public.v2_coach_messages
+ (id,user_id,thread_id,role,content,client_action_id)
+SELECT gen_random_uuid(),'82222222-8222-4222-8222-822222222222'::uuid,
+       'a8222222-8222-4222-8222-822222222222'::uuid,'user',
+       'Owner B private history '||i,gen_random_uuid()
+FROM generate_series(1,2) i;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','81111111-8111-4111-8111-811111111111',true);
+-- First/second keyset RPC pages under the actual authenticated owner.
+\copy (SELECT row_to_json(r)::text FROM public.v2_coach_read_messages('a8111111-8111-4111-8111-811111111111',100) r) TO '/tmp/all251-a-page-1.jsonl';
+\copy (SELECT row_to_json(r)::text FROM public.v2_coach_read_messages('a8111111-8111-4111-8111-811111111111',100,(SELECT message_created_at FROM public.v2_coach_read_messages('a8111111-8111-4111-8111-811111111111',100) ORDER BY message_created_at,message_id LIMIT 1),(SELECT message_id FROM public.v2_coach_read_messages('a8111111-8111-4111-8111-811111111111',100) ORDER BY message_created_at,message_id LIMIT 1)) r) TO '/tmp/all251-a-page-2.jsonl';
+DO $owner_a$
+BEGIN
+ BEGIN
+  PERFORM * FROM public.v2_coach_read_messages('a8222222-8222-4222-8222-822222222222',100);
+  RAISE EXCEPTION 'Coach owner A accessed B thread';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $owner_a$;
+SELECT set_config('request.jwt.claim.sub','82222222-8222-4222-8222-822222222222',true);
+\copy (SELECT row_to_json(r)::text FROM public.v2_coach_read_messages('a8222222-8222-4222-8222-822222222222',100) r) TO '/tmp/all251-b-page.jsonl';
+RESET ROLE;
+ROLLBACK;
