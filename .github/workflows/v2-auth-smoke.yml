@@ -169,6 +169,7 @@ jobs:
           node --test ../../supabase/functions/_shared/trainingExportSupabaseArchive.node.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportLargeArchive.node.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportDownloadVerifier.node.test.mjs
+          node --test ../../supabase/functions/_shared/trainingExportDownloadHandler.node.test.mjs
           node --experimental-strip-types --test src/features/profile/accountExportLargeFile.test.ts
           node --test ../../scripts/v2-training-account-export-worker-candidate.test.mjs
           node --test ../../scripts/v2-training-export-archive-writer.test.mjs
