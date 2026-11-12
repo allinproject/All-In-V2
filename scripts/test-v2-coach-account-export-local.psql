@@ -262,4 +262,30 @@ BEGIN
   END LOOP;
   RAISE NOTICE 'PASS ALL-251: nine owner relations after deletion preserve only B records';
 END $all_domains_delete$;
+-- Directed relationships have NO user_id column. Existing owner-table
+-- deletion probes cannot detect orphaned follows, blocks, pair CAS or receipts.
+DO $community_delete$
+BEGIN
+ IF EXISTS(
+   SELECT 1 FROM allin_private.v2_community_pair_revisions
+   WHERE lower_user_id='61111111-6111-4111-8111-611111111111'
+      OR upper_user_id='61111111-6111-4111-8111-611111111111')
+ OR EXISTS(
+   SELECT 1 FROM allin_private.v2_community_follows
+   WHERE follower_id='61111111-6111-4111-8111-611111111111'
+      OR followed_id='61111111-6111-4111-8111-611111111111')
+ OR EXISTS(
+   SELECT 1 FROM allin_private.v2_community_blocks
+   WHERE blocker_id='61111111-6111-4111-8111-611111111111'
+      OR blocked_id='61111111-6111-4111-8111-611111111111')
+ OR EXISTS(
+   SELECT 1 FROM allin_private.v2_community_action_receipts
+   WHERE actor_id='61111111-6111-4111-8111-611111111111'
+      OR target_id='61111111-6111-4111-8111-611111111111')
+ OR NOT EXISTS(
+   SELECT 1 FROM public.v2_profiles
+   WHERE user_id='62222222-6222-4222-8222-622222222222')
+ THEN RAISE EXCEPTION 'Community directional relation cascade or surviving profile invalid'; END IF;
+ RAISE NOTICE 'PASS ALL-244/251: directional Community rows cascade without orphaning';
+END $community_delete$;
 ROLLBACK;
