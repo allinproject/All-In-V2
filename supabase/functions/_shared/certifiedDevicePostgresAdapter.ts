@@ -94,8 +94,11 @@ WHERE sess.id=$1::uuid AND sess.user_id=$2::uuid
      if(x.ownerId!==ownerId||!uuid(x.sessionId)||!uuid(x.activityId)||
        !uuid(x.sourceId)||!safe(x.nonce))return false;
      const nonceHash=await sha256(x.nonce);
-     const callbackHash=await sha256([x.ownerId,x.sessionId,x.activityId,
-      x.sourceId,x.issuedAtMs,x.nonce].join(':'));
+     if(!/^[0-9a-f]{64}$/.test(x.callbackHash))
+      return false;
+     // Signed internal callback HMAC binds nonce, timestamp and every source
+     // measurement. Never store a hash of only owner+nonce metadata.
+     const callbackHash=x.callbackHash;
      // Must preserve nonce rejection at exact canonical candidate ledger.
      const rows=await operator(`
 INSERT INTO allin_private.v2_device_ingest_nonce_candidate
