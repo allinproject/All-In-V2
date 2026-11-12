@@ -78,6 +78,28 @@ date/version without real organizer evidence.
 4. **Training Event Plan**: uses exact Event version and athlete participation source; an athlete-confirmed interested event may be previewed for planning without asserting registration. A withdrawn event, revoked session, unverified URL, stale version or missing participation cannot silently activate an accepted plan. Multiple events, mixed sports, and general undated Goals remain valid without overwriting one another.
 5. **Community publishing**: an event group contains only existing explicitly athlete-shared workout posts with an approved audience, membership and block controls; no automatic sharing from training, history imports, mere URL joins or event registration.
 
+## Validated review-only Community privacy owner
+
+The existing (not duplicated)
+`docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql`
+now has a rollback-only local Supabase acceptance fixture:
+`scripts/test-v2-community-privacy-local-postgres.psql`.
+It verifies the canonical V2 Auth profile linkage, private defaults,
+one sorted pair-version owner, directional pending/approved follows and
+blocks, exact unique action receipts, all five private-table RLS settings
+and no direct client/service writes, plus two-user account deletion
+isolation. It does **not** activate follow/block/profile/social APIs,
+sanitize actual feed queries, implement moderation or prove real user
+privacy on an installed phone.
+
+[Full clean local Supabase replay #43192676260](https://github.com/allinproject/All-In-V2/actions/runs/43192676260)
+**COMPLETED SUCCESS** at tested commit
+`0a087df8fccf5cba094ffcf9995eb933ce9f7984`,
+including the Goals candidate and the canonical EventHub identity,
+owner evidence, membership actions, monotonic organizer revision and
+existing Community privacy structure. This is disposable integration
+evidence, **not approved versioned migrations or deployment**.
+
 ## Release gates not addressed by review-only SQL
 
 - [ ] ALL-244/234 certify actual organizer URLs, redirect/DNS/SSRF safety, versioned source evidence, cancellations/date changes, and duplicate/alias conflicts.
