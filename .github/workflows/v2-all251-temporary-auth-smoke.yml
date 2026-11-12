@@ -1,6 +1,11 @@
 name: ALL-251 temporary staging Auth and HTTP smoke (manual only)
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - integration/v2-foundation
+    paths:
+      - .github/workflows/v2-all251-temporary-auth-smoke.yml
 permissions:
   contents: read
 concurrency:
