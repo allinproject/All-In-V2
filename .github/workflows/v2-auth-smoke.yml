@@ -188,6 +188,7 @@ jobs:
           node --test ../../supabase/functions/_shared/trainingExportMediaCoverage.node.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportLargeArchive.node.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportKeyLease.node.test.mjs
+          node --test ../../supabase/functions/_shared/trainingExportAwsKms.node.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportPrivateMediaPages.node.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportCanonicalPgReader.node.test.mjs
           (cd ../.. && node --test scripts/test-v2-account-export-catalog-alignment.mjs)
