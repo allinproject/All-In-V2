@@ -160,6 +160,7 @@ export async function* streamLargeAccountExport({requestId,collections,services}
  const snapshotId=await verifiedInventory(services,ownerId,requestId,collections);
  const m=checkedManifest(await services.readPrivateManifest({ownerId,requestId}),ownerId,requestId,collections,snapshotId);
  const key=checkedKey(await services.resolveEncryptionKey({ownerId,requestId}));
+ const downloaded=createHash('sha256');
  yield Buffer.from(JSON.stringify({format:VERSION,export_owner:ownerId,collections,records:m.rowCount})+'\n');
  for(const p of m.pages){
   await ownerGate(services,requestId,ownerId);
@@ -175,8 +176,14 @@ export async function* streamLargeAccountExport({requestId,collections,services}
    if(value.collection!==p.collection||!value.record||typeof value.record!=='object')
     throw Error('Account export page content invalid');
   }
+  downloaded.update(plain);
   yield plain; // reauthorize before each encrypted page is opened
  }
+ // A truncated response has NO terminal completion receipt. Download clients
+ // must validate this footer and exact digest before marking export complete.
+ await ownerGate(services,requestId,ownerId);
+ yield Buffer.from(JSON.stringify({export_complete:true,records:m.rowCount,
+   sha256:downloaded.digest('hex')})+'\n');
 }
 
 /**
