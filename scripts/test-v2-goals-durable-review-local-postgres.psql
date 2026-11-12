@@ -26,6 +26,8 @@ BEGIN
  INSERT INTO public.v2_goal_revisions(id,goal_id,user_id,revision_number,status,source_kind)
   VALUES(ra,ga,a,1,'candidate','athlete_authored'),
         (rb,gb,b,1,'candidate','athlete_authored');
+ -- Derive the exact reviewed digest from canonical Goal/revision content.
+ fp:=allin_private.v2_goal_snapshot_fingerprint_candidate(a,ga,ra,1);
  INSERT INTO allin_private.v2_goal_approval_reviews(
    id,user_id,session_id,goal_id,goal_revision_id,action_id,
    expected_version,payload_sha256,athlete_confirmed,approved_at,expires_at
@@ -60,6 +62,13 @@ BEGIN
     WHERE user_id=a AND id=review_a;
   RAISE EXCEPTION 'Live review was deleted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE public.v2_goals SET title='Changed while preview was open' WHERE id=ga;
+ BEGIN
+  PERFORM allin_private.v2_goal_commit_reviewed_candidate(
+    a,sa,ga,ra,aa,review_a,1,fp);
+  RAISE EXCEPTION 'Changed Goal draft bypassed reviewed fingerprint';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE public.v2_goals SET title='Improve consistency' WHERE id=ga;
  receipt:=allin_private.v2_goal_commit_reviewed_candidate(
    a,sa,ga,ra,aa,review_a,1,fp);
  IF receipt->>'version'<>'2' OR receipt->>'replayed'<>'false'
