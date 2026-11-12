@@ -2,7 +2,7 @@ name: V2 foundation clean Supabase replay (manual, local only)
 
 on:
   push:
-    branches: [integration/v2-foundation]
+    branches: [integration/v2-foundation, review/all-222-billing-versioned-migration-20261112]
     paths:
       - '.github/workflows/v2-foundation-clean-replay.yml'
       - 'docs/architecture/sql/V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql'
@@ -34,6 +34,9 @@ on:
       - 'scripts/test-v2-billing-local-foundation.psql'
       - 'scripts/test-v2-billing-backup-seed-local.psql'
       - 'scripts/test-v2-billing-backup-restored-local.psql'
+      - 'scripts/test-v2-billing-versioned-migration-parity.mjs'
+      - 'supabase/migrations/20261112100000_v2_billing_verified_subscription_ledger.sql'
+      - 'supabase/migrations/20261112100001_v2_billing_service_role_grants.sql'
       - 'scripts/verify-v2-billing-postdeploy-readonly.psql'
       - 'scripts/test-v2-billing-preupgrade-seed.psql'
       - 'scripts/test-v2-billing-schema-rollback-local.psql'
@@ -79,7 +82,7 @@ concurrency:
 jobs:
   clean-foundation:
     name: Clean local Supabase Auth/Storage/pg_cron foundation replay
-    if: github.ref == 'refs/heads/integration/v2-foundation'
+    if: github.ref == 'refs/heads/integration/v2-foundation' || github.ref == 'refs/heads/review/all-222-billing-versioned-migration-20261112'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -97,6 +100,14 @@ jobs:
         run: |
           node --test scripts/check-v2-applied-migration-integrity.test.mjs
           node scripts/check-v2-applied-migration-integrity.mjs
+      - name: Check proposed migration source parity and isolate pending SQL before foundation reset
+        run: |
+          set -euo pipefail
+          node --test scripts/test-v2-billing-versioned-migration-parity.mjs
+          mkdir -p /tmp/all222-proposed-migrations
+          mv supabase/migrations/20261112100000_v2_billing_verified_subscription_ledger.sql /tmp/all222-proposed-migrations/
+          mv supabase/migrations/20261112100001_v2_billing_service_role_grants.sql /tmp/all222-proposed-migrations/
+          test "$(find /tmp/all222-proposed-migrations -name '*.sql' | wc -l)" -eq 2
       - name: Boot isolated local Supabase services
         run: supabase start
       - name: Reset local-only foundation and replay every committed migration
@@ -136,19 +147,27 @@ jobs:
           done
           docker cp scripts/test-v2-billing-schema-rollback-local.psql "$db_container:/tmp/v2-billing-schema-rollback.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-schema-rollback.psql
-      - name: Verify billing candidate against real local foundation Auth and two accounts
+      - name: Apply BOTH proposed versioned billing migrations to isolated populated V2 only
         run: |
           set -euo pipefail
-          # Review-only DDL and exact service permissions on ephemeral local
-          # Supabase. NEVER use --remote, --linked, --db-url or db push.
+          # WARNING: NEVER use --remote, --linked, --db-url, or db push.
+          # The first 18 foundation migrations were applied before two
+          # pre-upgrade account fixtures were committed. Only NOW reveal
+          # these review-branch SQL files to the local Supabase CLI.
+          test "${CI}" = "1"
+          mv /tmp/all222-proposed-migrations/20261112100000_v2_billing_verified_subscription_ledger.sql supabase/migrations/
+          mv /tmp/all222-proposed-migrations/20261112100001_v2_billing_service_role_grants.sql supabase/migrations/
+          supabase migration up --local
+          supabase migration list --local
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
-          for file in \
-            docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql \
-            docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql; do
-            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
-            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
-          done
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -c "
+            DO \$\$ BEGIN
+              IF (SELECT count(*) FROM supabase_migrations.schema_migrations
+                  WHERE version IN ('20261112100000','20261112100001'))<>2 THEN
+                RAISE EXCEPTION 'Both versioned billing migrations were not recorded locally';
+              END IF;
+            END \$\$;"
           docker cp scripts/test-v2-billing-local-foundation.psql "$db_container:/tmp/v2-billing-foundation-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-foundation-qa.psql
       - name: Check billing security catalog using production-safe read-only SQL
