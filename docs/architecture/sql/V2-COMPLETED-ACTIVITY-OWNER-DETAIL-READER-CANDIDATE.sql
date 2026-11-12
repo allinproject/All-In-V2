@@ -39,7 +39,9 @@ BEGIN
   RAISE EXCEPTION 'Completed Activity does not belong to owner' USING ERRCODE='42501'; END IF;
  -- Hard bounds make accidental enormous workout histories a controlled
  -- response instead of an unbounded JSON aggregation.
- IF (SELECT count(*) FROM public.v2_activity_segments
+ IF (SELECT count(*) FROM public.v2_activity_sources
+      WHERE activity_id=p_activity_id AND user_id=v_user)>128
+ OR (SELECT count(*) FROM public.v2_activity_segments
       WHERE activity_id=p_activity_id AND user_id=v_user)>512
  OR (SELECT count(*) FROM public.v2_activity_strength_sets
       WHERE activity_id=p_activity_id AND user_id=v_user)>2048 THEN
