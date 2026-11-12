@@ -22,13 +22,13 @@ export type MetricEvidence=LayoutMetric&{
  * verified source into a trusted sensor reading. Legacy source-only evidence
  * has no confidence claim and therefore receives no invented quality badge. */
 export function metricEvidenceQualityNotice(metric:MetricEvidence):string|null{
- const partialMetric=metric.quality==='partial';
- const partialSource=metric.sourceQuality==='partial';
- if(partialMetric&&partialSource)return 'Partial measurement and source quality';
- if(partialMetric)return 'Partial measurement quality';
- if(partialSource)return 'Partial source quality';
- if(metric.provenance==='estimated')return 'Estimated value';
- return null;
+ const warnings:string[]=[];
+ if(metric.provenance==='estimated')warnings.push('Estimated value');
+ if(metric.quality==='partial'&&metric.sourceQuality==='partial')
+  warnings.push('Partial measurement and source quality');
+ else if(metric.quality==='partial')warnings.push('Partial measurement quality');
+ else if(metric.sourceQuality==='partial')warnings.push('Partial source quality');
+ return warnings.length?warnings.join(' · '):null;
 }
 export type StructuredKind='route'|'splits'|'laps'|'intervals'|'heart_rate_series'|
  'power_series'|'cadence_series'|'elevation_series'|'speed_series'|
