@@ -35,5 +35,39 @@ BEGIN
       WHERE user_id IN (owner_a,owner_b) AND version=1) <> 2 THEN
     RAISE EXCEPTION 'Preupgrade account settings/onboarding rows missing';
   END IF;
+  -- Simulate accounts with meaningful existing application state, not only
+  -- freshly generated default rows. Data must survive later billing DDL.
+  UPDATE public.v2_profile_settings
+     SET settings='{"training":{"week_starts_on":"monday"},"privacy":{"activity_visibility":"private"}}'::jsonb,
+         version=3
+   WHERE user_id=owner_a;
+  UPDATE public.v2_profile_settings
+     SET settings='{"training":{"week_starts_on":"sunday"},"privacy":{"activity_visibility":"followers"}}'::jsonb,
+         version=4
+   WHERE user_id=owner_b;
+  UPDATE public.v2_onboarding_progress
+     SET completed_steps=ARRAY['focus','coach']::text[],
+         skipped_steps=ARRAY['availability']::text[],
+         version=2
+   WHERE user_id=owner_a;
+  UPDATE public.v2_onboarding_progress
+     SET completed_steps=ARRAY['focus']::text[],
+         skipped_steps=ARRAY['coach']::text[],
+         version=5
+   WHERE user_id=owner_b;
+  IF NOT EXISTS(SELECT 1 FROM public.v2_profile_settings
+     WHERE user_id=owner_a AND version=3
+       AND settings #>> '{privacy,activity_visibility}'='private') OR
+     NOT EXISTS(SELECT 1 FROM public.v2_profile_settings
+     WHERE user_id=owner_b AND version=4
+       AND settings #>> '{training,week_starts_on}'='sunday') OR
+     NOT EXISTS(SELECT 1 FROM public.v2_onboarding_progress
+     WHERE user_id=owner_a AND version=2
+       AND completed_steps=ARRAY['focus','coach']::text[]) OR
+     NOT EXISTS(SELECT 1 FROM public.v2_onboarding_progress
+     WHERE user_id=owner_b AND version=5
+       AND skipped_steps=ARRAY['coach']::text[]) THEN
+    RAISE EXCEPTION 'Preupgrade non-default account state did not persist';
+  END IF;
   RAISE NOTICE 'PASS ALL-222: two populated V2 accounts exist before billing candidate';
 END $preupgrade$;
