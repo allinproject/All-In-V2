@@ -32,6 +32,7 @@ async function setup(){
  await db.exec(read('V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'));
  await db.exec(read('V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'));
  await db.exec(read('V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql'));
+ await db.exec(read('V2-INGREDIENT-USDA-ENERGY-ATTESTATION-CANDIDATE.sql'));
  const x=input();
  await db.exec('CREATE ROLE allin_ing_workload_food_ingest_v1 LOGIN NOINHERIT;'+
    'GRANT allin_v2_ingredient_reviewer TO allin_ing_workload_food_ingest_v1 WITH INHERIT FALSE, SET TRUE;');
@@ -95,6 +96,9 @@ test('actual PostgreSQL transaction: rollback, two immutable events, idempotent 
      e=>e?.code==='42501');
    await assert.rejects(
      db.query("SELECT allin_private.v2_review_ingredient_profile_status('"+PROFILE+"',3,'"+x.digest+"','retired','Simulated machine retirement denial','55555555-5555-4555-8555-555555555555')"),
+     e=>e?.code==='42501');
+   await assert.rejects(
+     db.query("SELECT allin_private.v2_attest_ingredient_energy('"+PROFILE+"',3,'"+x.digest+"','Simulated machine energy attestation denial')"),
      e=>e?.code==='42501');
    await assert.rejects(db.query('SELECT * FROM allin_private.v2_ingredient_review_events'),
      e=>e?.code==='42501');
