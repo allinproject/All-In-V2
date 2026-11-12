@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ALL-12 disposable-only populated EventHub recovery rehearsal. No hosted DB.
 set -euo pipefail
-test "\${CI:-}" = 1
-db="\${1:?local Supabase DB container required}"
+test "${CI:-}" = 1
+db="${1:?local Supabase DB container required}"
 test "$db" = "$(docker ps --filter name=supabase_db_ --format '{{.ID}}' | head -n 1)"
 sql() { docker exec -i "$db" psql -X -qAt -U postgres -d postgres -v ON_ERROR_STOP=1; }
 sql <<'SQL'
