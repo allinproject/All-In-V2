@@ -64,7 +64,8 @@ test('Recipes and Food Plan do not mutate an unconnected meal plan',()=>{
  assert.match(screen,/selected:foodPlanSection===tab\.id/);
  assert.match(screen,/A banana, an apple and a protein bar may each be planned as separate foods/);
  assert.match(screen,/Shopping will combine missing ingredients from planned recipes with individual scheduled foods/);
- assert.match(screen,/Existing stock is not assumed empty/);
+ assert.match(screen,/KitchenStockSummaryPanel ownerId=\{user\.id\} kind="shopping"/);
+ assert.match(screen,/KitchenStockSummaryPanel ownerId=\{user\.id\} kind="pantry"/);
  assert.match(screen,/KitchenWeekPlanPanel ownerId=\{user\.id\} day=\{day\}/);
  assert.match(screen,/Adding foods and starting Meal Prep remain unavailable/);
  const plan=source('../kitchen/KitchenWeekPlanPanel.tsx');
@@ -72,7 +73,10 @@ test('Recipes and Food Plan do not mutate an unconnected meal plan',()=>{
  assert.match(plan,/existing plans are not assumed empty/);
  assert.match(plan,/verified week/);
  assert.doesNotMatch(plan,/insert\(|update\(|upsert\(|delete\(/);
- assert.match(screen,/No shopping cart or purchase has been created/);
+ const stock=source('../kitchen/KitchenStockSummaryPanel.tsx');
+ assert.match(stock,/readOwnedKitchenStock\(ownedKitchenStockServices\(supabase,ownerId\)/);
+ assert.match(stock,/Existing stock is not assumed empty/);
+ assert.match(stock,/No list changes have been made/);
  assert.doesNotMatch(screen,/create.*Shopping|write.*Shopping|addShoppingItem/);
 });
 
