@@ -48,9 +48,10 @@ phone_files.each { |f| FileUtils.cp(File.join(native, f), File.join(bridge_dir, 
 
 watch = project.targets.find { |target| target.name == watch_name }
 if watch.nil?
-  watch = project.new_target(:watch2_app, watch_name, :watchos, '10.0')
+  # Xcode 14+ single-target watchOS app, not the obsolete WatchKit app+extension.
+  watch = project.new_target(:application, watch_name, :watchos, '10.0')
 end
-unless watch.product_type == 'com.apple.product-type.application.watchapp2'
+unless watch.product_type == 'com.apple.product-type.application'
   abort 'Existing watch target has an unexpected product type; refusing to overwrite.'
 end
 
@@ -81,6 +82,7 @@ watch.build_configurations.each do |cfg|
     'PRODUCT_NAME' => watch_name,
     'GENERATE_INFOPLIST_FILE' => 'YES',
     'INFOPLIST_KEY_WKWatchKitApp' => 'YES',
+    'INFOPLIST_KEY_UISupportedInterfaceOrientations' => 'UIInterfaceOrientationPortrait',
     'INFOPLIST_KEY_WKCompanionAppBundleIdentifier' => bundle_id,
     'INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp' => 'NO',
     'SKIP_INSTALL' => 'YES',
@@ -104,8 +106,9 @@ end
 unless iphone.build_phases.any? { |phase| phase.is_a?(Xcodeproj::Project::Object::PBXCopyFilesBuildPhase) && phase.name == 'Embed Watch Content' }
   phase = project.new(Xcodeproj::Project::Object::PBXCopyFilesBuildPhase)
   phase.name = 'Embed Watch Content'
-  phase.dst_subfolder_spec = '16'
-  phase.dst_path = '$(CONTENTS_FOLDER_PATH)/Watch'
+  # Modern single-target watchOS apps are embedded as PlugIns (Xcode 26+).
+  phase.dst_subfolder_spec = '13'
+  phase.dst_path = ''
   phase.add_file_reference(watch.product_reference, true)
   iphone.build_phases << phase
 end
