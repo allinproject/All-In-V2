@@ -136,3 +136,29 @@ BEGIN
  RAISE NOTICE 'PASS ALL-243: canonical owner-only Activity Details, interval and strength evidence, route privacy';
 END $qa$;
 RESET ROLE;
+
+-- Large imported source collections must fail closed rather than returning
+-- unbounded JSON. This uses only synthetic records in the disposable DB.
+INSERT INTO public.v2_activity_sources(
+ id,activity_id,user_id,provider,source_kind,source_record_id,quality)
+SELECT pg_catalog.md5('v2-source-limit-'||g::text)::uuid,
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
+ '11111111-1111-4111-8111-111111111111'::uuid,
+ 'supported_equipment','device_session','source-limit-'||g::text,'unverified'
+FROM pg_catalog.generate_series(1,129) AS g;
+SET ROLE authenticated;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',
+ '11111111-1111-4111-8111-111111111111',false);
+SELECT pg_catalog.set_config('request.jwt.claim.session_id',
+ '10101010-1010-4010-8010-101010101010',false);
+DO $source_bound$
+BEGIN
+ BEGIN
+  PERFORM public.v2_completed_activity_detail_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+  RAISE EXCEPTION 'Unbounded imported source list was returned to client';
+ EXCEPTION WHEN program_limit_exceeded THEN NULL; END;
+ RAISE NOTICE 'PASS ALL-243: excessive imported source count denied by owner detail';
+END $source_bound$;
+RESET ROLE;
