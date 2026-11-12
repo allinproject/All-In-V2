@@ -95,6 +95,16 @@ test('cross-account, cursor, snapshot version and session generation fail closed
  for(const change of cases){const f=fixture();change(f);
   assert.equal(certifySeasonAgainstGoalEventOwners(f.input,f.proofs).status,'unavailable');}
 });
+test('fake event and Training timezone identifiers fail closed',()=>{
+ const a=fixture();
+ a.proofs.eventSnapshot.events=[{...a.proofs.eventSnapshot.events[0],timezone:'Mars/Phobos'},
+  a.proofs.eventSnapshot.events[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(a.input,a.proofs).status,'unavailable');
+ const b=fixture();
+ b.proofs.bindingSnapshot.bindings=[{...b.proofs.bindingSnapshot.bindings[0],
+   eventTimezone:'Mars/Phobos'},b.proofs.bindingSnapshot.bindings[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(b.input,b.proofs).status,'unavailable');
+});
 test('different valid version tokens from separate Goal, Event and Training owners are allowed',()=>{
  const f=fixture();
  f.proofs.goalSnapshot.snapshotVersion='goals-revision-12';
