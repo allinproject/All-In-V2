@@ -3,6 +3,13 @@
 -- overlay on a freshly replayed REAL V2 foundation in LOCAL Supabase Postgres.
 -- The historical migrations have already run. This script MUST NOT be
 -- executed against the hosted project. No schema changes survive ROLLBACK.
+-- Capture the foundation's canonical owner export implementation before
+-- the candidate replacement. A temporary local-only table survives the
+-- candidate transaction rollback and makes a real comparison possible.
+CREATE TEMP TABLE v2_overlay_foundation_snapshot ON COMMIT PRESERVE ROWS AS
+SELECT pg_catalog.md5(pg_catalog.pg_get_functiondef(
+  'public.v2_export_my_account_snapshot(uuid)'::pg_catalog.regprocedure
+)) AS original_export_function_hash;
 BEGIN;
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql
@@ -98,6 +105,26 @@ DO $rollback_check$
 BEGIN
  IF pg_catalog.to_regclass('public.v2_training_plans') IS NOT NULL
  OR pg_catalog.to_regclass('public.v2_completed_activities') IS NOT NULL
- THEN RAISE EXCEPTION 'Training overlay DDL survived transactional rollback'; END IF;
- RAISE NOTICE 'PASS ALL-222: overlay rollback preserved original foundation';
+ OR pg_catalog.to_regclass('public.v2_training_session_instances') IS NOT NULL
+ OR pg_catalog.to_regclass('public.v2_activity_metric_values') IS NOT NULL
+ OR pg_catalog.to_regclass('public.v2_activity_segments') IS NOT NULL
+ OR pg_catalog.to_regclass('public.v2_indoor_weekly_attempts') IS NOT NULL
+ OR pg_catalog.to_regprocedure('public.v2_training_day_read_candidate(uuid,date)') IS NOT NULL
+ OR pg_catalog.to_regprocedure('public.v2_completed_activity_detail_candidate(uuid,uuid)') IS NOT NULL
+ OR pg_catalog.to_regprocedure('allin_private.v2_training_account_export_fragment_candidate(uuid)') IS NOT NULL
+ THEN RAISE EXCEPTION 'Candidate schema or RPC survived transactional rollback'; END IF;
+ IF EXISTS(
+   SELECT 1 FROM v2_overlay_foundation_snapshot
+   WHERE original_export_function_hash IS DISTINCT FROM
+      pg_catalog.md5(pg_catalog.pg_get_functiondef(
+        'public.v2_export_my_account_snapshot(uuid)'::pg_catalog.regprocedure))
+ ) THEN RAISE EXCEPTION 'Foundation account export implementation changed after rollback'; END IF;
+ IF pg_catalog.to_regclass('public.v2_profiles') IS NULL
+ OR NOT pg_catalog.has_function_privilege('authenticated',
+     'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('anon',
+     'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Foundation ownership or export grants changed after rollback'; END IF;
+ RAISE NOTICE 'PASS ALL-222: overlay rollback preserved foundation tables, RPCs and export implementation';
 END $rollback_check$;
+DROP TABLE pg_temp.v2_overlay_foundation_snapshot;
