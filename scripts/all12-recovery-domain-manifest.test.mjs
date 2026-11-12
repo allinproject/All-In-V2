@@ -168,12 +168,57 @@ test('complete independently reviewed logical evidence can satisfy its own gate 
   restoreVerifiedUtc:'2026-11-12T04:10:00Z',
   preImportOutboundIsolationVerified:true,
   unsafeSqlAndScheduledJobsExcluded:true,sourceAtCutoffManifestVerified:true,
-  deployedDomainsReconciled:true,authDatabaseAndSignInRecovered:true,
-  authProviderConfigurationRecreated:true,
+  deployedDomainsReconciled:true,
+  authSourceUserCount:2,authSourceInventoryVerified:true,
+  authDatabaseAndSignInRecovered:true,authProviderConfigurationRecreated:true,
+  storageSourceObjectCount:2,storageSourceInventoryVerified:true,
   privateStorageInventoryAndBytesRecovered:true,rlsAndCrossOwnerDenialsPassed:true,
   allPresentOwnerDataDigestsMatch:true,measuredRpoSeconds:60,measuredRtoSeconds:240,
   backupArtifactDestroyedOrSecured:true,evidenceReviewed:true,
   founderAcceptedLogicalRecoveryScope:true
  });
  assert.deepEqual(r,{accepted:true,missing:[]});
+});
+
+
+test('empty V2 account and Storage inventories need verified empty recovery, never fabricated users or files',()=>{
+ const base={
+  recoveryMethod:'independent_logical',sourceProjectRef:'source',isolatedTargetId:'isolated',
+  backupArtifactDigest:'b'.repeat(64),
+  backupStartedUtc:'2026-11-12T04:00:00Z',
+  backupCutoffUtc:'2026-11-12T04:01:00Z',
+  backupCompletedUtc:'2026-11-12T04:02:00Z',
+  restoreStartedUtc:'2026-11-12T04:03:00Z',
+  restoreVerifiedUtc:'2026-11-12T04:10:00Z',
+  preImportOutboundIsolationVerified:true,unsafeSqlAndScheduledJobsExcluded:true,
+  sourceAtCutoffManifestVerified:true,deployedDomainsReconciled:true,
+  authSourceUserCount:0,authSourceInventoryVerified:true,
+  emptyAuthTargetVerified:true,authServiceBootVerified:true,
+  authProviderConfigurationRecreated:true,
+  storageSourceObjectCount:0,storageSourceInventoryVerified:true,
+  emptyStorageTargetVerified:true,storageAccessPolicyVerified:true,
+  rlsAndCrossOwnerDenialsPassed:true,allPresentOwnerDataDigestsMatch:true,
+  measuredRpoSeconds:1,measuredRtoSeconds:420,
+  backupArtifactDestroyedOrSecured:true,evidenceReviewed:true,
+  founderAcceptedLogicalRecoveryScope:true
+ };
+ assert.deepEqual(assessIndependentLogicalRecoveryEvidence(base),{accepted:true,missing:[]});
+ const noProof={...base,emptyAuthTargetVerified:false,emptyStorageTargetVerified:false};
+ const denied=assessIndependentLogicalRecoveryEvidence(noProof);
+ assert.equal(denied.accepted,false);
+ assert.ok(denied.missing.includes('authDatabaseAndSignInRecovered'));
+ assert.ok(denied.missing.includes('privateStorageInventoryAndBytesRecovered'));
+});
+test('populated source cannot pass with empty-data fallback',()=>{
+ const populated={
+  recoveryMethod:'independent_logical',sourceProjectRef:'source',isolatedTargetId:'isolated',
+  authSourceUserCount:2,authSourceInventoryVerified:true,
+  emptyAuthTargetVerified:true,authServiceBootVerified:true,
+  storageSourceObjectCount:4,storageSourceInventoryVerified:true,
+  emptyStorageTargetVerified:true,storageAccessPolicyVerified:true
+ };
+ const r=assessIndependentLogicalRecoveryEvidence(populated);
+ assert.equal(r.accepted,false);
+ assert.ok(r.missing.includes('authDatabaseAndSignInRecovered'));
+ assert.ok(r.missing.includes('privateStorageInventoryAndBytesRecovered'));
 });
