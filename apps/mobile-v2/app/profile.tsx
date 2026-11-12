@@ -39,7 +39,7 @@ function OwnedProfileScreen() {
   const [retry, setRetry] = useState(0);
   const mounted = useRef(true);
   const busy = useRef(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const guideLayouts = useRef(emptyGuideLayoutRegistry());
   const activeGuideTarget = useRef<ProfileGuideTarget | null>(null);
   const [highlightedTarget, setHighlightedTarget] = useState<ProfileGuideTarget | null>(null);
@@ -139,7 +139,7 @@ function OwnedProfileScreen() {
                 </View>
               </View>
               <Text style={styles.label}>ACCOUNT EMAIL</Text>
-              <Text style={styles.white}>{user.email ?? 'Email unavailable'}</Text>
+              <Text style={styles.white}>{user?.email ?? 'Email unavailable'}</Text>
               <Link href="/profile/edit" asChild>
                 <Pressable accessibilityRole="button" style={styles.primaryButton}>
                   <Text style={styles.primaryText}>Edit Profile</Text>
