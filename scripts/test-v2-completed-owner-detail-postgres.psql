@@ -11,6 +11,21 @@ CREATE SCHEMA allin_private;
 CREATE TABLE auth.users(id uuid PRIMARY KEY);
 CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id),
  not_after timestamptz);
+-- Test the EXACT Auth session column type expected by the candidate function,
+-- before invoking SECURITY DEFINER. A missing or non-timestamp field must
+-- produce an actionable fixture-contract failure rather than a runtime 42703.
+DO $auth_shape$
+BEGIN
+ IF NOT EXISTS(
+  SELECT 1 FROM pg_catalog.pg_attribute a
+  JOIN pg_catalog.pg_class c ON c.oid=a.attrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname='auth' AND c.relname='sessions'
+    AND a.attname='not_after' AND a.atttypid='timestamptz'::regtype
+    AND a.attnum>0 AND NOT a.attisdropped
+ ) THEN RAISE EXCEPTION 'Test Auth session expiry column missing or wrong type'
+   USING ERRCODE='42703'; END IF;
+END $auth_shape$;
 CREATE TABLE public.v2_profiles(user_id uuid PRIMARY KEY REFERENCES auth.users(id));
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
  SELECT nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
