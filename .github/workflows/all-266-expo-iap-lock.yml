@@ -5,6 +5,7 @@ on:
     branches: [chore/all-266-expo-iap-lock-20261111]
     paths:
       - '.github/workflows/all-266-expo-iap-lock.yml'
+      - 'apps/mobile-v2/src/features/subscriptions/expoIapNativePort.ts'
 
 permissions:
   contents: write
@@ -38,9 +39,12 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add package.json package-lock.json
-          git diff --cached --quiet && { echo 'Lockfile unchanged; refusing empty installation'; exit 1; }
-          git commit -m 'chore(ALL-266): lock expo-iap 6.4.3 from npm registry'
-          git push origin HEAD:chore/all-266-expo-iap-lock-20261111
+          if git diff --cached --quiet; then
+            echo 'Exact expo-iap dependency and lockfile already committed.'
+          else
+            git commit -m 'chore(ALL-266): lock expo-iap 6.4.3 from npm registry'
+            git push origin HEAD:chore/all-266-expo-iap-lock-20261111
+          fi
       - name: Clean install including native IAP module
         run: npm ci --no-audit --no-fund
       - name: Verify expo-iap resolves from the locked install
