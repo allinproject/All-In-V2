@@ -23,9 +23,9 @@ async function create(){
  await db.exec(exe(['CREATE ROLE anon NOLOGIN','CREATE ROLE authenticated NOLOGIN','CREATE ROLE service_role NOLOGIN']));
  for(const sql of statements)await db.exec(sql);
  await db.exec(exe([
-  'CREATE ROLE ingredient_test_operator LOGIN',
+  'CREATE ROLE ingredient_test_operator LOGIN NOINHERIT',
   'CREATE ROLE ingredient_test_unauthorized LOGIN',
-  'GRANT allin_v2_ingredient_reviewer TO ingredient_test_operator',
+  'GRANT allin_v2_ingredient_reviewer TO ingredient_test_operator WITH INHERIT FALSE, SET TRUE',
   "INSERT INTO allin_private.v2_ingredient_review_operators(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES('ingredient_test_operator',true,'ISOLATED-REVIEW-TEST','https://test-idp.example','test-human-subject','vault://staging/test-operator-ref',now()-interval '1 hour',now()+interval '1 day')",
   "INSERT INTO public.v2_ingredients(id,canonical_key,canonical_name,normalized_name,identity_kind,status) VALUES('11111111-1111-4111-8111-111111111111','black_beans_canned_drained','Black beans drained rinsed','black beans drained rinsed','generic_food','active')",
   "INSERT INTO public.v2_ingredient_nutrition_profiles(id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,review_status,profile_revision,coverage_status,source_quality,required_nutrient_set_version,is_default) VALUES('"+profile+"','11111111-1111-4111-8111-111111111111','cooked_drained','g',100,'100 g','reviewed',3,'launch_core_complete','foundation_review','cookbook-launch-macros-v1',false)",
@@ -49,6 +49,7 @@ test('USDA 2048 specific takes precedence over 2047 general; attestation is immu
   await denied(db,attest(),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec('SET SESSION AUTHORIZATION ingredient_test_operator');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   const decision=(await db.query(attest())).rows[0].decision;
   assert.equal(decision.status,'attested');
   assert.equal(decision.energy_fdc_nutrient_id,2048);
@@ -73,10 +74,12 @@ test('general-only energy is never accepted; source digest and normalized kcal m
  try{
   await db.exec(energyInsert(2047,118));
   await db.exec('SET SESSION AUTHORIZATION ingredient_test_operator');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,attest(),'23514');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec(energyInsert(2048,116));
   await db.exec('SET SESSION AUTHORIZATION ingredient_test_operator');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,attest(),'23514');
   await denied(db,attest(3,'f'.repeat(64)),'40001');
   await db.exec('SET SESSION AUTHORIZATION postgres');
@@ -89,6 +92,7 @@ test('legacy 1008 is permitted only without 2048, with complete source identity 
   await db.exec("UPDATE public.v2_ingredient_profile_nutrients SET amount=84 WHERE profile_id='"+profile+"' AND nutrient_code='energy_kcal'");
   await db.exec(energyInsert(1008,84));
   await db.exec('SET SESSION AUTHORIZATION ingredient_test_operator');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   const result=(await db.query(attest())).rows[0].decision;
   assert.equal(result.status,'attested');
   assert.equal(result.energy_fdc_nutrient_id,1008);
@@ -103,11 +107,13 @@ test('revoked, expired or merely role-member operator cannot attest',async()=>{
   await db.exec(energyInsert(2048,115));
   await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET credential_expires_at=clock_timestamp()-interval '1 second' WHERE login_role='ingredient_test_operator'");
   await db.exec('SET SESSION AUTHORIZATION ingredient_test_operator');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,attest(),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET credential_expires_at=clock_timestamp()+interval '1 day' WHERE login_role='ingredient_test_operator'");
   await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET enabled=false,revoked_at=clock_timestamp() WHERE login_role='ingredient_test_operator'");
   await db.exec('SET SESSION AUTHORIZATION ingredient_test_operator');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,attest(),'42501');
  }finally{await db.close()}
 });
@@ -117,6 +123,7 @@ test('a source digest with an unapproved USDA archive hash cannot be attested',a
  try{
   await db.exec(energyInsert(2048,115,src,sourceHash,'f'.repeat(64)));
   await db.exec('SET SESSION AUTHORIZATION ingredient_test_operator');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await denied(db,attest(),'23514');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations')).rows[0].n,0);
