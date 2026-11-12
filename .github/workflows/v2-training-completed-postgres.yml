@@ -56,6 +56,9 @@ on:
       - 'docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql'
       - 'scripts/test-v2-apple-attested-phone-trust-postgres.psql'
       - 'scripts/test-v2-appattest-enrollment-postgres.psql'
+      - 'scripts/test-v2-appattest-enrollment-runtime.ts'
+      - 'supabase/functions/_shared/appleAppAttestEnrollmentServer.ts'
+      - 'supabase/functions/_shared/appleAppAttestEnrollmentPostgres.ts'
       - 'scripts/test-v2-apple-watch-ownership-runtime.ts'
       - 'apps/mobile-v2/native/apple-watch/**'
       - 'scripts/test-v2-device-pairing-postgres-runtime.ts'
@@ -325,6 +328,8 @@ jobs:
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-apple-attested-phone-trust-postgres.psql
           docker cp scripts/test-v2-appattest-enrollment-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-appattest-enrollment-postgres.psql"
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-appattest-enrollment-postgres.psql
+          docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -c "ALTER ROLE allin_v2_appattest_enrollment_operator PASSWORD 'isolated_appattest_password'"
+
       - name: Run actual trusted pairing adapter through dedicated DB role
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
@@ -335,6 +340,7 @@ jobs:
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -c "ALTER ROLE allin_v2_device_registrar PASSWORD 'isolated_pairing_password'"
           deno test --allow-env --allow-net scripts/test-v2-device-pairing-postgres-runtime.ts
           deno test --allow-env --allow-net scripts/test-v2-apple-watch-ownership-runtime.ts
+          ALLIN_APPATTEST_TEST_URL="postgres://allin_v2_appattest_enrollment_operator:isolated_appattest_password@127.0.0.1:5432/device_ingest_operator" deno test --allow-env --allow-net scripts/test-v2-appattest-enrollment-runtime.ts
 
   authenticated-device-ingest-contract:
     name: ALL-243 authenticated device ingest transaction contracts (Node)
