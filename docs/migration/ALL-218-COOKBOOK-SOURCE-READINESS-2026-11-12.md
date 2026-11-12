@@ -102,3 +102,13 @@ Before showing recipe imagery in V2, verify source object rights, object bytes/c
 All **3,273** V1 embedded recipe versions carry a legacy `nutrition` field. **43 versions across 12 recipes** lack their own `ingredients`, `instructions` and `servings` fields; all 43 also lack a version `status` field. They may be inherited/default choices or incomplete source records. The candidate projection deliberately preserves the absence of those fields. The V2 import must first establish source inheritance semantics and resolved variant identity; it must not substitute missing ingredient lists with invented food quantities or previously authored macro panels.
 
 The repeatable ingredient/state audit now counts these incomplete version candidates. No variant has been normalized or published from this source audit.
+
+## Relationship/selection preflight — 2026-11-12
+
+The repeatable source-only preflight is in `docs/migration/ALL-218-RELATIONSHIP-AND-VARIANT-PREFLIGHT.sql`. It was executed directly against read-only V1 after commit `da9977506a8e76c0c7630eb00428255bd40deb9f`.
+
+- **12 structural checks passed with zero defects:** no duplicate selector keys within recipe, duplicate option keys within selector, duplicate component keys, missing parent recipe/selector/profile links, missing component selector-key/option-key links, active selector with missing default option, missing embedded variant IDs, or duplicated embedded variant IDs within recipe.
+- **3 inactive selectors have a missing default option**: source selector IDs `381`, `390`, `431` (recipe IDs `recipe-038`, `recipe-097`, `recipe-244`, `wrapper/bread`). All are marked inactive/`false_positive`. Preserve this source state; do not fabricate an option or make these public.
+- **457 individually active options belong to inactive selectors.** Their child `active=true` must never override parent selector `active=false`. Source review statuses still control eligibility even when both flags are active.
+
+These are not evidence that all options are validated. Recommended client eligibility requires the owning recipe to be approved, selector active and accepted, option active and accepted, exact ingredient change compatible with selected recipe variant, and recalculation from reviewed local ingredient evidence. The four source state fields must remain available for audit even where the UI excludes the choice.
