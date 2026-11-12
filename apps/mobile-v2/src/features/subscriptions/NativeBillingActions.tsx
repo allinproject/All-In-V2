@@ -96,7 +96,8 @@ export function NativeBillingActions({
 
   // Defense in depth: even if a parent renders this by mistake, it exposes
   // no active purchase control while any release approval is missing.
-  if(!nativeBillingReleaseGate.enabled||
+  if((Platform.OS!=='ios'&&Platform.OS!=='android')||
+     !nativeBillingReleaseGate.enabled||
      !nativeBillingReleaseGate.signedNativeBuild||
      !nativeBillingReleaseGate.storeCatalogApproved||
      !nativeBillingReleaseGate.serverSecurityApproved)return null;
