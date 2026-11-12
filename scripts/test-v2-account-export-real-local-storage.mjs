@@ -223,6 +223,39 @@ try{
   assert(parts.length>0&&parts.length===parts[0].parts);
   assert.deepEqual(Buffer.concat(parts.map(p=>Buffer.from(p.dataBase64,'base64'))),bytes);
  }
+ // ALL-12: recover actual private SOURCE object bytes, not just an archive page.
+ // Keep an independent in-memory backup with SHA-256 and prove a missing
+ // object is unavailable until restored. All objects are synthetic/local.
+ if(!hosted){
+  const backup=new Map();
+  for(const [path,expected] of original){
+   const response=await api('GET','/object/authenticated/'+sourceBucket+'/'+encPath(path));
+   const bytes=Buffer.from(await response.arrayBuffer());
+   assert.equal(sha(bytes),sha(expected),'Source backup checksum mismatch');
+   backup.set(path,{bytes,digest:sha(bytes)});
+  }
+  for(const [path] of original){
+   await api('DELETE','/object/'+sourceBucket+'/'+encPath(path));
+   const gone=await api('GET','/object/authenticated/'+sourceBucket+'/'+encPath(path),{ok:false});
+   assert.equal(gone.ok,false,'Deleted source object remained readable');
+  }
+  for(const [path,{bytes,digest}] of backup){
+   await api('POST','/object/'+sourceBucket+'/'+encPath(path),{
+    body:bytes,contentType:'application/octet-stream',
+   });
+   const response=await api('GET','/object/authenticated/'+sourceBucket+'/'+encPath(path));
+   assert.equal(sha(Buffer.from(await response.arrayBuffer())),digest,
+    'Restored private source object SHA-256 mismatch');
+   const anonymous=await api('GET','/object/authenticated/'+sourceBucket+'/'+encPath(path),{
+    token:vars.ANON_KEY,ok:false,
+   });
+   assert([400,401,403,404].includes(anonymous.status),
+    'Restored private source object became anonymously readable');
+  }
+  assert.deepEqual((await sourceCatalog()).sort(),[p1,p2].sort(),
+   'Recovered source object inventory differs');
+  console.log('PASS ALL-12: actual private source bytes deleted/restored; SHA-256, inventory and anonymous access checked');
+ }
  // Simulate restore of one already-encrypted archived page in the
  // DISPOSABLE local Storage bucket. This is object recovery, NOT a hosted
  // PITR/database restore or an approved operational recovery runbook.
