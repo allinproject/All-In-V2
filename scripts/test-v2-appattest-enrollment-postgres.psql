@@ -1,0 +1,91 @@
+\set ON_ERROR_STOP on
+-- ALL-243 disposable PG17. Trust proof is a synthetic fixture only:
+-- this tests privileged SQL identity/challenge boundaries, NOT Apple CA
+-- receipt verification or native iPhone attestation.
+DO $permissions$
+BEGIN
+ IF (SELECT rolcanlogin FROM pg_catalog.pg_roles
+    WHERE rolname='allin_v2_appattest_enroller') OR
+  has_table_privilege('authenticated',
+   'allin_private.v2_apple_attested_companion_keys_candidate','INSERT') OR
+  has_table_privilege('allin_v2_device_registrar',
+   'allin_private.v2_apple_attested_companion_keys_candidate','INSERT') OR
+  has_function_privilege('authenticated',
+   'allin_private.v2_appattest_enroll_verified_key_candidate(uuid,uuid,uuid,text,text,text,text,text,text)','EXECUTE') OR
+  has_function_privilege('allin_v2_device_registrar',
+   'allin_private.v2_appattest_enroll_verified_key_candidate(uuid,uuid,uuid,text,text,text,text,text,text)','EXECUTE') THEN
+  RAISE EXCEPTION 'Client or pairing registrar can enroll Apple trust';
+ END IF;
+ RAISE NOTICE 'PASS ALL-243 no client/registrar App Attest enrolment capabilities';
+END $permissions$;
+
+SET ROLE allin_v2_appattest_enroller;
+SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';
+INSERT INTO allin_private.v2_appattest_enrollment_challenges_candidate(
+ id,owner_id,session_id,apple_app_id,environment,expires_at
+) VALUES (
+ '99999999-9999-4999-8999-999999999999',
+ '11111111-1111-4111-8111-111111111111',
+ '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ 'ABCDE12345.com.allin365.app','sandbox',now()+interval '4 minutes'
+);
+DO $enroll$
+DECLARE status text;
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_appattest_enroll_verified_key_candidate(
+   '99999999-9999-4999-8999-999999999999',
+   '22222222-2222-4222-8222-222222222222',
+   '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'foreign-apple-attest-key','ABCDE12345.com.allin365.app',
+   'sandbox',repeat('c',100),repeat('a',64),repeat('b',64));
+  RAISE EXCEPTION 'Cross-owner enrollment accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+
+ BEGIN
+  PERFORM allin_private.v2_appattest_enroll_verified_key_candidate(
+   '99999999-9999-4999-8999-999999999999',
+   '11111111-1111-4111-8111-111111111111',
+   '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'fake-apple-attest-key-wrong-app','OTHER12345.com.attacker',
+   'sandbox',repeat('c',100),repeat('a',64),repeat('b',64));
+  RAISE EXCEPTION 'Wrong app identity accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+
+ status:=allin_private.v2_appattest_enroll_verified_key_candidate(
+  '99999999-9999-4999-8999-999999999999',
+  '11111111-1111-4111-8111-111111111111',
+  '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'fixture-apple-appattest-enrolled-key',
+  'ABCDE12345.com.allin365.app','sandbox',
+  repeat('c',100),repeat('a',64),repeat('b',64));
+ IF status<>'enrolled' THEN RAISE EXCEPTION 'Trusted fixture did not enroll'; END IF;
+
+ BEGIN
+  PERFORM allin_private.v2_appattest_enroll_verified_key_candidate(
+   '99999999-9999-4999-8999-999999999999',
+   '11111111-1111-4111-8111-111111111111',
+   '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'fixture-attempted-replay','ABCDE12345.com.allin365.app',
+   'sandbox',repeat('c',100),repeat('a',64),repeat('b',64));
+  RAISE EXCEPTION 'Consumed enrollment challenge reused';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ RAISE NOTICE 'PASS ALL-243 trusted-only one-use App Attest enrollment writer';
+END $enroll$;
+RESET ROLE;
+DO $audit$
+BEGIN
+ IF (SELECT count(*) FROM allin_private.v2_apple_attested_companion_keys_candidate
+  WHERE key_id='fixture-apple-appattest-enrolled-key'
+   AND owner_id='11111111-1111-4111-8111-111111111111'
+   AND assertion_sign_count=0
+   AND receipt_sha256=repeat('a',64)
+   AND leaf_certificate_sha256=repeat('b',64))<>1 OR
+ (SELECT count(*) FROM allin_private.v2_appattest_enrollment_challenges_candidate
+  WHERE id='99999999-9999-4999-8999-999999999999'
+   AND consumed_at IS NOT NULL)<>1 THEN
+  RAISE EXCEPTION 'Enrollment write and challenge consumption incomplete';
+ END IF;
+ RAISE NOTICE 'PASS ALL-243 private challenge/attested key committed atomically';
+END $audit$;
+\echo 'PASS ALL-243 App Attest trusted enrollment contract (synthetic evidence only)'
