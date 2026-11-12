@@ -27,9 +27,10 @@ export async function readCanonicalFuelDay(
  expectedOwnerId:string,
  day:string,
  isCurrent:()=>boolean=()=>true,
+ enabled=V2_FUEL_DAY_READ_ENABLED,
 ):Promise<FuelLogDayEvidence>{
  const unavailable:FuelLogDayEvidence={status:'unavailable'};
- if(!V2_FUEL_DAY_READ_ENABLED||!expectedOwnerId.trim()||!isCurrent())return unavailable;
+ if(!enabled||!expectedOwnerId.trim()||!isCurrent())return unavailable;
  try{
   await services.authenticateOwner();
   if(!isCurrent())return unavailable;
