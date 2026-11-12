@@ -102,3 +102,78 @@ test('privileged canonical reviewer and energy functions retain a trusted search
   assert(!/SECURITY DEFINER\s+SET search_path\s*=\s*pg_catalog\s*,\s*public/i.test(source));
  }
 });
+
+
+const evidenceRoot=path.join(__dirname,'../docs/evidence');
+const readEvidence=(filename)=>JSON.parse(fs.readFileSync(path.join(evidenceRoot,filename),'utf8'));
+test('eight source-anchored food identities retain exact source and preparation evidence',()=>{
+ const source=readEvidence('ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json');
+ const bindings=readEvidence('ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json');
+ const aliasPolicy=readEvidence('ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json');
+ const digests=readEvidence('ALL-225-USDA-EIGHT-PER-FOOD-ENERGY-DIGESTS-2026-11-12.json');
+ const hash='dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579';
+ for(const record of [source,bindings,digests]){
+  assert.equal(record.archiveSha256??record.sourceEvidenceArchiveSha256,hash);
+ }
+ assert.equal(source.records.length,8);
+ assert.equal(bindings.bindings.length,8);
+ assert.equal(aliasPolicy.records.length,8);
+ assert.equal(digests.records.length,8);
+ const uniqueIds=new Set(),uniqueKeys=new Set();
+ for(const food of source.records){
+  assert(!uniqueIds.has(food.fdcId),'duplicate FDC source ID');uniqueIds.add(food.fdcId);
+  assert(!uniqueKeys.has(food.profile),'duplicate profile key');uniqueKeys.add(food.profile);
+  const binding=bindings.bindings.find(x=>Number(x.reviewed_source_reference.external_record_id)===food.fdcId);
+  const policy=aliasPolicy.records.find(x=>Number(x.source_fdc_id)===food.fdcId);
+  const digest=digests.records.find(x=>x.fdcId===food.fdcId);
+  assert(binding&&policy&&digest,'missing exact source evidence');
+  assert.equal(binding.source_profile_key,food.profile);
+  assert.equal(policy.source_profile_key,food.profile);
+  assert.equal(binding.reviewed_source_reference.source_food_description,food.source);
+  assert.equal(policy.source_description,food.source);
+  assert.equal(policy.preparation_state,binding.proposed_preparation_state);
+  assert.equal(binding.reviewed_source_reference.source_data_type,'Foundation');
+  assert.equal(binding.nutrition_evidence.basis_quantity,100);
+  assert.equal(binding.nutrition_evidence.basis_unit,'g');
+  assert.equal(Number(food.energy.code),digest.selectedFdcNutrientId);
+  assert.equal(food.energy.kcal,digest.selectedEnergyKcal);
+  assert.match(digest.sourcePayloadSha256,/^[a-f0-9]{64}$/);
+  assert([1008,2048].includes(digest.selectedFdcNutrientId));
+  for(const key of ['protein','carbs','fat','sodiumMg']){
+   assert(Number.isFinite(food[key])&&food[key]>=0,'missing or invalid reviewed-source nutrient '+key);
+  }
+  assert.equal(binding.canonical_v2_id,null);
+  assert.equal(binding.identity_approval,'pending_reviewer');
+  assert.equal(binding.profile_approval,'pending_reviewer');
+  assert.equal(policy.canonical_identity_approved,false);
+  assert.equal(policy.profile_calculation_ready,false);
+  assert.equal(policy.approved_for_publication,false);
+ }
+ assert.equal(bindings.calculationReady,false);
+ assert.equal(bindings.approvedForPublication,false);
+ assert.equal(aliasPolicy.calculationReady,false);
+ assert.equal(aliasPolicy.publicationApproved,false);
+ assert.equal(digests.profilesApproved,false);
+ assert.equal(digests.publicationApproved,false);
+});
+test('thirteen scoped exact aliases do not broaden source food forms',()=>{
+ const policy=readEvidence('ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json');
+ const exact=new Map();
+ for(const record of policy.records){
+  assert(record.exact_alias_candidates.length>0);
+  const searchOnly=new Set(record.search_only_not_exact_aliases.map(a=>a.value.toLowerCase().trim().replace(/\\s+/g,' ')));
+  const excluded=new Set((record.excluded_incompatible_queries??[]).map(a=>a.value.toLowerCase().trim().replace(/\\s+/g,' ')));
+  for(const alias of record.exact_alias_candidates){
+   const normalized=alias.value.toLowerCase().trim().replace(/\\s+/g,' ');
+   const key=[record.locale,record.preparation_state,normalized].join('|');
+   assert(!exact.has(key),'ambiguous exact alias '+key);
+   exact.set(key,record.source_fdc_id);
+   assert.equal(alias.preparation_state,record.preparation_state);
+   assert.equal(alias.kind,'source_scoped_exact');
+   assert.equal(alias.selection_scope,'requires_explicit_source_form_confirmation');
+   assert(!searchOnly.has(normalized),'broad search term promoted to exact alias');
+   assert(!excluded.has(normalized),'incompatible food form promoted to exact alias');
+  }
+ }
+ assert.equal(exact.size,13);
+});
