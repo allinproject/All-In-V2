@@ -10,6 +10,8 @@ on:
       - 'scripts/cookbook-review-triage.test.cjs'
       - 'scripts/review-v2-ingredient-identities.cjs'
       - 'scripts/review-v2-ingredient-identities.test.cjs'
+      - 'scripts/reconcile-usda-foundation-identities.py'
+      - 'scripts/reconcile-usda-foundation-identities.test.cjs'
       - '.github/workflows/v2-cookbook-candidate-validation.yml'
   pull_request:
     paths:
@@ -19,6 +21,8 @@ on:
       - 'scripts/cookbook-review-triage.test.cjs'
       - 'scripts/review-v2-ingredient-identities.cjs'
       - 'scripts/review-v2-ingredient-identities.test.cjs'
+      - 'scripts/reconcile-usda-foundation-identities.py'
+      - 'scripts/reconcile-usda-foundation-identities.test.cjs'
       - '.github/workflows/v2-cookbook-candidate-validation.yml'
   workflow_dispatch:
 
@@ -44,3 +48,5 @@ jobs:
         run: node --test scripts/cookbook-review-triage.test.cjs
       - name: Verify candidate ingredient identity isolation and source gates
         run: node --test scripts/review-v2-ingredient-identities.test.cjs
+      - name: Test pinned USDA reconciliation and no-auto-approval gates
+        run: node --test scripts/reconcile-usda-foundation-identities.test.cjs
