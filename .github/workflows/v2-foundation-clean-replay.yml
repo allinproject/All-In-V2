@@ -8,6 +8,11 @@ on:
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-DIRECT-AUTH-CASCADE-REVIEW-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-IMMUTABLE-REVISION-GUARD-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql'
@@ -170,6 +175,66 @@ jobs:
             THEN RAISE EXCEPTION 'Training-to-Activity outbox writer absent'; END IF;
             RAISE NOTICE 'PASS: full canonical candidate graph on real local 18-migration Supabase foundation';
           END $gate$;
+          SQL
+      - name: Verify canonical account deletion and export candidate bridge
+        run: |
+          set -euo pipefail
+          # Review-only owner FK and export functions in local Supabase. The
+          # hosted deletion worker and hosted export RPC are untouched.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-DIRECT-AUTH-CASCADE-REVIEW-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql \
+            docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
+          done
+          docker exec -i "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          DO $release$
+          DECLARE
+            owner_table record;
+            required_user_column smallint;
+          BEGIN
+            FOR owner_table IN
+              SELECT c.oid,c.relname,n.nspname
+              FROM pg_class c
+              JOIN pg_namespace n ON n.oid=c.relnamespace
+              JOIN pg_attribute a ON a.attrelid=c.oid
+                 AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
+              WHERE c.relkind IN ('r','p')
+                AND n.nspname IN ('public','allin_private')
+                AND (c.relname LIKE 'v2_training_%'
+                     OR c.relname='v2_completed_activities'
+                     OR c.relname LIKE 'v2_activity_%'
+                     OR c.relname LIKE 'v2_indoor_weekly_%')
+            LOOP
+              SELECT attnum INTO required_user_column FROM pg_attribute
+                WHERE attrelid=owner_table.oid AND attname='user_id';
+              IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint f
+                WHERE f.conrelid=owner_table.oid
+                  AND f.contype='f' AND f.confrelid='auth.users'::regclass
+                  AND f.confdeltype='c' AND f.conkey=ARRAY[required_user_column]::smallint[]
+              ) THEN
+                RAISE EXCEPTION 'User-owned candidate table lacks direct Auth cascade: %.%',
+                  owner_table.nspname,owner_table.relname;
+              END IF;
+            END LOOP;
+            IF NOT has_function_privilege('authenticated',
+               'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+               OR has_function_privilege('anon',
+               'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+            THEN RAISE EXCEPTION 'Canonical owner export grants changed'; END IF;
+            IF to_regprocedure('allin_private.v2_training_account_export_fragment_candidate(uuid)') IS NULL
+            THEN RAISE EXCEPTION 'Canonical Training export fragment absent'; END IF;
+            IF position('v2_training_account_export_fragment_candidate'
+               IN pg_get_functiondef('public.v2_export_my_account_snapshot(uuid)'::regprocedure))=0
+            THEN RAISE EXCEPTION 'Existing owner export does not include new Training fragment'; END IF;
+            RAISE NOTICE 'PASS: canonical Training/Activity direct owner cascade and existing export bridge';
+          END $release$;
           SQL
       - name: Stop local Supabase services
         if: always()
