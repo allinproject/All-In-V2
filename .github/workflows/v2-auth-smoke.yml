@@ -147,10 +147,10 @@ jobs:
         run: node --test ../../scripts/prepare-v2-usda-foundation-snapshot.test.mjs
       - name: Test USDA archive manifest verification
         run: node --test ../../scripts/verify-v2-usda-foundation-manifest.test.mjs
-      - name: Run Auth tests
-        run: npm run test:auth
       - name: Run staged Goal approval authentication tests
         run: node --test ../../supabase/functions/_shared/goalAcceptanceAuthServices.node.test.mjs
+      - name: Run Auth tests
+        run: npm run test:auth
       - name: Run Coach quality contract and scenario tests
         run: npm run test:coach-quality
       - name: Run Cookbook calculator tests
