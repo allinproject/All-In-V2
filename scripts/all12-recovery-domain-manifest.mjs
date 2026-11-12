@@ -35,3 +35,45 @@ export function assessRecoveryCoverage({presentTables=[],verifiedTables=[],verif
  const untrackedTables=findUntrackedRecoveryTables(actualTables);
  return {complete:untrackedTables.length===0 && result.every(d=>d.status==='verified'),domains:result,untrackedTables};
 }
+
+/**
+ * Physical provider-restore acceptance is deliberately separate from local
+ * logical coverage. The caller must supply evidence from an actual, independently
+ * restored project; a completed CI run or same-project roundtrip is insufficient.
+ *
+ * No credentials, dumps, actual user data or snapshot contents belong here.
+ * Caller-provided evidence identifiers/timestamps are only release-review inputs,
+ * not independently verified provider attestations.
+ */
+export function assessIndependentRecoveryEvidence(evidence={}) {
+ const required=[
+  ['sourceProjectRef', v=>typeof v==='string'&&v.length>0],
+  ['backupSnapshotId', v=>typeof v==='string'&&v.length>0],
+  ['backupCutoffUtc', v=>typeof v==='string'&&!Number.isNaN(Date.parse(v))],
+  ['restoredProjectRef', v=>typeof v==='string'&&v.length>0],
+  ['restoreStartedUtc', v=>typeof v==='string'&&!Number.isNaN(Date.parse(v))],
+  ['restoreCompletedUtc', v=>typeof v==='string'&&!Number.isNaN(Date.parse(v))],
+  ['measuredRpoSeconds', v=>Number.isFinite(v)&&v>=0],
+  ['measuredRtoSeconds', v=>Number.isFinite(v)&&v>=0],
+  ['providerPhysicalRestore', v=>v===true],
+  ['preStartOutboundIsolationVerified', v=>v===true],
+  ['scheduledWorkersQuarantinedBeforeStartup', v=>v===true],
+  ['sourceTargetSnapshotCompared', v=>v===true],
+  ['restoredSchemaAndRlsVerified', v=>v===true],
+  ['restoredOwnerAuthBoundaryVerified', v=>v===true],
+  ['restoredDataIntegrityVerified', v=>v===true],
+  ['authConfigurationRecovered', v=>v===true],
+  ['privateStorageBytesAndMetadataRecovered', v=>v===true],
+  ['liveSchemaDomainInventoryReconciled', v=>v===true],
+  ['reviewedReleaseAuthorization', v=>v===true],
+ ];
+ const missing=required.filter(([field,valid])=>!valid(evidence[field])).map(([field])=>field);
+ const source=evidence.sourceProjectRef,restored=evidence.restoredProjectRef;
+ if(source && restored && source===restored) missing.push('independentDestination');
+ const t0=Date.parse(evidence.restoreStartedUtc);
+ const t1=Date.parse(evidence.restoreCompletedUtc);
+ const cutoff=Date.parse(evidence.backupCutoffUtc);
+ if(Number.isFinite(t0)&&Number.isFinite(t1)&&t1<t0) missing.push('validRestoreTimeOrder');
+ if(Number.isFinite(cutoff)&&Number.isFinite(t1)&&cutoff>t1) missing.push('validSnapshotCutoff');
+ return {accepted:missing.length===0,missing};
+}
