@@ -448,7 +448,11 @@ BEGIN
    '96666666-9666-4666-8666-966666666666',
    'community.my_action_receipts',NULL,25);
  IF pg_catalog.jsonb_array_length(v_page->'rows')<>1
-    OR v_page#>>'{rows,0,actor_id}'<>'92222222-9222-4222-8222-922222222222'
+    OR v_page#>>'{rows,0,action_id}'<>'aa222222-9222-4222-8222-922222222222'
+    OR v_page->'rows'->0 ? 'actor_id'
+    OR v_page->'rows'->0 ? 'payload_sha256'
+    OR v_page->'rows'->0 ? 'expected_version'
+    OR v_page->'rows'->0 ? 'result_version'
     OR v_page::text LIKE '%aa111111-9111-4111-8111-911111111111%'
  THEN RAISE EXCEPTION 'Private Community action receipt leaked across owners'; END IF;
  RAISE NOTICE 'PASS ALL-251: unknown owner/directional tables block export and incoming blocks stay private';
