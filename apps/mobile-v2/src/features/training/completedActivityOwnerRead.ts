@@ -144,8 +144,12 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    throw new Error('Structured activity evidence is not verifiable.');
   if(sectionKeys.has(section.key))throw new Error('Duplicate canonical activity section identity.');
   sectionKeys.add(section.key);
-  if(section.kind==='route'&&routeIneligibleSports.has(display.sport))
-   throw new Error('Route evidence is incompatible with the canonical activity sport.');
+  if(section.kind==='route'&&(
+   routeIneligibleSports.has(display.sport)||
+   // Indoor/machine rowing has no outdoor GPS track. Only an explicit
+   // on-water canonical rowing subtype can qualify for a real route.
+   (raw.sport==='rowing'&&raw.sportSubtype!=='outdoor')
+  ))throw new Error('Route evidence is incompatible with the canonical activity sport.');
   const allowedSports=sectionSportScopes[section.kind];
   if(allowedSports&&!allowedSports.has(display.sport))
    throw new Error('Structured evidence is incompatible with the canonical activity sport.');
