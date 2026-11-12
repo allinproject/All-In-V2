@@ -273,7 +273,8 @@ test('ALL-251 review-only deletion graph scanner remains private and release-blo
  const completion=readFileSync(
   'supabase/migrations/20261111130824_v2_deletion_completion_verify_auth_sessions_and_owner_rows.sql','utf8');
  for(const value of ["'owner_id'","'athlete_id'","'actor_id'","'follower_id'",
-   "'followed_id'","'blocker_id'","'blocked_id'","'profile_id'"]){
+   "'followed_id'","'blocker_id'","'blocked_id'","'lower_user_id'",
+   "'upper_user_id'","'target_id'","'profile_id'"]){
    assert(graph.includes(value),'Missing owner or relationship column '+value);
  }
  assert.match(graph,/WITH RECURSIVE cascade_reachable/);
