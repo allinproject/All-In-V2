@@ -52,6 +52,8 @@ on:
       - 'supabase/functions/_shared/appleWatchOwnershipVerifier.test.mjs'
       - 'supabase/functions/_shared/appleAppAttestEnrollmentVerifier.ts'
       - 'supabase/functions/_shared/appleAppAttestEnrollmentVerifier.test.ts'
+      - 'supabase/functions/_shared/appleAppAttestReceiptVerifier.ts'
+      - 'supabase/functions/_shared/appleAppAttestReceiptVerifier.test.ts'
       - 'supabase/functions/_shared/appleWatchOwnershipPostgres.ts'
       - 'docs/architecture/sql/V2-APPLE-ATTESTED-COMPANION-KEYS-CANDIDATE.sql'
       - 'scripts/test-v2-apple-attested-phone-trust-postgres.psql'
@@ -312,6 +314,7 @@ jobs:
           deno check supabase/functions/v2-device-ingest/index.ts
           deno check supabase/functions/v2-device-pairing/index.ts
           deno test --allow-env --allow-net supabase/functions/_shared/appleAppAttestEnrollmentVerifier.test.ts
+          deno test --allow-env --allow-net supabase/functions/_shared/appleAppAttestReceiptVerifier.test.ts
           deno test --allow-env --allow-net scripts/test-v2-device-ingest-postgres-runtime.ts
       - name: Validate restricted device pairing and revocation in disposable PostgreSQL
         env:
