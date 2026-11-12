@@ -85,3 +85,37 @@ The earlier 2026-11-11 deletion paragraphs and their descriptions above are **hi
 - **Status of both revisions:** proposed factual candidates only; no legal/privacy reviewer signature, no founder approval of the exact document text, no effective date/hash assignment, no Supabase legal publication, no signup opening and no production deployment. The verbatim V1 review copies remain untouched. Preserve the five founder-approved *principles* separately from final-document approval.
 
 **Release review note:** The current native request-intake feature is not itself full Apple account-deletion compliance without a tested user-accessible deletion outcome and applicable store/reviewer requirements. Before any legal publish, revalidate factual wording against the installed, deployed version rather than treating today's in-development snapshot as automatically launch-ready.
+
+
+## 2026-11-12 — operational facts and qualified reviewer intake
+
+**Purpose:** Review preparation and evidence only. Neither a technical audit nor a lawyer outreach draft equals qualified legal/privacy review. The existing five founder-approved product principles remain separate from approval of exact legal wording.
+
+### Operational facts supported by sources
+
+| Topic | Evidence and status | What must still be demonstrated before approval |
+|---|---|---|
+| V2 operator/product | Founder product authority: Durben Ventures LLC; ALL IN 365; 18+ founder beta; separate paid authorization. | Confirm registration/business contact and notices as written in legal text. |
+| V2 legal lifecycle | 2026-11-12 read-only live V2 Supabase: **0 published legal records and 0 acceptance receipts**; legal documents may be read by anon/authenticated only when published+effective; clients have no legal-document write grants; owner-only acceptance reads. | Publish only after reviewed exact immutable text, effective dates, versions and hashes; test installed app legal flow and receipts. |
+| Account deletion | Live schema includes owner-scoped request/audit/config; `execution_enabled=false`; in-app request/status/pending cancellation exists; no deployed Supabase Edge Functions. | Actual irreversible processing and data/storage/third-party coverage, permissions, safety, retention and E2E verification under ALL-251. |
+| Export | Current native route provides a bounded authenticated JSON snapshot, not comprehensive activity/media/provider export. | Define allowed scope, complete coverage/portability obligations and installed-device confirmation. |
+| Backups | Connected Supabase organization reports Pro. Supabase public documentation, updated 2026-11-05, says Pro project databases have daily backups with access to last 7 days, unless PITR applies: https://supabase.com/docs/guides/platform/backups . | Verify THIS project `xarhuczrtzuiljmtdaeu` backup dashboard/history, PITR configuration, retained restore points, restore acceptance and whether any object storage/other vendors are covered; plan eligibility alone is not proof. |
+| Coach/AI | V2 Privacy candidate intentionally identifies OpenAI API as intended; no complete deployed data-flow/provider evidence obtained in this review. | Verify actual V2 provider/runtime integration, transmitted field categories, health-data consent, logging/retention, third-party terms, enablement and public claims with appropriate implementation owners. |
+| Contact routes | Policy candidate lists `durbenventures@gmail.com` and `https://allin365.app`; connected Gmail account is accessible and a legal-review inquiry was saved as a draft. Automated 2026-11-12 public reads of `https://allin365.app/terms` and historical origin `/terms` failed through web retrieval; this does NOT establish worldwide downtime. | Verify human-operated privacy request intake and replies, website domain/links from real devices, security/identity verification and response escalation. |
+| Lawyer review | Gmail search of relevant counsel/review terms returned no evidence of a completed qualified review; search absence is not proof none exists elsewhere. LegalCORPS (Minnesota business-law legal aid) publicly offers brief clinics and potentially eligible limited-scope attorney representation: https://legalcorps.org/businesses-entrepreneurs/ . | Secure actual counsel engagement, confirm practitioner competence with mobile privacy/AI/health data, scope and confidentiality, get review of exact three documents and all redlines, and preserve documented written disposition. |
+
+### Qualified legal/privacy review acceptance evidence — mandatory
+
+1. **Reviewer identity/qualification:** real name, firm/organization, active bar jurisdiction/status where applicable, and relevant consumer apps/privacy/AI/health-data experience; verify independently. A general business clinic consultation is not automatically an in-depth privacy/document review.
+2. **Engagement and scope:** date, representation/engagement or clinic advice record, covered Terms/Privacy/Founder Beta revisions, jurisdictions and distribution (founder beta, Apple/Google, paid trial/subscription), conflict/confidentiality arrangements, limitations and fee/eligibility confirmation.
+3. **Privacy factual map:** vendor/subprocessor register, authorized Health/Apple Health data types, Coach inputs and provider handling, photo visibility, Community, location/diagnostics, deletion/export/retention and backup practices, actual contact route and consumer rights. Mark unverifiable statements as conditional or block publishing.
+4. **Review output:** dated written review or redline for **each** exact candidate, issues raised, accepted revisions, outstanding conditions, and final counsel disposition; do not label “counsel approved” merely because an email or appointment exists.
+5. **Founder final text approval:** explicit separate approval of exact immutable Terms, Privacy, Founder Beta files, named versions, effective dates and SHA-256. The 2026-11-12 approval of five *principles* does not fill this requirement.
+6. **Release evidence:** controlled V2-only legal publication, public/Settings links and signed-out/in signup/consent version receipts, 18+ screen, account isolation and device validation. No action on production data or public signup until approvals and required engineering gates clear.
+
+### Outreach status and next handoff
+
+- A **Gmail draft only** was created to `info@legalcorps.org`, subject “Request for pro bono/limited-scope legal and privacy review — ALL IN 365 founder beta,” asking about a qualified privacy/mobile-app reviewer, eligibility/cost, and handling of all three documents. **Not sent**; no attorney retained, no appointment booked and no review obtained.
+- LegalCORPS published service eligibility may involve a $50 placement fee for some limited-scope matters and income criteria, while brief advice clinics and certain partner routes have other terms. Confirm eligibility/actual fees before commitment: https://legalcorps.org/businesses-entrepreneurs/ . No paid engagement was authorized.
+- Reviewer should receive the source snapshot, current three review copies, amended candidate redlines, this sheet, and the current V2 factual accuracy dossier using a secure, consented transfer. Avoid sending private user data or keys.
+- Preserve unapproved status and existing ALL-219 / ALL-251 / ALL-209 dependencies until exact independent reviewer feedback is recorded. **No legal signoff is presently evidenced.**
