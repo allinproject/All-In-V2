@@ -80,3 +80,56 @@ Deno.test('cryptographically signed CMS by an untrusted synthetic CA never enrol
  await assert.rejects(appleAppAttestReceiptService.verifyAppleSignedReceipt({
   ...context,receiptB64url:tampered.toString('base64url')}));
 });
+
+
+Deno.test('receipt DER rejects nonminimal lengths, wrong tags and truncated nested attributes',()=>{
+ const valid=payload();
+ const mutants:Uint8Array[]=[
+  tlv(0x30,valid.subarray(valid[1]<128?2:4)), // SEQUENCE is not SET OF
+  Buffer.from([0x31,0x80,0,0]), // indefinite-length BER is not valid DER
+  Buffer.from([0x31,0x81,0x7f,...Buffer.alloc(0)]), // truncated long length
+  Buffer.from([0x31,0x82,0,0x7f,...Buffer.alloc(0)]), // leading-zero length
+  Buffer.from([0x31,0xff,0]), // too many length octets
+  tlv(0x31,Buffer.concat([field(2,txt(context.appId)),Buffer.from([0x30,0x03,0x02,0x01])])),
+  tlv(0x31,field(2,txt(context.appId)).subarray(0,5)), // truncated inner attribute
+  tlv(0x31,Buffer.concat(Array.from({length:65},()=>field(2,txt('x'))))),
+ ];
+ for(const malformed of mutants)
+  assert.throws(()=>inspectAppAttestReceiptPayload(malformed,context));
+});
+Deno.test('receipt attribute structure, integer encoding and text/date canonicality fail closed',()=>{
+ const malformedAttr=(id:Uint8Array,version:Uint8Array,value:Uint8Array)=>
+  tlv(0x31,seq(id,version,tlv(4,value)));
+ const cases=[
+  malformedAttr(tlv(2,Buffer.from([0,2])),tlv(2,Buffer.from([1])),txt(context.appId)),
+  malformedAttr(tlv(2,Buffer.from([0x82])),tlv(2,Buffer.from([1])),txt(context.appId)),
+  malformedAttr(tlv(2,Buffer.from([2])),tlv(2,Buffer.from([2])),txt(context.appId)),
+  malformedAttr(tlv(2,Buffer.from([2])),tlv(2,Buffer.from([1])),Buffer.from([0x0c,0x80])),
+  payload({12:time('2026-02-30T16:59:00.000Z')}),
+  payload({12:time('2026-11-12T16:59:00+00:00')}),
+  payload({12:time('2026-11-12T16:59:00.000Zextra')}),
+  payload({2:txt('ABCDE12345.com.allin365.app\u0000')}),
+  payload({4:Buffer.alloc(31,5)}),
+  payload({4:Buffer.from('g'.repeat(64))}),
+ ];
+ for(const malformed of cases)
+  assert.throws(()=>inspectAppAttestReceiptPayload(malformed,context));
+});
+Deno.test('CMS rejects corrupt signatures, altered certificate bytes and ambiguous envelopes',async()=>{
+ // The real synthetic signed CMS fixture lives in the existing trust test.
+ // These malformed envelopes must never turn into trusted Apple receipts.
+ const invalid=[
+  Buffer.from([0x30,0x80,0x00,0x00]), // indefinite length
+  Buffer.from([0x30,0x02,0x06,0x00]), // malformed content-info OID
+  Buffer.from([0x30,0x81,0x01,0x00]), // invalid long-form DER
+  Buffer.from([0x30,0x82,0x10]), // truncated CMS container
+  Buffer.alloc(12001,0x30), // receipt size limit
+ ];
+ for(const receipt of invalid)
+  await assert.rejects(appleAppAttestReceiptService.verifyAppleSignedReceipt({
+   ...context,receiptB64url:receipt.toString('base64url')}));
+ for(const receipt of ['', '==', '+/8=', 'a', 'AA=', 'AA*A']){
+  await assert.rejects(appleAppAttestReceiptService.verifyAppleSignedReceipt({
+   ...context,receiptB64url:receipt}));
+ }
+});
