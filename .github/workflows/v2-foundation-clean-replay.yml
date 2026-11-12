@@ -67,6 +67,7 @@ on:
       - 'docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COACH-PERSISTENCE-SECURITY-CHECKS.sql'
       - 'docs/architecture/sql/V2-COACH-PERSISTENCE-TWO-OWNER-LOCAL.psql'
+      - 'scripts/check-v2-coach-sql-candidate.mjs'
   workflow_dispatch:
 
 permissions:
@@ -270,6 +271,10 @@ jobs:
           docker cp scripts/test-v2-community-privacy-local-postgres.psql "$db_container:/tmp/v2-community-privacy-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-community-privacy.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-community-privacy-qa.psql
+      - name: Validate Coach SQL source before local database replay
+        run: |
+          node scripts/check-v2-coach-sql-candidate.mjs --self-test
+          node scripts/check-v2-coach-sql-candidate.mjs
       - name: Validate Coach conversation persistence and cross-owner isolation in disposable DB
         run: |
           set -euo pipefail
