@@ -8,8 +8,6 @@ const now = Date.parse('2026-11-12T12:00:00Z');
 function valid(): GoalApprovalPreview {
   return {
     ownerId: owner, authSessionGeneration: 3, complete: true, nextCursor: null,
-    reviewId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    actionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     goalId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
     goalRevisionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
     expectedVersion: 2, goalTitle: 'Enjoy moving more', goalKind: 'general_wellbeing',
@@ -35,6 +33,8 @@ test('exact same-owner session and intact undated Goal show review only', () => 
   assert.equal(state.preview.targetDate, null);
   assert.equal(state.preview.behaviors[0]?.userConfirmed, false);
   assert.equal(Object.hasOwn(state, 'approved'), false);
+  assert.equal(Object.hasOwn(state.preview, 'reviewId'), false);
+  assert.equal(Object.hasOwn(state.preview, 'actionId'), false);
 });
 test('account switches, session rotations and incomplete evidence fail closed', () => {
   for (const [p, id, generation] of [
@@ -52,8 +52,8 @@ test('stale previews, invalid IDs and tampered digests are rejected', () => {
     {...valid(), expiresAt: new Date(now - 1).toISOString()},
     {...valid(), expiresAt: new Date(now + 16 * 60_000).toISOString()},
     {...valid(), sha256: 'client-calculated'},
-    {...valid(), reviewId: 'bad'},
-    {...valid(), actionId: 'bad'},
+    {...valid(), goalId: 'bad'},
+    {...valid(), goalRevisionId: 'bad'},
     {...valid(), expectedVersion: 0},
     {...valid(), targetDate: '2027-02-30'},
   ]) assert.equal(goalReviewPresentation(p, owner, 3, now).status,'unavailable');
