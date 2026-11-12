@@ -375,3 +375,36 @@ test('ALL-217/230 private export redacts replay hashes, provider correlators and
   'Owner deletion must cascade to each new private data domain');
  assert(!reader.includes("'completeUserExport',true"),'Do not promise complete export before approval');
 });
+
+test('ALL-217/230 private owner tables must cascade with direct Auth owner FK before deletion may arm',()=>{
+ const cases=[
+  ['docs/architecture/sql/V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql',
+   ['public.v2_training_athlete_restrictions','allin_private.v2_training_restriction_certifications']],
+  ['docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql',
+   ['allin_private.v2_training_restriction_action_receipts']],
+  ['docs/architecture/sql/V2-COACH-BUDGET-LEDGER-REVIEW-CANDIDATE.sql',
+   ['allin_private.v2_coach_budget_periods','allin_private.v2_coach_budget_reservations']]
+ ];
+ for(const [file,tables] of cases){
+  const ddl=readFileSync(file,'utf8');
+  for(const table of tables){
+   const token='CREATE TABLE '+table+' (';
+   const pos=ddl.indexOf(token);
+   assert(pos>=0,'Canonical owner table not declared: '+table);
+   const end=ddl.indexOf('\n);',pos);
+   assert(end>pos,'Owner relation definition is unbounded: '+table);
+   const definition=ddl.slice(pos,end);
+   assert.match(definition,/user_id uuid NOT NULL REFERENCES auth\.users\(id\) ON DELETE CASCADE/,
+    'Auth direct owner cascade is required for privacy deletion: '+table);
+  }
+ }
+ const graph=readFileSync(
+  'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql','utf8');
+ assert(graph.includes('cascade_reachable'));
+ assert(graph.includes('relationship_or_actor_retention_policy_required'));
+ const snapshot=sourceTables(source),inventory=candidateTables(reader);
+ for(const table of cases.flatMap(x=>x[1])){
+  assert(!snapshot.includes(table)&&!inventory.includes(table),
+   'Deletion cascade alone must never authorize incomplete account exports: '+table);
+ }
+});
