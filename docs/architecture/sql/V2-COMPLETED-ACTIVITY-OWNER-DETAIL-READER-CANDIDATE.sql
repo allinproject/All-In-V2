@@ -57,24 +57,32 @@ BEGIN
  INTO v_sources FROM public.v2_activity_sources
  WHERE activity_id=p_activity_id AND user_id=v_user;
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-   'segmentId',id,'parentSegmentId',parent_segment_id,
-   'kind',segment_kind,'sequence',sequence_number,'sport',sport,'label',label,
-   'startedAt',started_at,'finishedAt',finished_at,
-   'elapsedSeconds',elapsed_seconds,'distanceMeters',distance_meters,
+   'segmentId',seg.id,'parentSegmentId',seg.parent_segment_id,
+   'kind',seg.segment_kind,'sequence',seg.sequence_number,
+   'sport',seg.sport,'label',seg.label,
+   'startedAt',seg.started_at,'finishedAt',seg.finished_at,
+   'elapsedSeconds',seg.elapsed_seconds,'distanceMeters',seg.distance_meters,
+   -- A source-free authored segment has unknown sensor quality, not trusted.
+   'sourceQuality',src.quality,
    'sourceMetrics',allin_private.v2_activity_segment_scalar_projection_candidate(
-      v_user,p_activity_id,id)
- ) ORDER BY parent_segment_id NULLS FIRST,sequence_number,id),'[]'::jsonb)
- INTO v_segments FROM public.v2_activity_segments
- WHERE activity_id=p_activity_id AND user_id=v_user;
+      v_user,p_activity_id,seg.id)
+ ) ORDER BY seg.parent_segment_id NULLS FIRST,seg.sequence_number,seg.id),'[]'::jsonb)
+ INTO v_segments FROM public.v2_activity_segments seg
+ LEFT JOIN public.v2_activity_sources src ON
+   src.id=seg.source_id AND src.activity_id=seg.activity_id AND src.user_id=seg.user_id
+ WHERE seg.activity_id=p_activity_id AND seg.user_id=v_user;
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-    'setId',id,'exerciseSegmentId',exercise_segment_id,
-    'exerciseId',exercise_id,'setIndex',set_index,'setKind',set_kind,
-    'reps',reps,'loadValue',load_value,'loadUnit',load_unit,
-    'loadMode',load_mode,'rpe',rpe,'rir',rir,
-    'durationSeconds',duration_seconds,'quality',quality
- ) ORDER BY exercise_segment_id,set_index,id),'[]'::jsonb)
- INTO v_strength FROM public.v2_activity_strength_sets
- WHERE activity_id=p_activity_id AND user_id=v_user;
+    'setId',sets.id,'exerciseSegmentId',sets.exercise_segment_id,
+    'exerciseId',sets.exercise_id,'setIndex',sets.set_index,'setKind',sets.set_kind,
+    'reps',sets.reps,'loadValue',sets.load_value,'loadUnit',sets.load_unit,
+    'loadMode',sets.load_mode,'rpe',sets.rpe,'rir',sets.rir,
+    'durationSeconds',sets.duration_seconds,'quality',sets.quality,
+    'sourceQuality',src.quality
+ ) ORDER BY sets.exercise_segment_id,sets.set_index,sets.id),'[]'::jsonb)
+ INTO v_strength FROM public.v2_activity_strength_sets sets
+ JOIN public.v2_activity_sources src ON
+   src.id=sets.source_id AND src.activity_id=sets.activity_id AND src.user_id=sets.user_id
+ WHERE sets.activity_id=p_activity_id AND sets.user_id=v_user;
  -- Storage references stay private; this count is not proof of a usable
  -- map or permission to download GPS points/series.
  SELECT count(*) INTO v_routes
