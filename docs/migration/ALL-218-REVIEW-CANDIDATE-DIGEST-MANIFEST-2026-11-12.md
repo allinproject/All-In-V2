@@ -12,7 +12,7 @@ All four projections were executed read-only against V1 using the *exact SELECT 
 
 | Projection | Rows | SHA-256 of ordered row SHA-256 sequence |
 |---|---:|---|
-| Recipes | 907 | `405f0be6fd0dc771a4471eba6d1e620dd3e805ca09df9d4dda71c2bed31fac2a` |
+| Recipes | 907 | `2edd3966328f2fae03c686e720b594e1769b8c8139eb82438a85a01c9c7c766f` |
 | Selectors | 1,293 | `598e2cbb278df0c625c7adfe6b6d3248688396ca04a201383f9c31e3d8924a0e` |
 | Options | 5,876 | `0ce1891d8b67b3844999a61424b307dd6f297d4d363bb7c2fbd178fdc9b754ce` |
 | Component mappings | 2,855 | `59b672f8d544b82acd3880ec63b0a7a474138934f6b3ec17b500899d1542525b` |
@@ -48,3 +48,7 @@ The ordering is **text ordering of projected source identity**, not numeric orde
 These are review-only candidates and intentionally include unnormalized authored ingredient text and unverified options/mappings. Existing status/published flags are not public eligibility. The final versioned export remains blocked on product-source ownership/rights, approved schema/permissions, explicit raw/cooked/freezer-kit treatment and calculator acceptance (ALL-222/225/226/228/229 and foundation ALL-216).
 
 Before importing, verify counts, SHA-256 fingerprints, source identity map and zero forbidden nested macro keys again. Freeze source with an immutable approved artifact before any V2 production seed. Never replay this SQL into V2 tables.
+
+## Updated source projection (2026-11-12)
+
+Recipe projection now explicitly includes review-only `source_freezer_kit_review_only` assembly, thawing, storage and cook-day lifecycle fields for the 20 recipes carrying this source mode. The recipe SHA-256 digest above was recalculated by executing the **exact revised committed SQL** against read-only V1. The other three projection digests have not changed. The revised recipe projection returns 907 records, 20 explicit freezer-kit modes, and zero nested `nutrition` / `nutrition_delta` keys. The preservation of source freezer-kit text is **not** cooking-yield or food-safety approval.
