@@ -51,6 +51,22 @@ export function createCoachTrainingAuthServices({userClient,bearerToken}={}){
    const state=await profileState(ownerId);
    return {ownerId,ready:legalAndOnboardingReady(state)};
   },
+  readCompletedHistory:async({ownerId,fromDate,throughDate}={})=>{
+   if(!uuid(ownerId)||(await verifySession()).id!==ownerId||
+      !/^\\d{4}-\\d{2}-\\d{2}$/.test(fromDate??"")||
+      !/^\\d{4}-\\d{2}-\\d{2}$/.test(throughDate??""))fail();
+   const {data,error}=await userClient.rpc("v2_completed_activity_coach_recent_candidate",{
+    p_expected_user_id:ownerId,p_from_date:fromDate,
+    p_through_date:throughDate
+   });
+   if(error||!data||data.ownerId!==ownerId||data.verified!==true||
+      data.fromDate!==fromDate||data.throughDate!==throughDate||
+      data.coverage!=="partial_canonical_completed_identity"||
+      !Array.isArray(data.activities)||data.activities.length>50||
+      typeof data.moreAvailable!=="boolean")fail();
+   if((await verifySession()).id!==ownerId)fail();
+   return data;
+  },
   readRestrictions:async({ownerId}={})=>{
    if(!uuid(ownerId)||(await verifySession()).id!==ownerId)fail();
    const {data,error}=await userClient.rpc("v2_training_active_restrictions_read_candidate",{
