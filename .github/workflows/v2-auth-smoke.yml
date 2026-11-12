@@ -159,12 +159,25 @@ jobs:
         run: npm run test:strength
       - name: Run Strength exercise suitability tests
         run: node --experimental-strip-types --test src/features/strength/exerciseSuitability.test.ts
-      - name: Run subscription entitlement contract tests
-        run: npm run test:subscriptions
       - name: Run Sentry crash privacy tests
         run: npm run test:monitoring
       - name: Run provider cache helper tests
         run: npm run test:provider-cache
+
+  subscription-contracts:
+    name: Node-only subscription contracts (isolated timeout)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    defaults:
+      run:
+        working-directory: apps/mobile-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Run subscription entitlement contract tests
+        run: npm run test:subscriptions
 
   community-postgres-candidate:
     name: PostgreSQL 17 isolated Community, subscription and Coach replays
