@@ -1,0 +1,44 @@
+\set ON_ERROR_STOP on
+-- ALL-12: disposable-only synthetic Auth identity row roundtrip.
+-- Not a password/JWT/sign-in test. No live credentials are read or restored.
+BEGIN;
+DO $check$
+DECLARE
+ a uuid := 'c4141414-4141-4141-8141-414141414141';
+ b uuid := 'd4141414-4141-4141-8141-414141414141';
+ before_count int; after_count int;
+ before_digest text; after_digest text;
+BEGIN
+ IF EXISTS(SELECT 1 FROM auth.users WHERE id IN(a,b))
+ THEN RAISE EXCEPTION 'ALL-12 identity fixture collision'; END IF;
+ INSERT INTO auth.users(id,raw_user_meta_data)
+ VALUES(a,'{"all12":"synthetic-a"}'::jsonb),
+       (b,'{"all12":"synthetic-b"}'::jsonb);
+ INSERT INTO auth.identities(provider_id,user_id,provider,identity_data)
+ VALUES('all12-synthetic-a',a,'email',jsonb_build_object('sub','all12-synthetic-a','email','all12-a@example.invalid')),
+       ('all12-synthetic-b',b,'email',jsonb_build_object('sub','all12-synthetic-b','email','all12-b@example.invalid'));
+ SELECT count(*),md5(string_agg(to_jsonb(i)::text,E'\n' ORDER BY i.user_id,i.id))
+ INTO before_count,before_digest
+ FROM auth.identities i WHERE i.user_id IN(a,b);
+ IF before_count<>2 THEN RAISE EXCEPTION 'Expected two Auth identities'; END IF;
+ CREATE TEMP TABLE all12_identity_snapshot ON COMMIT DROP AS
+ SELECT id,provider_id,user_id,provider,identity_data,created_at,updated_at,last_sign_in_at
+ FROM auth.identities WHERE user_id IN(a,b);
+ DELETE FROM auth.identities WHERE user_id IN(a,b);
+ IF EXISTS(SELECT 1 FROM auth.identities WHERE user_id IN(a,b))
+ THEN RAISE EXCEPTION 'Auth identity deletion failed'; END IF;
+ INSERT INTO auth.identities(id,provider_id,user_id,provider,identity_data,created_at,updated_at,last_sign_in_at)
+ SELECT id,provider_id,user_id,provider,identity_data,created_at,updated_at,last_sign_in_at
+ FROM all12_identity_snapshot;
+ SELECT count(*),md5(string_agg(to_jsonb(i)::text,E'\n' ORDER BY i.user_id,i.id))
+ INTO after_count,after_digest
+ FROM auth.identities i WHERE i.user_id IN(a,b);
+ IF before_count<>after_count OR before_digest IS DISTINCT FROM after_digest
+ THEN RAISE EXCEPTION 'Auth identity restore fingerprint mismatch'; END IF;
+ IF EXISTS(SELECT 1 FROM auth.identities i
+ WHERE i.user_id=a AND i.provider_id<>'all12-synthetic-a'
+    OR i.user_id=b AND i.provider_id<>'all12-synthetic-b')
+ THEN RAISE EXCEPTION 'Restored Auth identity owner mismatch'; END IF;
+END $check$;
+ROLLBACK;
+\echo PASS ALL-12 synthetic Auth identity roundtrip and owner fingerprint (rollback-only)
