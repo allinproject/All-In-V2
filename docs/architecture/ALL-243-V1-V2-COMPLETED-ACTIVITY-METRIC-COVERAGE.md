@@ -80,6 +80,11 @@ Tested the mapping and amended owner-read/screen-model assertions (including ret
 ## Recovered original V1 registry and gap audit — authoritative source audit (2026-11-11)
 
 **Previously missing source files recovered from the founder's personal Library, not the V1 Git tree:**
+**Exact archived original text is now in V2 Git, with source-to-repository byte-for-byte readback verified** (reference only; current V2 decisions take precedence on labels/ownership/deployment):
+- [V1 original metric registry](../architecture/v1-sources/ALL-IN-365-Completed-Workout-Metric-Registry-v1.md)
+- [V1 original detail gap audit](../architecture/v1-sources/ALL-IN-365-Completed-Workout-Detail-Gap-Audit-v1.md)
+
+
 - `ALL-IN-365-Completed-Workout-Metric-Registry-v1.md` (2026-10-28, 27 sections)
 - `ALL-IN-365-Completed-Workout-Detail-Gap-Audit-v1.md` (2026-10-28, implementation handoff)
 
@@ -109,6 +114,16 @@ Both are design/implementation targets, **not** proof that any source adapter, c
 - [ ] Real installed Overview/Details/Coach plus accessibility, compact/large phone, high text scale, dark/light, and actual user-source evidence acceptance.
 
 **Do not declare 17 scalar display baselines equivalent to complete V1 registry coverage.** The existing V2 physical owner can extend its single versioned dictionary and the same canonical activity with typed segments and private source objects. Do not create a second activity store, duplicate registry, third-party provider truth, or infer metrics from a sport label.
+
+### 2026-11-11 owner-reader and presentation regression additions
+
+- Exact canonical 15-sport activity and metric scope codes now match the proposed SQL registry. No global `all`, display-only `outdoor_run`, or inherited/prototype object property may masquerade as a canonical sport.
+- Source-backed evidence now retains both per-metric and parent-source quality (`trusted` versus `partial`) from the owner read through Overview/Details. Unknown or unverified facts remain absent; the final visible UI label for partial quality still needs device acceptance.
+- Canonical unit is nonempty and bounded by the proposed SQL definition contract; absent/blank/oversized unit fixtures fail closed. Registry definitions require explicit sport applicability.
+- All **15 canonical sport identities** have source-backed duration owner-reader-to-screen fixtures; all **17 V1 presentation sport families** have an extended/recovered-registry Details retention fixture (synthetic pre-authorized metric evidence, **not** provider-ingestion proof).
+- These checks extend the existing `completedActivityOwnerRead.test.ts`, `completedActivitySportAdapter.test.ts`, `completedActivityScreenModel.test.ts`, and `completedActivityDetailProjection.test.ts`; no additional test system, activity store, or metric registry was created.
+
+**CI limit:** These newest changes are committed but there is no independently inspected complete green Node/TypeScript run for their exact integration SHA. The earlier clean 18-migration / 30-candidate Supabase replay remains validated at [43138298262](https://github.com/allinproject/All-In-V2/actions/runs/43138298262); that older replay is not evidence of these newer mobile tests.
 
 ## Current evidence / outstanding gaps
 
