@@ -7,6 +7,8 @@ on:
       - 'docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-training-completed-postgres.psql'
+      - 'scripts/check-v2-foundation-migration-history.mjs'
+      - 'supabase/migrations/**'
       - 'docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-COMPLETION-ACK-CANDIDATE.sql'
       - 'scripts/test-v2-training-session-writer-postgres.psql'
@@ -95,6 +97,8 @@ jobs:
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v4
+      - name: Guard previously applied V2 migration history
+        run: node scripts/check-v2-foundation-migration-history.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
