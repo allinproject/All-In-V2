@@ -165,7 +165,14 @@
 - Music page must not stop/pause recording; use only permitted OS/system media controls, not a duplicate music catalog or streaming engine. Watch-only playback availability depends on actual local or reachable media session; no implied control of a phone left home.
 - The founder approved the four-direction layout as the **target design for on-device prototyping**, not acceptance of unbuilt Watch UI or physical-device verification.
 
-## 22. Scope and implementation safeguards
+## 22. Apple Watch first-use tutorials — founder-approved 2026-11-12
+- Provide a **short optional and skippable Watch introduction** when an athlete first pairs/sets up the Watch. Prefer a clear phone-based walkthrough for orientation plus **optional hands-on practice on the Watch**; do not block recording or repeatedly show onboarding.
+- Teach the actual verified **Metrics home**, navigation to **Music**, Workout Controls, Route/Pacing and HR views; **Save & Sync to Watch** vs the Watch's actual **Start Workout**; how to confirm offline readiness; and pause/resume/finish safely. Gesture descriptions must precisely match the installed watchOS UI and validated swipe/Crown/button/accessible alternatives, not hypothetical or unavailable interactions.
+- Keep first-use guidance short (approximately six focused steps), with **Skip**, an obvious **Replay Tutorial** option in both phone device/settings and Watch help, and small **one-time contextual tips** for route pacing, strength set logging, multisport manual transitions and media controls. Tips must be dismissible, not autoplay audio, cover crucial workout metrics or interfere with an active session.
+- Use the existing ALL-245 Watch and established onboarding UX ownership rather than a second tutorial/identity workflow. Track completion/dismissal per appropriate athlete/device version without repeated interruption after reinstalls or sessions, with user control. Ensure accessibility, offline availability, battery-conscious design and actual Watch hardware tests.
+- This is an approved product/UX direction, not evidence of live native tutorials, phone/Watch sync or hardware acceptance.
+
+## 23. Scope and implementation safeguards
 - These are **founder-approved product directions**. V1 Route Builder has substantial actual code; full V2 mapping/route builder is **not yet confirmed integrated**. Calendar and other partial V2 screens may be mounted but must be checked against the corrected UX.
 - Keep one canonical Training/active-session/completed-activity/event/route owner. All Coach changes are proposals and require athlete acceptance where material. Preserve source-quality/missing≠zero, privacy, export/deletion, RLS and idempotent writes.
 - **No production migration, grants, app deployment, opening signup, automatic EventHub publication or sharing are authorized by this document.**
