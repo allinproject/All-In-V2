@@ -78,3 +78,56 @@ export function createSupabasePrivateArchivePersistence({
   },
  });
 }
+
+/**
+ * ALL-251 REVIEW ONLY — retention purge slice for the EXISTING private archive.
+ * Not a scheduled job and not reachable by a mobile/anonymous endpoint.
+ * The server-only enumerator must read authoritative expired/cancelled approved
+ * requests, never client-supplied paths. The same storage.deletePrivateRequest
+ * routine above must remove bytes; no direct SQL deletion of storage.objects.
+ *
+ * A failed remove or audit receipt is operationally unresolved, never success.
+ */
+export async function purgeExpiredAccountExportArchives({
+  listPurgeCandidates, deletePrivateRequest, recordPurgeReceipt,
+  now = () => Date.now(), maxRequests = 50,
+}) {
+  if (typeof listPurgeCandidates!=='function'
+    || typeof deletePrivateRequest!=='function'
+    || typeof recordPurgeReceipt!=='function'
+    || typeof now!=='function'
+    || !Number.isInteger(maxRequests) || maxRequests<1 || maxRequests>100) {
+    throw new Error('Trusted account-export retention adapters required');
+  }
+  const rows=await listPurgeCandidates({limit:maxRequests});
+  if(!Array.isArray(rows) || rows.length>maxRequests) {
+    throw new Error('Retention candidate enumeration unbounded');
+  }
+  const current=now();
+  if(!Number.isFinite(current)) throw new Error('Invalid retention clock');
+  const seen=new Set();
+  // Validate the entire batch before deleting the first encrypted archive.
+  for(const row of rows) {
+    const key=String(row?.ownerId)+'/'+String(row?.requestId);
+    const expiry=Date.parse(row?.expiresAt??'');
+    if(!UUID.test(row?.ownerId??'') || !UUID.test(row?.requestId??'')
+      || seen.has(key) || !Number.isFinite(expiry)
+      || !['expired','cancelled','approved','staged','failed'].includes(row?.status)
+      || (row.status!=='cancelled' && expiry>current)) {
+      throw new Error('Unapproved account-export retention candidate');
+    }
+    seen.add(key);
+  }
+  const receipts=[];
+  for(const {ownerId,requestId} of rows) {
+    const confirmed=await deletePrivateRequest({ownerId,requestId});
+    if(confirmed!==true) throw new Error('Private archive purge not confirmed');
+    const receipt=await recordPurgeReceipt({ownerId,requestId});
+    if(receipt?.ownerId!==ownerId || receipt?.requestId!==requestId
+      || receipt?.purged!==true) {
+      throw new Error('Retention audit receipt missing; manual reconciliation required');
+    }
+    receipts.push({ownerId,requestId,purged:true});
+  }
+  return {purgedCount:receipts.length,receipts};
+}
