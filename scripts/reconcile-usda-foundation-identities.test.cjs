@@ -86,3 +86,46 @@ print(json.dumps({'direct':r['summary']['directFdcSourceReferencePairs'],
  assert.equal(result.direct,0);
  assert.equal(result.approved,false);
 });
+
+test('conflicting official FDC reference versus exact alias stays review-only',()=>{
+ const code=`import importlib.util,json
+s=importlib.util.spec_from_file_location('usda_reconcile','scripts/reconcile-usda-foundation-identities.py')
+m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+foods=[{'fdcId':5,'description':'Green beans, cooked','dataType':'Foundation'}]
+profiles=[
+ {'source_profile_key':'alias_match','source_label':'Green beans, cooked','source_aliases':[]},
+ {'source_profile_key':'source_match','source_label':'Beans other','source_aliases':[],
+  'source_url':'https://fdc.nal.usda.gov/food-details/5/nutrients'}
+]
+r=m.reconcile(foods,profiles,1,2)
+row=r['rows'][0]
+print(json.dumps({'disagreement':row['identity_evidence_disagreement'],
+ 'count':r['summary']['sourceVsExactAliasDisagreements'],
+ 'status':row['status'],'source':row['direct_fdc_source_profile_keys'],
+ 'alias':row['exact_source_profile_keys'],
+ 'approved':r['publicationApproved'],'ready':r['calculationReady']}))`;
+ const result=runPython(code);
+ assert.equal(result.disagreement,true);
+ assert.equal(result.count,1);
+ assert.equal(result.status,'source_fdc_reference_review');
+ assert.deepEqual(result.source,['source_match']);
+ assert.deepEqual(result.alias,['alias_match']);
+ assert.equal(result.approved,false);
+ assert.equal(result.ready,false);
+});
+
+test('agreeing source and aliases do not invent a disagreement',()=>{
+ const code=`import importlib.util,json
+s=importlib.util.spec_from_file_location('usda_reconcile','scripts/reconcile-usda-foundation-identities.py')
+m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+foods=[{'fdcId':5,'description':'Green beans, cooked','dataType':'Foundation'},
+ {'fdcId':6,'description':'Corn, raw','dataType':'Foundation'}]
+profiles=[{'source_profile_key':'same','source_label':'Green beans, cooked',
+ 'source_aliases':[],'source_url':'https://fdc.nal.usda.gov/food-details/5/nutrients'}]
+r=m.reconcile(foods,profiles,2,1)
+print(json.dumps({'flags':[row['identity_evidence_disagreement'] for row in r['rows']],
+  'count':r['summary']['sourceVsExactAliasDisagreements']}))`;
+ const result=runPython(code);
+ assert.deepEqual(result.flags,[false,false]);
+ assert.equal(result.count,0);
+});
