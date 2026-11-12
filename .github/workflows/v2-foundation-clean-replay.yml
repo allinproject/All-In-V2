@@ -72,6 +72,8 @@ on:
       - 'scripts/check-v2-coach-sql-candidate.mjs'
       - 'scripts/test-v2-coach-persistence-race-local.sh'
       - 'scripts/test-v2-coach-account-export-local.psql'
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql'
   workflow_dispatch:
 
 permissions:
@@ -427,6 +429,8 @@ jobs:
             docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql \
             docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql \
             docs/architecture/sql/V2-TRAINING-DIRECT-AUTH-CASCADE-REVIEW-CANDIDATE.sql \
+            docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql \
+            docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql \
             docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql \
             docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql; do
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
