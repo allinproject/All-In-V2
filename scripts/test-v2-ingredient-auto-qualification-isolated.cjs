@@ -25,7 +25,7 @@ function input(){
        {provider:'usda_fdc',source_data_type:'Foundation',external_record_id:'2644285'}]}],
    documents:[{source_profile_key:key,payload_utf8,payload_sha256:digest}]};
 }
-async function setup(){
+async function setup({withEnergyEvidence=true,archiveDigest='dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579'}={}){
  const db=new PGlite();
  await db.waitReady;
  await db.exec('CREATE ROLE anon NOLOGIN;CREATE ROLE authenticated NOLOGIN;CREATE ROLE service_role NOLOGIN;');
@@ -66,10 +66,9 @@ async function setup(){
    "('"+PROFILE+"','energy_kcal',115),('"+PROFILE+"','protein_g',6.91),"+
    "('"+PROFILE+"','carbohydrate_g',19.8),('"+PROFILE+"','total_fat_g',1.27);");
  // Privileged source-release fixture, NOT a caller-provided energy claim.
- await db.exec("INSERT INTO allin_private.v2_ingredient_source_energy_evidence"+
+ if(withEnergyEvidence)await db.exec("INSERT INTO allin_private.v2_ingredient_source_energy_evidence"+
    "(source_record_id,source_payload_sha256,archive_sha256,fdc_nutrient_id,energy_kcal,source_review_reference)"+
-   " VALUES('"+SOURCE+"','"+x.digest+"',"+
-   "'dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579',"+
+   " VALUES('"+SOURCE+"','"+x.digest+"','"+archiveDigest+"',"+
    "2048,115,'ISOLATED-TEST-ARCHIVE-ONLY');");
  await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_food_ingest_v1;SET ROLE allin_v2_ingredient_reviewer;');
  return {db,x};
@@ -133,4 +132,21 @@ test('actual PostgreSQL transaction: rollback, two immutable events, idempotent 
      e=>e?.code==='23514');
 
  } finally {await db.close()}
+});
+
+test('missing or unapproved source archive aborts machine review and rolls back every audit event',async()=>{
+ for(const scenario of [{withEnergyEvidence:false},{archiveDigest:'f'.repeat(64)}]) {
+   const {db,x}=await setup(scenario);
+   try {
+     await assert.rejects(
+       runAutomaticQualification({client:db,...x,attestEnergy:true}),
+       /missing source archive evidence|unapproved USDA Foundation archive revision/);
+     await db.exec('SET SESSION AUTHORIZATION postgres');
+     const row=(await db.query("SELECT review_status,profile_revision FROM public.v2_ingredient_nutrition_profiles WHERE id='"+PROFILE+"'")).rows[0];
+     assert.equal(row.review_status,'candidate');
+     assert.equal(row.profile_revision,1);
+     assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_review_events')).rows[0].n,0);
+     assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations')).rows[0].n,0);
+   }finally{await db.close()}
+ }
 });
