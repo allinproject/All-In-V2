@@ -79,13 +79,13 @@ JOIN allin_private.v2_device_registrations_candidate reg
   ON reg.user_id=src.user_id AND reg.device_ref=src.source_device_ref
 WHERE sess.id=$1::uuid AND sess.user_id=$2::uuid
   AND (sess.not_after IS NULL OR sess.not_after>pg_catalog.now())
-  AND act.id=$4::uuid AND act.status<>'invalidated'
-  AND src.id=$5::uuid AND src.provider=$6 AND src.source_kind=$7
-  AND src.source_record_id=$8 AND src.quality<>'rejected'
+  AND act.id=$3::uuid AND act.status<>'invalidated'
+  AND src.id=$4::uuid AND src.provider=$5 AND src.source_kind=$6
+  AND src.source_record_id=$7 AND src.quality<>'rejected'
   AND reg.revoked_at IS NULL AND reg.certified_at<=pg_catalog.now()
   AND reg.provider=src.provider
-  AND ($9::uuid IS NULL OR act.training_session_instance_id=$9::uuid)`,[
-      x.sessionId,x.ownerId,x.nowMs,x.activityId,x.sourceId,
+  AND ($8::uuid IS NULL OR act.training_session_instance_id=$8::uuid)`,[
+      x.sessionId,x.ownerId,x.activityId,x.sourceId,
       x.provider,x.sourceKind,x.sourceRecordId,
       x.certifiedSessionInstanceId,
      ]);
