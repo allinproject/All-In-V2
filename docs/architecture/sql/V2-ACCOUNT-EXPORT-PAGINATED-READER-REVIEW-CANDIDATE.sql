@@ -100,7 +100,15 @@ BEGIN
        OR c.relname LIKE 'v2_recipe_%'
        OR c.relname LIKE 'v2_cookbook_%'
        OR c.relname LIKE 'v2_gear_%'
-       OR c.relname LIKE 'v2_shoe_%')
+       OR c.relname LIKE 'v2_shoe_%'
+       OR c.relname LIKE 'v2_meal_%'
+       OR c.relname LIKE 'v2_pantry_%'
+       OR c.relname LIKE 'v2_macro_%'
+       OR c.relname LIKE 'v2_body_%'
+       OR c.relname LIKE 'v2_equipment_%'
+       OR c.relname LIKE 'v2_race_%'
+       OR c.relname LIKE 'v2_personal_record_%'
+       OR c.relname LIKE 'v2_achievement_%')
  ) THEN RAISE EXCEPTION 'New domain requires explicit account export classification'
    USING ERRCODE='42501'; END IF;
  -- Future owner data can use owner_id / athlete_id / actor_id rather
@@ -114,7 +122,8 @@ BEGIN
    WHERE n.nspname IN ('public','allin_private')
      AND c.relkind IN ('r','p') AND c.relname LIKE 'v2_%'
      AND a.attnum>0 AND NOT a.attisdropped
-     AND a.attname IN ('owner_id','athlete_id','actor_id','created_by_user_id')
+     AND a.attname IN ('owner_id','athlete_id','actor_id','created_by_user_id',
+       'account_id','profile_id','athlete_user_id')
      AND NOT EXISTS(
        SELECT 1 FROM pg_catalog.pg_attribute owned
        WHERE owned.attrelid=c.oid AND owned.attname='user_id'
