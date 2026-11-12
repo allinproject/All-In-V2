@@ -150,9 +150,13 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   await db.exec('SET SESSION AUTHORIZATION postgres');
   // Disabling an operator in the private registry immediately revokes review
   // capability; existing audit history must remain available to operators only.
-  await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET enabled=false WHERE login_role='ingredient_reviewer_a'");
+  await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET enabled=false,revoked_at=clock_timestamp() WHERE login_role='ingredient_reviewer_a'");
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
   await denied(db,call(3,'retired',k3),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
+  await denied(db,"UPDATE allin_private.v2_ingredient_review_operators SET enabled=true WHERE login_role='ingredient_reviewer_a'",'23514');
+  const revoked=(await db.query("SELECT enabled,revoked_at FROM allin_private.v2_ingredient_review_operators WHERE login_role='ingredient_reviewer_a'")).rows[0];
+  assert.equal(revoked.enabled,false);
+  assert(revoked.revoked_at!==null);
  }finally{await db.close()}
 });
