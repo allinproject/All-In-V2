@@ -19,7 +19,10 @@ test('partial Training or Completed Activity coverage fails closed',()=>{
  assert.equal(x.complete,false);
  assert.deepEqual(x.domains.find(d=>d.name==='completed_activity').unverified,['public.v2_activity_sources']);
 });
-test('all explicitly verified requirements are necessary',()=>{
+test('pending schema domains cannot be claimed complete by table-only evidence',()=>{
  const tables=recoveryDomains.flatMap(d=>d.tables);
- assert.equal(assessRecoveryCoverage({presentTables:tables,verifiedTables:tables,verifiedExternal:['private_media','auth_configuration']}).complete,true);
+ const coverage=assessRecoveryCoverage({presentTables:tables,verifiedTables:tables,verifiedExternal:['private_media','auth_configuration']});
+ assert.equal(coverage.complete,false);
+ assert.equal(coverage.domains.find(d=>d.name==='nutrition').status,'unverified');
+ assert.equal(coverage.domains.find(d=>d.name==='community').status,'unverified');
 });
