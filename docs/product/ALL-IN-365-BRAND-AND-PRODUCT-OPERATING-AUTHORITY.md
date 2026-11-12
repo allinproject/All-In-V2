@@ -44,3 +44,14 @@ This is a V2-owned working consolidation of durable V1 brand and product decisio
 - V1 Linear: Founder Beta Legal Package (Working Draft): https://linear.app/allin365/document/all-in-365-founder-beta-legal-package-working-draft-1d9f1385d84c
 - V1 Library: First-Year Gross Sales Projection (prepared 2026-11-03).
 - V1 Library: Referral + Subscription Handoff (updated 2026-10-22; historical price only).
+## Founder-approved V2 product-policy principles — 2026-11-12
+
+**Authority:** [ALL-219 founder approval](https://linear.app/allin365/issue/ALL-219/v1-v2-legal-business-plan-and-brand-authority-transfer), dated 2026-11-12. **Status:** APPROVED as durable product/implementation principles **only**; not an approval of exact legal clauses or release.
+
+1. **Privacy first:** Health information and progress photographs stay private by default. Sharing publicly requires a separate user-directed action.
+2. **User-controlled data:** People may request account-data exports and deletion. Do not advertise fulfillment until the full data lifecycle, processing, scope, security, retention and validation actually work.
+3. **Transparent Coach processing:** Coach may use only appropriately authorized and relevant information. Identify actual AI processors, fields shared, and data handling accurately in user-facing disclosures before enabling those flows.
+4. **Beta and paid billing are separate:** Founder-beta participation is not payment authorization. Trial enrollment and any paid renewal require a distinct valid purchase flow and applicable disclosures.
+5. **Adults-only founder beta:** Confirm age 18+ and separately record review/acceptance of the current Terms, Privacy Policy and Founder Beta Terms using the existing canonical versioned legal-acceptance mechanism.
+
+**Release boundary:** This founder decision does **not** approve legal wording, attorney/privacy review, legal-document publication, account-deletion executor activation, production deployment, opening signup or payment collection. Do not treat the ALL-219 principle approval as the founder signature on final legal text; that requires a later explicit exact-version decision.
