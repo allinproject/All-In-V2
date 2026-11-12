@@ -6,6 +6,10 @@ const isStoreApplicationId = (value: string | undefined): value is string =>
   typeof value === 'string' &&
   /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/.test(value) &&
   value.length <= 180;
+const easProjectId = process.env.ALLIN_V2_EAS_PROJECT_ID?.trim();
+const isEasProjectId = (value: string | undefined): value is string =>
+  typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const iosStoreBundleId = process.env.ALLIN_V2_IOS_BUNDLE_ID?.trim();
 const androidStorePackage = process.env.ALLIN_V2_ANDROID_PACKAGE?.trim();
 const sentryOrganization = process.env.SENTRY_ORG?.trim();
@@ -30,6 +34,7 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   userInterfaceStyle: 'dark',
   plugins,
+  ...(isEasProjectId(easProjectId) ? { extra: { eas: { projectId: easProjectId } } } : {}),
   experiments: { typedRoutes: true },
   ios: {
     supportsTablet: true,
