@@ -13,6 +13,8 @@ on:
       - 'scripts/test-v2-goals-owner-local-postgres.psql'
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'scripts/test-v2-billing-local-foundation.psql'
+      - 'scripts/test-v2-billing-backup-seed-local.psql'
+      - 'scripts/test-v2-billing-backup-restored-local.psql'
       - 'scripts/test-v2-billing-preupgrade-seed.psql'
       - 'scripts/test-v2-billing-schema-rollback-local.psql'
       - 'docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql'
@@ -318,6 +320,45 @@ jobs:
           done
           docker cp scripts/test-v2-billing-local-foundation.psql "$db_container:/tmp/v2-billing-foundation-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-foundation-qa.psql
+      - name: Restore synthetic billing ledger from a real local PostgreSQL backup
+        run: |
+          set -euo pipefail
+          # This is strictly the disposable Supabase CLI container created
+          # above. Never run pg_dump/restore on a linked or remote database.
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp scripts/test-v2-billing-backup-seed-local.psql "$db_container:/tmp/v2-billing-backup-seed.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-backup-seed.psql
+          # Store a custom-format database backup of ONLY the three candidate
+          # billing tables. Receipts and users are entirely synthetic.
+          docker exec "$db_container" pg_dump -U postgres -d postgres -Fc --data-only \
+            -t allin_private.v2_subscription_checkout_attempts \
+            -t allin_private.v2_subscription_purchases \
+            -t allin_private.v2_subscription_verified_events \
+            -f /tmp/v2-local-synthetic-billing.dump
+          docker exec -i "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          -- Simulate an accidental missing ledger, inside the ephemeral
+          -- database only. Auth profiles remain, so FKs are valid on restore.
+          DELETE FROM allin_private.v2_subscription_checkout_attempts
+           WHERE owner_id IN
+            ('77777777-7777-4777-8777-777777777777',
+             '88888888-8888-4888-8888-888888888888');
+          DO $depleted$
+          BEGIN
+            IF EXISTS(SELECT 1 FROM allin_private.v2_subscription_checkout_attempts)
+              OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases)
+              OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_verified_events) THEN
+              RAISE EXCEPTION 'Local ledger rows were not removed before restore';
+            END IF;
+          END $depleted$;
+          SQL
+          docker exec "$db_container" pg_restore -U postgres -d postgres \
+            --data-only --no-owner --no-privileges --exit-on-error \
+            /tmp/v2-local-synthetic-billing.dump
+          docker cp scripts/test-v2-billing-backup-restored-local.psql "$db_container:/tmp/v2-billing-backup-restored.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-backup-restored.psql
+          docker exec "$db_container" rm -f /tmp/v2-local-synthetic-billing.dump
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
