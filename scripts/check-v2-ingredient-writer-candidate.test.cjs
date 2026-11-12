@@ -6,6 +6,8 @@ const fs=require('node:fs'),path=require('node:path');
 const root=path.join(__dirname,'../docs/architecture/sql');
 const catalog=fs.readFileSync(path.join(root,'V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'),'utf8');
 const writer=fs.readFileSync(path.join(root,'V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'),'utf8');
+const lifecycle=fs.readFileSync(path.join(root,'V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql'),'utf8');
+const energy=fs.readFileSync(path.join(root,'V2-INGREDIENT-USDA-ENERGY-ATTESTATION-CANDIDATE.sql'),'utf8');
 const assertHas=(s,fragment)=>assert(s.includes(fragment),'missing safety guard: '+fragment);
 test('SQL remains in review-only candidate files, never production migration',()=>{
  for(const s of [catalog,writer]){
@@ -64,4 +66,32 @@ test('audit records remain immutable and calculation_ready stays blocked',()=>{
  assertHas(writer,"reviewed-source sodium evidence missing");
  assertHas(writer,"calculation_ready blocked pending method attestation");
  assertHas(writer,"ERRCODE='0A000'");
+});
+
+test('reviewer identity requires a verified issuer, subject, vault reference, expiry and revocation audit',()=>{
+ for(const term of ['identity_issuer','identity_subject','credential_vault_reference',
+  'identity_verified_at','credential_expires_at','revoked_at',
+  'v2_ingredient_operator_identity_unique','v2_ingredient_operator_credential_events',
+  'v2_ingredient_operator_no_delete','BEFORE DELETE','credential_events_immutable']){
+  assertHas(lifecycle,term);
+ }
+ for(const term of ['o.credential_expires_at > clock_timestamp()','o.revoked_at IS NULL',
+  'o.identity_subject IS NOT NULL','pg_has_role']){
+  assertHas(writer,term);
+  assertHas(energy,term);
+ }
+ assert(!/CREATE ROLE\s+[^;]+LOGIN\s+PASSWORD/i.test(lifecycle));
+});
+test('energy attestation is immutable, source-bound and never grants publication',()=>{
+ for(const term of ['v2_ingredient_source_energy_evidence','v2_ingredient_energy_attestations',
+  'source_payload_sha256','archive_sha256','FOR UPDATE','FOR SHARE OF s',
+  "'usda-fdc-energy-specific-legacy-v1'","fdc_nutrient_id=2048",
+  "fdc_nutrient_id=1008","2047 alone is insufficient",
+  'selected_energy_kcal','normalized energy differs','energy_attestation_immutable',
+  "'calculation_ready',false"]){
+   assertHas(energy,term);
+ }
+ assertHas(writer,'calculation_ready blocked pending method attestation');
+ assertHas(energy,'NO client-supplied attestation');
+ assert(!/GRANT\s+(?:INSERT|UPDATE|DELETE)\s+ON\s+allin_private\.v2_ingredient_energy_attestations/i.test(energy));
 });
