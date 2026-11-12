@@ -47,7 +47,10 @@ const structuredKinds=new Set(['route','splits','laps','intervals','heart_rate_s
 // machine/pool-only identities. This is a display integrity guard, not GPS
 // ingest validation: a separate real outdoor source requires an appropriately
 // classified canonical activity before its route can be presented.
-const routeIneligibleSports=new Set(['pool_swim','indoor_trainer','elliptical','stairs']);
+const routeIneligibleSports=new Set([
+ 'pool_swim','indoor_trainer','treadmill','elliptical','stairs',
+ 'strength','yoga_mobility',
+]);
 // These have unambiguous owning sport identities in the approved V1 Details
 // contract. Hybrid activities can contain distinct source-backed sport legs.
 // Other sections remain under the canonical owner/source evidence contract;
