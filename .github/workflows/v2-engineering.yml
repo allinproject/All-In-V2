@@ -1,7 +1,7 @@
 name: V2 Engineering validation (no deploy)
 
 on:
-  # Branch-only engineering acceptance runs when this workflow itself changes.
+  # Targeted integration acceptance runs only for workflow changes.
   # Ordinary source pushes do not start the full npm/Expo job.
   push:
     branches: [integration/v2-foundation]
