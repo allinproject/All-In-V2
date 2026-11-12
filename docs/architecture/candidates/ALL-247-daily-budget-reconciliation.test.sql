@@ -1,0 +1,15 @@
+-- Run AFTER first-writer, lifecycle and daily-budget review SQL, inside a disposable BEGIN/ROLLBACK.
+create table public.v2_profile_settings(user_id uuid primary key references auth.users(id) on delete cascade,settings jsonb not null default '{}'::jsonb,version bigint not null default 1);alter table public.v2_profile_settings enable row level security;grant select on public.v2_profile_settings to authenticated;create policy own on public.v2_profile_settings for select to authenticated using ((select auth.uid())=user_id);
+insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at) values ('11111111-1111-4111-8111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','a247@example.invalid','',now(),now(),now()),('22222222-2222-4222-8222-222222222222','00000000-0000-0000-0000-000000000000','authenticated','authenticated','b247@example.invalid','',now(),now(),now());
+insert into public.v2_profile_settings values ('11111111-1111-4111-8111-111111111111','{"nutrition_preferences":{"fuel_tracking_mode":"detailed","energy_goal_enabled":true,"daily_energy_target_kcal":2500,"activity_adjustment_policy":"off"}}',1),('22222222-2222-4222-8222-222222222222','{"nutrition_preferences":{"fuel_tracking_mode":"behavior_only"}}',1);
+set local role authenticated;select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',true);
+do $checks$ declare a jsonb; b jsonb; c jsonb; begin
+perform public.v2_food_log_add_manual('11111111-1111-4111-8111-111111111111','a0000000-0000-4000-8000-000000000001','b0000000-0000-4000-8000-000000000001','2026-11-12 18:00+00','2026-11-12','America/Chicago','lunch','Meal',1,'serving',700,'user_entered');
+perform public.v2_food_log_mutate_manual('11111111-1111-4111-8111-111111111111','a0000000-0000-4000-8000-000000000002','b0000000-0000-4000-8000-000000000001',1,'move','2026-11-13 18:00+00','2026-11-13','America/Chicago','lunch','Meal',1,'serving',700,'user_entered');
+a:=public.v2_fuel_daily_energy_snapshot('11111111-1111-4111-8111-111111111111','2026-11-12');
+b:=public.v2_fuel_daily_energy_snapshot('11111111-1111-4111-8111-111111111111','2026-11-13');
+if a->>'status'<>'no_logged_intake' or b->>'status'<>'logged_only_provisional' or (b->>'provisional_target_minus_logged_kcal')::numeric<>1800 then raise exception 'MOVE budget regression % %',a,b; end if;
+perform set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',true);
+c:=public.v2_fuel_daily_energy_snapshot('22222222-2222-4222-8222-222222222222','2026-11-13');
+if c->>'status'<>'behavior_only' or c->>'logged_kcal_subtotal' is not null or c->>'daily_target_kcal' is not null then raise exception 'OWNER isolation regression %',c; end if;
+end $checks$; reset role;select 'PASS moved meal both days plus owner-isolated budget' as acceptance;
