@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createCanonicalPgAccountReaderCandidate} from './trainingExportCanonicalPgReader.mjs';
+import {auditOwnerPrivateMediaCoverage} from './trainingExportSupabaseStorage.mjs';
 const owner='91111111-9111-4111-8111-911111111111';
 const other='92222222-9222-4222-8222-922222222222';
 const sessionId='93333333-9333-4333-8333-933333333333';
@@ -121,6 +122,15 @@ test('private media and Storage catalog are read through the same pinned snapsho
   assert.equal(objects.totalCount,1);
   assert.equal(objects.paths[0],refs.series[0].object_path);
   assert.equal(refs.routes.length,0);
+  const audit=await auditOwnerPrivateMediaCoverage({
+    ownerId:owner,requestId,
+    listBucketCatalog:scoped.listBucketCatalog,
+    listOwnerStorageObjects:scoped.listOwnerStorageObjects,
+    listCanonicalMediaReferences:scoped.listCanonicalMediaReferences,
+  });
+  assert.equal(audit.referencesReconciled,true);
+  assert.equal(audit.referencedObjects,1);
+  assert.equal(audit.completeUserExport,false);
   await assert.rejects(scoped.listOwnerStorageObjects({
     ownerId:other,requestId,bucketId:'v2-private-workout-objects',
   }),/Unreviewed/);
