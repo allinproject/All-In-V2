@@ -43,6 +43,12 @@ Training's existing plan/revision/session IDs must be linked by **typed same-own
 
 **Scope gate:** General/non-race Training can be reviewed separately from certified race-linked plan activation. No claim that race plans are production-certified while Event/Goal identities and source versions are absent. Do not make ALL-222 <-> ALL-239/244 into cyclic Linear blockers.
 
+### Read-only cross-owner validation now implemented (not published backend)
+
+The existing Training season preview now has a separate, test-covered, **source-only** approval gate at `apps/mobile-v2/src/features/training/canonicalEventGoalApprovalGate.ts`. It accepts only complete, authenticated owner-session snapshots from the actual Goal and Event owners, together with the canonical Training event-binding snapshot. It rejects incorrect owner/generation, pagination, unverified Event identity, group-only EventHub membership as registration, missing accepted Goal→Event linkage and stale Event version/timezone/session references. The Training calendar snapshots must share the same Training owner revision; **independent Goals and EventHub snapshot version strings are not assumed equal**. The exact event record version/date/timezone/sport and Training's saved reference must match. An undated general goal may coexist without a fabricated event.
+
+This is a **fail-closed read/preflight boundary**, not proof that these owner snapshots are available in Supabase or that database FKs/permissions are approved. The existing preview remains non-mutating; release activation must wire actual owner services and uphold freshness and version checks again in the transactional Training writer. Test registration lives in the existing `apps/mobile-v2/package.json` Training logic suite. An EventHub URL resolver or group membership receipt is not a substitute for authoritative Event/Goal evidence.
+
 ## 4. Release cut acceptance (all must pass before hosted DDL)
 
 - [ ] ALL-222/243/246 sign off source identity, canonical aggregate FKs, plan revision lifecycle, metric registry and exact source/quality model.
