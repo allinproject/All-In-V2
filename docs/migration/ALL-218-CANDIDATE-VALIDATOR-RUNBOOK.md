@@ -32,3 +32,9 @@ Nothing in this folder should be interpreted as authorization to write to live V
 The read-only `docs/migration/ALL-218-SOURCE-REVIEW-COVERAGE.sql` report found **3,208** active selector-option pairs, **775** whose option has a review-like source status, and **274** where both parent selector and option have review-like source statuses. These are **not** 274 approved V2 choices; no ingredient or cooking-yield acceptance is implied. Also found **457** individually active options under inactive parent selectors, which must never be selectable. Only **27** component mappings across **5** recipes have `verified=true`; **2,590** unverified component mappings still contain a quantity.
 
 Before making a selectable option visible in V2, require ownership, source status and exact quantity/yield compatibility through the final ALL-222/225/228/229 contracts. Do not silently promote V1 `fully_calculated` or `verified_default` labels as proof that dynamic V2 nutrition is validated.
+
+## Follow-up hardening — 2026-11-12
+
+The validator now checks **scoped uniqueness** as well as row IDs: `(recipe,selector_key)`, `(selector,option_key)`, and `(recipe,selector_key,option_key,profile_key)`. It rejects an *active* selector with no real matching default option while preserving inactive false-positive records as source history. Composite keys use tuple serialization rather than concatenating fields with a delimiter. Malformed/null JSONL records fail as validation errors without crashing relationship checking.
+
+These changes are covered by five additional committed regressions (14 total in the repository test file). Equivalent local Node tests for the original nine cases, scoped key scenarios and malformed/null inputs passed; the current GitHub revision has **not** been independently executed in CI. Do not claim full V1 candidate acceptance until an actual four-dataset export is validated and reconciled to the recorded source manifest.
