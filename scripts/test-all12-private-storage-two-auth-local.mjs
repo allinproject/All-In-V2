@@ -29,7 +29,7 @@ try{
   const email='all12-'+who+'-'+nonce+'@invalid.example',password='A!'+randomBytes(24).toString('hex');
   const created=await req('POST','/auth/v1/admin/users',admin,null,{email,password,email_confirm:true});
   assert.ok([200,201].includes(created.status),'create synthetic Auth account');
-  const {id}=await created.json();users.push({id});
+  const {id}=await created.json();users.push({id,email,password});
   const login=await req('POST','/auth/v1/token?grant_type=password',anon,null,{email,password});
   assert.equal(login.status,200,'real local password sign-in');
   const signedIn=await login.json();
@@ -37,6 +37,75 @@ try{
   users.at(-1).refresh=signedIn.refresh_token;
   assert.ok(users.at(-1).token && users.at(-1).refresh);
  }
+ // Exercise a real Auth password login AFTER a synthetic identity-row
+ // deletion/restoration, without copying any live password or JWT secret.
+ // Keep this local-only and retain the original Auth user/password hash.
+ const ownerForIdentity=users[0];
+ const identityRoundtrip=`DO $all12$
+ DECLARE saved auth.identities%ROWTYPE; n integer;
+ BEGIN
+  SELECT count(*) INTO n FROM auth.identities WHERE user_id='${ownerForIdentity.id}'::uuid;
+  IF n<>1 THEN RAISE EXCEPTION 'Expected exactly one synthetic email identity'; END IF;
+  SELECT * INTO saved FROM auth.identities WHERE user_id='${ownerForIdentity.id}'::uuid;
+  DELETE FROM auth.identities WHERE id=saved.id;
+  IF EXISTS(SELECT 1 FROM auth.identities WHERE id=saved.id)
+  THEN RAISE EXCEPTION 'Identity deletion failed'; END IF;
+  INSERT INTO auth.identities(id,provider_id,user_id,provider,identity_data,created_at,updated_at,last_sign_in_at)
+  VALUES(saved.id,saved.provider_id,saved.user_id,saved.provider,saved.identity_data,
+         saved.created_at,saved.updated_at,saved.last_sign_in_at);
+  IF (SELECT count(*) FROM auth.identities WHERE id=saved.id AND user_id=saved.user_id AND
+     provider_id=saved.provider_id AND identity_data=saved.identity_data)<>1
+  THEN RAISE EXCEPTION 'Identity recovery mismatch'; END IF;
+ END $all12// ALL-12: local-only private Storage ownership with two REAL Auth sessions.
+// Synthetic accounts, ephemeral bucket, no hosted access or live secrets.
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {randomBytes,createHash} from 'node:crypto';
+assert.equal(process.env.CI,'1');
+const env=Object.fromEntries(execFileSync('supabase',['status','-o','env'],{encoding:'utf8'})
+ .split(/\r?\n/).map(s=>s.match(/^(?:export )?([A-Z_]+)=(.*)$/))
+ .filter(Boolean).map(m=>[m[1],m[2].replace(/^["']|["']$/g,'')]));
+const base=new URL(env.API_URL);
+assert.equal(base.protocol,'http:');
+assert.ok(['127.0.0.1','localhost'].includes(base.hostname)&&base.port==='54321');
+const admin=env.SERVICE_ROLE_KEY,anon=env.ANON_KEY;
+assert.ok(admin&&anon);
+const nonce=randomBytes(8).toString('hex'),bucket='all12-private-restore-'+nonce;
+const users=[],paths=[];
+const db=execFileSync('docker',['ps','--filter','name=supabase_db_','--format','{{.ID}}'],{encoding:'utf8'}).trim().split('\n')[0];
+assert.ok(db);
+const sql=s=>execFileSync('docker',['exec','-i',db,'psql','-X','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-c',s],{encoding:'utf8'});
+async function req(method,path,key,token,body,contentType){
+ const headers={apikey:key,Authorization:'Bearer '+(token??key)};
+ if(body!==undefined)headers['Content-Type']=contentType??'application/json';
+ return fetch(base.origin+path,{method,headers,body:body===undefined?undefined:contentType?body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+}
+const hash=b=>createHash('sha256').update(b).digest('hex');
+let policy=false,createdBucket=false;
+try{
+ for(const who of ['a','b']){
+  const email='all12-'+who+'-'+nonce+'@invalid.example',password='A!'+randomBytes(24).toString('hex');
+  const created=await req('POST','/auth/v1/admin/users',admin,null,{email,password,email_confirm:true});
+  assert.ok([200,201].includes(created.status),'create synthetic Auth account');
+  const {id}=await created.json();users.push({id,email,password});
+  const login=await req('POST','/auth/v1/token?grant_type=password',anon,null,{email,password});
+  assert.equal(login.status,200,'real local password sign-in');
+  const signedIn=await login.json();
+  users.at(-1).token=signedIn.access_token;
+  users.at(-1).refresh=signedIn.refresh_token;
+  assert.ok(users.at(-1).token && users.at(-1).refresh);
+ }
+;
+ sql(identityRoundtrip);
+ const relogin=await req('POST','/auth/v1/token?grant_type=password',anon,null,{
+  email:ownerForIdentity.email,password:ownerForIdentity.password,
+ });
+ assert.equal(relogin.status,200,'password sign-in after synthetic identity restoration');
+ const reloginToken=(await relogin.json()).access_token;
+ const recoveredUser=await req('GET','/auth/v1/user',anon,reloginToken);
+ assert.equal(recoveredUser.status,200,'restored identity session must resolve');
+ assert.equal((await recoveredUser.json()).id,ownerForIdentity.id,
+  'restored identity login must retain original owner');
  const [a,b]=users;
  const created=await req('POST','/storage/v1/bucket',admin,null,{id:bucket,name:bucket,public:false});
  assert.ok(created.ok,'create private test bucket');createdBucket=true;
