@@ -78,8 +78,9 @@ def main():
             admin("INSERT INTO allin_private.v2_ingredient_review_operators"
                   "(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,"
                   "credential_vault_reference,identity_verified_at,credential_expires_at) VALUES("
-                  + ",".join(map(lit, [actor, "ISOLATED-AUTH-" + actor, "test-idp.example",
-                          "verified-" + actor, "test-vault-" + actor]))
+                  + lit(actor) + ",true," + ",".join(map(lit,
+                      ["ISOLATED-AUTH-" + actor, "test-idp.example",
+                       "verified-" + actor, "test-vault-" + actor]))
                   + ",now()-interval '1 hour',now()+interval '1 day')")
         admin(f"GRANT authenticated TO {ident(athlete)}")
         nutrition = {"energy_kcal": ("Energy", "kcal"), "protein_g": ("Protein", "g"),
