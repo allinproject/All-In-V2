@@ -191,3 +191,22 @@ test('review-only service-role grant candidate is the one replayed by PostgreSQL
  }
  assert.doesNotMatch(grants,/\bGRANT\s+(?:ALL|CREATE|DELETE|TRUNCATE|REFERENCES|TRIGGER)\b/i);
 });
+
+test('release-source attestation binds exact review-only ledger and grants', async()=>{
+ const {attestBillingCandidate}=await import('./attest-v2-billing-release-sources.mjs');
+ const ledger=readFileSync(new URL('../docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql',import.meta.url),'utf8');
+ const grants=readFileSync(new URL('../docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql',import.meta.url),'utf8');
+ const good=attestBillingCandidate(ledger,grants);
+ assert.equal(good.ok,true,good.problems.join('; '));
+ assert.ok(good.grantCount>=20);
+ assert.match(good.combinedSha256,/^[0-9a-f]{64}$/);
+ const privilege=attestBillingCandidate(ledger,grants.replace('TO service_role;','TO authenticated;'));
+ assert.equal(privilege.ok,false);
+ assert.match(privilege.problems.join('; '),/Unreviewed grant|Disallowed client grant/);
+ const missing=attestBillingCandidate(ledger.replace('create table allin_private.v2_subscription_verified_events','create table allin_private.v2_subscription_unused_events'),grants);
+ assert.equal(missing.ok,false);
+ assert.match(missing.problems.join('; '),/Missing one or more canonical/);
+ const broad=attestBillingCandidate(ledger,grants+'\nGRANT ALL ON TABLE allin_private.v2_subscription_purchases TO service_role;');
+ assert.equal(broad.ok,false);
+ assert.match(broad.problems.join('; '),/Unreviewed grant|Disallowed client grant/);
+});
