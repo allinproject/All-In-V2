@@ -207,14 +207,16 @@ jobs:
         run: node --test ../../supabase/functions/_shared/goalAcceptanceAuthServices.node.test.mjs
       - name: Run Auth tests
         run: npm run test:auth
-      - name: Run Coach quality contract and scenario tests
-        run: npm run test:coach-quality
+      # ALL-247 regression must be observable even if a parallel Coach
+      # workstream introduces a failing test later in this same job.
+      - name: Run Training logic tests
+        run: npm run test:training-logic
       - name: Run Cookbook calculator tests
         run: npm run test:calculator
       - name: Run Community and Live Props contract tests
         run: npm run test:community
-      - name: Run Training logic tests
-        run: npm run test:training-logic
+      - name: Run Coach quality contract and scenario tests
+        run: npm run test:coach-quality
       - name: Run Strength exercise-science contract tests
         run: npm run test:strength
       - name: Run Strength exercise suitability tests
