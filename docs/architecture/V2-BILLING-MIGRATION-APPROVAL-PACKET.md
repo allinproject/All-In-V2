@@ -36,3 +36,9 @@
 ## Validation evidence, not release approval
 
 The no-deploy GitHub Actions run [43136797436](https://github.com/allinproject/All-In-V2/actions/runs/43136797436) passed after the grant candidate was wired into the disposable PostgreSQL container. Previous [43136635512](https://github.com/allinproject/All-In-V2/actions/runs/43136635512) failed only because CI had not yet copied the new grant file into the container; it is superseded by the corrected green run. This packet is an approval checklist, not a representation that live billing is secure or deployable.
+
+## Real local V2 foundation compatibility — 2026-11-11
+
+The existing `v2-foundation-clean-replay.yml` now runs the reviewed billing ledger and exact service grants **after** replaying all 18 actual committed Supabase foundation migrations and exercising the existing Training/Activity owner lifecycle. The new `scripts/test-v2-billing-local-foundation.psql` opens a rollback-only transaction with two synthetic `auth.users` accounts, checks that the real profile creation trigger creates both `v2_profiles` rows, then verifies the native service-only binding, replay idempotency, immutable account ownership, sandbox-versus-production separation, owner-specific refund, and billing row cascades upon real Auth account deletion. Other owner's billing data must survive. This avoids treating the older stubbed Auth/Profile schema as sufficient production compatibility evidence.
+
+**Observed PASS:** [V2 foundation run #43138066556](https://github.com/allinproject/All-In-V2/actions/runs/43138066556), workflow head `d8d01fd9f7babed255fc446629c8a749c4d27ef7`, completed success. The real-foundation billing step and service cleanup both succeeded. The run used disposable local Supabase only; the live project's billing schema and functions remain undeployed. A populated external beta-like upgrade rehearsal, recovery point, final grant review and explicit migration authorization remain mandatory.
