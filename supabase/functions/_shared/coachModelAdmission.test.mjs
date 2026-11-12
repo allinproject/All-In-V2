@@ -115,10 +115,11 @@ test("hard-restricted movement in a generated answer is blocked pre-display",asy
  await assert.rejects(()=>x.generate()(turn),/hard_restriction_violated/);
  assert.equal(x.calls.settle,1);
 });
-test("model transport failure releases reservation and suppresses answer",async()=>{
- const x=setup();x.options.invokeModel=async()=>{throw Error("secret upstream failure")};
- await assert.rejects(()=>x.generate()(turn),/transport_failed/);
- assert.equal(x.calls.release,1);assert.equal(x.calls.settle,0);
+test("ambiguous transport failure holds reservation for spend reconciliation",async()=>{
+ const x=setup();x.options.invokeModel=async()=>{throw Error("connection timed out after provider accepted request")};
+ await assert.rejects(()=>x.generate()(turn),/transport_unconfirmed/);
+ assert.equal(x.calls.reserve,1);
+ assert.equal(x.calls.release,0);assert.equal(x.calls.settle,0);
 });
 test("failed spend settlement fails closed rather than claiming a persisted reply",async()=>{
  const x=setup();x.options.settleBudget=async()=>({confirmed:false});
