@@ -108,7 +108,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
    !text(m.sourceId)||!sources.has(m.sourceId)||!qualities.has(m.quality)||!kinds.has(m.measurementKind))
    throw new Error('Unverifiable metric source or definition.');
   const definition=definitions.get(m.code+':'+m.definitionVersion);
-  if(!definition||!(definition.sportScope.includes(raw.sport)||definition.sportScope.includes(display.sport)||definition.sportScope.includes('all'))||
+  if(!definition||!(definition.sportScope.includes(raw.sport)||definition.sportScope.includes(display.sport))||
    !definition.measurementKinds.includes(m.measurementKind))
    throw new Error('Metric definition does not allow this activity and evidence.');
   if(seenCodes.has(m.code))throw new Error('Conflicting canonical values require upstream reconciliation.');
