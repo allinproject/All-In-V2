@@ -194,7 +194,9 @@ CREATE POLICY v2_source_record_read_ready
  USING(mapping_status='mapped' AND
   EXISTS(SELECT 1 FROM public.v2_ingredient_profile_sources ps
     JOIN public.v2_ingredient_nutrition_profiles p ON p.id=ps.profile_id
-    WHERE ps.source_record_id=id AND p.review_status='calculation_ready'));
+    WHERE ps.source_record_id=v2_ingredient_source_records.id
+      AND p.ingredient_id=v2_ingredient_source_records.ingredient_id
+      AND p.review_status='calculation_ready'));
 
 CREATE POLICY v2_conversion_read_reviewed
  ON public.v2_ingredient_measure_conversions FOR SELECT TO authenticated
