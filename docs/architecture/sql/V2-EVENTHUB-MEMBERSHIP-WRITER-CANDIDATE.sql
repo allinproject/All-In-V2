@@ -42,7 +42,7 @@ BEGIN
  IF p_user_id IS NULL OR p_session_id IS NULL
   OR p_event_id IS NULL OR p_group_id IS NULL OR p_action_id IS NULL
   OR p_expected_version IS NULL OR p_expected_version<1
-  OR p_action_kind NOT IN
+  OR p_action_kind IS NULL OR p_action_kind NOT IN
     ('join','leave','show_participation','hide_participation')
  THEN RAISE EXCEPTION 'Malformed EventHub group action'
     USING ERRCODE='22023'; END IF;
