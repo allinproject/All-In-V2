@@ -37,3 +37,15 @@ These are not a substitute for the independently approved **hosted** staging and
 - **Deletion safeguard:** An enabled one-time reminder for 2026-11-13, 10:14 AM America/Chicago, automation `Automation_fdfda9a82d9c81919613bb5d53d1c48a`, names **only** staging `fbtgknlxjyeqrxemskbl`. The connected Supabase tool **does not expose project deletion**. A human must delete the temporary project using the Supabase dashboard; verify deletion before claiming billing has stopped.
 - **Next execution:** Bind the server-side authenticated service client, a real key provider and approved complete source inventory; then test actual hosted file bytes, owner A/B sessions, revoked session, encrypted download, tampering, expiry, retention, PITR and iOS/Android download/share as outlined above. Never switch the canonical `complete=false` flag or grant production permissions until these pass.
 
+
+## Optional credential-isolated hosted binary API rehearsal
+
+The **existing** `scripts/test-v2-account-export-real-local-storage.mjs` now has a hosted mode restricted to the one founder-approved temporary staging ref `fbtgknlxjyeqrxemskbl`. Local disposable CI remains the default and must continue to pass unchanged.
+
+- The hosted run requires `CI=1`, `ALL251_ALLOW_HOSTED_TEST=true`, `ALL251_HOSTED_PROJECT_REF=fbtgknlxjyeqrxemskbl`, `ALL251_HOSTED_URL=https://fbtgknlxjyeqrxemskbl.supabase.co` and **secret environment** values `ALL251_HOSTED_SERVICE_ROLE_KEY` and `ALL251_HOSTED_ANON_KEY`. Never paste or commit service credentials into source, chat, Linear, logs or test artifacts.
+- The script rejects a hostname that does not exactly equal the temporary staging ref, including live V2 and V1. It does not create or delete hosted buckets. Before uploading, it checks exactly two expected private buckets and refuses pre-existing synthetic owner files. It uploads only disposable synthetic owner paths, then removes only the objects it created.
+- Hosted object catalog verification uses bounded hierarchical Storage API listing rather than assuming a top-level list covers nested paths. The local default still verifies against disposable PostgreSQL `storage.objects`.
+- It tests synthetic byte upload, anonymous read denial, encrypted archive stage, download and checksum, missing encrypted page denial, exact encrypted object restore and cleanup. **It uses an ephemeral test AES key and synthetic authorization adapter, not real KMS or independently authenticated sessions.** Its success is only binary Storage API acceptance, never full user export acceptance.
+- The connected Supabase interface currently cannot issue service-role credentials, upload object bytes, invoke a protected Edge function or drive a physical phone. Thus the hosted branch cannot be executed by the connector alone. Do not weaken Auth/Storage policies or publish secrets to work around that limitation.
+- Never leave the staging project running after testing. The exact reminder is active for 2026-11-13 at 10:14 AM Central; actual deletion is a manual Supabase dashboard action because the connector exposes no project deletion tool.
+
