@@ -54,8 +54,9 @@ export function FuelFoodLogPanel({ownerId,day,accessReady}:{
  const busyRef=useRef(false);
  const active=useRef(true);
  const focused=useRef(false);
- useEffect(()=>()=>{
-  active.current=false;focused.current=false;
+ useEffect(()=>{
+  active.current=true;
+  return()=>{active.current=false;focused.current=false;};
  },[]);
  useFocusEffect(useCallback(()=>{
   focused.current=true;
@@ -99,7 +100,7 @@ export function FuelFoodLogPanel({ownerId,day,accessReady}:{
   pending.current=null;
   setForm(f=>({...f,[key]:value}));
  };
- const record=async(command:ManualFoodCommand,key:string)=>{
+ const record=async(command:ManualFoodCommand)=>{
   if(busyRef.current||!canWrite||!active.current||!focused.current)return;
   busyRef.current=true;setBusy(true);setNotice(null);
   const result=await writeOwnedManualFood(supabase,command,
@@ -129,10 +130,14 @@ export function FuelFoodLogPanel({ownerId,day,accessReady}:{
   if(!editor||!canWrite)return;
   const replacement=prepareFoodReplacement(form);
   if(!replacement){setNotice('Check the date, time, timezone, food, quantity and optional calories.');return;}
-  const operation=editor.kind==='add'?'add':
-   (replacement.localDate!==editor.row.local_date
-    ||replacement.consumedAt!==new Date(editor.row.consumed_at).toISOString()
-    ||replacement.mealSlot!==editor.row.meal_slot?'move':'edit');
+  const changedTime=editor.kind==='edit'&&(
+   form.day!==editor.row.local_date||
+   form.clock!==localTimeFor(editor.row.consumed_at,editor.row.timezone_name)||
+   form.timezoneName!==editor.row.timezone_name);
+  const changedMeal=editor.kind==='edit'&&form.mealSlot!==editor.row.meal_slot;
+  const operation=editor.kind==='add'?'add':(changedTime||changedMeal?'move':'edit');
+  // Preserve the original instant on a non-temporal edit, including seconds.
+  if(editor.kind==='edit'&&!changedTime)replacement.consumedAt=editor.row.consumed_at;
   // A move cannot modify nutrition, quantity, or label; use edit then move.
   if(editor.kind==='edit'&&operation==='move'&&(
    replacement.label!==editor.row.label||replacement.quantity!==editor.row.quantity
@@ -149,11 +154,11 @@ export function FuelFoodLogPanel({ownerId,day,accessReady}:{
    if(!actionId||!entryId){setNotice('Secure action IDs are unavailable on this device. Nothing was saved.');return;}
    command=editor.kind==='add'
     ?{operation:'add',ownerId,actionId,entryId,replacement}
-    :{operation,ownerId,actionId,entryId,
+    :{operation:operation==='move'?'move':'edit',ownerId,actionId,entryId,
       expectedRevision:editor.row.revision,replacement};
    pending.current={key,command};
   }
-  void record(command,key);
+  void record(command);
  };
  const remove=(row:EditableFoodRow)=>{
   if(!canWrite)return;
