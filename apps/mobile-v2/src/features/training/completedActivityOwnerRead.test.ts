@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {canonicalActivityToScreenInput,readOwnedCompletedActivity,
  type CanonicalCompletedActivityRead} from './completedActivityOwnerRead.ts';
+import {buildCompletedActivityScreenModel} from './completedActivityScreenModel.ts';
 
 const base=():CanonicalCompletedActivityRead=>({
  id:'activity-1',ownerId:'owner-A',version:1,sport:'running',sportSubtype:'road',title:'Morning Run',
@@ -133,6 +134,32 @@ test('genuine sport-specific and multisport structured evidence remain visible',
    {key:'section',kind:item.kind,title:'Recorded structure',sourceId:'watch-record',count:2}]};
   assert.equal(canonicalActivityToScreenInput(raw,'owner-A','activity-1').sections?.[0].kind,
    item.kind,item.sport+' '+item.kind);
+ }
+});
+
+test('all 15 canonical sports carry real owner metrics into V1 Overview and Details',()=>{
+ const supported=[
+  ['running','trail'],['walking','road'],['hiking','trail'],['rucking','trail'],
+  ['cycling','trainer'],['swimming','pool'],['strength','gym'],['rowing','machine'],
+  ['elliptical','machine'],['stair','stepper'],['yoga','studio'],['mobility','studio'],
+  ['hiit','gym'],['multisport','triathlon'],['other',''],
+ ] as const;
+ for(const [sport,sportSubtype] of supported){
+  const raw:CanonicalCompletedActivityRead={...base(),sport,sportSubtype,
+   definitions:[{code:'duration',version:1,displayName:'Duration',canonicalUnit:'s',
+    sportScope:[sport],measurementKinds:['source_measured']}],
+   metrics:[{code:'duration',definitionVersion:1,displayValue:'1800 s',
+    measurementKind:'source_measured',sourceId:'watch-record',quality:'trusted'}],
+   sections:[],
+  };
+  const owned=canonicalActivityToScreenInput(raw,'owner-A','activity-1');
+  const screen=buildCompletedActivityScreenModel(owned);
+  assert.deepEqual(screen.tabs,['Overview','Details','Coach'],sport);
+  assert.deepEqual(screen.stats.overview.map(m=>m.key),['duration'],sport);
+  assert.deepEqual(screen.stats.details.map(m=>m.key),['duration'],sport);
+  assert.equal(screen.stats.details[0].provenance,'device',sport);
+  assert.equal(screen.stats.details[0].quality,'trusted',sport);
+  assert.equal(screen.stats.sections.length,0,sport);
  }
 });
 
