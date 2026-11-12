@@ -1,0 +1,45 @@
+name: V2 foundation clean Supabase replay (manual, local only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-foundation-clean-replay-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  clean-foundation:
+    name: Clean local Supabase Auth/Storage/pg_cron foundation replay
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Deliberately no Supabase access token, remote DB URL or deployment key.
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Verify applied foundation SQL has not drifted
+        run: |
+          node --test scripts/check-v2-applied-migration-integrity.test.mjs
+          node scripts/check-v2-applied-migration-integrity.mjs
+      - name: Boot isolated local Supabase services
+        run: supabase start
+      - name: Reset local-only foundation and replay every committed migration
+        run: supabase db reset --local --no-seed
+      - name: Verify local foundation objects, permissions and migration count
+        run: |
+          # Local CLI only. Do not use --remote, --linked, --db-url or db push.
+          supabase migration list --local
+          supabase status
+      - name: Stop local Supabase services
+        if: always()
+        run: supabase stop --no-backup
