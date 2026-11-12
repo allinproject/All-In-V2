@@ -1,0 +1,30 @@
+name: ALL-251 temporary staging Auth and HTTP smoke (manual only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: all251-temporary-auth-smoke
+  cancel-in-progress: false
+jobs:
+  staging-only:
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    runs-on: ubuntu-latest
+    environment: all251-temporary-staging
+    timeout-minutes: 8
+    env:
+      CI: 'true'
+      ALL251_STAGING_AUTH_ALLOW: 'true'
+      ALL251_STAGING_REF: fbtgknlxjyeqrxemskbl
+      ALL251_STAGING_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
+      ALL251_TEMP_STAGING_SERVICE_ROLE_KEY: ${{ secrets.ALL251_TEMP_STAGING_SERVICE_ROLE_KEY }}
+      ALL251_TEMP_STAGING_ANON_KEY: ${{ secrets.ALL251_TEMP_STAGING_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Create isolated Auth users, test disabled HTTP route and remove users
+        run: node scripts/test-v2-all251-staging-auth-smoke.mjs
+# Requires manual protected secret provisioning for ONLY the temporary project.
+# This does NOT certify authorization, full exports, KMS or device downloads.
