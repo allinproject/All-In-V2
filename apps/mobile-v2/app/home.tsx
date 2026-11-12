@@ -39,7 +39,13 @@ function HomeOwnerScreen() {
   // Re-evaluate the date on focus after backgrounding or crossing local midnight.
   // This is device-local until the athlete's preferred timezone is available.
   const [localDay, setLocalDay] = useState(deviceLocalToday);
-  useFocusEffect(useCallback(() => { setLocalDay(deviceLocalToday()); }, []));
+  // A meal can be edited in Fuel without changing the athlete-local day.
+  // Refresh the canonical owner reader when returning to Today.
+  const [foodRefreshRevision, setFoodRefreshRevision] = useState(0);
+  useFocusEffect(useCallback(() => {
+    setLocalDay(deviceLocalToday());
+    if (V2_FUEL_DAY_READ_ENABLED) setFoodRefreshRevision(value => value + 1);
+  }, []));
   // Keep an actively open Today screen on the correct day at local midnight.
   // A suspended native timer is supplemented by focus and AppState refreshes.
   useEffect(() => {
@@ -65,7 +71,10 @@ function HomeOwnerScreen() {
   // on every foreground transition; never trust a date cached before midnight.
   useEffect(() => {
     const listener = AppState.addEventListener('change', state => {
-      if (shouldRefreshTodayOnAppState(state)) setLocalDay(deviceLocalToday());
+      if (shouldRefreshTodayOnAppState(state)) {
+        setLocalDay(deviceLocalToday());
+        if (V2_FUEL_DAY_READ_ENABLED) setFoodRefreshRevision(value => value + 1);
+      }
     });
     return () => listener.remove();
   }, []);
@@ -99,7 +108,7 @@ function HomeOwnerScreen() {
       .then(evidence => { if(active)setFoodEvidence(evidence); })
       .catch(() => { if(active)setFoodEvidence({status:'unavailable'}); });
     return () => { active=false; };
-  }, [user?.id, localDay, gate.status]);
+  }, [user?.id, localDay, gate.status, foodRefreshRevision]);
   const foodLog = todayFoodLog(foodEvidence, user?.id ?? '', localDay);
   // Progress/Recovery owners are not connected yet: preserve unknown rather
   // than manufacturing performance statistics or a readiness recommendation.
