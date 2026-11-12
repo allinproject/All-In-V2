@@ -130,12 +130,18 @@ jobs:
           set -euo pipefail
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             enabled=true
-          elif [[ -n "$BEFORE_SHA" ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
-            changed="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- supabase/migrations/ scripts/test-v2-applied-foundation-local-postgres.psql scripts/test-v2-foundation-training-overlay-postgres.psql .github/workflows/v2-training-completed-postgres.yml)"
-            if [[ -n "$changed" ]]; then enabled=true; else enabled=false; fi
           else
-            # Insufficient shallow history must NOT accidentally skip replay.
-            enabled=true
+            # Fetch only the push base if the shallow checkout lacks it.
+            # Fallback to running, never to incorrectly skipping validation.
+            if [[ -n "$BEFORE_SHA" ]] && ! git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$BEFORE_SHA" >/dev/null 2>&1 || true
+            fi
+            if [[ -n "$BEFORE_SHA" ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+              changed="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- supabase/migrations/ scripts/test-v2-applied-foundation-local-postgres.psql scripts/test-v2-foundation-training-overlay-postgres.psql .github/workflows/v2-training-completed-postgres.yml)"
+              if [[ -n "$changed" ]]; then enabled=true; else enabled=false; fi
+            else
+              enabled=true
+            fi
           fi
           echo "run=$enabled" >> "$GITHUB_OUTPUT"
       - uses: supabase/setup-cli@v3
