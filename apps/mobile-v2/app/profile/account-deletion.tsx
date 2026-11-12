@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { v2AuthenticatedScreenKey } from '../../src/auth/authRoute';
@@ -174,6 +174,14 @@ function OwnedAccountDeletionScreen() {
         <View style={styles.card}>
           <Text style={styles.heading}>Understand what will happen</Text>
           <Text style={styles.body}>You can request permanent deletion of your ALL IN 365 V2 account and eligible personal data. You may lose access to your saved workouts, nutrition, settings, and progress once deletion is processed. Some information may be retained where legally required or otherwise permitted.</Text>
+          <Text style={styles.body}>Deleting your ALL IN 365 account does not cancel an Apple App Store or Google Play subscription. Those subscriptions can continue billing until you cancel them with the store. You can request account deletion now without waiting for the subscription to end.</Text>
+          <Pressable accessibilityRole="link" style={styles.button} onPress={() => void Linking.openURL('https://apps.apple.com/account/subscriptions').catch(() => setError('Could not open Apple subscription management.'))}>
+            <Text style={styles.buttonText}>Manage Apple subscriptions</Text>
+          </Pressable>
+          <Pressable accessibilityRole="link" style={styles.button} onPress={() => void Linking.openURL('https://play.google.com/store/account/subscriptions').catch(() => setError('Could not open Google Play subscriptions.'))}>
+            <Text style={styles.buttonText}>Manage Google Play subscriptions</Text>
+          </Pressable>
+          <Text style={styles.body}>Web subscriptions require separate cancellation confirmation; contact support if you have one. Retained payment records are limited to justified financial and legal needs. Deletion will not restore a deleted account or its fitness history.</Text>
           <Text style={styles.body}>This action submits a deletion request. It does not immediately erase anything. The secure deletion processor is not enabled yet, and this beta flow is not validated for public release.</Text>
           <Text style={styles.body}>Questions or help: durbenventures@gmail.com</Text>
         </View>
