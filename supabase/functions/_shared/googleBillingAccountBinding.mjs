@@ -6,7 +6,7 @@
  * verified SubscriptionPurchaseV2 before first account binding.
  */
 const uuid=v=>typeof v==='string'&&
- /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
+ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
 export async function obfuscatedGoogleBillingAccountId({
   ownerId,environment,serverPepper,
 }={}){
