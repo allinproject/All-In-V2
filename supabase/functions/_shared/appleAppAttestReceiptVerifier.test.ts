@@ -2,6 +2,7 @@
 // Apple-rooted CMS can pass the separate production cryptographic trust gate.
 import assert from 'node:assert/strict';
 import {createHash,generateKeyPairSync} from 'node:crypto';
+import {ContentInfo,SignedData} from 'npm:pkijs@3.4.1';
 import {inspectAppAttestReceiptPayload,appleAppAttestReceiptService}
  from './appleAppAttestReceiptVerifier.ts';
 function tlv(tag:number,value:Uint8Array):Buffer{
@@ -71,6 +72,12 @@ Deno.test('cryptographically signed CMS by an untrusted synthetic CA never enrol
  // Offline fixture created with OpenSSL cms -sign -binary -nodetach.
  // It is correctly signed but is NOT anchored at Apple's pinned root.
  const fake=Buffer.from('MIIDfAYJKoZIhvcNAQcCoIIDbTCCA2kCAQExDTALBglghkgBZQMEAgEwEQYJKoZIhvcNAQcBoAQEAjEAoIIBqjCCAaYwggFNoAMCAQICFDzcZmBwCPmVOsmFtp08gBb+7P8IMAoGCCqGSM49BAMCMCkxJzAlBgNVBAMMHlVudHJ1c3RlZCBTeW50aGV0aWMgQ01TIFNpZ25lcjAeFw0yNjExMTIxNzU4NThaFw0zNjExMDkxNzU4NThaMCkxJzAlBgNVBAMMHlVudHJ1c3RlZCBTeW50aGV0aWMgQ01TIFNpZ25lcjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABFKS7X1OT2e70EzfLHpgx2PnGIpMjhmRGxNFlIC8TyC7m3PWj5ZtjvY+HHzynuyP27ddI/rxEVet9zD+0CvwrB2jUzBRMB0GA1UdDgQWBBQPnAIa8Oh8vH1aPQnJjEkSpZ3xIzAfBgNVHSMEGDAWgBQPnAIa8Oh8vH1aPQnJjEkSpZ3xIzAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIBLWFg3hskXGlj9AwgeBCdc5aif9fOgaozsrtzGvYHXjAiAaVMfi8c6din8DHo9aurCFVQd0unnvU3K+Tn/szs6C3TGCAZIwggGOAgEBMEEwKTEnMCUGA1UEAwweVW50cnVzdGVkIFN5bnRoZXRpYyBDTVMgU2lnbmVyAhQ83GZgcAj5lTrJhbadPIAW/uz/CDALBglghkgBZQMEAgGggeQwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjYxMTEyMTc1ODU5WjAvBgkqhkiG9w0BCQQxIgQg555BjkhiNWnXXip7Ca6I7Zt3sSakRbn/ncaYmgjvoHkweQYJKoZIhvcNAQkPMWwwajALBglghkgBZQMEASowCwYJYIZIAWUDBAEWMAsGCWCGSAFlAwQBAjAKBggqhkiG9w0DBzAOBggqhkiG9w0DAgICAIAwDQYIKoZIhvcNAwICAUAwBwYFKw4DAgcwDQYIKoZIhvcNAwICASgwCgYIKoZIzj0EAwIERjBEAiA5sS+hPdyeMxowMkTfcL/1iVsA9RdmF02kSp9kSSR7agIgZ3t7WylqMaIqf3I92PcF8fxxJjpg9LuuUeY74Csoplc=','base64');
+ // Signature-only verification must accept this synthetic fixture,
+ // but the production verifier must reject its non-Apple trust chain.
+ const cmsEnvelope=ContentInfo.fromBER(Uint8Array.from(fake).buffer as ArrayBuffer);
+ const cms=new SignedData({schema:cmsEnvelope.content});
+ assert.equal(await cms.verify({signer:0,checkChain:false}),true,
+  'Synthetic CMS signature fixture must be cryptographically valid');
  await assert.rejects(
   appleAppAttestReceiptService.verifyAppleSignedReceipt({
    ...context,nowMs:Date.parse('2026-11-13T17:00:00.000Z'),
