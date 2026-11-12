@@ -133,7 +133,7 @@ function setup(options={}) {
      collections:['coach_messages'],
    }),
    readPage:async({ownerId,collection})=>({
-     ownerId,collection,snapshotId:requestId,
+     ownerId,collection,snapshotId:requestId,ownerVerified:true,
      rows:[{id:'private-record',user_id:owner,content:'Coach owner history'}],
      done:true,nextCursor:null,
    }),
