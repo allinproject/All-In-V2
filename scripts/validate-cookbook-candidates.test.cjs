@@ -134,3 +134,23 @@ test('rejects an empty required dataset even with syntactically valid JSONL file
     assert(result.errors.some(e=>e.includes('empty dataset')));
   } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
+
+test('rejects export counts that do not match the frozen source inventory',async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'all218-counts-'));
+  try {
+    const inputs={recipes:[recipe()],selectors:[{source_selector_id:2,source_recipe_id:'r1',selector_key:'wrapper',source_active:false}],
+      options:[{source_option_id:3,source_selector_id:2,option_key:'bread',ingredient_changes_review_only:[]}],
+      mappings:[{source_mapping_id:4,source_recipe_id:'r1',selector_key:'wrapper',option_key:'bread',source_profile_key:'x'}]};
+    const paths=Object.fromEntries(Object.entries(inputs).map(([k,values])=>{
+      const p=path.join(dir,k+'.ndjson');fs.writeFileSync(p,values.map(JSON.stringify).join('\n')+'\n');return [k,p];
+    }));
+    const good=await validate(paths,{recipes:1,selectors:1,options:1,mappings:1});
+    assert.equal(good.ok,true);assert.equal(good.publicationApproved,false);
+    const incomplete=await validate(paths,{recipes:907,selectors:1293,options:5876,mappings:2855});
+    assert.equal(incomplete.ok,false);
+    assert(incomplete.errors.some(e=>e.includes('recipes: expected 907 records')));
+    const malformed=await validate(paths,{recipes:0,selectors:1,options:1,mappings:1});
+    assert.equal(malformed.ok,false);
+    assert(malformed.errors.some(e=>e.includes('manifest must specify positive integer')));
+  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});
