@@ -33,6 +33,10 @@ function fixture(){
       competitionConfirmed:true as const}))}
  };
  const proofs:CanonicalEventGoalApproval={
+  bindingSnapshot:{ownerId:owner,authSessionGeneration:generation,complete:true,
+   nextCursor:null,snapshotVersion:token,bindings:events.map((e,i)=>({
+    eventId:e.id,eventVersion:2,eventTimezone:'America/Chicago',
+    planRevisionId:revision,sessionId:'session-'+i}))},
   eventSnapshot:{ownerId:owner,authSessionGeneration:generation,complete:true,nextCursor:null,
     snapshotVersion:token,events:events.map(e=>({eventId:e.id,ownerId:owner,eventVersion:2,
      date:e.date,timezone:'America/Chicago',sport:e.sport,
@@ -65,6 +69,20 @@ test('stale event version/date and uncoupled goal are not accepted',()=>{
  const g=fixture();g.proofs.goalSnapshot.goals=[{...g.proofs.goalSnapshot.goals[0],targetEventId:null},
   g.proofs.goalSnapshot.goals[1]];
  assert.equal(certifySeasonAgainstGoalEventOwners(g.input,g.proofs).status,'unavailable');
+});
+test('changed Event owner version or timezone invalidates accepted Training binding',()=>{
+ const a=fixture();
+ a.proofs.eventSnapshot.events=[{...a.proofs.eventSnapshot.events[0],eventVersion:3},
+  a.proofs.eventSnapshot.events[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(a.input,a.proofs).status,'unavailable');
+ const b=fixture();
+ b.proofs.bindingSnapshot.bindings=[{...b.proofs.bindingSnapshot.bindings[0],
+   eventTimezone:'America/New_York'},b.proofs.bindingSnapshot.bindings[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(b.input,b.proofs).status,'unavailable');
+ const c=fixture();
+ c.proofs.bindingSnapshot.bindings=[{...c.proofs.bindingSnapshot.bindings[0],
+   sessionId:'different'},c.proofs.bindingSnapshot.bindings[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(c.input,c.proofs).status,'unavailable');
 });
 test('cross-account, cursor, snapshot version and session generation fail closed',()=>{
  const cases=[
