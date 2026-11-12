@@ -89,11 +89,13 @@ SQL
 manifest() { docker exec -i "$db" psql -X -qAt -U postgres -d postgres -v ON_ERROR_STOP=1 <<<"$manifest_sql"; }
 before="$(manifest)"
 test "$(printf '%s\n' "$before" | wc -l | tr -d ' ')" = 12 || { echo 'Unexpected pre-backup domain/owner coverage'; exit 1; }
+backup_started_epoch="$(date +%s)"
 docker exec "$db" pg_dump -U postgres -d postgres -Fc --data-only \
   -t public.v2_training_session_instances -t public.v2_completed_activities \
   -t public.v2_activity_sources -t public.v2_coach_threads \
   -t public.v2_coach_messages -t public.v2_goals \
   -t public.v2_goal_revisions -f /tmp/all12-multidomain.dump
+backup_finished_epoch="$(date +%s)"
 docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
 DELETE FROM public.v2_goal_revisions WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121');
 DELETE FROM public.v2_goals WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121');
@@ -103,6 +105,7 @@ DELETE FROM public.v2_activity_sources WHERE user_id='a1212121-2121-4121-8121-21
 DELETE FROM public.v2_completed_activities WHERE user_id IN ('a1212121-2121-4121-8121-212121212121','b1212121-2121-4121-8121-212121212121');
 DELETE FROM public.v2_training_session_instances WHERE user_id='a1212121-2121-4121-8121-212121212121';
 SQL
+restore_started_epoch="$(date +%s)"
 docker exec "$db" pg_restore -U postgres -d postgres --data-only --exit-on-error /tmp/all12-multidomain.dump
 after="$(manifest)"
 if [[ "$before" != "$after" ]]; then
@@ -120,5 +123,11 @@ BEGIN
  THEN RAISE EXCEPTION 'ALL-12 recovered cross-owner source'; END IF;
 END $verify$;
 SQL
+recovered_verified_epoch="$(date +%s)"
 docker exec "$db" rm -f /tmp/all12-multidomain.dump
+# Only measured local synthetic exercise timings. No hosted RTO/RPO claim.
+printf 'ALL-12 LOCAL-SYNTHETIC timing: backup_elapsed_seconds=%s restore_and_integrity_elapsed_seconds=%s backup_to_verified_elapsed_seconds=%s (not hosted RPO/RTO)\n' \
+  "$((backup_finished_epoch - backup_started_epoch))" \
+  "$((recovered_verified_epoch - restore_started_epoch))" \
+  "$((recovered_verified_epoch - backup_started_epoch))"
 echo 'PASS ALL-12: deterministic per-owner counts and full-row digests match after local multi-domain pg_dump/pg_restore'
