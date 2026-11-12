@@ -35,3 +35,9 @@ verify_jwt = true
 # An authenticated Supabase JWT is mandatory; store server secrets remain private.
 [functions.v2-native-subscription-verify]
 verify_jwt = true
+
+# ALL-243: staging-only server-to-server HMAC envelope ingress.
+# Mandatory user JWT plus internal signature and dedicated DB operator.
+# Endpoint stays DEFAULT-OFF unless explicitly approved and deployed.
+[functions.v2-device-ingest]
+verify_jwt = true
