@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createCoachArmedRuntime} from "./coachArmedRuntime.mjs";
+import {handleCoachRuntimeRequest} from "./coachRuntimeIngress.mjs";
 
 /** Whole staged chain, entirely synthetic: no real database or paid API. */
 const owner="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -175,4 +176,51 @@ test("ambiguous upstream failure keeps reservation and never claims a saved resp
  assert(!f.calls.includes("v2_coach_budget_settle"));
  assert(!f.calls.includes("v2_coach_append_exchange"));
  assert(!f.calls.some(n=>n.includes("release")));
+});
+
+test("real staged HTTP ingress composes authenticated Coach open, history and saved send without API spend outside send",async()=>{
+ const f=fixture();
+ const req=body=>new Request("https://example.invalid/functions/v1/v2-coach",{
+  method:"POST",headers:{"authorization":"Bearer "+send.bearerToken,
+   "content-type":"application/json"},body:JSON.stringify(body)
+ });
+ const open=await handleCoachRuntimeRequest(req({action:"open",ownerId:owner,
+  candidateThreadId:thread}),f.runtime,{enabled:true});
+ assert.equal(open.status,200);
+ assert.equal((await open.json()).threadId,thread);
+ const history=await handleCoachRuntimeRequest(req({action:"history",
+  ownerId:owner,threadId:thread,limit:40}),f.runtime,{enabled:true});
+ assert.equal(history.status,200);
+ assert.deepEqual((await history.json()).messages,[]);
+ assert.equal(f.networkCalls(),0);
+ const sent=await handleCoachRuntimeRequest(req({action:"send",ownerId:owner,
+  threadId:thread,clientRequestId:requestId,userMessageId,
+  assistantMessageId,message:send.userContent}),f.runtime,{enabled:true});
+ assert.equal(sent.status,200);
+ const body=await sent.json();
+ assert.equal(body.status,"ok");
+ assert.equal(body.receipt.assistantMessageId,assistantMessageId);
+ assert.equal(body.message,answer);
+ assert.equal(f.networkCalls(),1);
+});
+test("HTTP release gate and invalid bearer/owner never claim or spend Coach budget",async()=>{
+ const f=fixture();
+ const req=(authorization,ownerId)=>new Request("https://example.invalid/functions/v1/v2-coach",{
+  method:"POST",headers:{authorization,"content-type":"application/json"},
+  body:JSON.stringify({action:"send",ownerId,threadId:thread,
+   clientRequestId:requestId,userMessageId,assistantMessageId,
+   message:send.userContent})
+ });
+ const off=await handleCoachRuntimeRequest(
+  req("Bearer "+send.bearerToken,owner),f.runtime,{enabled:false});
+ assert.equal(off.status,503);
+ assert.equal((await off.json()).code,"coach_disabled");
+ const wrong=await handleCoachRuntimeRequest(
+  req("Bearer "+send.bearerToken,other),f.runtime,{enabled:true});
+ assert.equal(wrong.status,401);
+ const invalid=await handleCoachRuntimeRequest(
+  req("Bearer forged-token",owner),f.runtime,{enabled:true});
+ assert.equal(invalid.status,503);
+ assert.equal(f.networkCalls(),0);
+ assert(!f.calls.includes("v2_coach_budget_reserve"));
 });
