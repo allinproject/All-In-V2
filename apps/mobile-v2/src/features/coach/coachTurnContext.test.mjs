@@ -89,3 +89,20 @@ test("complete-history claims require full per-sport coverage evidence",()=>{
  c.history.coverage=[];
  assert.equal(prepareCoachTurnContext(c).reason,"coverage_not_complete");
 });
+
+test("exact accepted structured workout day survives Coach context preflight",()=>{
+ const x=fixture();x.history.requested={fromDate:"2026-11-11",throughDate:"2026-11-11",sports:["strength"]};
+ x.history.plannedDay={verified:true,localDate:"2026-11-11",
+  calendarDays:[{planId:"plan",revisionId:"rev",dayState:"planned"}],
+  sessions:[{sessionId:"session-1",planId:"plan",revisionId:"rev",
+   localDate:"2026-11-11",sport:"strength",sessionKind:"legs_abs",
+   purpose:"Four supersets",intentSchemaVersion:"session-intent-v1",
+   intent:{blocks:[{major:"split squat",abs:"cable crunch",rounds:3}]}}]};
+ const result=prepareCoachTurnContext(x);
+ assert.equal(result.kind,"ready");
+ assert.equal(result.plannedDay.sessions[0].intent.blocks[0].rounds,3);
+ const changed=fixture();changed.history.requested=x.history.requested;
+ changed.history.plannedDay=structuredClone(x.history.plannedDay);
+ changed.history.plannedDay.sessions[0].revisionId="foreign-revision";
+ assert.equal(prepareCoachTurnContext(changed).reason,"planned_day_invalid");
+});
