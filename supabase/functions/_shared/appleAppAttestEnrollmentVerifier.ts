@@ -72,11 +72,11 @@ export function inspectAppAttestCredentialPayload(authData:Uint8Array,
    x.length!==32||y.length!==32||
    !same(Buffer.concat([Buffer.from([4]),Buffer.from(x),Buffer.from(y)),expectedPublicPoint))
   throw Error('App Attest COSE P-256 key differs from certificate');
- let category:number|null=null,bundleVersion:string|null=null;
+ let category:unknown=null,bundleVersion:unknown=null;
  if(values.length===2){
   const ext=values[1];
-  category=field(ext,'apple_validation_category_01') as number|null;
-  bundleVersion=field(ext,'apple_bundle_version_01') as string|null;
+  category=field(ext,'apple_validation_category_01');
+  bundleVersion=field(ext,'apple_bundle_version_01');
   if(category instanceof Uint8Array){
    if(category.length!==4)throw Error('Invalid Apple validation category bytes');
    category=Buffer.from(category).readUInt32LE(0);
@@ -86,7 +86,7 @@ export function inspectAppAttestCredentialPayload(authData:Uint8Array,
     bundleVersion.length>64||!/^[a-zA-Z0-9._-]+$/.test(bundleVersion))
    throw Error('Unexpected Apple application launch category or version');
  }
- return {validationCategory:category,bundleVersion};
+ return {validationCategory:category as number|null,bundleVersion:bundleVersion as string|null};
 }
 export function appAttestChallengeData(owner:string,session:string,challenge:string,appId:string){
  if(![owner,session,challenge].every(v=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v)))
