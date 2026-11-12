@@ -3,7 +3,7 @@
 import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {findUntrackedRecoveryTables,recoveryDomains} from './all12-recovery-domain-manifest.mjs';
-assert.equal(process.env.CI,'true');
+assert(['1','true'].includes(process.env.CI),'Disposable CI mode required');
 const db=process.argv[2];
 assert.match(db??'',/^[a-f0-9]{12,64}$/);
 const local=execFileSync('docker',['ps','--filter','name=supabase_db_','--format','{{.ID}}'],{encoding:'utf8'}).trim().split('\n')[0];
