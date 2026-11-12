@@ -27,3 +27,24 @@ test('staged subscription screen has no unsafe client checkout or entitlement wr
   assert.match(screen, /7-day free trial/);
   assert.match(screen, /\$9\.99 per month/);
 });
+
+test('native account purchase controls mount only behind all four approvals',()=>{
+ const actions=readFileSync(new URL('./NativeBillingActions.tsx',import.meta.url),'utf8');
+ const runtime=readFileSync(new URL('./nativeBillingRuntime.ts',import.meta.url),'utf8');
+ assert.match(screen,/nativeBillingReleaseGate\.enabled &&/);
+ assert.match(screen,/nativeBillingReleaseGate\.signedNativeBuild &&/);
+ assert.match(screen,/nativeBillingReleaseGate\.storeCatalogApproved &&/);
+ assert.match(screen,/nativeBillingReleaseGate\.serverSecurityApproved/);
+ assert.match(screen,/<NativeBillingActions ownerId=\{ownerId\}/);
+ assert.match(runtime,/enabled:false/);
+ assert.match(runtime,/signedNativeBuild:false/);
+ assert.match(runtime,/storeCatalogApproved:false/);
+ assert.match(runtime,/serverSecurityApproved:false/);
+ assert.doesNotMatch(actions,/from ['"]expo-iap['"]/);
+ assert.match(actions,/prepareNativeBillingRuntime\(/);
+ assert.match(actions,/createNativeBillingServerClient\(/);
+ assert.match(actions,/if\(outcome==='server_entitled'\)onVerified\(\)/);
+ assert.doesNotMatch(actions,/\.rpc\(|\.from\(|stripe.*checkout/i);
+ assert.match(actions,/Restore Purchases/);
+ assert.match(actions,/Subscribe with/);
+});
