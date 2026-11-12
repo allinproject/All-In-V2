@@ -133,3 +133,18 @@ The existing recovery-domain manifest now has a separate `assessIndependentLogic
 The provider-managed **physical** backup acceptance function is kept only to distinguish its evidence class, not as a required step of the logical workaround. A separately governed founder-beta risk decision may accept a constrained recovery posture; it must state any missing scopes openly, and must not be misreported as a complete hosted data recovery drill.
 
 **Next operational gap:** demonstrate a source-consistent *actual* logical backup of authorized V2 data into an independently isolated restore target, record cutoff/digest and timing, and verify applicable Auth/Storage/config and owner-domain checks. This cannot be inferred from the synthetic CI suite or a read-only live schema fingerprint. Keep production changes, hosted exports and the shared temporary staging target out of scope until explicitly authorized.
+
+
+## 2026-11-12 — Actual deployed data scope under logical recovery
+
+Read-only V2 `xarhuczrtzuiljmtdaeu` SQL catalog check repeated: 12 deployed `v2_*` application tables, 18 applied migrations, **zero** Auth users/identities, **zero** Storage buckets/objects, and one enabled database cache-purge cron job. This is a *present-state observation*, not a proven snapshot of a later backup. Do not substitute synthetic candidate-schema coverage for deployed-source data.
+
+The existing logical acceptance evaluator `scripts/all12-recovery-domain-manifest.mjs` now handles **source-at-cutoff verified zero versus populated** Auth/Storage requirements (commits `01c61dc8`, `349c0b50`):
+- A genuine zero-Auth source must show a verified empty source inventory, an empty recovered Auth target, a functioning Auth service and recreated provider configuration. No invented synthetic users are counted as deployed recovery data.
+- A populated Auth source must instead show restored actual account data and sign-in.
+- A genuine zero-Storage source must show a verified empty object inventory, empty restored target and verified Storage access policy/configuration. A populated source requires actual restored file bytes/metadata.
+- Both source counts are mandatory. Source-at-cutoff manifest provenance, actual logical archive integrity, independent pre-import isolation, restored owner-domain rows and RLS, RPO/RTO and explicit review remain mandatory regardless of emptiness.
+
+**CI evidence:** [run 43326920981](https://github.com/allinproject/All-In-V2/actions/runs/43326920981) passed the ALL-12 independent recovery scope test step; the full clean replay must be checked separately before calling the workflow green. Previous [run 43319878768](https://github.com/allinproject/All-In-V2/actions/runs/43319878768) remains the accepted full local synthetic recovery suite. Neither represents a real authorized hosted logical source dump.
+
+**Final operational boundary:** Obtain a source-consistent logical archive from an approved V2 source using an authorized read-only backup identity, an independently isolated target and explicit artifact security/recovery verification. This session's connected Supabase tools can inspect SQL catalog state but cannot export a real PostgreSQL dump or control the GitHub runner's secret-backed PostgreSQL connection. Do not use the temporary ALL-251 staging project as a substitute or mark ALL-12 done solely from an empty hosted inventory.
