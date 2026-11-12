@@ -66,7 +66,9 @@ function inspect(dataset, value, seen, errors) {
   }
 }
 function checkReferences(records, errors) {
-  // Malformed records already fail inspect(); never let them crash reference checks.\n  records = Object.fromEntries(DATASETS.map(d=>[d,records[d].filter(object)]));\n  const recipes = new Set(records.recipes.map(r=>String(r.source_recipe_id)));
+  // Malformed records already fail inspect(); never let them crash reference checks.
+  records = Object.fromEntries(DATASETS.map(d=>[d,records[d].filter(object)]));
+  const recipes = new Set(records.recipes.map(r=>String(r.source_recipe_id)));
   const selectorsById = new Map(records.selectors.map(s=>[String(s.source_selector_id),s]));
   const selectorsByKey = new Map(records.selectors.map(s=>[JSON.stringify([s.source_recipe_id,s.selector_key]),s]));
   const optionsByKey = new Set(records.options.map(o=>JSON.stringify([o.source_selector_id,o.option_key])));
