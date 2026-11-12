@@ -9,6 +9,7 @@ on:
       - 'docs/architecture/sql/V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-REVISION-ACCEPTANCE-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-goals-acceptance-local-postgres.psql'
+      - 'scripts/test-v2-goals-acceptance-race-local.sh'
       - 'scripts/test-v2-goals-owner-local-postgres.psql'
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'scripts/test-v2-billing-local-foundation.psql'
@@ -278,6 +279,7 @@ jobs:
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-qa.psql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-acceptance.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-acceptance-qa.psql
+          bash scripts/test-v2-goals-acceptance-race-local.sh "$db_container"
       - name: Seed populated V2 owner accounts before billing candidate upgrade
         run: |
           set -euo pipefail
