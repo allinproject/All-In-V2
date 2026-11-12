@@ -11,6 +11,7 @@ test('existing Fuel route owns the three approved sections and preserves Today d
  assert.match(screen,/\{id:'recipes',label:'Recipes'\}/);
  assert.match(screen,/\{id:'food-plan',label:'Food Plan'\}/);
  assert.match(screen,/FuelFoodLogPanel ownerId=\{user\.id\} day=\{day\}/);
+ assert.match(screen,/onDayChange=\{setDay\}/);
  assert.match(screen,/v2AuthenticatedScreenKey\(user\?\.id\?\?null,sessionGeneration\)/);
  assert.match(screen,/gate\.status==='ready'/);
  assert.match(screen,/V2BottomNavigation/);
@@ -28,6 +29,7 @@ test('Food Log uses only the approved owner-guarded RPC and no shadow store',()=
  assert.match(panel,/foodRefreshRevision|setRefresh\(r=>r\+1\)/);
  assert.match(panel,/pending\.current=/);
  assert.match(panel,/confirmDelete/);
+ assert.match(panel,/onDayChange\(command\.replacement\.localDate\)/);
  assert.match(client,/EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED === 'true'/);
  assert.match(writer,/EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED === 'true'/);
  assert.match(writer,/result\.status===409/);
