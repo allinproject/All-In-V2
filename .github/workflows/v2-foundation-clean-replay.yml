@@ -50,6 +50,9 @@ on:
       - 'docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COACH-PERSISTENCE-SECURITY-CHECKS.sql'
+      - 'docs/architecture/sql/V2-COACH-PERSISTENCE-TWO-OWNER-LOCAL.psql'
   workflow_dispatch:
 
 permissions:
@@ -96,6 +99,21 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-applied-foundation-local-postgres.psql "$db_container:/tmp/v2-foundation-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-foundation-qa.psql
+      - name: Validate Coach conversation persistence and cross-owner isolation in disposable DB
+        run: |
+          set -euo pipefail
+          # Review-only SQL: run ONLY against the Supabase CLI's local Docker
+          # PostgreSQL container. No remote credentials or hosted migrations.
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql \
+            docs/architecture/sql/V2-COACH-PERSISTENCE-SECURITY-CHECKS.sql \
+            docs/architecture/sql/V2-COACH-PERSISTENCE-TWO-OWNER-LOCAL.psql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
+          done
       - name: Check foundation-to-canonical schema compatibility in disposable DB
         run: |
           set -euo pipefail
