@@ -60,12 +60,14 @@ export function certifySeasonAgainstGoalEventOwners(
  if(!Array.isArray(owners.eventSnapshot.events)||!Array.isArray(owners.goalSnapshot.goals)||
     !Array.isArray(owners.bindingSnapshot.bindings))
   return no('owner_records_invalid');
- if(owners.eventSnapshot.snapshotVersion!==owners.goalSnapshot.snapshotVersion||
-    owners.eventSnapshot.snapshotVersion!==owners.bindingSnapshot.snapshotVersion||
-    owners.eventSnapshot.snapshotVersion!==input.daySnapshot?.snapshotVersion||
-    owners.eventSnapshot.snapshotVersion!==input.plannedSnapshot?.snapshotVersion||
-    owners.eventSnapshot.snapshotVersion!==input.competitionSnapshot?.snapshotVersion)
-  return no('cross_owner_versions_disagree');
+ // Each canonical domain owns its own revision token. Cross-domain token
+ // string equality is NOT valid evidence of an atomic snapshot. Keep exact
+ // Training owner snapshot consistency in multiEventOwnerBridge and compare
+ // the saved event version/timezone below to the current Event owner row.
+ if(!input.daySnapshot||!input.plannedSnapshot||!input.competitionSnapshot||
+    input.daySnapshot.snapshotVersion!==input.plannedSnapshot.snapshotVersion||
+    input.daySnapshot.snapshotVersion!==input.competitionSnapshot.snapshotVersion)
+  return no('training_snapshot_versions_disagree');
  const events=new Map<string,OwnerEventEvidence>();
  for(const e of owners.eventSnapshot.events){
   if(!e||!e.eventId?.trim()||events.has(e.eventId)||
