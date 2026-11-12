@@ -5,6 +5,9 @@ on:
     branches: [integration/v2-foundation]
     paths:
       - '.github/workflows/v2-foundation-clean-replay.yml'
+      - 'scripts/test-v2-applied-foundation-local-postgres.psql'
+      - 'docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql'
   workflow_dispatch:
 
 permissions:
@@ -44,6 +47,44 @@ jobs:
           # Local CLI only. Do not use --remote, --linked, --db-url or db push.
           supabase migration list --local
           supabase status
+      - name: Verify real foundation SQL/RLS/cron in the local Postgres container
+        run: |
+          set -euo pipefail
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp scripts/test-v2-applied-foundation-local-postgres.psql "$db_container:/tmp/v2-foundation-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-foundation-qa.psql
+      - name: Check foundation-to-canonical schema compatibility in disposable DB
+        run: |
+          set -euo pipefail
+          # The real foundation is already applied. These remain review-only
+          # candidate sources, loaded solely into the local ephemeral DB.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql \
+            docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
+          done
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -c "
+            DO \\\$check\\\$
+            BEGIN
+              IF to_regclass('public.v2_training_plans') IS NULL
+                 OR to_regclass('public.v2_completed_activities') IS NULL
+                 OR to_regclass('public.v2_training_revision_sessions') IS NULL
+              THEN RAISE EXCEPTION 'Training/Activity candidate objects absent'; END IF;
+              IF EXISTS (
+                SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+                WHERE n.nspname='public' AND c.relname IN
+                  ('v2_training_plans','v2_completed_activities','v2_training_revision_sessions')
+                  AND NOT c.relrowsecurity
+              ) THEN RAISE EXCEPTION 'Training/Activity RLS disabled'; END IF;
+              IF has_table_privilege('authenticated','public.v2_training_plans','INSERT')
+                 OR has_table_privilege('anon','public.v2_completed_activities','SELECT')
+              THEN RAISE EXCEPTION 'Unreviewed candidate client grants'; END IF;
+              RAISE NOTICE 'PASS: 18 real foundation migrations + owner identity/calendar DDL';
+            END \\\$check\\\$;"
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
