@@ -1,0 +1,81 @@
+\set ON_ERROR_STOP on
+-- ALL-239: disposable Supabase real foundation + Goal candidates.
+-- Every mutation in a top-level transaction is rolled back. No hosted calls.
+BEGIN;
+DO $goal_writer$
+DECLARE
+ a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ g uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ g2 uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ r1 uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ r2 uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ rb uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ action_one uuid:='11111111-aaaa-4aaa-8aaa-111111111111';
+ action_two uuid:='22222222-aaaa-4aaa-8aaa-222222222222';
+ digest text:=repeat('a',64);
+ res jsonb;
+BEGIN
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO public.v2_goals(id,user_id,goal_kind,title,status)
+ VALUES(g,a,'race_event','Two upcoming races','active'),
+       (g2,b,'general_wellbeing','Feel healthier','active');
+ INSERT INTO public.v2_goal_revisions(id,goal_id,user_id,revision_number,
+ status,source_kind,priority_role)
+ VALUES(r1,g,a,1,'candidate','athlete_authored','primary'),
+       (r2,g,a,2,'candidate','coach_proposal','primary'),
+       (rb,g2,b,1,'candidate','athlete_authored','primary');
+ res:=public.v2_goal_accept_revision_candidate(a,g,r1,action_one,1,digest);
+ IF res->>'version'<>'2' OR res->>'replayed'<>'false'
+ THEN RAISE EXCEPTION 'First Goal acceptance failed: %',res; END IF;
+ IF (SELECT active_revision_id FROM public.v2_goals WHERE id=g)<>r1
+ THEN RAISE EXCEPTION 'First accepted revision was not activated'; END IF;
+ res:=public.v2_goal_accept_revision_candidate(a,g,r1,action_one,1,digest);
+ IF res->>'version'<>'2' OR res->>'replayed'<>'true'
+ THEN RAISE EXCEPTION 'Identical action did not replay: %',res; END IF;
+ BEGIN
+   PERFORM public.v2_goal_accept_revision_candidate(a,g,r1,action_one,1,repeat('b',64));
+   RAISE EXCEPTION 'Changed payload with same action ID succeeded';
+ EXCEPTION WHEN unique_violation THEN NULL;
+ END;
+ BEGIN
+   PERFORM public.v2_goal_accept_revision_candidate(a,g,r2,action_two,1,digest);
+   RAISE EXCEPTION 'Stale expected version was accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL;
+ END;
+ BEGIN
+   PERFORM public.v2_goal_accept_revision_candidate(b,g,r2,action_two,2,digest);
+   RAISE EXCEPTION 'Cross-owner Goal mutation succeeded';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ res:=public.v2_goal_accept_revision_candidate(a,g,r2,action_two,2,digest);
+ IF res->>'version'<>'3' OR res->>'replayed'<>'false'
+ THEN RAISE EXCEPTION 'Second revision acceptance failed: %',res; END IF;
+ IF (SELECT status FROM public.v2_goal_revisions WHERE id=r1)<>'superseded'
+ OR (SELECT status FROM public.v2_goal_revisions WHERE id=r2)<>'accepted'
+ OR (SELECT version FROM public.v2_goals WHERE id=g)<>3
+ THEN RAISE EXCEPTION 'Revision history lost its single accepted revision'; END IF;
+ IF (SELECT priority_role FROM public.v2_goal_revisions WHERE id=r1)<>'primary'
+ THEN RAISE EXCEPTION 'Published priority silently changed'; END IF;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_goal_acceptance_actions
+   WHERE user_id=b AND goal_id=g)
+ THEN RAISE EXCEPTION 'Cross-owner Goal action receipt leaked'; END IF;
+ RAISE NOTICE 'PASS Goal writer: owner CAS, revisions, history, action replay, payload fencing';
+END $goal_writer$;
+-- Verify PostgreSQL API roles cannot invoke this review-only writer. PUBLIC is
+-- revoked and the function is not yet granted even to the service role.
+SET LOCAL ROLE authenticated;
+DO $client$
+BEGIN
+ BEGIN
+   PERFORM public.v2_goal_accept_revision_candidate(
+     '11111111-1111-4111-8111-111111111111',
+     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+     'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+     '11111111-aaaa-4aaa-8aaa-111111111111',1,repeat('a',64));
+   RAISE EXCEPTION 'Authenticated API role executed unapproved Goal acceptance';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $client$;
+RESET ROLE;
+ROLLBACK;
