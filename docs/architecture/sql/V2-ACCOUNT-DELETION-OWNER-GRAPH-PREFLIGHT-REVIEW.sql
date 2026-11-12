@@ -32,6 +32,9 @@ WITH RECURSIVE cascade_reachable(relid,depth,path) AS (
 )
 SELECT rc.schema_name,rc.table_name,rc.owner_column,
  CASE
+  WHEN rc.schema_name='allin_private'
+   AND rc.table_name='v2_account_deletion_execution_audit'
+   THEN 'audit_retention_policy_required'
   WHEN rc.owner_column=ANY(ARRAY[
    'actor_id','follower_id','followed_id','blocker_id','blocked_id'])
    THEN 'relationship_or_actor_retention_policy_required'
@@ -41,6 +44,13 @@ FROM rel_columns rc
 WHERE rc.owner_column=ANY(ARRAY[
   'actor_id','follower_id','followed_id','blocker_id','blocked_id'])
  OR NOT EXISTS(SELECT 1 FROM cascade_reachable r WHERE r.relid=rc.relid)
+UNION ALL
+-- A bucket can retain orphan private bytes even with perfect DB cascades.
+-- No Storage cleanup has been accepted. A name here is a blocker, not a
+-- permission to list or download its contents.
+SELECT 'storage'::text,b.id::text,'objects'::text,
+ 'unreviewed_storage_bucket_cleanup'::text
+FROM storage.buckets b
 ORDER BY 1,2,3;
 $scanner$;
 -- A future approved migration must review explicit grants and function owner.
