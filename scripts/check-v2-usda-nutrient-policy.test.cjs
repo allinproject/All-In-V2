@@ -66,3 +66,28 @@ test('never self-promotes Foundation source even with complete nutrient values',
  assert.equal(result.canonicalIdentityApproved,false);
  assert.equal(result.publicationApproved,false);
 });
+
+test('all eight pinned source summaries satisfy source-only macro+sodium coverage with correct energy IDs',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const evidence=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'),'utf8'));
+ assert.equal(evidence.records.length,8);
+ const ids=new Set();
+ for(const item of evidence.records){
+   assert.equal(ids.has(item.fdcId),false);ids.add(item.fdcId);
+   const calories=nutrient(Number(item.energy.code),item.energy.kcal,'kcal');
+   const alt=item.energy.alternative?
+     [nutrient(Number(item.energy.alternative.code),item.energy.alternative.kcal,'kcal')]:[];
+   const source={provider:'usda_fdc',dataType:'Foundation',fdcId:item.fdcId,
+     basis_quantity:100,basis_unit:'g',require_sodium:true,
+     foodNutrients:[calories,...alt,nutrient(1003,item.protein),nutrient(1005,item.carbs),
+       nutrient(1004,item.fat),nutrient(1093,item.sodiumMg,'mg')]};
+   const result=validateFdcNutrients(source);
+   assert.deepEqual(result.issues,[]);
+   assert.equal(result.facts.energy_kcal,item.energy.kcal);
+   assert.equal(result.chosenEnergyNutrientId,Number(item.energy.code));
+   assert.equal(result.facts.sodium_mg,item.sodiumMg);
+   assert.equal(result.calculationReady,false);
+   assert.equal(result.publicationApproved,false);
+ }
+ assert.equal(ids.size,8);
+});
