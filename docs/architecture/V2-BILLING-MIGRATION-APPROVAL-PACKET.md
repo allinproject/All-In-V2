@@ -58,3 +58,24 @@ The existing local-only Supabase replay now first commits **two synthetic V2 acc
 Upgraded the local-only two-owner fixture from default rows to **distinct existing user states**: different training-week and privacy preferences, non-default settings versions 3/4, differing onboarding completed/skipped steps, and onboarding versions 2/5. All three existing test scripts verify those exact state values before candidate DDL, after candidate DDL and after transactional DDL/receipt rollback. The original Auth users, Settings and Onboarding records must not reset, merge or leak across owners. These values are strictly synthetic local CI data, not customer records.
 
 **Observed PASS:** [full local Supabase workflow #43139914496](https://github.com/allinproject/All-In-V2/actions/runs/43139914496), source SHA `a07dc4cb8654451717dd9e0000022313e3c1ad88`. Preupgrade seed, transactional schema rollback, populated owner-bound verification and final cleanup all passed, and the aggregate completed SUCCESS. An earlier partial-commit run #43139829130 failed on an obsolete default-version assertion after the seed changed; the exact assertions were updated and the later full run passed. This remains local review-only evidence, not a production backup restore, a deployed versioned migration or real store acceptance.
+
+## Synthetic billing ledger data-backup recovery — 2026-11-11
+
+This is separate from transactional DDL rollback. The existing local-only Supabase CI now runs `scripts/test-v2-billing-backup-seed-local.psql` to create two synthetic Auth-backed owners with three candidate purchases and four immutable events, including a refunded Apple purchase, an active Google subscription and a trial. The workflow then:
+
+1. Executes a real PostgreSQL `pg_dump -Fc --data-only`, selecting only the three candidate subscription tables and no unrelated user data.
+2. Deletes the two synthetic owners' **local** billing ledger records while retaining their Auth accounts, confirms receipt and purchase tables are depleted, and executes `pg_restore --data-only --exit-on-error`.
+3. Runs `scripts/test-v2-billing-backup-restored-local.psql` to prove restored original ownership, all immutable events, refunded Apple state, owner-specific access and environment isolation. It then checks replay idempotency, rejection of a second account's attempted claim, no repeat-trial eligibility, and a **new** provider renewal recorded after restore with a monotonic receipt identity/revision.
+4. Removes the entire synthetic fixture through the real local Auth cascade and deletes the temporary dump file.
+
+**Observed PASS:** [full V2 local Supabase workflow #43142378420](https://github.com/allinproject/All-In-V2/actions/runs/43142378420), source SHA `4f50ddf0f19160c241a5e91e400c772130f14857`. The data backup/restore step and aggregate completed SUCCESS. A previous run [#43141516039](https://github.com/allinproject/All-In-V2/actions/runs/43141516039) had already validated the initial restore; this later run additionally covers post-restore renewal and repeated-trial denial.
+
+This demonstrates only **local synthetic billing data recovery**. It does not validate a remote backup, full PostgreSQL cluster PITR, an offsite snapshot, customer-data restore, an approved versioned migration, production schema permissions, live Stripe/Apple/Google processing or provider notification delivery.
+
+## Connected Stripe sandbox inventory — 2026-11-11
+
+Read-only Stripe account inspection of the connected `Durben Ventures sandbox` (`acct_1Ua6f8RBJdOnJBog`, not livemode) confirmed the active canonical ALL IN 365 Monthly product `prod_VbQgPefruseFHU` and approved recurring USD $9.99/month price `price_1UaDovRBJdOnJBog5swb8zpS`, lookup key `allin365_v2_monthly_usd`. The price's default trial days are null; the seven-day trial is conditionally provided in the existing trusted web checkout request for verified eligible new customers only.
+
+**Remaining Stripe sandbox setup gaps:** no classic webhook endpoints or V2 event destinations configured; Stripe Tax status is pending with head office missing, and the active price has unspecified tax behavior. An unrelated $15/month test product exists and must not be used for ALL IN 365. Do not deploy a webhook before the approved V2 endpoint exists; do not invent an address or tax handling. No Stripe objects or settings were changed during the inventory.
+
+This inventory is not sufficient to launch web billing: the V2 verified subscription ledger and service grants are not yet deployed, checkout/webhook flags remain default OFF, and signed webhook delivery must be validated end to end after explicit approvals.
