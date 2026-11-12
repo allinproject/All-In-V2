@@ -12,7 +12,7 @@ const base=():CanonicalCompletedActivityRead=>({
   {code:'distance',version:1,displayName:'Distance',canonicalUnit:'m',
    sportScope:['running'],measurementKinds:['source_measured']},
   {code:'zone2',version:1,displayName:'Zone 2 time',canonicalUnit:'s',
-   sportScope:['outdoor_run'],measurementKinds:['provider_derived']},
+   sportScope:['running'],measurementKinds:['provider_derived']},
  ],
  metrics:[
   {code:'distance',definitionVersion:1,displayValue:'0',measurementKind:'source_measured',
@@ -56,10 +56,21 @@ test('metric registry requires exact sport scope, not an unapproved global wildc
  const invalid={...a,definitions:[{...a.definitions[0],sportScope:['all']}],
   metrics:[a.metrics[0]]};
  assert.throws(()=>canonicalActivityToScreenInput(invalid,'owner-A','activity-1'),
-  /Metric definition does not allow this activity/);
+  /Invalid metric registry definition/);
  const explicitlyApplicable={...a,definitions:[{...a.definitions[0],sportScope:['running','walking']}],
   metrics:[a.metrics[0]]};
  assert.equal(canonicalActivityToScreenInput(explicitlyApplicable,'owner-A','activity-1').metrics.length,1);
+});
+
+test('presentation aliases and prototype keys never become canonical metric sports',()=>{
+ const a=base();
+ assert.throws(()=>canonicalActivityToScreenInput({...a,definitions:[
+  {...a.definitions[0],sportScope:['outdoor_run']}],metrics:[a.metrics[0]]},
+  'owner-A','activity-1'),/Invalid metric registry definition/);
+ for(const sport of ['__proto__','constructor','toString','outdoor_run']){
+  assert.throws(()=>canonicalActivityToScreenInput({...a,sport,metrics:[]},
+   'owner-A','activity-1'),/Canonical activity sport is not registered/,sport);
+ }
 });
 
 test('unverified measurements are not mislabeled validated, rejected source never displays',()=>{
