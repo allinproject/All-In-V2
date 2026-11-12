@@ -10,7 +10,8 @@ function fixture({failPage=false,complete=false}={}){
  const client={
   async query(sql,args){
    calls.push({sql,args});
-   if(sql.startsWith('BEGIN')||sql==='COMMIT'||sql==='ROLLBACK')return {rows:[]};
+   if(sql.startsWith('BEGIN')||sql.startsWith('SET LOCAL')
+     ||sql==='COMMIT'||sql==='ROLLBACK')return {rows:[]};
    if(sql.includes('inventory_review_candidate'))
     return {rows:[{payload:{ownerId:owner,requestId,complete,
       snapshotId:sessionId,collections:['public.v2_coach_messages']}}]};
@@ -41,6 +42,9 @@ test('pinned transaction validates inventory/pages and commits once',async()=>{
  assert.equal(f.calls[0].sql,'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
  assert.equal(f.calls.at(-1).sql,'COMMIT');
  assert.equal(f.calls.some(x=>x.sql==='ROLLBACK'),false);
+ for(const setting of ['statement_timeout','lock_timeout','idle_in_transaction_session_timeout'])
+   assert(f.calls.some(x=>x.sql.startsWith('SET LOCAL '+setting)),
+     'Missing bounded private export DB resource guard: '+setting);
  assert.equal(f.calls.find(x=>x.sql.includes('page_review_candidate')).args.at(-1),25);
  assert.equal(f.released,true);
 });
@@ -54,7 +58,7 @@ test('foreign account/request, unreviewed table and injection blocked before dat
   await assert.rejects(scoped.readPage({ownerId:owner,requestId,
     collection:'public.v2_messages; DROP TABLE auth.users',cursor:null,limit:25}),/Invalid/);
  });
- assert.equal(f.calls.length,2);
+ assert.equal(f.calls.length,5);
  assert.equal(f.released,true);
 });
 test('page failure rolls back and never leaves snapshot open',async()=>{
