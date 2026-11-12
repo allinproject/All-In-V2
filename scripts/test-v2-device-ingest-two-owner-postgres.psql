@@ -1,0 +1,80 @@
+\set ON_ERROR_STOP on
+-- Disposable PostgreSQL 17 ONLY. No hosted credentials, no deployment.
+-- Reuse existing canonical scalar fixture (two athletes and real writer).
+\i /tmp/allin/scripts/test-v2-completed-scalar-metrics-postgres.psql
+-- Isolated Postgres does not ship Supabase auth.uid; emulate its claim lookup.
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
+ SELECT NULLIF(current_setting('request.jwt.claim.sub',true),'')::uuid
+$$;
+REVOKE ALL ON FUNCTION auth.uid() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION auth.uid() TO allin_v2_device_ingest;
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-PRIVATE-INGEST-GATEWAY-CANDIDATE.sql
+-- Confirm actual RLS is enabled on every protected canonical table.
+DO $audit$
+DECLARE t text;
+BEGIN
+ FOREACH t IN ARRAY ARRAY['v2_completed_activities','v2_activity_sources',
+ 'v2_activity_metric_values','v2_activity_metric_definitions'] LOOP
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid=('public.'||t)::regclass)
+  THEN RAISE EXCEPTION 'RLS disabled on %',t; END IF;
+ END LOOP;
+ IF has_function_privilege('authenticated',
+ 'allin_private.v2_device_ingest_scalar_gateway_candidate(text,text,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Authenticated client can invoke private gateway'; END IF;
+END $audit$;
+-- SET ROLE is only possible in this isolated superuser-driven test; production
+-- MUST NOT grant role membership to any API/client login.
+SET ROLE allin_v2_device_ingest;
+SET request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+DO $owner_a$
+DECLARE a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ ride uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ run uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ src uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ run_src uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ result jsonb;
+BEGIN
+ IF (SELECT count(*) FROM public.v2_completed_activities)<>1 THEN
+  RAISE EXCEPTION 'Owner A can see another athlete activity'; END IF;
+ IF (SELECT count(*) FROM public.v2_activity_sources)<>1 THEN
+  RAISE EXCEPTION 'Owner A can see another athlete source'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_device_ingest_scalar_gateway_candidate(
+   repeat('1',64),repeat('2',64),b,run,run_src,
+   'f1111111-1111-4111-8111-111111111111','run_distance_m',1,
+   'source_measured',42,NULL,NULL,repeat('b',64),'partial');
+  RAISE EXCEPTION 'Cross-owner gateway unexpectedly succeeded';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  INSERT INTO allin_private.v2_device_ingest_nonce_candidate(
+   nonce_hash,owner_id,activity_id,source_id,callback_hash)
+  VALUES(repeat('3',64),b,run,run_src,repeat('4',64));
+  RAISE EXCEPTION 'Cross-owner nonce inserted';
+ EXCEPTION WHEN insufficient_privilege OR check_violation THEN NULL; END;
+ result:=allin_private.v2_device_ingest_scalar_gateway_candidate(
+  repeat('5',64),repeat('6',64),a,ride,src,
+  'f2222222-2222-4222-8222-222222222222','cadence_rpm',1,
+  'source_measured',88,NULL,NULL,repeat('a',64),'partial');
+ IF result->>'replayed'<>'false' THEN RAISE EXCEPTION 'Owner A valid append failed'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_device_ingest_scalar_gateway_candidate(
+   repeat('5',64),repeat('6',64),a,ride,src,
+   'f3333333-3333-4333-8333-333333333333','cadence_rpm',1,
+   'source_measured',88,NULL,NULL,repeat('a',64),'partial');
+  RAISE EXCEPTION 'Duplicate nonce accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+END $owner_a$;
+RESET ROLE;
+SET ROLE allin_v2_device_ingest;
+SET request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';
+DO $owner_b$
+BEGIN
+ IF (SELECT count(*) FROM public.v2_completed_activities)<>1
+ OR (SELECT count(*) FROM public.v2_activity_sources)<>1 THEN
+  RAISE EXCEPTION 'Owner B isolation failed'; END IF;
+ IF EXISTS(SELECT 1 FROM public.v2_activity_metric_values WHERE metric_code='cadence_rpm')
+ THEN RAISE EXCEPTION 'Owner B read owner A measurement'; END IF;
+END $owner_b$;
+RESET ROLE;
+\echo 'PASS ALL-243 isolated two-owner RLS, gateway, nonce and client denial'
