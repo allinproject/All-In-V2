@@ -50,6 +50,9 @@ FROM pg_catalog.pg_roles WHERE rolname=current_user`);
       operatorRole[0].can_set_ingest!==true||
       !String(operatorRole[0].name).startsWith('allin_v2_ingest_operator'))
       throw Error('Dedicated least-privilege ingest operator required');
+    // This local RLS claim comes ONLY from a successful Auth.getUser result;
+    // it is not trusted as authentication by itself. It is transaction scoped.
+    await sql.unsafe("SELECT pg_catalog.set_config('request.jwt.claim.sub',$1,true)",[ownerId]);
     // Serialize with lifecycle trigger and canonical scalar writer. This is a
     // *transaction-scoped* advisory lock, not a connection/session lock.
     await sql.unsafe("SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('v2-metric:'||$1,0))",[ownerId]);
