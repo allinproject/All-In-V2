@@ -103,6 +103,15 @@ test('foreign or expired owner session is never confirmed',async()=>{
  assert.equal((await run(s)).status,'unauthorized');
  assert.equal(called,2);
 });
+test('transport errors remain unavailable; unauthorized HTTP remains authorization failure',async()=>{
+ const offline=services(undefined,{mutate:async()=>{throw Error('offline');}});
+ assert.equal((await run(offline)).status,'unavailable');
+ const denied=services(undefined,{mutate:async()=>({
+  data:null,error:{code:'42501'},status:403,
+ })});
+ assert.equal((await run(denied)).status,'unauthorized');
+});
+
 test('navigation invalidates in-flight write confirmation',async()=>{
  let active=true;
  const s=services(undefined,{mutate:async()=>{active=false;
