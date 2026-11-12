@@ -50,3 +50,10 @@ test('month view uses the whole selected month; week view remains a week only',(
  assert.equal(week.kind,'ready');
  if(week.kind==='ready')assert.deepEqual(week.sessions,[session]);
 });
+
+test('malformed calendar view and untrusted session values fail closed without throwing',()=>{
+ assert.deepEqual(prepareCoachCalendarContext({...base,view:'quarter' as 'week'}),{kind:'blocked',reason:'invalid_day'});
+ assert.deepEqual(prepareCoachCalendarContext({...base,sessions:[null] as unknown as typeof base.sessions}),{kind:'blocked',reason:'invalid_session'});
+ assert.deepEqual(prepareCoachCalendarContext({...base,sessions:[{...session,id:42}] as unknown as typeof base.sessions}),{kind:'blocked',reason:'invalid_session'});
+ assert.deepEqual(prepareCoachCalendarContext({...base,sessions:[{...session,planRevisionId:42}] as unknown as typeof base.sessions}),{kind:'blocked',reason:'invalid_session'});
+});
