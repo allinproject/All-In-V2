@@ -65,3 +65,15 @@ test('Recipes and Food Plan do not mutate an unconnected meal plan',()=>{
  assert.match(screen,/No shopping cart or purchase has been created/);
  assert.doesNotMatch(screen,/create.*Shopping|write.*Shopping|addShoppingItem/);
 });
+
+test('founder build configurations do not enable unaccepted Fuel read or write features',()=>{
+ const example=source('../../../.env.example');
+ const eas=JSON.parse(source('../../../eas.json'));
+ assert.match(example,/^EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED=false$/m);
+ assert.match(example,/^EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED=false$/m);
+ for(const profile of Object.values(eas.build??{})){
+  const env=profile?.env??{};
+  assert.notEqual(env.EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED,'true');
+  assert.notEqual(env.EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED,'true');
+ }
+});
