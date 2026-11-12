@@ -50,13 +50,19 @@ function nutrientValue(
   unit: string,
 ): number | null {
   for (const id of ids) {
-    const match = nutrients.find((entry: any) =>
+    const matches = nutrients.filter((entry: any) =>
       Number(entry?.nutrientId ?? entry?.nutrient?.id) === id &&
       String(entry?.unitName ?? entry?.nutrient?.unitName ?? '').toUpperCase() === unit
     );
-    if (!match) continue;
-    const value = nonnegative(match.value ?? match.amount);
-    if (value !== null) return value;
+    if (!matches.length) continue;
+    // Source records can contain multiple observations of the SAME nutrient
+    // and unit. Choosing the first makes nutrition depend on input ordering.
+    // Without an explicit reviewed aggregation policy, conflicting or invalid
+    // observations are unknown rather than a made-up single value.
+    const values = matches.map((entry: any) => nonnegative(entry.value ?? entry.amount));
+    if (values.some(value => value === null) ||
+        values.some(value => value !== values[0])) return null;
+    return values[0];
   }
   return null;
 }
