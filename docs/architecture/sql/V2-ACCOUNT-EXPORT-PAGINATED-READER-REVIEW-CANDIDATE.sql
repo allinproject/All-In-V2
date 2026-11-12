@@ -86,6 +86,31 @@ BEGIN
  IF pg_catalog.cardinality(v_missing)<>0 OR pg_catalog.cardinality(v_unknown)<>0
  THEN RAISE EXCEPTION 'Canonical owner tables changed: missing %, unknown %',
    v_missing,v_unknown USING ERRCODE='42501'; END IF;
+ -- Future owner data can use owner_id / athlete_id / actor_id rather
+ -- than user_id.  Reject unknown V2 relations before a supposedly complete
+ -- export silently skips Nutrition, Progress, equipment or Community posts.
+ -- The four canonical directional relationship ledgers are reviewed below.
+ IF EXISTS(
+   SELECT 1 FROM pg_catalog.pg_class c
+   JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+   JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+   WHERE n.nspname IN ('public','allin_private')
+     AND c.relkind IN ('r','p') AND c.relname LIKE 'v2_%'
+     AND a.attnum>0 AND NOT a.attisdropped
+     AND a.attname IN ('owner_id','athlete_id','actor_id','created_by_user_id')
+     AND NOT EXISTS(
+       SELECT 1 FROM pg_catalog.pg_attribute owned
+       WHERE owned.attrelid=c.oid AND owned.attname='user_id'
+         AND owned.attnum>0 AND NOT owned.attisdropped
+     )
+     AND NOT (
+       n.nspname='allin_private' AND c.relname=ANY(ARRAY[
+         'v2_community_pair_revisions','v2_community_follows',
+         'v2_community_blocks','v2_community_action_receipts'
+       ])
+     )
+ ) THEN RAISE EXCEPTION 'Unreviewed alternate-key owner table requires export coverage'
+      USING ERRCODE='42501'; END IF;
  IF EXISTS (
    SELECT 1 FROM (VALUES
     ('v2_community_pair_revisions'),('v2_community_follows'),
