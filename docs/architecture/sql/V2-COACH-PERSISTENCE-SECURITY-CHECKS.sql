@@ -29,6 +29,19 @@ BEGIN
          OR has_table_privilege('authenticated',v_rel,'DELETE')) THEN
       v_errors := array_append(v_errors, 'direct API access: ' || v_rel);
     END IF;
+    -- Existing V2 deletion preflight demands a DIRECT one-column owner FK
+    -- to auth.users ON DELETE CASCADE, not merely transitive thread deletion.
+    IF to_regclass(v_rel) IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM pg_catalog.pg_constraint fk
+      JOIN pg_catalog.pg_attribute a ON a.attrelid=fk.conrelid
+        AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
+      WHERE fk.conrelid=to_regclass(v_rel)
+        AND fk.confrelid='auth.users'::regclass
+        AND fk.contype='f' AND fk.confdeltype='c'
+        AND fk.conkey=ARRAY[a.attnum]::smallint[]
+    ) THEN
+      v_errors:=array_append(v_errors,'missing direct owner Auth CASCADE FK: '||v_rel);
+    END IF;
   END LOOP;
 
   FOREACH v_fn IN ARRAY ARRAY[
