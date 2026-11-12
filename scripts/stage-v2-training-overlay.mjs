@@ -9,13 +9,27 @@ import {fileURLToPath} from 'node:url';
 export function stripCandidateTransactionWrappers(sql,fileName) {
   const lines=sql.split('\n');
   let depth=0,removed=0;
+  let dollarQuote=null;
   const output=[];
   for (const line of lines) {
-    const directive=line.match(/^\s*(BEGIN|COMMIT|ROLLBACK)(?:\s+(?:WORK|TRANSACTION))?\s*;\s*(?:--.*)?$/i);
-    if(!directive){output.push(line);continue;}
+    // File-level transactions must be removed; PL/pgSQL BEGIN inside a
+    // dollar-quoted function body is executable code and must be preserved.
+    const directive=dollarQuote===null
+      ? line.match(/^\s*(BEGIN|COMMIT|ROLLBACK)(?:\s+(?:WORK|TRANSACTION))?\s*;\s*(?:--.*)?$/i)
+      : null;
+    if(!directive){
+      output.push(line);
+      if(!/^\s*--/.test(line)){
+        for(const match of line.matchAll(/\$[A-Za-z_][A-Za-z_0-9]*\$|\$\$/g)){
+          if(dollarQuote===null)dollarQuote=match[0];
+          else if(dollarQuote===match[0])dollarQuote=null;
+        }
+      }
+      continue;
+    }
     const kind=directive[1].toUpperCase();
     if(kind==='ROLLBACK')throw new Error(fileName+': unexpected internal ROLLBACK');
-    if(kind==='BEGIN') {
+    if(kind==='BEGIN'){
       if(depth!==0)throw new Error(fileName+': nested top-level transaction');
       depth=1;
     }else{
@@ -25,6 +39,7 @@ export function stripCandidateTransactionWrappers(sql,fileName) {
     removed++;
     output.push('-- local overlay stripped file-level '+kind+' (atomic outer transaction)');
   }
+  if(dollarQuote!==null)throw new Error(fileName+': unterminated dollar-quoted SQL body');
   if(depth!==0)throw new Error(fileName+': unclosed file-level transaction');
   return {sql:output.join('\n'),removed};
 }
