@@ -8,7 +8,7 @@ import type {CompletedActivityScreenInput} from './completedActivityScreenModel.
 import type {MetricEvidence,StructuredEvidence,StructuredKind} from './completedActivityDetailProjection.ts';
 
 export type CanonicalMetricDefinition={
- code:string;version:number;displayName:string;canonicalUnit:string|null;
+ code:string;version:number;displayName:string;canonicalUnit:string;
  sportScope:readonly string[];
  measurementKinds:readonly ('source_measured'|'provider_derived'|'user_reported'|'allin_derived'|'estimated')[];
 };
@@ -93,7 +93,8 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
  if(!primary||primary.quality==='rejected')throw new Error('Canonical activity source is unavailable.');
  const definitions=new Map<string,CanonicalMetricDefinition>();
  for(const def of raw.definitions){
-  if(!code(def.code)||!Number.isSafeInteger(def.version)||def.version<1||!text(def.displayName,120)||
+  if(!code(def.code)||!Number.isSafeInteger(def.version)||def.version<1||
+   !text(def.displayName,120)||!text(def.canonicalUnit,50)||
    !Array.isArray(def.sportScope)||!def.sportScope.length||def.sportScope.length>20||
    !def.sportScope.every(isCanonicalActivitySport)||
    !Array.isArray(def.measurementKinds)||!def.measurementKinds.length||
@@ -127,7 +128,7 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
   metrics.push({key:m.code,label:definition.displayName,value:m.displayValue,
    source:source.provider,provenance:evidenceKind(m.measurementKind),
    quality:m.quality,sourceQuality:source.quality,
-   ...(definition.canonicalUnit?{unit:definition.canonicalUnit}:{})});
+   unit:definition.canonicalUnit});
  }
  const sections:StructuredEvidence[]=[];
  for(const section of raw.sections??[]){
