@@ -173,3 +173,24 @@ privacy state, retention), exhaustive owner bucket listing, verified private
 byte pages and two-owner/third-party denial tests. An unknown or public
 bucket must still block ALL-251. Never invent a placeholder photo table,
 create a second export system, or set `complete=true` to pass tests.
+
+## Step-3 review-only owner-post pagination projection — 2026-11-12
+
+The existing canonical paginated SQL reader now contains an explicit
+`community.my_posts` **owner-only candidate projection** from
+`allin_private.v2_community_posts`: id, owner, kind, audience, title,
+body, source_id, post_version and publication/update timestamps. Its SQL
+filters `WHERE p.owner_id=$1` before returning any row and orders by
+publication timestamp and post ID for stable page boundaries within the
+existing pinned repeatable-read snapshot.
+
+**This is not an enabled export collection.** The inventory still excludes
+`community.my_posts`; the page function rejects any collection absent
+from the inventory, and the client-side scoped reader also has a restricted
+collection name allowlist. The underlying Community post table remains a
+review-only, undeployed source. The reviewed catalog continues reporting
+`complete=false`. No photo/media fields, incoming blocks, pair-CAS
+revisions, public-feed visibility, or other athletes' content are exported.
+Activating this projection requires a coordinated owner schema/migration,
+per-source privacy/retention and media acceptance, and two-owner SQL tests;
+only then can the canonical inventory and scoped reader be extended together.
