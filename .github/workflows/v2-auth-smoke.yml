@@ -194,6 +194,8 @@ jobs:
           node-version: '22.16.0'
       - name: Run subscription entitlement contract tests
         run: npm run test:subscriptions
+      - name: Attest exact review-only billing SQL and service-role source digests
+        run: node ../../scripts/attest-v2-billing-release-sources.mjs
 
   community-postgres-candidate:
     name: PostgreSQL 17 isolated Community, subscription and Coach replays
