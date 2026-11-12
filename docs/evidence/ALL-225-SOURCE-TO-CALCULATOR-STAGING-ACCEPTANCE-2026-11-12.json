@@ -1,0 +1,74 @@
+{
+  "scope": "ALL-225 + ALL-228 review-stage contract, isolated staging fixtures, no database",
+  "status": "passed_isolated_native_node_contract_tests_not_live_writer_or_staging_db",
+  "runtime": "Node.js 26 hosted isolated runtime; native Node --experimental-strip-types test runner",
+  "testedOn": "2026-11-12",
+  "repository": "allinproject/All-In-V2",
+  "branch": "integration/v2-foundation",
+  "sourceInputs": [
+    "docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json",
+    "docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json",
+    "docs/evidence/ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json"
+  ],
+  "contractFiles": [
+    "scripts/check-v2-usda-nutrient-policy.cjs",
+    "scripts/review-v2-ingredient-identities.cjs",
+    "scripts/review-v2-usda-source-admission.cjs"
+  ],
+  "realRuntimeFiles": [
+    "apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts",
+    "apps/mobile-v2/src/features/cookbook/recipeNutritionCalculator.ts"
+  ],
+  "testFiles": [
+    "scripts/check-v2-usda-nutrient-policy.test.cjs",
+    "scripts/review-v2-ingredient-identities.test.cjs",
+    "scripts/review-v2-usda-source-admission.test.cjs"
+  ],
+  "tests": {
+    "total": 31,
+    "passed": 31,
+    "failed": 0,
+    "sourcePolicy": 7,
+    "identityReview": 19,
+    "stagingIntegration": 5
+  },
+  "observations": [
+    {
+      "path": "all eight source summaries -> versioned energy and nutrient validation -> founder-approved alias/form/source binding review",
+      "result": "review_stage_complete for all eight, zero issues, all profile states remain needs_review; no writer permission"
+    },
+    {
+      "path": "source evidence tampered / energy method changed / FDC ID changed / alias state changed",
+      "result": "review_required, fail closed"
+    },
+    {
+      "path": "existing localIngredientProfiles.ts -> actual recipeNutritionCalculator.ts, using real review-only result",
+      "result": "insufficient_evidence and local_ingredient_review_required; no validated macros"
+    },
+    {
+      "path": "hypothetical isolated TEST-ONLY profile marked calculation_ready after a simulated future approved writer",
+      "result": "150 g source black beans (115 kcal/100g), 2 servings -> 86.25 kcal, 5.183 g protein, 14.85 g carbs, 0.953 g fat per serving; this is arithmetic verification, not a released profile"
+    },
+    {
+      "path": "broad kidney-beans search and mismatched state",
+      "result": "not automatically resolved to a different food form"
+    }
+  ],
+  "invariants": {
+    "canonicalIdentityIdAssignment": false,
+    "sourceImport": false,
+    "actualReviewerAuthorization": false,
+    "liveWriterTransaction": false,
+    "stagingDatabaseExecution": false,
+    "realSupabaseRlsValidation": false,
+    "productionDeployment": false,
+    "publication": false,
+    "allEightCalculationReady": false
+  },
+  "nextGates": [
+    "approved ALL-222 writer/RLS and reviewer identity/credentials",
+    "controlled source admission to transactional writer only after reviewed provenance/version checks",
+    "real populated staging PostgreSQL schema/data with authenticated acceptance and denial tests",
+    "correct mobile device and recipe integration acceptance"
+  ]
+}
