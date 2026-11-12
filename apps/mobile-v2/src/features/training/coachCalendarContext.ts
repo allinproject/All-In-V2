@@ -108,15 +108,15 @@ export function prepareCoachSeasonContext(input:{
     !Array.isArray(phases.annotations)||!Array.isArray(phases.issues)||
     !draft.events.length||draft.events.length>20||
     draft.issues.length>100||phases.issues.length>100||phases.annotations.length>400||
+    new Set(draft.events.map(event=>event?.id)).size!==draft.events.length||
+    draft.events.some(event=>!event||!event.id?.trim()||!event.name?.trim()||event.name.length>160||
+      !event.sport?.trim()||event.sport.length>70||
+      !validAthleteLocalDate(event.date)||!['A','B','C'].includes(event.priority))||
     [...draft.issues,...phases.issues].some(issue=>!issue||
       typeof issue.code!=='string'||!issue.code.trim()||issue.code.length>100||
       typeof issue.message!=='string'||issue.message.length>500||
       !Array.isArray(issue.eventIds)||issue.eventIds.length>20||
       issue.eventIds.some(id=>typeof id!=='string'||!draft.events.some(e=>e.id===id)))||
-    new Set(draft.events.map(event=>event?.id)).size!==draft.events.length||
-    draft.events.some(event=>!event||!event.id?.trim()||!event.name?.trim()||event.name.length>160||
-      !event.sport?.trim()||event.sport.length>70||
-      !validAthleteLocalDate(event.date)||!['A','B','C'].includes(event.priority))||
     phases.annotations.some(a=>!a||!validAthleteLocalDate(a.date)||
       !draft.events.some(e=>e.id===a.eventId))||
     input.preview.canWriteAcceptedPlan!==false)
