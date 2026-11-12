@@ -89,3 +89,12 @@ test("an input whose worst-case cost exceeds the reserved cap never reaches prov
  await assert.rejects(()=>invoke({...args,userContent:"x".repeat(12000)}),/unconfirmed/);
  assert.equal(x.calls(),0);
 });
+
+test("local provider preflight rejects over-budget prompts before network or reservation",()=>{
+ const x=setup(),transport=createCoachOpenAiResponsesTransport(x.options);
+ const ok=transport.preflight(args);
+ assert.ok(ok.worstCostUsd>0&&ok.worstCostUsd<0.005);
+ assert.match(ok.fullInstructions,/lying leg curl/);
+ assert.throws(()=>transport.preflight({...args,userContent:"x".repeat(12000)}),/unconfirmed/);
+ assert.equal(x.calls(),0);
+});
