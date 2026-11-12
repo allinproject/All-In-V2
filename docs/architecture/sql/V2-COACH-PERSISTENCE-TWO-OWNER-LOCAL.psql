@@ -139,13 +139,13 @@ BEGIN
   END;
   BEGIN
     PERFORM * FROM public.v2_coach_read_messages(
-      (SELECT thread_id FROM _coach_a_thread));
+      NULL);
     RAISE EXCEPTION 'anon unexpectedly read Coach messages';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
   BEGIN
     PERFORM public.v2_coach_append_user_message(
-      (SELECT thread_id FROM _coach_a_thread),
+      NULL,
       'b2222222-4444-4444-8444-222222222222', 'Anonymous message');
     RAISE EXCEPTION 'anon unexpectedly appended a Coach message';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
