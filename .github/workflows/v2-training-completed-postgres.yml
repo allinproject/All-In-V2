@@ -149,7 +149,9 @@ jobs:
       - uses: supabase/setup-cli@v3
         if: steps.scope.outputs.run == 'true'
         with:
-          version: latest
+          # The local replay uses the v2 service/container contract.
+          # Supabase CLI latest became v3 on 2026-11-02.
+          version: v2.stable
       - name: Apply historical migrations to disposable LOCAL Supabase Postgres
         if: steps.scope.outputs.run == 'true'
         env:
