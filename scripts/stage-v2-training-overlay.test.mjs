@@ -10,6 +10,50 @@ test('strips only standalone top-level transaction wrappers',()=>{
  assert.match(result.sql,/DO \$\$ BEGIN RAISE NOTICE/);
  assert.doesNotMatch(result.sql,/^BEGIN;|^COMMIT;/m);
 });
+test('preserves standalone PL/pgSQL BEGIN inside named and unnamed dollar quotes',()=>{
+ const sql=[
+  'BEGIN;',
+  'CREATE FUNCTION public.example() RETURNS void LANGUAGE plpgsql AS $fn
+ assert.throws(()=>stripCandidateTransactionWrappers('COMMIT;','bad.sql'),/COMMIT without/);
+ assert.throws(()=>stripCandidateTransactionWrappers('BEGIN;\nBEGIN;\nCOMMIT;','bad.sql'),/nested/);
+ assert.throws(()=>stripCandidateTransactionWrappers('BEGIN;','bad.sql'),/unclosed/);
+ assert.throws(()=>stripCandidateTransactionWrappers('ROLLBACK;','bad.sql'),/unexpected internal ROLLBACK/);
+});
+test('stages the actual ordered SQL inputs once, no duplicate or lost definitions',()=>{
+ const names=Array.from({length:30},(_,i)=>'candidate'+i+'.sql');
+ const overlay=names.map(x=>'\\i /tmp/allin/docs/architecture/sql/'+x).join('\n');
+ const staged=new Map();
+ const result=stageOverlay(overlay,()=> 'BEGIN;\nCREATE TABLE some_table(id integer);\nCOMMIT;',
+   (name,sql)=>staged.set(name,sql));
+ assert.deepEqual(result,{files:30,removed:60});
+ assert.equal(staged.size,30);
+ assert.ok([...staged.values()].every(sql=>sql.includes('CREATE TABLE some_table')));
+ assert.throws(()=>stageOverlay(overlay+'\n\\i /tmp/allin/docs/architecture/sql/candidate0.sql',
+   ()=>'',()=>{}),/unique ordered/);
+});
+,
+  'BEGIN;',
+  "  RAISE NOTICE 'executing';",
+  'END;',
+  '$fn$;',
+  'DO $',
+  'BEGIN;',
+  " RAISE NOTICE 'DO body';",
+  'END;',
+  '$;',
+  'COMMIT;',
+ ].join('\n');
+ const result=stripCandidateTransactionWrappers(sql,'funcs.sql');
+ assert.equal(result.removed,2);
+ assert.equal((result.sql.match(/^BEGIN;$/gm)||[]).length,2);
+ assert.match(result.sql,/AS \$fn\$\nBEGIN;/);
+ assert.match(result.sql,/DO \$\$\nBEGIN;/);
+});
+test('fails closed on unterminated dollar-quoted bodies',()=>{
+ assert.throws(
+   ()=>stripCandidateTransactionWrappers('BEGIN;\nDO $body$\nBEGIN;\nCOMMIT;','broken.sql'),
+   /unterminated dollar-quoted/);
+});
 test('rejects orphan COMMIT, nested BEGIN, and an unmatched BEGIN',()=>{
  assert.throws(()=>stripCandidateTransactionWrappers('COMMIT;','bad.sql'),/COMMIT without/);
  assert.throws(()=>stripCandidateTransactionWrappers('BEGIN;\nBEGIN;\nCOMMIT;','bad.sql'),/nested/);
