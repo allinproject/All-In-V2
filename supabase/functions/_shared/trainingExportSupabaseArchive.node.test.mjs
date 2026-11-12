@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createSupabasePrivateArchivePersistence,PRIVATE_ACCOUNT_EXPORT_BUCKET}
+import {createSupabasePrivateArchivePersistence,purgeExpiredAccountExportArchives,PRIVATE_ACCOUNT_EXPORT_BUCKET}
  from './trainingExportSupabaseArchive.mjs';
 const owner='11111111-1111-4111-8111-111111111111';
 const requestId='22222222-2222-4222-8222-222222222222';
@@ -100,4 +100,49 @@ test('unconfirmed purge fails closed; malformed owner IDs do not reach Storage',
  const f2=fixture();
  await assert.rejects(f2.adapter.deletePrivateRequest({ownerId:'invalid',requestId}),/Exact/);
  assert.equal(f2.events.length,0);
+});
+
+test('retention sweeper deletes only expired or cancelled leases through existing owner-bound Storage cleanup',async()=>{
+ const f=fixture();const events=[];
+ const expired=new Date(Date.now()-60000).toISOString();
+ const result=await purgeExpiredAccountExportArchives({
+  listPurgeCandidates:async()=>[{ownerId:owner,requestId,status:'expired',expiresAt:expired}],
+  deletePrivateRequest:f.adapter.deletePrivateRequest,
+  recordPurgeReceipt:async input=>{events.push(input);return {...input,purged:true};},
+ });
+ assert.equal(result.purgedCount,1);
+ assert.deepEqual(f.events.find(x=>x[0]==='remove')[1],[path]);
+ assert.equal(events[0].ownerId,owner);
+});
+test('retention preflights all candidates before touching Storage',async()=>{
+ for(const rows of [
+  [{ownerId:owner,requestId,status:'approved',expiresAt:new Date(Date.now()+3600000).toISOString()}],
+  [{ownerId:owner,requestId,status:'expired',expiresAt:new Date(Date.now()-1000).toISOString()},
+   {ownerId:owner,requestId,status:'expired',expiresAt:new Date(Date.now()-1000).toISOString()}],
+  [{ownerId:'someone-else',requestId,status:'expired',expiresAt:new Date(Date.now()-1000).toISOString()}],
+ ]) {
+  const f=fixture();
+  await assert.rejects(purgeExpiredAccountExportArchives({
+   listPurgeCandidates:async()=>rows,
+   deletePrivateRequest:f.adapter.deletePrivateRequest,
+   recordPurgeReceipt:async input=>({...input,purged:true}),
+  }),/Unapproved/);
+  assert.equal(f.events.length,0);
+ }
+});
+test('ambiguous archive removal or missing audit receipt never signals successful retention',async()=>{
+ const expired=new Date(Date.now()-60000).toISOString();
+ const candidates=async()=>[{ownerId:owner,requestId,status:'expired',expiresAt:expired}];
+ const f=fixture({badRemoval:true});
+ await assert.rejects(purgeExpiredAccountExportArchives({
+  listPurgeCandidates:candidates,
+  deletePrivateRequest:f.adapter.deletePrivateRequest,
+  recordPurgeReceipt:async input=>({...input,purged:true}),
+ }),/not confirmed/);
+ const good=fixture();
+ await assert.rejects(purgeExpiredAccountExportArchives({
+  listPurgeCandidates:candidates,
+  deletePrivateRequest:good.adapter.deletePrivateRequest,
+  recordPurgeReceipt:async()=>null,
+ }),/manual reconciliation/);
 });

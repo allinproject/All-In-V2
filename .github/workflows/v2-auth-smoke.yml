@@ -159,6 +159,15 @@ jobs:
         run: node --test ../../scripts/prepare-v2-usda-foundation-snapshot.test.mjs
       - name: Test USDA archive manifest verification
         run: node --test ../../scripts/verify-v2-usda-foundation-manifest.test.mjs
+      - name: Validate private account-export Storage and retention adapters
+        run: |
+          node --test ../../supabase/functions/_shared/trainingExportSupabaseArchive.node.test.mjs
+          node --test ../../scripts/v2-training-account-export-worker-candidate.test.mjs
+          node --test ../../scripts/v2-training-export-archive-writer.test.mjs
+          node --test ../../supabase/functions/_shared/trainingExportSupabaseStorage.node.test.mjs
+          node --test ../../scripts/v2-training-private-storage-stage.test.mjs
+          node --test ../../scripts/v2-training-storage-export-integrity.test.mjs
+          node --test ../../scripts/v2-training-encrypted-export-envelope.test.mjs
       - name: Run staged Goal approval authentication tests
         run: node --test ../../supabase/functions/_shared/goalAcceptanceAuthServices.node.test.mjs
       - name: Run Auth tests
