@@ -33,7 +33,7 @@ type Context=Readonly<{
   android?:{productId:string;basePlanId:string;obfuscatedAccountId:string};
 }>;
 const uuid=(v:string)=>typeof v==='string'&&
-  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
 const hex64=(v:string)=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const evidenceKey=(e:NativePurchaseEvidence)=>e.platform+':'+
   (e.platform==='ios'?e.signedTransaction:e.purchaseToken);
