@@ -72,7 +72,7 @@ CREATE OR REPLACE FUNCTION allin_private.v2_ingredient_review_profile(
  p_energy_policy_version text, p_nutrient_set_version text,
  p_action text
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path=pg_catalog, public, allin_private
+SET search_path=pg_catalog
 AS $$
 DECLARE
  v_capability text;
