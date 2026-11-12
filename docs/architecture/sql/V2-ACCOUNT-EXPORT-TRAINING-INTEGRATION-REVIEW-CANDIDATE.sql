@@ -1,5 +1,5 @@
--- ALL-251 / ALL-243 REVIEW ONLY: existing account-export RPC with
--- the Training/Activity owner fragment integrated. NOT A MIGRATION.
+-- ALL-251 / ALL-243 / ALL-222 REVIEW ONLY: existing account-export RPC with
+-- the Training/Activity and Coach owner data integrated. NOT A MIGRATION.
 -- Requires owner-approved new Training tables, private fragment and
 -- replacement mobile snapshot schema handling BEFORE any release.
 -- Generated from current canonical ALL-251 function, not a new API.
@@ -28,7 +28,8 @@ begin
    where n.nspname in ('public','allin_private') and c.relkind in ('r','p')
      and not (
        (n.nspname='public' and c.relname=any(array[
-         'v2_profiles','v2_profile_settings','v2_onboarding_progress','v2_legal_acceptances'
+         'v2_profiles','v2_profile_settings','v2_onboarding_progress','v2_legal_acceptances',
+         'v2_coach_threads','v2_coach_messages'
        ]))
        or (n.nspname='allin_private' and c.relname=any(array[
          'v2_health_considerations','v2_profile_settings_actions','v2_onboarding_actions',
@@ -45,6 +46,7 @@ begin
        ]))
        or (n.nspname='allin_private' and c.relname=any(array[
          'v2_training_action_receipts','v2_training_completion_outbox',
+         'v2_coach_message_actions',
          'v2_training_plan_accept_receipts','v2_account_export_requests_candidate'
        ]))
      )
@@ -70,7 +72,18 @@ begin
      from allin_private.v2_onboarding_actions a where a.user_id=v_user),'[]'::jsonb),
    'deletion_request',(select to_jsonb(d) from allin_private.v2_account_deletion_requests d where d.user_id=v_user),
    'deletion_execution',(select to_jsonb(d) from allin_private.v2_account_deletion_execution_audit d where d.user_id=v_user),
-   'training_activity',allin_private.v2_training_account_export_fragment_candidate(v_user)
+   'training_activity',allin_private.v2_training_account_export_fragment_candidate(v_user),
+   -- Coach identity/contents/receipts remain part of the SAME owner export.
+   -- Never include another user's messages, even if a thread UUID is known.
+   'coach_conversation',pg_catalog.jsonb_build_object(
+     'schema_version','v2-coach-account-fragment-candidate-v1',
+     'threads',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(t) order by t.created_at,t.id)
+       from public.v2_coach_threads t where t.user_id=v_user),'[]'::jsonb),
+     'messages',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(m) order by m.created_at,m.id)
+       from public.v2_coach_messages m where m.user_id=v_user),'[]'::jsonb),
+     'message_actions',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(a) order by a.created_at,a.client_action_id)
+       from allin_private.v2_coach_message_actions a where a.user_id=v_user),'[]'::jsonb)
+   )
  ) into v_export;
  if pg_catalog.octet_length(v_export::text) > 5000000 then
    raise exception 'Account snapshot exceeds inline limit; secure export required' using errcode='54000';
@@ -81,4 +94,4 @@ revoke all on function public.v2_export_my_account_snapshot(uuid)
  from public,anon,authenticated,service_role;
 grant execute on function public.v2_export_my_account_snapshot(uuid) to authenticated;
 comment on function public.v2_export_my_account_snapshot(uuid) is
- 'Owner-only V2 current-schema snapshot v2 candidate including Training and Activity records; not live or file export. Fails closed for missing tables and Storage.';
+ 'Owner-only V2 current-schema snapshot v2 candidate including Training, Activity and Coach conversation records; not live or file export. Fails closed for missing tables and Storage.';
