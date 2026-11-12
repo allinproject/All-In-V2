@@ -118,3 +118,19 @@ test('rejects an unexpected source selector metadata blob',()=>{
     selector_key:'wrapper',source_active:false,metadata:{some_unreviewed_authoring:true}},seen(),errors);
   assert(errors.some(e=>e.includes('unexpected top-level field metadata')));
 });
+
+test('rejects an empty required dataset even with syntactically valid JSONL files',async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'all218-empty-'));
+  try {
+    const inputs={recipes:[recipe()],selectors:[],options:[],mappings:[]};
+    const paths=Object.fromEntries(Object.entries(inputs).map(([k,values])=>{
+      const p=path.join(dir,k+'.ndjson');
+      fs.writeFileSync(p,values.map(JSON.stringify).join('\n')+'\n');
+      return [k,p];
+    }));
+    const result=await validate(paths);
+    assert.equal(result.ok,false);
+    assert.equal(result.publicationApproved,false);
+    assert(result.errors.some(e=>e.includes('empty dataset')));
+  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});
