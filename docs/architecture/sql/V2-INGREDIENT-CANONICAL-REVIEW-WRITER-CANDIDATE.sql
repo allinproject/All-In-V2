@@ -116,6 +116,7 @@ BEGIN
          AND o.credential_vault_reference IS NOT NULL
          AND o.credential_expires_at > clock_timestamp()
          AND o.revoked_at IS NULL
+       FOR SHARE OF o
      ) THEN
     RAISE EXCEPTION 'unauthorized ingredient reviewer'
       USING ERRCODE='42501';
