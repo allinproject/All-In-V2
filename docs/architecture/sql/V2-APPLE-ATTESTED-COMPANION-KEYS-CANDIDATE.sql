@@ -138,3 +138,10 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_appattest_enroll_verified_key_candida
 -- insert Apple trust records. The enroller role is deliberately NOLOGIN.
 -- Operational activation requires independent Apple receipt verification,
 -- secure enroller credential/role deployment, and explicit owner approval.
+
+-- Trusted server operator can SET but not inherit enrollment capabilities.
+-- Credentials must never be provisioned to an app or generic Edge role.
+CREATE ROLE allin_v2_appattest_enrollment_operator LOGIN NOINHERIT NOBYPASSRLS;
+GRANT allin_v2_appattest_enroller TO allin_v2_appattest_enrollment_operator
+ WITH INHERIT FALSE, SET TRUE, ADMIN FALSE;
+-- No password or network grants created in review-only candidate.
