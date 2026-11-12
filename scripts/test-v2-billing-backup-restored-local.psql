@@ -60,6 +60,24 @@ BEGIN
  IF r<>'duplicate' THEN
    RAISE EXCEPTION 'Restored immutable event not idempotent: %',r;
  END IF;
+ -- A new event after restore must allocate a fresh identity and revision.
+ -- This catches a custom-format backup that restores rows but loses the
+ -- private receipt sequence's monotonic setval state.
+ SELECT public.v2_billing_commit_verified_native(
+  '88888888-8888-4888-8888-888888888888','google_play','sandbox',
+  'sha256:restore_backup_google_B','restore_backup_post_restore_renewal_B',
+  'paid','2027-12-31 UTC') INTO r;
+ IF r<>'committed' THEN
+   RAISE EXCEPTION 'Restored receipt sequence cannot accept a renewal: %',r;
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
+      WHERE owner_id='88888888-8888-4888-8888-888888888888'
+        AND provider_subscription_id='sha256:restore_backup_google_B'
+        AND revision=2 AND phase='paid'
+        AND access_until='2027-12-31 UTC'::timestamptz) OR
+    (SELECT count(*) FROM allin_private.v2_subscription_verified_events)<>5 THEN
+   RAISE EXCEPTION 'Post-restore new event damaged monotonic receipt history';
+ END IF;
  BEGIN
   PERFORM public.v2_billing_commit_verified_native(
    '88888888-8888-4888-8888-888888888888','app_store','sandbox',
