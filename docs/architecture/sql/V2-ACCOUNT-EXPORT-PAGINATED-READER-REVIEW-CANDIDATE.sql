@@ -284,6 +284,17 @@ BEGIN
     'WHERE t.%I=$1 ORDER BY pg_catalog.to_jsonb(t)::text LIMIT $2 OFFSET $3',
     v_schema,v_table,v_column);
   END IF;
+ ELSIF p_collection='allin_private.v2_account_export_requests_candidate' THEN
+  -- An export is a user-facing data portability artifact. The internal
+  -- Auth session ID must never be serialized from the worker request ledger.
+  -- Preserve owner and request provenance while redacting bearer-linked
+  -- operational state. This table is still counted by the owner inventory.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''user_id'',t.user_id,''request_id'',t.request_id,'||
+    '''status'',t.status,''requested_at'',t.requested_at,'||
+    '''updated_at'',t.updated_at,''expires_at'',t.expires_at) '||
+    'FROM allin_private.v2_account_export_requests_candidate t '||
+    'WHERE t.user_id=$1 ORDER BY t.requested_at,t.request_id LIMIT $2 OFFSET $3';
  ELSE
   v_schema:=pg_catalog.split_part(p_collection,'.',1);
   v_table:=pg_catalog.split_part(p_collection,'.',2);
