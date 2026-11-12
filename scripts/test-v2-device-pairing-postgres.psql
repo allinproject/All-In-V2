@@ -71,10 +71,8 @@ BEGIN
   RAISE EXCEPTION 'Replay accepted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  IF (SELECT count(*) FROM allin_private.v2_device_registrations_candidate
-  WHERE device_ref='new-watch-001' AND revoked_at IS NULL)<>1 OR
-  (SELECT count(*) FROM allin_private.v2_device_pairing_audit_candidate
-  WHERE event_type='paired')<>1 THEN
-  RAISE EXCEPTION 'Pair/audit record missing'; END IF;
+  WHERE device_ref='new-watch-001' AND revoked_at IS NULL)<>1 THEN
+  RAISE EXCEPTION 'Paired registration missing'; END IF;
  RAISE NOTICE 'PASS ALL-243 server-only pairing and challenge one-time-use';
 END $pair$;
 DO $revoke$
@@ -102,11 +100,19 @@ BEGIN
   'aaaaaaaa-8888-4888-8888-888888888888');
  IF answer<>'already_revoked' THEN RAISE EXCEPTION 'Revocation replay mismatch'; END IF;
  IF EXISTS(SELECT 1 FROM allin_private.v2_device_registrations_candidate
-  WHERE device_ref='new-watch-001' AND revoked_at IS NULL) OR
-  (SELECT count(*) FROM allin_private.v2_device_pairing_audit_candidate
-  WHERE event_type='revoked')<>1 THEN
-  RAISE EXCEPTION 'Revocation/audit mismatch'; END IF;
+  WHERE device_ref='new-watch-001' AND revoked_at IS NULL) THEN
+  RAISE EXCEPTION 'Revocation mismatch'; END IF;
  RAISE NOTICE 'PASS ALL-243 revoke, audit, idempotence and cross-owner denial';
 END $revoke$;
 RESET ROLE;
+DO $privileged_audit$
+BEGIN
+ IF (SELECT count(*) FROM allin_private.v2_device_pairing_audit_candidate
+  WHERE event_type='paired')<>1 OR
+ (SELECT count(*) FROM allin_private.v2_device_pairing_audit_candidate
+  WHERE event_type='revoked')<>1 THEN
+  RAISE EXCEPTION 'Trusted pairing audit is incomplete';
+ END IF;
+ RAISE NOTICE 'PASS ALL-243 append-only server pairing audit';
+END $privileged_audit$;
 \echo 'PASS ALL-243 device pairing, revocation, client denial and audit'
