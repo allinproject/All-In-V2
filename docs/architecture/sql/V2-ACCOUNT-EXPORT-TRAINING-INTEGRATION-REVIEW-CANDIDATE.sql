@@ -62,6 +62,31 @@ begin
    raise exception 'New personal data tables require export coverage' using errcode='42501';
  end if;
 
+ -- An unknown V2 domain can own personal records without a user_id.
+ -- Mirror the paginated registry's alternate-key safety rule. Never treat
+ -- future Nutrition, Progress, gear or Community posts as nonpersonal by name.
+ IF EXISTS(
+   SELECT 1 FROM pg_catalog.pg_class c
+   JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+   JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+   WHERE n.nspname IN ('public','allin_private')
+     AND c.relkind IN ('r','p') AND c.relname LIKE 'v2_%'
+     AND a.attnum>0 AND NOT a.attisdropped
+     AND a.attname IN ('owner_id','athlete_id','actor_id','created_by_user_id')
+     AND NOT EXISTS(
+       SELECT 1 FROM pg_catalog.pg_attribute owned
+       WHERE owned.attrelid=c.oid AND owned.attname='user_id'
+         AND owned.attnum>0 AND NOT owned.attisdropped
+     )
+     AND NOT (
+       n.nspname='allin_private' AND c.relname=ANY(ARRAY[
+         'v2_community_pair_revisions','v2_community_follows',
+         'v2_community_blocks','v2_community_action_receipts'
+       ])
+     )
+ ) THEN RAISE EXCEPTION 'Unreviewed alternate-key owner table requires export coverage'
+      USING ERRCODE='42501'; END IF;
+
  -- Only include this domain when its FULL reviewed candidate graph exists.
  -- Missing half a domain is not an empty export: reject it.
  if exists(select 1 from (values
