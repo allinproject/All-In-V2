@@ -17,6 +17,31 @@ Existing source modules `eventHubUrlIntent.ts`, `eventHubMembershipLifecycle.ts`
 
 The corresponding rollback-only, two-athlete local Supabase checks are `scripts/test-v2-eventhub-local-postgres.psql` and `scripts/test-v2-eventhub-owner-reader-local-postgres.psql`. They run in the **existing** `.github/workflows/v2-foundation-clean-replay.yml` after real V2 foundation/Goals candidate SQL and before unrelated Coach/billing candidate checks.
 
+## Explicit reviewed membership mutation proposal
+
+`docs/architecture/sql/V2-EVENTHUB-MEMBERSHIP-WRITER-CANDIDATE.sql`
+extends only the **same** `v2_event_group_memberships` owner with a
+private, versioned and idempotent SQL action boundary. It requires a
+live owner-bound Auth session; the action ID and exact
+`userId/eventId/groupId`; current expected membership version; and
+a separately reviewed URL alias for **join**. The other actions are
+explicit leave, show participation, or hide participation.
+`allin_private.v2_event_group_actions` retains exact retry receipts
+while the account exists. Conflicting reused action IDs and stale
+versions fail closed. Joining defaults to participation **hidden**,
+does not create `v2_event_participations`, and does not publish a
+Community workout. Leaving always hides membership visibility.
+
+The review-only rollback replay is
+`scripts/test-v2-eventhub-membership-writer-local-postgres.psql`
+in the established local Supabase foundation workflow.
+No client or service-role EXECUTE permissions are granted. The
+future *canonical trusted resolver/gateway* must independently verify
+the submitted website and exact alias, signed-in athlete consent,
+DNS/redirect safety, group visibility/block policies and rate limits
+before it can invoke this writer. This is not proof that the user
+has joined a real event or can see another user's workouts.
+
 ## Identity, participation and visibility remain distinct
 
 1. **Event**: organizer-confirmed or unverified source with version, sport, local day/timezone. One event can have multiple URL aliases only after reviewed provenance; multiple events can occur on the same day even in the same sport.
