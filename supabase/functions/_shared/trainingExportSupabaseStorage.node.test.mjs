@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createTrainingSupabaseEvidenceAdapter, TRAINING_PRIVATE_EVIDENCE_BUCKET } from './trainingExportSupabaseStorage.mjs';
+import { auditOwnerPrivateMediaCoverage, createTrainingSupabaseEvidenceAdapter, TRAINING_PRIVATE_EVIDENCE_BUCKET } from './trainingExportSupabaseStorage.mjs';
 import { stageTrainingPrivateStorageExport } from '../../../scripts/v2-training-private-storage-stage.mjs';
 
 const owner = '11111111-1111-4111-8111-111111111111';
@@ -166,4 +166,73 @@ test('a previously listed file revoked in canonical database cannot be fetched',
   const adapter=createTrainingSupabaseEvidenceAdapter({supabase:f.supabase});
   await assert.rejects(adapter.downloadPrivateObject({ownerId:owner,requestId,path,kind:'series'}),/not approved/);
   assert.equal(f.calls.filter(x=>x[0]==='download').length,0);
+});
+
+test('exhaustive Storage audit agrees with actual canonical owner evidence; never declares complete export',async()=>{
+  const f=fixture();
+  const result=await auditOwnerPrivateMediaCoverage({
+    ownerId:owner,requestId,
+    evidenceAdapter:createTrainingSupabaseEvidenceAdapter({supabase:f.supabase}),
+    listBucketCatalog:async()=>[
+      {id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false},
+      {id:'v2-private-account-exports',public:false},
+    ],
+    listOwnerStorageObjects:async({ownerId,bucketId})=>({
+      ownerId,bucketId,exhaustive:true,totalCount:1,paths:[path],
+    }),
+  });
+  assert.equal(result.referencesReconciled,true);
+  assert.equal(result.referencedObjects,1);
+  assert.equal(result.observedObjects,1);
+  assert.equal(result.completeUserExport,false);
+  assert.equal(result.bytesVerified,false);
+});
+test('an unreferenced owner photo or media object blocks export instead of silently omitting it',async()=>{
+  const f=fixture();
+  const unknown=owner+'/photos/private-progress-photo.jpg';
+  await assert.rejects(auditOwnerPrivateMediaCoverage({
+    ownerId:owner,requestId,
+    evidenceAdapter:createTrainingSupabaseEvidenceAdapter({supabase:f.supabase}),
+    listBucketCatalog:async()=>[{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false}],
+    listOwnerStorageObjects:async()=>({
+      ownerId:owner,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,
+      exhaustive:true,totalCount:2,paths:[path,unknown],
+    }),
+  }),/Unreferenced/);
+});
+test('missing Storage bytes, foreign owner, duplicate path or non-exhaustive scan block coverage',async()=>{
+  const cases=[
+    {ownerId:owner,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,exhaustive:true,totalCount:0,paths:[]},
+    {ownerId:foreign,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,exhaustive:true,totalCount:1,paths:[path]},
+    {ownerId:owner,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,exhaustive:true,totalCount:2,paths:[path,path]},
+    {ownerId:owner,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,exhaustive:false,totalCount:1,paths:[path]},
+    {ownerId:owner,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,exhaustive:true,totalCount:2,paths:[path]},
+  ];
+  for(const observed of cases){
+    const f=fixture();
+    await assert.rejects(auditOwnerPrivateMediaCoverage({
+      ownerId:owner,requestId,
+      evidenceAdapter:createTrainingSupabaseEvidenceAdapter({supabase:f.supabase}),
+      listBucketCatalog:async()=>[{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false}],
+      listOwnerStorageObjects:async()=>observed,
+    }),/incomplete|Unreferenced|mismatch|corresponding|duplicate|unbounded/);
+  }
+});
+test('unknown, photo, public or incorrectly duplicated buckets demand classification first',async()=>{
+  const lists=[
+    [{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false},{id:'v2-progress-photos',public:false}],
+    [{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:true}],
+    [{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false},{id:TRAINING_PRIVATE_EVIDENCE_BUCKET,public:false}],
+  ];
+  for(const buckets of lists){
+    let called=false;
+    const f=fixture();
+    await assert.rejects(auditOwnerPrivateMediaCoverage({
+      ownerId:owner,requestId,
+      evidenceAdapter:createTrainingSupabaseEvidenceAdapter({supabase:f.supabase}),
+      listBucketCatalog:async()=>buckets,
+      listOwnerStorageObjects:async()=>{called=true;throw Error('unexpected scan');},
+    }),/Storage bucket/);
+    assert.equal(called,false);
+  }
 });
