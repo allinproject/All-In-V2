@@ -7,6 +7,7 @@ on:
       - '.github/workflows/v2-foundation-clean-replay.yml'
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'scripts/test-v2-training-local-populated-owner-deletion.psql'
+      - 'scripts/test-v2-training-local-role-boundaries.psql'
       - 'docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql'
@@ -237,6 +238,13 @@ jobs:
             RAISE NOTICE 'PASS: canonical Training/Activity direct owner cascade and existing export bridge';
           END $release$;
           SQL
+      - name: Verify real Supabase API-role security on the complete candidate catalog
+        run: |
+          set -euo pipefail
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp scripts/test-v2-training-local-role-boundaries.psql "$db_container:/tmp/v2-roles-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-roles-qa.psql
       - name: Replay populated two-owner deletion and rollback on real local Auth
         run: |
           set -euo pipefail
