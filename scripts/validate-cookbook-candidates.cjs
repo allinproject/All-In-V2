@@ -12,6 +12,7 @@ const ALLOWED_FIELDS = {
   recipes:new Set(['source_recipe_id','title','category','description','source_status','source_published',
     'servings','authored_ingredients_review_only','instructions','notes','source_origin',
     'source_card_completion','source_final_qa_status','source_hero_reference_review_only',
+    'source_freezer_kit_review_only',
     'source_updated_at','source_variants_review_only']),
   selectors:new Set(['source_selector_id','source_recipe_id','selector_key','label','selector_type',
     'required','default_option_key','display_order','source_active','source_verification_status','source_updated_at']),
