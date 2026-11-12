@@ -72,7 +72,7 @@ SQL
 )
 manifest() { docker exec -i "$db" psql -X -qAt -U postgres -d postgres -v ON_ERROR_STOP=1 <<<"$manifest_sql"; }
 before="$(manifest)"
-test "$(printf '%s\\n' "$before" | wc -l | tr -d ' ')" = 8 || { echo 'Unexpected pre-backup domain/owner coverage'; exit 1; }
+test "$(printf '%s\n' "$before" | wc -l | tr -d ' ')" = 8 || { echo 'Unexpected pre-backup domain/owner coverage'; exit 1; }
 docker exec "$db" pg_dump -U postgres -d postgres -Fc --data-only \
   -t public.v2_training_session_instances -t public.v2_completed_activities \
   -t public.v2_activity_sources -t public.v2_coach_threads \
@@ -88,7 +88,7 @@ docker exec "$db" pg_restore -U postgres -d postgres --data-only --exit-on-error
 after="$(manifest)"
 if [[ "$before" != "$after" ]]; then
   echo 'FAIL ALL-12: pre/post restore row counts, owners or row digests differ' >&2
-  diff -u <(printf '%s\\n' "$before") <(printf '%s\\n' "$after") >&2 || true
+  diff -u <(printf '%s\n' "$before") <(printf '%s\n' "$after") >&2 || true
   exit 1
 fi
 docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
