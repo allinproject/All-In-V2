@@ -1,0 +1,103 @@
+\set ON_ERROR_STOP on
+-- ALL-222 / ALL-243 / ALL-246 / ALL-251: transactional release-candidate
+-- overlay on a freshly replayed REAL V2 foundation in LOCAL Supabase Postgres.
+-- The historical migrations have already run. This script MUST NOT be
+-- executed against the hosted project. No schema changes survive ROLLBACK.
+BEGIN;
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-CALENDAR-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-IMMUTABLE-REVISION-GUARD-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-PLAN-ACCEPTANCE-WRITER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-SESSION-LIFECYCLE-WRITER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-AUTH-OWNER-GATEWAY-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SOURCE-WRITER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENTS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-STRENGTH-SETS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-COMPLETION-ACK-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-ACTIVITY-OUTBOX-WRITER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-START-PLANNED-WORKOUT-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-DAY-OWNER-READER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-OWNER-DETAIL-READER-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-ACTIVITY-OWNER-CASCADE-REVIEW-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-DELETION-HISTORY-GUARD-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-DIRECT-AUTH-CASCADE-REVIEW-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-WORKER-RPC-REVIEW-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-LIFECYCLE-REVIEW-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql
+DO $overlay_acceptance$
+BEGIN
+ IF pg_catalog.to_regclass('public.v2_training_plans') IS NULL
+ OR pg_catalog.to_regclass('public.v2_completed_activities') IS NULL
+ OR pg_catalog.to_regclass('public.v2_activity_metric_values') IS NULL
+ OR pg_catalog.to_regclass('public.v2_activity_segments') IS NULL
+ THEN
+   RAISE EXCEPTION 'Canonical Training/Completed overlay tables missing';
+ END IF;
+ IF EXISTS(
+   SELECT 1 FROM pg_catalog.pg_class c
+   JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='public' AND c.relname IN (
+     'v2_training_plans','v2_completed_activities',
+     'v2_activity_metric_values','v2_activity_segments'
+   ) AND c.relrowsecurity IS DISTINCT FROM true
+ ) THEN
+   RAISE EXCEPTION 'Canonical Training/Completed owner RLS disabled';
+ END IF;
+ -- Existing foundation export RPC must keep authenticated-only permissions
+ -- even after the proposed Training/Activity owner fragment is wired in.
+ IF NOT pg_catalog.has_function_privilege('authenticated',
+       'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('anon',
+       'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('service_role',
+       'public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+ OR pg_catalog.has_function_privilege('authenticated',
+       'allin_private.v2_training_account_export_fragment_candidate(uuid)','EXECUTE')
+ THEN
+   RAISE EXCEPTION 'Training overlay changed canonical account export ACL';
+ END IF;
+ IF pg_catalog.has_function_privilege('authenticated',
+       'public.v2_training_day_read_candidate(uuid,date)','EXECUTE')
+ OR pg_catalog.has_function_privilege('authenticated',
+       'public.v2_completed_activity_detail_candidate(uuid,uuid)','EXECUTE')
+ THEN
+   RAISE EXCEPTION 'Unapproved owner reader became client executable';
+ END IF;
+ -- Exports/deletion claims refuse missing direct auth.users cascades.
+ IF EXISTS(
+   SELECT 1 FROM pg_catalog.pg_class c
+   JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+   JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+     AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
+   WHERE n.nspname IN ('public','allin_private')
+     AND c.relkind='r'
+     AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%'
+       OR c.relname LIKE 'v2_activity_%')
+     AND NOT EXISTS(
+       SELECT 1 FROM pg_catalog.pg_constraint fk
+       WHERE fk.conrelid=c.oid AND fk.confrelid='auth.users'::regclass
+        AND fk.contype='f' AND fk.confdeltype='c'
+        AND fk.conkey=ARRAY[a.attnum]::smallint[]
+     )
+ ) THEN RAISE EXCEPTION 'New Training/Activity owner missing direct Auth cascade'; END IF;
+ RAISE NOTICE 'PASS ALL-222: full foundation plus ordered Training/Completed candidate overlay';
+END $overlay_acceptance$;
+ROLLBACK;
+-- No candidate DDL or changes to owner exports remain after ROLLBACK.
+DO $rollback_check$
+BEGIN
+ IF pg_catalog.to_regclass('public.v2_training_plans') IS NOT NULL
+ OR pg_catalog.to_regclass('public.v2_completed_activities') IS NOT NULL
+ THEN RAISE EXCEPTION 'Training overlay DDL survived transactional rollback'; END IF;
+ RAISE NOTICE 'PASS ALL-222: overlay rollback preserved original foundation';
+END $rollback_check$;
