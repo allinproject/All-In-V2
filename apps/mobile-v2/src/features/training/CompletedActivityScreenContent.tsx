@@ -2,7 +2,7 @@ import {useMemo,useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {colors} from '../../theme/tokens';
 import {CompletedActivityCustomizePanel} from './CompletedActivityCustomizePanel';
-import {buildCompletedActivityScreenModel,type CompletedActivityScreenInput,type CompletedActivityTab} from './completedActivityScreenModel';
+import {buildCompletedActivityScreenModel,completedActivityViewKey,type CompletedActivityScreenInput,type CompletedActivityTab} from './completedActivityScreenModel';
 import {metricEvidenceQualityNotice} from './completedActivityDetailProjection';
 import type {MetricLayout} from './completedActivityLayouts';
 
@@ -15,8 +15,14 @@ export type CompletedActivityContentProps={
  onEditCompletedMetadata?:()=>void;
  savingPreferences?:boolean;
 };
-/** Reusable V1-standard Completed Activity UI. Not a live route until ALL-243 reader exists. */
-export function CompletedActivityScreenContent({activity,onSaveLayout,onOpenCoach,onEditCompletedMetadata,
+/** Reusable V1-standard Completed Activity UI. Not a live route until ALL-243 reader exists.
+ * A canonical account/workout/revision switch remounts this child, ensuring
+ * an unsaved layout draft, tab selection or prior save error cannot cross over.
+ */
+export function CompletedActivityScreenContent(props:CompletedActivityContentProps){
+ return <CompletedActivityScreenInner key={completedActivityViewKey(props.activity)} {...props}/>;
+}
+function CompletedActivityScreenInner({activity,onSaveLayout,onOpenCoach,onEditCompletedMetadata,
  savingPreferences=false}:CompletedActivityContentProps){
  const [tab,setTab]=useState<CompletedActivityTab>('Overview');
  const [editing,setEditing]=useState(false);
