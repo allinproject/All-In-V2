@@ -48,6 +48,7 @@ on:
       - 'supabase/functions/_shared/certifiedDevicePairingPostgres.ts'
       - 'supabase/functions/_shared/certifiedDevicePairingServer.test.mjs'
       - 'supabase/functions/v2-device-pairing/**'
+      - 'scripts/test-v2-device-pairing-postgres-runtime.ts'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql'
       - 'scripts/test-v2-completed-scalar-metrics-postgres.psql'
@@ -307,6 +308,15 @@ jobs:
           docker cp scripts/test-v2-device-pairing-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-device-pairing-postgres.psql"
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -c "UPDATE auth.sessions SET not_after=now()+interval '1 day' WHERE id='11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa'"
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-device-pairing-postgres.psql
+      - name: Run actual trusted pairing adapter through dedicated DB role
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+          ALLIN_PAIRING_TEST_URL: postgres://allin_v2_device_registrar:isolated_pairing_password@127.0.0.1:5432/device_ingest_operator
+          ALLIN_PG_ADMIN_URL: postgres://postgres:postgres@127.0.0.1:5432/device_ingest_operator
+        run: |
+          set -euo pipefail
+          docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -c "ALTER ROLE allin_v2_device_registrar PASSWORD 'isolated_pairing_password'"
+          deno test --allow-env --allow-net scripts/test-v2-device-pairing-postgres-runtime.ts
 
   authenticated-device-ingest-contract:
     name: ALL-243 authenticated device ingest transaction contracts (Node)
