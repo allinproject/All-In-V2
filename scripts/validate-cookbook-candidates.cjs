@@ -52,15 +52,33 @@ function inspect(dataset, value, seen, errors) {
 function checkReferences(records, errors) {
   const recipes = new Set(records.recipes.map(r=>String(r.source_recipe_id)));
   const selectorsById = new Map(records.selectors.map(s=>[String(s.source_selector_id),s]));
-  const selectorsByKey = new Map(records.selectors.map(s=>[String(s.source_recipe_id)+'|'+s.selector_key,s]));
-  const optionsByKey = new Set(records.options.map(o=>String(o.source_selector_id)+'|'+o.option_key));
+  const selectorsByKey = new Map(records.selectors.map(s=>[JSON.stringify([s.source_recipe_id,s.selector_key]),s]));
+  const optionsByKey = new Set(records.options.map(o=>JSON.stringify([o.source_selector_id,o.option_key])));
+  const selectorKeys = new Set(), optionKeys = new Set(), mappingKeys = new Set();
+  for (const s of records.selectors) {
+    const key = JSON.stringify([s.source_recipe_id,s.selector_key]);
+    if (selectorKeys.has(key)) errors.push('selector/'+s.source_selector_id+': duplicate recipe/selector key');
+    selectorKeys.add(key);
+    if (s.source_active === true && !optionsByKey.has(JSON.stringify([s.source_selector_id,s.default_option_key])))
+      errors.push('selector/'+s.source_selector_id+': active selector missing default option');
+  }
+  for (const o of records.options) {
+    const key = JSON.stringify([o.source_selector_id,o.option_key]);
+    if (optionKeys.has(key)) errors.push('option/'+o.source_option_id+': duplicate selector/option key');
+    optionKeys.add(key);
+  }
+  for (const m of records.mappings) {
+    const key = JSON.stringify([m.source_recipe_id,m.selector_key,m.option_key,m.source_profile_key]);
+    if (mappingKeys.has(key)) errors.push('mapping/'+m.source_mapping_id+': duplicate recipe/selector/option/profile key');
+    mappingKeys.add(key);
+  }
   for (const s of records.selectors) if (!recipes.has(String(s.source_recipe_id))) errors.push('selector/'+s.source_selector_id+': missing recipe');
   for (const o of records.options) if (!selectorsById.has(String(o.source_selector_id))) errors.push('option/'+o.source_option_id+': missing selector');
   for (const m of records.mappings) {
     if (!recipes.has(String(m.source_recipe_id))) errors.push('mapping/'+m.source_mapping_id+': missing recipe');
-    const selector = selectorsByKey.get(String(m.source_recipe_id)+'|'+m.selector_key);
+    const selector = selectorsByKey.get(JSON.stringify([m.source_recipe_id,m.selector_key]));
     if (!selector) errors.push('mapping/'+m.source_mapping_id+': missing selector key');
-    else if (!optionsByKey.has(String(selector.source_selector_id)+'|'+m.option_key)) errors.push('mapping/'+m.source_mapping_id+': missing option key');
+    else if (!optionsByKey.has(JSON.stringify([selector.source_selector_id,m.option_key]))) errors.push('mapping/'+m.source_mapping_id+': missing option key');
   }
 }
 async function validate(paths) {
