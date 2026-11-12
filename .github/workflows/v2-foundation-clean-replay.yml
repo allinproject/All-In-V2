@@ -72,6 +72,8 @@ on:
       - 'scripts/check-v2-coach-sql-candidate.mjs'
       - 'scripts/test-v2-coach-persistence-race-local.sh'
       - 'scripts/test-v2-coach-account-export-local.psql'
+      - 'scripts/test-v2-account-export-all-domain-pages-local.psql'
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-account-export-populated-db-pages.mjs'
       - 'scripts/test-v2-account-export-populated-db-pages.psql'
       - 'scripts/test-v2-account-deletion-worker-off-local.psql'
@@ -493,6 +495,18 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-coach-account-export-local.psql "$db_container:/tmp/v2-coach-account-export.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-coach-account-export.psql
+      - name: Verify complete owner-source catalog and restricted repeatable-read pages
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql \
+            scripts/test-v2-account-export-all-domain-pages-local.psql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
+          done
       - name: Verify encrypted large-history download from populated authenticated PostgreSQL Coach pages
         run: |
           set -euo pipefail
