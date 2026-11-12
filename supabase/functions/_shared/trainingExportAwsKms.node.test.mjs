@@ -14,7 +14,7 @@ class GenerateDataKeyCommand {constructor(input){this.input=input}}
 class DecryptCommand {constructor(input){this.input=input}}
 function fakeKms(){
  const master=randomBytes(32),calls=[];
- let failedDecrypt=false,rotate=false;
+ let failedDecrypt=false,rotate=false,lastPlaintext=null;
  const client={async send(command){
   const {input}=command;
   calls.push({type:command.constructor.name,input});
@@ -22,6 +22,7 @@ function fakeKms(){
   if(command instanceof GenerateDataKeyCommand){
    assert.equal(input.KeySpec,'AES_256');
    const plain=randomBytes(32),iv=randomBytes(12);
+   lastPlaintext=plain;
    const c=createCipheriv('aes-256-gcm',master,iv);
    c.setAAD(Buffer.from(JSON.stringify(input.EncryptionContext)));
    const sealed=Buffer.concat([iv,c.update(plain),c.final(),c.getAuthTag()]);
@@ -35,11 +36,13 @@ function fakeKms(){
    d.setAAD(Buffer.from(JSON.stringify(input.EncryptionContext)));
    d.setAuthTag(raw.subarray(raw.length-16));
    const value=Buffer.concat([d.update(raw.subarray(12,-16)),d.final()]);
+   lastPlaintext=value;
    return {KeyId:rotate?'incorrect':arn,Plaintext:value};
   }
   throw Error('Unknown AWS KMS operation');
  }};
- return {client,calls,setUnavailable:v=>failedDecrypt=v,setRotation:v=>rotate=v};
+ return {client,calls,setUnavailable:v=>failedDecrypt=v,setRotation:v=>rotate=v,
+  get lastPlaintext(){return lastPlaintext;}};
 }
 function configured(f){return createAwsKmsExportKeyProvider({
  client:f.client,GenerateDataKeyCommand,DecryptCommand,keyArn:arn,
@@ -48,6 +51,8 @@ test('generates AES-256 key via AWS SDK-shaped KMS and unwraps using identical o
  const f=fakeKms(),provider=configured(f);
  const generated=await provider.generateDataKey({ownerId:a,requestId:request});
  assert.equal(generated.encryptionKey.byteLength,32);
+ assert(f.lastPlaintext.every(x=>x===0),'KMS GenerateDataKey plaintext response not cleared');
+ assert(generated.encryptionKey.some(x=>x!==0),'Controlled key copy accidentally cleared');
  assert.equal(generated.kmsKeyId,arn);
  assert.equal(generated.keyPurpose,purpose);
  assert(!JSON.stringify({...generated,encryptionKey:undefined}).includes(generated.encryptionKey.toString('hex')));
@@ -63,6 +68,7 @@ test('generates AES-256 key via AWS SDK-shaped KMS and unwraps using identical o
   keyVersion,purpose,context:{ownerId:a,requestId:request},
  });
  assert.deepEqual(clear,generated.encryptionKey);
+ assert(f.lastPlaintext.every(x=>x===0),'KMS Decrypt plaintext response not cleared');
  assert.notEqual(clear,generated.encryptionKey);
 });
 test('request or owner substitution fails cryptographically; wrong KMS key and version fail before decrypt',async()=>{
@@ -87,7 +93,9 @@ test('KMS outage, key mismatch and missing credentials never fall back to an app
  await assert.rejects(p.unwrapDataKey(a1),/KMS unavailable/);
  f.setUnavailable(false);f.setRotation(true);
  await assert.rejects(p.unwrapDataKey(a1),/unexpected key/);
+ assert(f.lastPlaintext.every(x=>x===0),'Rejected KMS decrypt plaintext not cleared');
  await assert.rejects(p.generateDataKey({ownerId:a,requestId:request}),/key identity/);
+ assert(f.lastPlaintext.every(x=>x===0),'Rejected GenerateDataKey plaintext not cleared');
  assert.throws(()=>createAwsKmsExportKeyProvider(),/Trusted AWS KMS/);
 });
 test('same canonical lease rechecks approval after KMS unwrap; revocation or key rotation denies',async()=>{
