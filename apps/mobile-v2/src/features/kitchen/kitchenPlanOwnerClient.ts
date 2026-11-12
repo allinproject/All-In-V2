@@ -35,7 +35,7 @@ export type KitchenPlanServices={
 const uuid=(s:unknown):s is string=>typeof s==='string'
   && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 const date=(s:unknown):s is string=>{
-  if(typeof s!=='string'||!/^\\d{4}-\\d{2}-\\d{2}$/.test(s))return false;
+  if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
   const d=new Date(s+'T00:00:00Z');
   return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===s;
 };
@@ -60,7 +60,7 @@ export function canonicalKitchenWeek(value:unknown,owner:string,week:string):Kit
   if(!uuid(owner)||!validMonday(week)||!value||typeof value!=='object')return null;
   const data=value as Partial<KitchenWeek>;
   if(data.ownerId!==owner||data.weekStart!==week||data.complete!==true
-    ||!Number.isSafeInteger(data.version)||data.version!<0
+    ||!Number.isSafeInteger(data.version)||(data.version as number)<0
     ||!Array.isArray(data.entries)||data.entries.length>150)return null;
   const ids=new Set<string>();
   for(const entry of data.entries){
@@ -117,9 +117,9 @@ export async function writeKitchenWeek(
     return {status:'saved',version:result.data as number};
   }catch{return {status:'unavailable'};}
 }
-export function ownedKitchenPlanServices(client:SupabaseClient<Database>):KitchenPlanServices{
+export function ownedKitchenPlanServices(client:SupabaseClient<Database>,expectedOwnerId:string):KitchenPlanServices{
   return {
-    authenticateOwner:()=>assertV2SessionOwner(client),
+    authenticateOwner:()=>assertV2SessionOwner(client,expectedOwnerId),
     rpc:client.rpc.bind(client) as unknown as KitchenPlanServices['rpc'],
   };
 }
