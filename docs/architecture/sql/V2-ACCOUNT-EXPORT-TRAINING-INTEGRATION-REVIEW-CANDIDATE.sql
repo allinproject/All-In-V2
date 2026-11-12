@@ -220,7 +220,7 @@ begin
            or (b.blocker_id=v_user and b.blocked_id=f.follower_id))),'[]'::jsonb),
      'outgoing_blocks',coalesce((select jsonb_agg(to_jsonb(b) order by b.blocked_id)
        from allin_private.v2_community_blocks b where b.blocker_id=v_user),'[]'::jsonb),
-     'my_action_receipts',coalesce((select jsonb_agg(to_jsonb(a) order by a.created_at,a.action_id)
+     'my_action_receipts',coalesce((select jsonb_agg(jsonb_build_object('action_id',a.action_id,'action',a.action,'target_id',a.target_id,'created_at',a.created_at) order by a.created_at,a.action_id)
        from allin_private.v2_community_action_receipts a where a.actor_id=v_user),'[]'::jsonb),
      'incoming_blocks_disclosed',false,
      'pair_revisions_disclosed',false,
