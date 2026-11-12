@@ -87,7 +87,15 @@
 - Personal changes to this workout do not silently change accepted Training plan, saved routine/route, other workouts or athlete defaults. `Save as Default` is an explicit separate user action. Saving setup is not Completed Activity and must not record GPS/HR until actual Start.
 - This supersedes prior Watch-exclusive interpretation of phone setup while preserving the founder-approved **phone-configure / sync / Watch-start** experience for athletes who leave their phone home. Phone-only active recording is now explicitly required; neither implementation nor real-device validation is claimed.
 
-## 11. Scope and implementation safeguards
+## 11. Indoor Bike Training Setup — approved concept (founder accepted 2026-11-12)
+- Preserve the shared Training Setup pattern: **Save & Sync to Watch** (prepare without starting) or **Start on This Phone** (explicit start of canonical session). Keep Coach's optional inline adjustments, **Receive Live Props**, HR alerts and workout-specific preferences, without forcing the athlete into a second workout engine.
+- Indoor cycling uses **structured warm-up, work/recovery intervals, repeats and cooldown blocks**, displayed as a compact visual workout/intensity profile with expandable editing and optional saving as a reusable Routine or Coach-proposed session in the same builder.
+- Present **Smart Trainer** and **Basic Bike** options. Smart Trainer may discover/connect supported equipment, display trustworthy connection/capability status and offer **ERG Mode** only when compatible hardware and a validated active control connection exist. Basic stationary bikes and unsupported trainers must be usable without pairing, ERG or invented sensor measurements.
+- Where supported, show individualized power (watts), cadence (RPM), heart-rate and interval/effort targets. Never imply observed power/cadence if a source is not available. Coach may propose targets only using relevant authorized athlete evidence, with approval.
+- **Watch-only caveat:** Watch can execute downloaded interval prompts and use its supported sensors without the phone; smart trainer resistance control requires an independently validated path from the device maintaining the trainer connection. Do not promise Watch-only ERG or Bluetooth power feedback until tested. Offline recording/reconciliation uses the same canonical session.
+- The visual proposal and interaction were accepted as the design direction, not proven live trainer, phone or Watch capability. Device compatibility, ERG safety, Bluetooth ownership and real equipment tests remain implementation gates.
+
+## 12. Scope and implementation safeguards
 - These are **founder-approved product directions**. V1 Route Builder has substantial actual code; full V2 mapping/route builder is **not yet confirmed integrated**. Calendar and other partial V2 screens may be mounted but must be checked against the corrected UX.
 - Keep one canonical Training/active-session/completed-activity/event/route owner. All Coach changes are proposals and require athlete acceptance where material. Preserve source-quality/missing≠zero, privacy, export/deletion, RLS and idempotent writes.
 - **No production migration, grants, app deployment, opening signup, automatic EventHub publication or sharing are authorized by this document.**
