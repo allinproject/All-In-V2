@@ -81,6 +81,24 @@ CREATE TRIGGER v2_ingredient_operator_credential_change
  AFTER INSERT OR UPDATE ON allin_private.v2_ingredient_review_operators
  FOR EACH ROW EXECUTE FUNCTION allin_private.v2_audit_ingredient_operator_credential_change();
 
+-- Registry enrollment cannot disappear without an immutable disable/revoke
+-- record; delete requires separately approved purge/retention procedures.
+CREATE OR REPLACE FUNCTION allin_private.v2_deny_ingredient_operator_deletion()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER
+SET search_path=pg_catalog,pg_temp AS $delete$
+BEGIN
+  RAISE EXCEPTION 'operator enrollment cannot be deleted; revoke instead'
+    USING ERRCODE='42501';
+END;
+$delete$;
+REVOKE ALL ON FUNCTION allin_private.v2_deny_ingredient_operator_deletion()
+ FROM PUBLIC,anon,authenticated,service_role;
+DROP TRIGGER IF EXISTS v2_ingredient_operator_no_delete
+ ON allin_private.v2_ingredient_review_operators;
+CREATE TRIGGER v2_ingredient_operator_no_delete
+ BEFORE DELETE ON allin_private.v2_ingredient_review_operators
+ FOR EACH ROW EXECUTE FUNCTION allin_private.v2_deny_ingredient_operator_deletion();
+
 DROP TRIGGER IF EXISTS v2_ingredient_operator_credential_events_immutable
  ON allin_private.v2_ingredient_operator_credential_events;
 CREATE TRIGGER v2_ingredient_operator_credential_events_immutable
