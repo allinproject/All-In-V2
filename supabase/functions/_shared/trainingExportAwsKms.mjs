@@ -8,6 +8,7 @@
  * Never put owner IDs or other sensitive values in log statements; KMS
  * encryption context is recorded in AWS CloudTrail as plaintext.
  */
+import {createHash} from 'node:crypto';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const KEY_ARN=/^arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key\/[0-9a-f-]{36}$/i;
 const VERSION=1;
@@ -16,7 +17,10 @@ function validIdentity({ownerId,requestId},keyVersion,purpose){
  if(!UUID.test(ownerId??'')||!UUID.test(requestId??'')
   ||keyVersion!==VERSION||purpose!==PURPOSE)
   throw Error('Unapproved export encryption context');
- return Object.freeze({purpose:PURPOSE,ownerId,requestId,keyVersion:String(VERSION)});
+ // KMS encryption context is visible in CloudTrail. Bind exact identities
+ // via a domain-separated digest rather than emitting user UUIDs in logs.
+ const bound=createHash('sha256').update(['all251-kms-context-v1',ownerId,requestId].join(':')).digest('hex');
+ return Object.freeze({purpose:PURPOSE,scopeDigest:bound,keyVersion:String(VERSION)});
 }
 function checkedBytes(x){
  if(!(x instanceof Uint8Array)||x.byteLength!==32)
