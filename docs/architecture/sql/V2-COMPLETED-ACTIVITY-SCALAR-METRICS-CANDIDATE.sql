@@ -183,8 +183,25 @@ CREATE FUNCTION allin_private.v2_activity_metric_owner_fence_candidate()
 RETURNS trigger LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=''
 AS $fence$
 BEGIN
- IF TG_OP='UPDATE' AND NEW.user_id IS DISTINCT FROM OLD.user_id THEN
-  RAISE EXCEPTION 'Activity/source owner cannot change' USING ERRCODE='42501';
+ IF TG_OP='UPDATE' THEN
+  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.user_id IS DISTINCT FROM OLD.user_id THEN
+   RAISE EXCEPTION 'Canonical activity/source identity is immutable'
+    USING ERRCODE='42501';
+  END IF;
+  IF TG_TABLE_NAME='v2_activity_sources' AND
+   (NEW.activity_id IS DISTINCT FROM OLD.activity_id OR
+    NEW.provider IS DISTINCT FROM OLD.provider OR
+    NEW.source_kind IS DISTINCT FROM OLD.source_kind OR
+    NEW.source_record_id IS DISTINCT FROM OLD.source_record_id OR
+    NEW.captured_at IS DISTINCT FROM OLD.captured_at) THEN
+   RAISE EXCEPTION 'Registered source identity and activity binding are immutable'
+    USING ERRCODE='42501';
+  END IF;
+  IF TG_TABLE_NAME='v2_completed_activities' AND
+   NEW.sport IS DISTINCT FROM OLD.sport THEN
+   RAISE EXCEPTION 'Canonical completed activity sport is immutable'
+    USING ERRCODE='42501';
+  END IF;
  END IF;
  PERFORM pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('v2-metric:'||OLD.user_id::text,0));
@@ -195,12 +212,12 @@ $fence$;
 REVOKE ALL ON FUNCTION allin_private.v2_activity_metric_owner_fence_candidate()
  FROM PUBLIC,anon,authenticated,service_role;
 
--- Guard status mutations, including in-place invalidation of recorded activity.
+-- Fire for every UPDATE (including identity-only or evidence metadata changes),
+-- not just a subset of column-specific mutations.
 CREATE TRIGGER v2_metric_activity_state_fence_candidate
- BEFORE UPDATE OF status OR DELETE ON public.v2_completed_activities
+ BEFORE UPDATE OR DELETE ON public.v2_completed_activities
  FOR EACH ROW EXECUTE FUNCTION allin_private.v2_activity_metric_owner_fence_candidate();
 
--- Rejection/quality changes must not race with the source-bound scalar writer.
 CREATE TRIGGER v2_metric_source_quality_fence_candidate
- BEFORE UPDATE OF quality,source_payload_hash OR DELETE ON public.v2_activity_sources
+ BEFORE UPDATE OR DELETE ON public.v2_activity_sources
  FOR EACH ROW EXECUTE FUNCTION allin_private.v2_activity_metric_owner_fence_candidate();
