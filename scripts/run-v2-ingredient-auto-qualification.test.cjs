@@ -19,12 +19,13 @@ function fixture() {
     documents:[{source_profile_key:'red_onion_raw',payload_utf8,
       payload_sha256:createHash('sha256').update(payload_utf8).digest('hex')}]};
 }
-function fakeClient({failAt=0,replay=false,badReceipt=false,rollbackFails=false}={}) {
+function fakeClient({failAt=0,replay=false,badReceipt=false,rollbackFails=false,commitFails=false}={}) {
   const calls=[],events=new Set();
   let writerCount=0;
   return {calls,events,async query(sql,args) {
     calls.push({sql,args});
     if(sql==='ROLLBACK'&&rollbackFails)throw Error('rollback lost');
+    if(sql==='COMMIT'&&commitFails)throw Error('connection lost at commit');
     if(sql===WRITER) {
       writerCount+=1;
       if(failAt===writerCount)throw Error('writer transaction rejected');
@@ -92,4 +93,10 @@ test('no client, invalid profile or stale revision fails before database access'
  await assert.rejects(runAutomaticQualification({client,...data,profileId:'not-a-uuid'}),/canonical profile ID/);
  await assert.rejects(runAutomaticQualification({client,...data,expectedRevision:0}),/positive revision/);
  assert.equal(client.calls.length,0);
+});
+
+test('ambiguous commit acknowledgement is never mislabeled rolled back',async()=>{
+ const client=fakeClient({commitFails:true});
+ await assert.rejects(runAutomaticQualification({client,...fixture()}),/COMMIT outcome unknown/);
+ assert.deepEqual(client.calls.map(x=>x.sql),['BEGIN',WRITER,WRITER,'COMMIT']);
 });
