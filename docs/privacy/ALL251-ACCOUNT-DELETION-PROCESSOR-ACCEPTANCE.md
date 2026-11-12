@@ -204,9 +204,10 @@ The existing rollback-only two-account Community fixture tests a verified
 Auth→Profile→Post path, inserts an unknown `owner_id` table and a
 `follower_id` relationship table, and asserts the graph review flags them.
 It also inserts a temporary private Storage bucket and demands a cleanup
-blocker. The fixture verifies the deletion audit requires retention review,
-the scanner is inaccessible to client roles, and no bucket or fixture row
-persists after rollback. Full foundation CI replay is required before
+blocker. The fixture verifies the deletion audit requires retention review
+and the scanner is inaccessible to client roles. Storage buckets must NOT
+be deleted by raw SQL: all synthetic data, including the bucket, is
+removed solely by the fixture's enclosing transaction ROLLBACK. Full foundation CI replay is required before
 counting this as tested.
 
 **Not yet accepted:** durable third-party relationship retention/redaction,
