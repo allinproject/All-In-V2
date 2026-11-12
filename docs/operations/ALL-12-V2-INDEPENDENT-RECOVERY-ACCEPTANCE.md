@@ -104,3 +104,21 @@ The foundation 12-table logical recovery test passed synthetically, but **no rea
 The existing `scripts/all12-recovery-domain-manifest.mjs` now exposes `assessIndependentRecoveryEvidence` with negative/positive tests in the established manifest test suite. It separately demands real provider snapshot and cutoff, distinct restored target, measured elapsed/RPO/RTO values, pre-start outbound isolation and scheduled-worker quarantine, snapshot-aligned schema/RLS/data and owner authorization comparisons, Auth configuration and Storage file-byte/metadata recovery, current domain inventory reconciliation, and explicit reviewed release authorization. **These inputs are evidence-review claims, not a substitute for independent verification**; the gate must not be passed by simply supplying placeholder booleans. In particular, a successful local `pg_dump/pg_restore` or provider dashboard label `COMPLETED` is insufficient.
 
 **Next safe steps:** retain V2 production as read-only; independently design and approve a source-consistent isolated restore destination before attempting anything destructive; record snapshot provenance and the exact side-effect isolation design before any hosted clone; assess current Auth/Storage non-database configuration recovery and decide which external services must be manually reconfigured. A repeat provider clone or reuse/reset of temporary staging requires explicit separate approval and pre-start safety review. The hosted physical recovery gate stays open.
+
+
+## 2026-11-12 — Read-only hosted source fingerprint prepared, not a restore
+
+The repeatable source/target comparison query is now checked in at `supabase/tests/all12_hosted_restore_readonly_fingerprint.sql` (commit `c18ee859970388be38396959d5c4a94ceba61b02`). Its **exact committed contents** were executed successfully against live V2 source project `xarhuczrtzuiljmtdaeu` without writing rows or reading backup secrets. It returns per-table column-definition, RLS-policy and constraint definition hashes, one aggregate application schema fingerprint, migration ledger fingerprint, Auth and Storage counts, and active-cron count. It does not read athlete content or include cron commands, provider keys or encrypted Storage bytes.
+
+The point-in-time **observation** (NOT a backup snapshot) is:
+- Postgres 17.11; 12 V2 application tables, all RLS enabled.
+- 18 migrations; migration ledger MD5 `ca918322e6085262f98ffe58c1b799aa`.
+- Application schema MD5 `b65dea5bde985ef88892903ee4764c60`.
+- Auth users 0, identities 0; Storage buckets 0, objects 0; active cron jobs 1.
+- Cron job `allin-v2-provider-cache-expired-purge` has a direct command-text scan with no identified HTTP/Vault pattern, **not** verified pre-start outbound safety.
+
+**Operational use:** on a separately approved, safely isolated and independently restored physical backup target, run the *same unchanged* query, compare the whole source-at-snapshot manifest with the restored snapshot, then separately validate actual table data, ownership/RLS, Auth configuration and fresh sign-in, Storage object bytes and metadata, and application runtime. Comparing this *current* live fingerprint with a backup from a different migration/snapshot cutoff can legitimately mismatch; source cutoff must be established first. Checksums here are metadata MD5 fingerprints, **not cryptographic artifact integrity attestations or row-content recovery checks**.
+
+The original V1 project `impulecgsgaruvniuttc` has historical `pg_cron` / `pg_net` outbound workers and the linked Supabase support ticket `SU-542002` still has **no approved pre-start isolation method**. Last inspected email was founder follow-up Nov 12; no later provider evidence. Do not clone V1 or treat its prior deleted targets as validated. Do not reset current V2 temporary staging or create a billable provider clone without separately verified isolation, destination approval, cost review and a source recovery point.
+
+ALL-12 remains **In Progress**. This preflight advances independent restoration readiness, but no provider physical backup was restored or verified.
