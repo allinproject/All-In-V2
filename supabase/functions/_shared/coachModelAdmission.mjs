@@ -85,17 +85,24 @@ export function createCoachModelGenerator({
     reservationId:reservation.reservationId,reason:"model_failed"}).catch(()=>{});
    rejected("coach_model_transport_failed");
   }
-  // Reject unmetered, overly expensive, malformed or write-claiming replies.
-  // A proposal must be handled through ALL-240, not this read-only channel.
-  if(!answer||!text(answer.message,20000)||
-     Object.hasOwn(answer,"proposed_action")||
-     !answer.usage||!Number.isSafeInteger(answer.usage.inputTokens)||
-     answer.usage.inputTokens<0||
-     !Number.isSafeInteger(answer.usage.outputTokens)||
-     answer.usage.outputTokens<0||
+  // A charged model call must be settled even when the answer is later
+  // rejected by content/action policy. Missing or over-budget metering stays
+  // reserved and fails closed; never fabricate a cheaper provider receipt.
+  if(!answer||!answer.usage||
+     !Number.isSafeInteger(answer.usage.inputTokens)||answer.usage.inputTokens<0||
+     !Number.isSafeInteger(answer.usage.outputTokens)||answer.usage.outputTokens<0||
      !finite(answer.usage.costUsd,0,reservation.maximumUsd))
     rejected("coach_model_output_or_metering_invalid");
-
+  const settled=await settleBudget({ownerId,clientRequestId,
+    reservationId:reservation.reservationId,
+    inputTokens:answer.usage.inputTokens,
+    outputTokens:answer.usage.outputTokens,costUsd:answer.usage.costUsd});
+  if(settled?.confirmed!==true||settled.ownerId!==ownerId||
+      settled.clientRequestId!==clientRequestId)
+   rejected("coach_model_spend_unconfirmed");
+  // A proposal must be handled through ALL-240, not this read-only channel.
+  if(!text(answer.message,20000)||Object.hasOwn(answer,"proposed_action"))
+    rejected("coach_model_output_or_metering_invalid");
   const output=normalized(answer.message);
   // Explicit disallowed movements must not reappear in generated plans.
   // Fail closed instead of displaying a plausible-but-unsafe rewritten plan.
@@ -104,13 +111,6 @@ export function createCoachModelGenerator({
     r.subject.trim().length>=3);
   if(restricted.some(r=>output.includes(normalized(r.subject))))
     rejected("coach_model_hard_restriction_violated");
-  const settled=await settleBudget({ownerId,clientRequestId,
-    reservationId:reservation.reservationId,
-    inputTokens:answer.usage.inputTokens,
-    outputTokens:answer.usage.outputTokens,costUsd:answer.usage.costUsd});
-  if(settled?.confirmed!==true||settled.ownerId!==ownerId||
-      settled.clientRequestId!==clientRequestId)
-   rejected("coach_model_spend_unconfirmed");
   return {message:answer.message.trim()};
  };
 }

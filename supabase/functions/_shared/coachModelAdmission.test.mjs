@@ -89,24 +89,24 @@ test("no model invocation without exactly matching durable budget reservation",a
   assert.equal(x.calls.model,0);
  }
 });
-test("model cannot exceed reserved spend, omit token metering or propose hidden writes",async()=>{
- for(const output of [
-  {message:"Safe",usage:{inputTokens:10,outputTokens:10,costUsd:0.01}},
-  {message:"Safe",usage:{inputTokens:10,outputTokens:10}},
-  {message:"Safe",usage:{inputTokens:10,outputTokens:10,costUsd:0.001},
-   proposed_action:{type:"update_training_plan"}},
-  {message:"",usage:{inputTokens:10,outputTokens:10,costUsd:0.001}}
+test("metered but rejected model responses still settle their real spend",async()=>{
+ for(const [output,expectedSettlements] of [
+  [{message:"Safe",usage:{inputTokens:10,outputTokens:10,costUsd:0.01}},0],
+  [{message:"Safe",usage:{inputTokens:10,outputTokens:10}},0],
+  [{message:"Safe",usage:{inputTokens:10,outputTokens:10,costUsd:0.001},
+    proposed_action:{type:"update_training_plan"}},1],
+  [{message:"",usage:{inputTokens:10,outputTokens:10,costUsd:0.001}},1]
  ]){
   const x=setup();x.options.invokeModel=async()=>output;
   await assert.rejects(()=>x.generate()(turn),/output_or_metering_invalid/);
-  assert.equal(x.calls.settle,0);
+  assert.equal(x.calls.settle,expectedSettlements);
  }
 });
 test("hard-restricted movement in a generated answer is blocked pre-display",async()=>{
  const x=setup();x.options.invokeModel=async()=>({
   message:"Do lying leg curls today.",usage:{inputTokens:10,outputTokens:10,costUsd:0.0001}});
  await assert.rejects(()=>x.generate()(turn),/hard_restriction_violated/);
- assert.equal(x.calls.settle,0);
+ assert.equal(x.calls.settle,1);
 });
 test("model transport failure releases reservation and suppresses answer",async()=>{
  const x=setup();x.options.invokeModel=async()=>{throw Error("secret upstream failure")};
