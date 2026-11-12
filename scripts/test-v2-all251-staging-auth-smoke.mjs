@@ -9,16 +9,29 @@ assert.equal(env.CI,'true');
 assert.equal(env.ALL251_STAGING_AUTH_ALLOW,'true');
 assert.equal(env.ALL251_STAGING_REF,ref);
 assert.equal(env.ALL251_STAGING_URL,base);
-const key=env.ALL251_TEMP_STAGING_SERVICE_ROLE_KEY;
-const anon=env.ALL251_TEMP_STAGING_ANON_KEY;
-assert(key&&anon&&key!==anon,'Distinct protected staging credentials required');
+const key=env.ALL251_TEMP_STAGING_SECRET_KEY;
+const anon=env.ALL251_TEMP_STAGING_PUBLISHABLE_KEY;
+// Never mistake the new API keys for signed user JWTs. Reject legacy/mismatched
+// values before making any network request.
+assert(/^sb_secret_[A-Za-z0-9_-]+$/.test(key??''),'Staging-only modern secret key required');
+assert(/^sb_publishable_[A-Za-z0-9_-]+$/.test(anon??''),'Staging-only modern publishable key required');
+assert(key!==anon,'Distinct protected staging credentials required');
 const ids=[];
 const password=randomUUID()+'aA!9';
-async function request(path,{method='GET',body,token=key,apiKey=key}={}){
-  return fetch(base+path,{method,redirect:'manual',signal:AbortSignal.timeout(30000),
-    headers:{apikey:apiKey,authorization:'Bearer '+token,
+async function request(path,{method='GET',body,userJwt=null,apiKey=key}={}){
+  // Modern sb_secret_ and sb_publishable_ strings go ONLY in apikey.
+  // Authorization is included only for an actual signed-in user's JWT.
+  assert(apiKey===key||apiKey===anon,'Untrusted project API key');
+  assert(userJwt===null||(typeof userJwt==='string'&&userJwt.split('.').length===3),
+    'Expected real Auth session JWT');
+  const res=await fetch(base+path,{method,redirect:'manual',
+    signal:AbortSignal.timeout(30000),
+    headers:{apikey:apiKey,
+      ...(userJwt===null?{}:{authorization:'Bearer '+userJwt}),
       ...(body===undefined?{}:{'content-type':'application/json'})},
     ...(body===undefined?{}:{body:JSON.stringify(body)})});
+  assert.equal(res.redirected,false,'Redirect forbidden');
+  return res;
 }
 async function user(){
  const email='all251-'+randomUUID()+'@example.invalid';
@@ -30,7 +43,7 @@ async function user(){
 }
 async function login(u){
  const res=await request('/auth/v1/token?grant_type=password',
-   {method:'POST',token:anon,apiKey:anon,body:{email:u.email,password}});
+   {method:'POST',apiKey:anon,body:{email:u.email,password}});
  assert.equal(res.status,200,'Synthetic sign-in failed');
  const data=await res.json();
  assert.equal(data.user?.id,u.id,'Owner mismatch');
@@ -45,14 +58,14 @@ try{
  process.stdout.write('PASS: two real isolated synthetic GoTrue sessions\\n');
  for(const token of [aToken,bToken]){
   const res=await request('/functions/v1/v2-account-export-download',{
-    method:'POST',token,apiKey:anon,body:{request_id:randomUUID()}});
+    method:'POST',userJwt:token,apiKey:anon,body:{request_id:randomUUID()}});
   assert.equal(res.status,503,'Expected disabled staging export handler');
   const body=await res.json();
   assert.equal(body.code,'account_export_disabled');
   assert(/no-store/i.test(res.headers.get('cache-control')??''));
  }
  process.stdout.write('PASS: authenticated HTTP route rejects export while worker disabled\\n');
- const logout=await request('/auth/v1/logout',{method:'POST',token:bToken,apiKey:anon});
+ const logout=await request('/auth/v1/logout',{method:'POST',userJwt:bToken,apiKey:anon});
  assert([200,204].includes(logout.status),'Auth logout failed');
  process.stdout.write('PASS: synthetic Auth session revoked\\n');
 }catch{
