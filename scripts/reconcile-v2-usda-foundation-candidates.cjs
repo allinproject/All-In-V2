@@ -9,7 +9,7 @@ const COMMON=new Set(['and','or','with','without','the','a','an','for','of','in'
   'baked','broiled','drained','frozen','sliced','diced','chopped','minced',
   'whole','pack','as','sold','uncooked']);
 function normalize(s){
-  return typeof s==='string'?s.normalize('NFKC').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' '):'';
+  return typeof s==='string'?s.normalize('NFKC').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' '):'';
 }
 function stem(t){
   if(t.endsWith('ies')&&t.length>4)return t.slice(0,-3)+'y';
