@@ -61,7 +61,64 @@ function review(candidates) {
     calculationReady:false,publicationApproved:false,issues,ambiguities,
     requiresReviewer:true,structuralPreflightPassed:issues.length===0 && ambiguities.length===0};
 }
-module.exports={normalize,review};
+
+function reviewSourceBindings(bindingDocument, sourceEvidence) {
+  const issues=[], flag=(key,code)=>issues.push({source_profile_key:key,code});
+  if(!bindingDocument || !Array.isArray(bindingDocument.bindings) ||
+     !sourceEvidence || !Array.isArray(sourceEvidence.records))
+    throw Error('source bindings and evidence records required');
+  const sourceByKey=new Map(sourceEvidence.records.map(r=>[r.profile,r]));
+  const usedKeys=new Set(),usedSourceIds=new Set();
+  if(bindingDocument.sourceEvidenceArchiveSha256!==sourceEvidence.archiveSha256)
+    flag(null,'archive_hash_mismatch');
+  if(bindingDocument.calculationReady!==false ||
+     bindingDocument.approvedForPublication!==false ||
+     bindingDocument.authorizedToWrite!==false ||
+     bindingDocument.reviewState!=='needs_review')
+    flag(null,'source_review_must_remain_unapproved');
+  for(const binding of bindingDocument.bindings) {
+    if(!binding || typeof binding!=='object') {flag(null,'invalid_binding');continue;}
+    const key=binding.source_profile_key,source=sourceByKey.get(key);
+    if(typeof key!=='string'||usedKeys.has(key)) {flag(key,'duplicate_or_missing_source_profile_key');continue;}
+    usedKeys.add(key);
+    if(!source) {flag(key,'missing_reviewed_source_record');continue;}
+    const ref=binding.reviewed_source_reference||{};
+    if(ref.provider!=='usda_fdc'||ref.source_data_type!=='Foundation'||
+       ref.external_record_id!==String(source.fdcId)||
+       ref.source_url!=='https://fdc.nal.usda.gov/food-details/'+source.fdcId+'/nutrients'||
+       ref.source_food_description!==source.source)
+      flag(key,'source_reference_mismatch');
+    if(usedSourceIds.has(ref.external_record_id)) flag(key,'duplicate_fdc_binding');
+    usedSourceIds.add(ref.external_record_id);
+    const nutrients=binding.nutrition_evidence||{};
+    if(nutrients.basis_quantity!==100||nutrients.basis_unit!=='g'||
+       nutrients.energy_source_nutrient_id!==Number(source.energy.code)||
+       nutrients.alternative_energy_source_nutrient_id!==(source.energy.alternative?Number(source.energy.alternative.code):null)||
+       nutrients.energy_selection_status!=='pending_ALL-225_energy_policy'||
+       nutrients.nutrient_values_review_status!=='source_transcribed_not_calculation_ready')
+      flag(key,'nutrient_basis_or_energy_provenance_mismatch');
+    if(binding.proposed_identity_kind!=='generic_food' ||
+       !STATES.has(binding.proposed_preparation_state) ||
+       !Array.isArray(binding.source_form_qualifiers)||!binding.source_form_qualifiers.length||
+       typeof binding.alias_scope_review!=='string'||!binding.alias_scope_review ||
+       binding.identity_approval!=='pending_reviewer'||binding.profile_approval!=='pending_reviewer'||
+       binding.canonical_v2_id!==null || binding.source_identity_verified_for_review!==true)
+      flag(key,'unreviewed_identity_or_alias_scope');
+    const conv=binding.conversion_review;
+    if(!conv || conv.household_and_purchase_yields_approved!==false ||
+       JSON.stringify(conv.source_food_portion_evidence)!==JSON.stringify(source.portionEvidence))
+      flag(key,'measurement_evidence_or_yield_override');
+    if(!Array.isArray(binding.review_caveats) || !binding.review_caveats.length)
+      flag(key,'missing_restriction_review');
+  }
+  if(usedKeys.size!==sourceByKey.size)
+    flag(null,'reviewed_source_coverage_mismatch');
+  return {bindingCount:bindingDocument.bindings.length,reviewedSourceCount:sourceByKey.size,
+    issues,structuralEvidencePassed:issues.length===0,identityApproved:false,
+    calculationReady:false,publicationApproved:false,authorizedToWrite:false};
+}
+
+module.exports={normalize,review,reviewSourceBindings};
 if(require.main===module) {
   const fs=require('node:fs'),file=process.argv[2];
   if(!file) {console.error('Usage: node scripts/review-v2-ingredient-identities.cjs candidates.json');process.exitCode=2;}
