@@ -47,11 +47,47 @@ export function createCanonicalPgAccountReaderCandidate({pool}) {
       throw Error('Invalid canonical database export response');
      return value;
     };
+    const catalogRows=async(statement,args,maxRows)=>{
+      if(closed||Date.now()-startedAt>maxSnapshotAgeMs)
+        throw Error('Canonical export snapshot is closed or expired');
+      const response=await client.query(statement,args);
+      if(!Array.isArray(response?.rows)||response.rows.length>maxRows)
+        throw Error('Unbounded private Storage catalog query');
+      return response.rows;
+    };
     const scoped=Object.freeze({
      getCanonicalInventory:async({ownerId:o,requestId:r})=>{
       if(o!==ownerId||r!==requestId)throw Error('Snapshot owner/request mismatch');
       return query('SELECT public.v2_account_export_inventory_review_candidate($1,$2,$3) AS payload',
        [ownerId,sessionId,requestId]);
+     },
+     // Read-only storage catalog probes share EXACTLY the pinned export
+     // transaction; they do not grant Storage access or mint signed URLs.
+     listBucketCatalog:async({ownerId:o,requestId:r})=>{
+      if(o!==ownerId||r!==requestId)throw Error('Storage catalog owner/request mismatch');
+      const rows=await catalogRows(
+       'SELECT id, public FROM storage.buckets ORDER BY id LIMIT 129',[],129);
+      if(rows.length>128)throw Error('Storage bucket inventory unbounded');
+      return rows.map(b=>({id:b.id,public:b.public}));
+     },
+     listOwnerStorageObjects:async({ownerId:o,requestId:r,bucketId})=>{
+      if(o!==ownerId||r!==requestId||bucketId!=='v2-private-workout-objects')
+        throw Error('Unreviewed private Storage source');
+      const rows=await catalogRows(
+       'SELECT name FROM storage.objects WHERE bucket_id=$1 AND name LIKE $2 ORDER BY name LIMIT 129',
+       [bucketId,ownerId+'/%'],129);
+      if(rows.length>128)throw Error('Owner private media inventory exceeds review bound');
+      return {ownerId,requestId,bucketId,exhaustive:true,
+       totalCount:rows.length,paths:rows.map(x=>x.name)};
+     },
+     listCanonicalMediaReferences:async({ownerId:o,requestId:r})=>{
+      if(o!==ownerId||r!==requestId)throw Error('Media reference owner/request mismatch');
+      const rows=await catalogRows(
+       "SELECT 'series' AS kind,user_id,object_path,checksum_sha256 FROM public.v2_activity_series WHERE user_id=$1 UNION ALL SELECT 'route' AS kind,user_id,object_path,checksum_sha256 FROM public.v2_activity_route_objects WHERE user_id=$1 ORDER BY kind,object_path LIMIT 129",
+       [ownerId],129);
+      if(rows.length>128)throw Error('Owner media references exceed review bound');
+      return {ownerId,requestId,series:rows.filter(x=>x.kind==='series'),
+       routes:rows.filter(x=>x.kind==='route')};
      },
      readPage:async({ownerId:o,requestId:r,collection,cursor,limit})=>{
       if(o!==ownerId||r!==requestId||!COLLECTION.test(collection??'')
