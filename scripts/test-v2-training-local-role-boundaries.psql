@@ -1,0 +1,125 @@
+\set ON_ERROR_STOP on
+-- ALL-222 / ALL-243 / ALL-246: full candidate catalog security on the REAL
+-- disposable local Supabase foundation; no hosted database connections.
+-- The local review-only Training, Activity and Competition DDL must have been
+-- applied. No real user records, DDL or persistent grants are created here.
+DO $security$
+DECLARE
+  object_row record;
+  role_name text;
+  tables_checked integer:=0;
+  functions_checked integer:=0;
+BEGIN
+  FOR object_row IN
+    SELECT c.oid,c.relname,c.relrowsecurity,n.nspname AS schema_name
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE c.relkind IN ('r','p')
+      AND n.nspname IN ('public','allin_private')
+      AND (c.relname LIKE 'v2_training_%'
+        OR c.relname='v2_completed_activities'
+        OR c.relname LIKE 'v2_activity_%'
+        OR c.relname LIKE 'v2_indoor_weekly_%')
+  LOOP
+    tables_checked:=tables_checked+1;
+    IF NOT object_row.relrowsecurity THEN
+      RAISE EXCEPTION 'Candidate %.% lacks RLS',
+        object_row.schema_name,object_row.relname;
+    END IF;
+    FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF pg_catalog.has_table_privilege(role_name,object_row.oid,'SELECT')
+        OR pg_catalog.has_table_privilege(role_name,object_row.oid,'INSERT')
+        OR pg_catalog.has_table_privilege(role_name,object_row.oid,'UPDATE')
+        OR pg_catalog.has_table_privilege(role_name,object_row.oid,'DELETE')
+        OR pg_catalog.has_table_privilege(role_name,object_row.oid,'TRUNCATE')
+        OR pg_catalog.has_table_privilege(role_name,object_row.oid,'REFERENCES')
+        OR pg_catalog.has_table_privilege(role_name,object_row.oid,'TRIGGER')
+      THEN
+        RAISE EXCEPTION 'Unapproved %.% rights to %',
+          object_row.schema_name,object_row.relname,role_name;
+      END IF;
+    END LOOP;
+  END LOOP;
+  IF tables_checked<15 THEN
+    RAISE EXCEPTION 'Canonical owner table graph incomplete: %',tables_checked;
+  END IF;
+  FOR object_row IN
+    SELECT p.oid,p.proname,n.nspname AS schema_name
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname IN ('public','allin_private')
+      AND (p.proname LIKE 'v2_training_%'
+        OR p.proname LIKE 'v2_completed_%'
+        OR p.proname LIKE 'v2_activity_%'
+        OR p.proname LIKE 'v2_indoor_weekly_%')
+  LOOP
+    functions_checked:=functions_checked+1;
+    FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF pg_catalog.has_function_privilege(role_name,object_row.oid,'EXECUTE') THEN
+        RAISE EXCEPTION 'Unapproved %.% EXECUTE to %',
+          object_row.schema_name,object_row.proname,role_name;
+      END IF;
+    END LOOP;
+  END LOOP;
+  IF functions_checked<5 THEN
+    RAISE EXCEPTION 'Canonical private function graph incomplete: %',functions_checked;
+  END IF;
+  RAISE NOTICE 'PASS catalog: % candidate tables, % candidate functions, all client rights closed',
+    tables_checked,functions_checked;
+END $security$;
+
+-- Run with actual local Supabase API roles. Existing owner-only export remains
+-- an explicitly separate canonical ALL-251 function, not part of these probes.
+SET ROLE anon;
+DO $anon$
+BEGIN
+  BEGIN
+    PERFORM 1 FROM public.v2_completed_activities LIMIT 1;
+    RAISE EXCEPTION 'Anonymous SELECT of Activity succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN
+    PERFORM 1 FROM public.v2_training_plans LIMIT 1;
+    RAISE EXCEPTION 'Anonymous SELECT of Training plan succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $anon$;
+RESET ROLE;
+
+SET ROLE authenticated;
+DO $auth$
+BEGIN
+  BEGIN
+    PERFORM 1 FROM public.v2_completed_activities LIMIT 1;
+    RAISE EXCEPTION 'Authenticated SELECT of unapproved Activity succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN
+    INSERT INTO public.v2_training_plans(id,user_id,plan_kind)
+    VALUES('00000000-0000-4000-8000-000000000002',
+           '11111111-1111-4111-8111-111111111111','general');
+    RAISE EXCEPTION 'Authenticated direct plan INSERT succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $auth$;
+RESET ROLE;
+
+-- Verify RLS stays fail-closed if a future accidental table SELECT grant
+-- bypasses the primary privilege boundary. This grant is rolled back.
+BEGIN;
+GRANT SELECT ON public.v2_completed_activities,public.v2_training_plans
+  TO authenticated;
+SET LOCAL ROLE authenticated;
+DO $rls$
+DECLARE
+  found_rows bigint;
+BEGIN
+  SELECT count(*) INTO found_rows FROM public.v2_completed_activities;
+  IF found_rows<>0 THEN RAISE EXCEPTION 'Activity rows leaked after GRANT'; END IF;
+  SELECT count(*) INTO found_rows FROM public.v2_training_plans;
+  IF found_rows<>0 THEN RAISE EXCEPTION 'Plan rows leaked after GRANT'; END IF;
+END $rls$;
+ROLLBACK;
+DO $final$
+BEGIN
+  IF pg_catalog.has_table_privilege('authenticated',
+    'public.v2_completed_activities','SELECT')
+  THEN RAISE EXCEPTION 'Test-only SELECT grant survived rollback'; END IF;
+  RAISE NOTICE 'PASS ALL-222: actual Supabase anon/authenticated privilege and RLS boundaries';
+END $final$;
