@@ -173,10 +173,16 @@ SELECT allin_private.v2_activity_append_scalar_candidate(
         if(!result||typeof result.replayed!=='boolean')
          throw Error('Canonical scalar acknowledgement missing');
         if(!result.replayed)written=true;
+       }catch(error){
+        // PostgreSQL marks the transaction aborted after a failed statement.
+        // Do not issue RESET ROLE in that state: it would mask the actual
+        // canonical conflict and make incident diagnosis inaccurate.
+        restricted=false;
+        throw error;
        }finally{
-        // Transaction-local role reset; no leaked operator privileges or
-        // user GUC outside this one transaction.
-        await sql.unsafe('RESET ROLE');restricted=false;
+        // Successful statements return to the operator before the final
+        // current-session/source check. Failed transactions roll back wholly.
+        if(restricted){await sql.unsafe('RESET ROLE');restricted=false;}
        }
       }
       return {activityId:args.activityId,
