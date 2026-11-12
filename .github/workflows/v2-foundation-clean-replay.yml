@@ -82,6 +82,7 @@ on:
       - 'scripts/test-v2-coach-persistence-race-local.sh'
       - 'scripts/test-v2-coach-account-export-local.psql'
       - 'scripts/test-v2-account-export-all-domain-pages-local.psql'
+      - 'scripts/test-all251-community-post-export-projection-local.psql'
       - 'scripts/test-v2-account-export-pinned-snapshot-race-local.sh'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-account-export-populated-db-pages.mjs'
@@ -539,6 +540,11 @@ jobs:
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
             docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
           done
+          # Exercise the ACTUAL SQL post projection with A/B synthetic users.
+          # Its test-only inventory override lives inside BEGIN/ROLLBACK.
+          docker cp docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql "$db_container:/tmp/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql"
+          docker cp scripts/test-all251-community-post-export-projection-local.psql "$db_container:/tmp/test-all251-community-post-export-projection-local.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-all251-community-post-export-projection-local.psql
       - name: Verify pinned account export snapshot against concurrent PostgreSQL mutation
         run: |
           set -euo pipefail
