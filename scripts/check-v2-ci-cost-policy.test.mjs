@@ -39,6 +39,8 @@ test('full V2 review gate requires committed lock and complete acceptance withou
     'check-v2-supabase-target.mjs',
     'check-v2-dependency-manifest.mjs --require-lockfile',
     'npm ci --no-audit --no-fund',
+    'npm run lint',
+    'lint-v2-source.test.mjs',
     'npm run test:auth',
     'npm run test:calculator',
     'npm run test:training-logic',
