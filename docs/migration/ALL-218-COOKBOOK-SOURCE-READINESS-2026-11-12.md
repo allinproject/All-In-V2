@@ -96,3 +96,9 @@ The V1 source has **893** recipes with an `image` metadata object, **875** with 
 The reviewed candidate projection now preserves an explicit **source-only** hero reference (`hosted_bucket`, `hosted_path`, `hosted_sha256`, `public_url`, `source_type`, approval marker and provenance), plus separate legacy visual QA markers. It does not assign a V2 Storage object/path or rehost content. Exact SQL re-execution on 907 candidate rows passed: **0** nested `nutrition` keys, **0** `nutrition_delta` keys, **443** source paths and **536** original `card_completion=production_ready` markers.
 
 Before showing recipe imagery in V2, verify source object rights, object bytes/checksum when available, V2 upload destination and card-to-image association. A source `public_url` should remain a reference, not a new V2-owned canonical asset path.
+
+## Embedded version inheritance / incomplete authoring review
+
+All **3,273** V1 embedded recipe versions carry a legacy `nutrition` field. **43 versions across 12 recipes** lack their own `ingredients`, `instructions` and `servings` fields; all 43 also lack a version `status` field. They may be inherited/default choices or incomplete source records. The candidate projection deliberately preserves the absence of those fields. The V2 import must first establish source inheritance semantics and resolved variant identity; it must not substitute missing ingredient lists with invented food quantities or previously authored macro panels.
+
+The repeatable ingredient/state audit now counts these incomplete version candidates. No variant has been normalized or published from this source audit.
