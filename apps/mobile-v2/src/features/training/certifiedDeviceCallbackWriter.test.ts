@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {routeVerifiedDeviceCallback,type VerifiedDeviceCallback,type CanonicalDeviceWriter}
  from './certifiedDeviceCallbackWriter.ts';
-import {sourceIdentityKey} from './completedActivitySourceReconciliation.ts';
+import {sourceIdentityKey,type LinkedCanonicalSource} from './completedActivitySourceReconciliation.ts';
+import type {CanonicalSourceCandidateSnapshot} from './completedActivitySourceCandidates.ts';
 const hash='a'.repeat(64);
 const cb:VerifiedDeviceCallback={
  verifiedByProviderAdapter:true,
@@ -14,7 +15,7 @@ const cb:VerifiedDeviceCallback={
  observations:[{metricCode:'power_w',definitionVersion:1,measurementKind:'source_measured',
   valueNumeric:0,valueText:null,valueBoolean:null,sampleQuality:'partial',sourcePayloadHash:hash}],
 };
-const writer=(candidates:CanonicalDeviceWriter['findCandidates'] extends (...a:any)=>Promise<infer T>?T:never,
+const writer=(candidates:CanonicalSourceCandidateSnapshot,
  onWrite:()=>void):CanonicalDeviceWriter=>({
  findCandidates:async()=>candidates,
  appendVerifiedMeasurements:async args=>{onWrite();
@@ -24,7 +25,7 @@ const writer=(candidates:CanonicalDeviceWriter['findCandidates'] extends (...a:a
   return {activityId:args.activityId,outcome:'appended'};
  },
 });
-const snapshot=(candidates:readonly any[]=[])=>({
+const snapshot=(candidates:readonly LinkedCanonicalSource[]=[])=>({
  ownerId:'owner-a',sourceIdentityKey:sourceIdentityKey(cb.identity),
  scope:'source_identity_and_relevant_overlap' as const,nextCursor:null,complete:true,
  readVersion:3,candidates,
