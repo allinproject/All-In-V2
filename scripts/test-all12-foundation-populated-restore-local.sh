@@ -8,6 +8,13 @@ owner="e1212121-2121-4121-8121-212121212121"
 docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
 DO $gate$
 BEGIN
+ IF EXISTS(SELECT 1 FROM public.v2_profiles) OR EXISTS(SELECT 1 FROM public.v2_profile_settings)
+ OR EXISTS(SELECT 1 FROM public.v2_onboarding_progress)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_health_considerations)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_profile_settings_actions)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_onboarding_actions)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_requests)
+ THEN RAISE EXCEPTION 'ALL-12 requires empty isolated foundation tables'; END IF;
  IF EXISTS(SELECT 1 FROM auth.users WHERE id='e1212121-2121-4121-8121-212121212121')
  THEN RAISE EXCEPTION 'ALL-12 fixture owner already exists'; END IF;
 END $gate$;
