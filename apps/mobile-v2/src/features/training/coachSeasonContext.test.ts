@@ -94,6 +94,6 @@ test('blocked phase review and malformed issue evidence never reach Coach',()=>{
  assert.equal(prepareCoachSeasonContext({...input(),preview:oversized}).kind,'blocked');
  const foreign=preview();
  if(foreign.status==='unavailable')throw Error('bad fixture');
- foreign.draft.issues.push({code:'UNTRUSTED',message:'Unknown event',eventIds:['other']});
+ foreign.draft.issues.push({code:'RECOVERY_REVIEW',severity:'review',message:'Unknown event',eventIds:['other']});
  assert.equal(prepareCoachSeasonContext({...input(),preview:foreign}).kind,'blocked');
 });
