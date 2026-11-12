@@ -71,3 +71,18 @@ print(json.dumps({'refs':r['rows'][1]['direct_fdc_source_profile_keys'],
   assert.equal(r.approval,false);
   assert.equal(r.ready,false);
 });
+
+test('spoofed non-USDA URLs are not treated as official FDC source IDs',()=>{
+ const code=`import importlib.util,json
+s=importlib.util.spec_from_file_location('usda_reconcile','scripts/reconcile-usda-foundation-identities.py')
+m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+foods=[{'fdcId':5,'description':'Distinct source food','dataType':'Foundation'}]
+profiles=[{'source_profile_key':'untrusted','source_label':'No overlap','source_aliases':[],
+ 'source_url':'https://example.invalid/food-details/5/nutrients'}]
+r=m.reconcile(foods,profiles,1,1)
+print(json.dumps({'direct':r['summary']['directFdcSourceReferencePairs'],
+ 'approved':r['reconciliationApproved']}))`;
+ const result=runPython(code);
+ assert.equal(result.direct,0);
+ assert.equal(result.approved,false);
+});
