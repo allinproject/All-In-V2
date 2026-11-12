@@ -154,43 +154,65 @@ to an unavailable authoritative Event owner. Those remain dependent on ALL-239,
 ALL-243, ALL-244 and ALL-222 review. A passing SQL replay demonstrates only
 the stated identities, ownership constraints, role isolation and replayability.
 
-## Review-only Goal acceptance writer (2026-11-11)
+## Review-only Goal approval and owner-reader candidates (2026-11-11)
 
-`docs/architecture/sql/V2-GOALS-REVISION-ACCEPTANCE-WRITER-CANDIDATE.sql`
-extends the **same** canonical Goals owner with a private, per-user action
-receipt ledger and a proposed `public.v2_goal_accept_revision_candidate`
-writer. This is source-only review work, **not a migration, deployed API,
-activated app action or approval to grant access**.
+All work is **candidate-only, not deployed or migration-approved**. The
+existing canonical Goal identity and revision tables remain the single owner.
 
-The candidate writer locks the current goal first, verifies the owner still
-exists, requires an exact expected version, ensures the candidate is owned by
-that goal and the next numbered revision, supersedes only the previous
-accepted revision and atomically sets the new active revision/version.
-A repeated exact action returns its original version; a changed fingerprint,
-revision, goal or stale new action fails closed. The existing history guard
-still prevents in-place updates of published content. No source metric,
-Training plan or EventHub record is created by accepting a Goal.
+The `V2-GOALS-REVISION-ACCEPTANCE-WRITER-CANDIDATE.sql` now creates
+`allin_private.v2_goal_accept_revision_candidate` in the **private schema**,
+not an exposed public RPC. It holds a live `auth.sessions` row lock through
+the acceptance transaction and binds both the acceptance request and durable
+idempotent action receipt to the exact verified athlete/session. Expired,
+revoked or foreign sessions are denied before replay; session revocation does
+not remove the historical action receipt. The writer serializes on Goal
+identity, checks expected version, preserves accepted history and refuses
+changed action fingerprints. There is **no grant to service_role, anon or
+authenticated** and no hosted gateway.
 
-**Service trust boundary:** App roles have no EXECUTE permission. The
-candidate is SECURITY DEFINER and must be invoked ONLY through a future
-reviewed server adapter that independently authenticates the live user,
-authorizes user intent, binds that owner to `p_user_id`, validates the
-approved preview/fingerprint, enforces rate limits and handles receipts.
-The proposed RPC's role check is defense in depth, **not** a substitute for
-the server verifying the athlete's actual session or explicit approval.
-No `service_role` EXECUTE grant is issued by this candidate.
+[Local Supabase CI 43143017750](https://github.com/allinproject/All-In-V2/actions/runs/43143017750)
+**passed** the session-bound owner/retry and two-connection lock race.
+The earlier [43140792513](https://github.com/allinproject/All-In-V2/actions/runs/43140792513)
+passed the original CAS concurrency test.
 
-The disposable Supabase validation file
-`scripts/test-v2-goals-acceptance-local-postgres.psql` must pass before
-owner review can proceed. A deterministic two-session PostgreSQL contention test now runs via
-`scripts/test-v2-goals-acceptance-race-local.sh`: a competing stale action
-must wait for the Goal lock, fail, and leave exactly one accepted revision and
-one receipt. [Local Supabase run 43140792513](https://github.com/allinproject/All-In-V2/actions/runs/43140792513)
-passed this race and the prior owner/retry probes. This remains **candidate-only**
-and does not validate a production client session or authorize service-role
-execution. Live publication still requires complete metric/behavior evidence
-owner approvals, exact Goal/Event binding, a real authenticated server adapter,
-and independent least-privilege security acceptance.
+The owner snapshot proposal is
+`V2-GOALS-OWNER-SNAPSHOT-READER-CANDIDATE.sql`, a private bounded read
+over canonical Goals and currently accepted revisions. It checks
+`auth.uid()`, exact expected owner, active `auth.sessions`, existing V2
+profile and complete bounded coverage; no client access, cross-user rows or
+unverified EventHub/Training facts. The rollback-only test also verifies that
+revoked sessions cannot continue reading. Local Supabase
+[43142378420](https://github.com/allinproject/All-In-V2/actions/runs/43142378420)
+passed this reader after correcting the fixture to reuse automatic signup
+profiles.
+
+`supabase/functions/_shared/goalAcceptanceAuthServices.mjs` stages a
+**default-off, source-only trusted server adapter**. Its independently tested
+contract rejects client-supplied owner IDs, session IDs and fingerprints,
+requires a currently verified signed-in athlete, and expects a canonical,
+fresh, exact, server-approved preview receipt before the private transactional
+writer can be invoked. It is not a deployed Edge Function. The real private
+preview authorization gateway remains unbuilt and must verify consent,
+Auth session, version, rate limits and cancellation within the trusted
+transaction before any production grant is considered.
+
+## Review-only Goal behavior children (2026-11-11)
+
+`V2-GOALS-BEHAVIOR-TARGET-OWNER-CANDIDATE.sql` adds only optional
+`v2_goal_revision_behavior_targets` children of the **same** canonical
+Goal revision, never a separate habits database. It preserves undated,
+qualitative, unmeasured intentions, optional cadence and existing Training/
+Food Log/Meal Prep evidence ownership. Composite owner/revision FKs,
+RLS and revoked client privileges enforce isolation; historical published
+behavior targets cannot be changed in place or supplemented afterwards.
+
+A Goal revision carrying behavior children may transition to accepted only
+after **all included behaviors are explicitly athlete-confirmed**. An
+unconfirmed Coach-suggested habit remains a candidate, not silently adopted.
+The standalone rollback-only behavior/approval tests are tracked under
+`scripts/test-v2-goals-behavior-local-postgres.psql` and the existing local
+Supabase replay workflow. The candidate still lacks final behavior source
+proof and published app UI acceptance, so it is not deployable.
 
 ## 3. Table-by-table proposed contract
 
