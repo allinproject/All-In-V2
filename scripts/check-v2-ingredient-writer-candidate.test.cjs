@@ -95,3 +95,10 @@ test('energy attestation is immutable, source-bound and never grants publication
  assertHas(energy,'NO client-supplied attestation');
  assert(!/GRANT\s+(?:INSERT|UPDATE|DELETE)\s+ON\s+allin_private\.v2_ingredient_energy_attestations/i.test(energy));
 });
+
+test('privileged canonical reviewer and energy functions retain a trusted search path',()=>{
+ for(const source of [writer,energy]){
+  assertHas(source,'SET search_path = pg_catalog, pg_temp');
+  assert(!/SECURITY DEFINER\s+SET search_path\s*=\s*pg_catalog\s*,\s*public/i.test(source));
+ }
+});
