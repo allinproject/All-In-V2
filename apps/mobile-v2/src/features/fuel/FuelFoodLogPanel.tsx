@@ -39,8 +39,8 @@ function rowForm(row:EditableFoodRow):FoodFormInput{
 type Editor={kind:'add'}|{kind:'edit';row:EditableFoodRow}|null;
 const unavailableText='Food Log data is not available yet. Existing meals are not assumed missing.';
 
-export function FuelFoodLogPanel({ownerId,day,accessReady}:{
- ownerId:string;day:string;accessReady:boolean;
+export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
+ ownerId:string;day:string;accessReady:boolean;onDayChange:(newDay:string)=>void;
 }){
  const [snapshot,setSnapshot]=useState<EditableFoodDay|null>(null);
  const [loading,setLoading]=useState(false);
@@ -110,7 +110,11 @@ export function FuelFoodLogPanel({ownerId,day,accessReady}:{
   if(result.status==='saved'){
    pending.current=null;setEditor(null);setConfirmDelete(null);
    setNotice('Saved to Food Log. Refreshing the day.');
-   setRefresh(r=>r+1);
+   // A moved or newly added entry can belong to a different selected date.
+   // Show its actual saved date instead of implying it disappeared.
+   if(command.operation!=='delete'&&command.replacement.localDate!==day){
+    onDayChange(command.replacement.localDate);
+   }else setRefresh(r=>r+1);
   }else if(result.status==='conflict'){
    pending.current=null;
    setEditor(null);setConfirmDelete(null);
