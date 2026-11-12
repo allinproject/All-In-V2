@@ -109,11 +109,34 @@ def provision():
         raise RuntimeError("Empty temporary database password refused")
     child_env = {**env, "PGPASSWORD": admin_password}
     del admin_password
+    diagnostic = "unclassified database activation failure"
     try:
         try:
-            subprocess.run(command, input=sql, text=True, env=child_env,
-                           check=True, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL)
+            result = subprocess.run(command, input=sql, text=True, env=child_env,
+                                    check=False, stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.PIPE)
+            if result.returncode != 0:
+                # Diagnostics are bucketed without printing the SQL, raw
+                # stderr or credentials. Password and random role secret never
+                # appear in user-visible output, even if psql echoes its input.
+                err = (result.stderr or "").lower()
+                if "password authentication failed" in err:
+                    diagnostic = "temporary database password authentication rejected"
+                elif "certificate" in err or "ssl" in err or "tls" in err:
+                    diagnostic = "database TLS verification failed"
+                elif "could not translate host" in err or "could not connect" in err:
+                    diagnostic = "database host or network connection failed"
+                elif "permission denied" in err or "must be" in err or "not permitted" in err:
+                    diagnostic = "database privilege denied during activation"
+                elif "violates check constraint" in err:
+                    diagnostic = "operator registry validation rejected activation"
+                elif "syntax error" in err:
+                    diagnostic = "activation SQL syntax error"
+                elif "connection to server" in err:
+                    diagnostic = "database session connection was interrupted"
+                else:
+                    diagnostic = "database rejected activation SQL (details withheld)"
+                raise RuntimeError(diagnostic)
         finally:
             child_env.pop("PGPASSWORD", None)
     except Exception:
@@ -121,8 +144,8 @@ def provision():
         subprocess.run(["gh", "secret", "delete", SECRET_NAME, "--env", ENVIRONMENT,
                         "--repo", REPO], check=False, stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL)
-        raise RuntimeError("Database activation failed; GitHub secret deletion attempted. "
-                           "Inspect restricted role state before retrying.")
+        raise RuntimeError("Database activation failed: " + diagnostic +
+                           "; GitHub secret deletion attempted. Inspect restricted role state.")
     del sql
     del pgpass
     del secret
