@@ -42,7 +42,8 @@ function fixture(){
   eventSnapshot:{ownerId:owner,authSessionGeneration:generation,complete:true,nextCursor:null,
     snapshotVersion:token,events:events.map(e=>({eventId:e.id,ownerId:owner,eventVersion:2,
      date:e.date,timezone:'America/Chicago',sport:e.sport,
-     verification:'organizer_verified',participation:'athlete_confirmed',
+     verification:'organizer_verified',participation:'registered',
+     participationSource:'athlete_confirmed',
      evidenceGeneration:generation}))},
   goalSnapshot:{ownerId:owner,authSessionGeneration:generation,complete:true,nextCursor:null,
     snapshotVersion:token,goals:events.map(e=>({goalId:'goal-'+e.id,ownerId:owner,
@@ -63,6 +64,31 @@ test('missing certification and EventHub group membership do not become race evi
  proofs.eventSnapshot.events=[{...proofs.eventSnapshot.events[0],participation:'group_member'},
   proofs.eventSnapshot.events[1]];
  assert.equal(certifySeasonAgainstGoalEventOwners(input,proofs).status,'unavailable');
+});
+test('self-confirmed event interest supports planning without claiming registration',()=>{
+ const f=fixture();
+ f.proofs.eventSnapshot.events=[{
+  ...f.proofs.eventSnapshot.events[0],participation:'interested',
+  participationSource:'athlete_confirmed',
+ },f.proofs.eventSnapshot.events[1]];
+ const result=certifySeasonAgainstGoalEventOwners(f.input,f.proofs);
+ assert.equal(result.status,'review_required');
+ if(result.status==='unavailable')throw Error(result.reason);
+ assert.equal(result.proposal.invariants.noAutomaticWrite,true);
+});
+test('withdrawn participation or missing athlete/organizer evidence cannot certify an event',()=>{
+ const withdrawn=fixture();
+ withdrawn.proofs.eventSnapshot.events=[{
+  ...withdrawn.proofs.eventSnapshot.events[0],participation:'withdrawn'
+ },withdrawn.proofs.eventSnapshot.events[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(withdrawn.input,withdrawn.proofs).status,
+  'unavailable');
+ const unverified=fixture();
+ unverified.proofs.eventSnapshot.events=[{
+  ...unverified.proofs.eventSnapshot.events[0],participationSource:null
+ },unverified.proofs.eventSnapshot.events[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(unverified.input,unverified.proofs).status,
+  'unavailable');
 });
 test('stale event version/date and uncoupled goal are not accepted',()=>{
  const f=fixture();f.proofs.eventSnapshot.events=[{...f.proofs.eventSnapshot.events[0],date:'2027-04-11'},
