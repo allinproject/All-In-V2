@@ -65,7 +65,7 @@ def main():
             # authenticated read role; never the private reviewer capability.
             statement = "SET ROLE authenticated; " + statement
         env = {**os.environ, "PGPASSWORD": passwords[actor]}
-        return run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-At",
+        return run(["psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-At",
                     "-h", "127.0.0.1", "-p", "5432",
                     "-U", actor, "-d", db, "-c", statement], env=env, check=check)
     try:
