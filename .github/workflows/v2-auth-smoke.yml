@@ -12,6 +12,7 @@ on:
       - 'apps/mobile-v2/src/features/kitchen/**'
       - 'docs/architecture/sql/V2-KITCHEN-MEAL-PLAN-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-kitchen-plan-candidate.test.mjs'
+      - 'scripts/test-v2-kitchen-plan-postgres.psql'
       - 'apps/mobile-v2/src/features/fuel/**'
       - 'apps/mobile-v2/src/features/community/**'
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
@@ -87,6 +88,7 @@ on:
       - 'apps/mobile-v2/src/features/kitchen/**'
       - 'docs/architecture/sql/V2-KITCHEN-MEAL-PLAN-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-kitchen-plan-candidate.test.mjs'
+      - 'scripts/test-v2-kitchen-plan-postgres.psql'
       - 'apps/mobile-v2/src/features/fuel/**'
       - 'apps/mobile-v2/src/features/community/**'
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
@@ -312,6 +314,14 @@ jobs:
           docker cp docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql "$POSTGRES_CONTAINER_ID:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-WRITER-CANDIDATE.sql"
           docker cp scripts/test-v2-community-writer-postgres.psql "$POSTGRES_CONTAINER_ID:/tmp/allin/scripts/test-v2-community-writer-postgres.psql"
           docker exec "$POSTGRES_CONTAINER_ID" psql -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-writer-postgres.psql
+      - name: Replay Kitchen plan ownership and multi-food lunch in isolated PostgreSQL 17
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$POSTGRES_CONTAINER_ID" createdb -U "$PGUSER" allin_kitchen_test
+          docker cp scripts/test-v2-kitchen-plan-postgres.psql "$POSTGRES_CONTAINER_ID:/tmp/allin/scripts/test-v2-kitchen-plan-postgres.psql"
+          docker cp docs/architecture/sql/V2-KITCHEN-MEAL-PLAN-OWNER-CANDIDATE.sql "$POSTGRES_CONTAINER_ID:/tmp/allin/docs/architecture/sql/V2-KITCHEN-MEAL-PLAN-OWNER-CANDIDATE.sql"
+          docker exec "$POSTGRES_CONTAINER_ID" psql -U "$PGUSER" -d allin_kitchen_test -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-kitchen-plan-postgres.psql
       - name: Verify subscription review candidate in separate disposable database
         env:
           POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
