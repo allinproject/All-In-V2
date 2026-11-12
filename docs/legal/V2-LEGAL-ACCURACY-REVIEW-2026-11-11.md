@@ -58,3 +58,24 @@ Founder and appropriate legal/privacy reviewer must sign off the final three **f
 - The account export screen supports owner-bound `v2_export_my_account_snapshot` to a temporary JSON file on iOS/Android with explicit confirmation and cleanup. It explicitly describes this as **not** a complete archive of all activities, media or connected providers. Do not describe it as complete portability/export functionality without an approved scope and verified backend/device evidence.
 - This newly observed UI changes the older claim that there is no V2 account-deletion initiation interface. It does **not** resolve the policy candidate's email-only interim description or the missing processor/retention/backup/privacy review gates. Legal reviewers must reconcile the final text against the actual shipped deletion/request lifecycle rather than freeze either earlier wording.
 - Evidence scope: V2 GitHub source inspection on 2026-11-12; **not** a fresh Supabase deployment inventory, production query, legal approval, actual account deletion, document publication, or device acceptance. Preserve original recovered V1 legal text and unapproved candidate redlines unchanged.
+
+
+## 2026-11-12 — read-only deployed V2 backend evidence (ALL-219)
+
+**Project inspected:** Supabase `xarhuczrtzuiljmtdaeu`, status `ACTIVE_HEALTHY`, Postgres 17.11.0.018. Checked with current project/schema metadata and read-only SQL; no schema, user data, service configuration, Auth account or publication was changed.
+
+| Live observation | Result | Interpretation / remaining action |
+|---|---|---|
+| `public.v2_legal_documents` total/published | **0 / 0** | No final Terms, Privacy, or Founder Beta publication; signup remains gated |
+| `public.v2_legal_acceptances` | **0 rows** | No real device acceptance evidence; avoid inferring user tests |
+| Privacy/delete tables | `allin_private.v2_account_deletion_requests`, `v2_account_deletion_processor_config`, `v2_account_deletion_execution_audit` present with RLS enabled | Intake and execution ledger infrastructure exist; this supersedes November 11 absence-of-table observations |
+| `v2_account_deletion_processor_config.execution_enabled` | **false** | Deletion execution is currently **disabled**; do not claim requests are actually erased |
+| Pending/processing deletion requests | **0** | No live pending demand at the instant of query, not evidence processing works |
+| Storage buckets | **0** | Presently no bucket objects registered; future buckets must be checked before any deletion release |
+| Edge Functions | **0 deployed** | No Supabase Edge worker is present; another non-Edge processor is not thereby ruled out |
+| Related database RPCs | request, read, cancel, claim, record completion/failure, verify completion, export, accept legal are present | Function presence is **not** installed-app/worker execution acceptance |
+| Supabase organization billing | Organization `urcroanxnjhinzpsfxku` reports plan `pro` | **Does not demonstrate** V2 daily backup actually ran, schedule, age, restore viability or retention; verify explicit V2 project backup dashboard and restore evidence |
+
+**Read-only function-body check:** `public.v2_claim_account_deletion_for_processing` checks the enabled configuration, rejects nonempty storage buckets, checks user-owned table cascade coverage, and locks/claims one exact pending request. These are protective source conditions, not proof of end-to-end deletion and not a reason to turn the processor on. The function is `SECURITY DEFINER`; its caller privileges, grants, auth handling, and downstream privileged executor must be reviewed in ALL-251 before enabling.
+
+**Legal drafting implication:** Neither the original statement of operational daily backups nor a claim that deletion requests currently cause erasure is supported by these observations. Account-bound request intake is now supported in the source and live schema, but execution remains explicitly OFF. Obtain current processing facts and human/founder approval before choosing final Terms/Privacy wording. No candidate or original legal text was changed by this evidence audit.
