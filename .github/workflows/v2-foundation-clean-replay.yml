@@ -38,6 +38,7 @@ on:
       - 'scripts/test-v2-billing-backup-restored-local.psql'
       - 'scripts/all12-recovery-domain-manifest.mjs'
       - 'scripts/all12-recovery-domain-manifest.test.mjs'
+      - 'scripts/test-all12-live-schema-inventory-local.mjs'
       - 'scripts/test-all12-multidomain-logical-restore-local.sh'
       - 'scripts/test-all12-auth-recovery-boundaries-local.psql'
       - 'scripts/test-all12-auth-identity-restore-local.psql'
