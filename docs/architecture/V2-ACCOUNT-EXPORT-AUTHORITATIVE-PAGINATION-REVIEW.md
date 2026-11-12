@@ -126,3 +126,22 @@ This checkpoint does not change live database grants, schema, production
 behavior, temporary staging deployment, or user sign-up. Never set
 `complete=true` or enable the default-off export function on the strength
 of catalog-parity tests alone.
+
+## Step-3 pinned Training media eligibility gate — 2026-11-12
+
+The existing pinned `trainingExportCanonicalPgReader.mjs` now includes
+`state` for both `v2_activity_series` and `v2_activity_route_objects`,
+and `privacy_state` for route objects in the same REPEATABLE READ
+owner-scoped evidence query. The existing
+`auditOwnerPrivateMediaCoverage` checks that each referenced media row is
+`ready` and each route has explicit `private` or `redacted` visibility
+before permitting private Storage reads. Pending, revoked, public, and
+unclassified route media are rejected. Independent regression tests exercise
+each of these denials without reading private bytes.
+
+This closes a privacy eligibility gap in the Training-specific media audit,
+**not** full owner media coverage. The media reader still requires a separate
+owner-scoped Storage catalog and exact SHA-256 verification, remains bounded
+to the reviewed Training bucket and does not authorize or classify Community,
+Nutrition, Progress, or any future photo bucket. The all-domain inventory
+stays `complete=false` until those domains and legal policy are approved.
