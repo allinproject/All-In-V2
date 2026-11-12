@@ -43,7 +43,7 @@ BEGIN
   PERFORM public.v2_account_export_page_review_candidate(
    'a6111111-1111-4111-8111-111111111111',
    'a6333333-3333-4333-8333-333333333333',
-   'a6555555-5555-4555-8555-555555555555','food.my_entries',NULL,25);
+   'a6555555-5555-4555-8555-555555555555','public.v2_food_log_entries',NULL,25);
   RAISE EXCEPTION 'Unapproved food log exported by live canonical registry';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $unapproved$;
@@ -61,7 +61,7 @@ BEGIN
  THEN RAISE EXCEPTION 'Snapshot required' USING ERRCODE='42501'; END IF;
  RETURN pg_catalog.jsonb_build_object(
   'ownerId',p_owner,'requestId',p_request,'snapshotId',p_request,
-  'collections',pg_catalog.jsonb_build_array('food.my_entries'),
+  'collections',pg_catalog.jsonb_build_array('public.v2_food_log_entries'),
   'complete',false);
 END $test_only_inventory$;
 
@@ -76,9 +76,9 @@ DECLARE
  rb uuid:='b6666666-6666-4666-8666-666666666666';
  p1 jsonb;p2 jsonb;pb jsonb; all_rows jsonb; row jsonb;
 BEGIN
- p1:=public.v2_account_export_page_review_candidate(a,sa,ra,'food.my_entries',NULL,25);
- p2:=public.v2_account_export_page_review_candidate(a,sa,ra,'food.my_entries',p1->>'nextCursor',25);
- pb:=public.v2_account_export_page_review_candidate(b,sb,rb,'food.my_entries',NULL,25);
+ p1:=public.v2_account_export_page_review_candidate(a,sa,ra,'public.v2_food_log_entries',NULL,25);
+ p2:=public.v2_account_export_page_review_candidate(a,sa,ra,'public.v2_food_log_entries',p1->>'nextCursor',25);
+ pb:=public.v2_account_export_page_review_candidate(b,sb,rb,'public.v2_food_log_entries',NULL,25);
  -- Aggregate the two independently validated JSONB page arrays without
  -- relying on an overloaded concatenation expression in PL/pgSQL.
  SELECT COALESCE(pg_catalog.jsonb_agg(part.item ORDER BY part.page_number,part.ordinality),'[]'::jsonb)
@@ -134,7 +134,7 @@ BEGIN
   all_rows::text LIKE '%OWNER_B_FOOD_SECRET%'; END IF;
  BEGIN
   PERFORM public.v2_account_export_page_review_candidate(
-   a,sb,ra,'food.my_entries',NULL,25);
+   a,sb,ra,'public.v2_food_log_entries',NULL,25);
   RAISE EXCEPTION 'Cross-session Food Log read was permitted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  RAISE NOTICE 'PASS ALL-251 Food Log two-owner export: 27 A over 2 pages, deleted history, zero vs unknown, B denied, real request gate, incomplete release';
