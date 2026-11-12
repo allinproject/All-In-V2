@@ -77,23 +77,27 @@ export async function writeManualFood(
 ):Promise<FoodWriteOutcome>{
  if(!enabled)return {status:'disabled'};
  if(!validCommand(c)||!isCurrent())return {status:'invalid'};
- try{
-  await services.authenticateOwner();
-  if(!isCurrent())return {status:'unavailable'};
-  const result=await services.mutate(c.operation==='add'?'v2_food_log_add_manual':'v2_food_log_mutate_manual',args(c));
-  if(!isCurrent())return {status:'unavailable'};
-  if(result.error){
-   if(result.status===409||result.error.code==='PT409')return {status:'conflict'};
-   if(result.status===401||result.status===403)return {status:'unauthorized'};
-   return {status:'unavailable'};
-  }
-  await services.authenticateOwner();
-  if(!isCurrent())return {status:'unavailable'};
-  const d=result.data as {id?:unknown;revision?:unknown;replayed?:unknown}|null;
-  if(!d||d.id!==c.entryId||!Number.isSafeInteger(d.revision)
-    ||(d.revision as number)<1||typeof d.replayed!=='boolean')return {status:'unavailable'};
-  return {status:'saved',entryId:c.entryId,revision:d.revision as number,replayed:d.replayed};
- }catch{return {status:'unauthorized'};}
+ try{await services.authenticateOwner();}
+ catch{return {status:'unauthorized'};}
+ if(!isCurrent())return {status:'unavailable'};
+ let result:FoodRpcResult;
+ try{result=await services.mutate(
+   c.operation==='add'?'v2_food_log_add_manual':'v2_food_log_mutate_manual',args(c),
+  );}
+ catch{return {status:'unavailable'};}
+ if(!isCurrent())return {status:'unavailable'};
+ if(result.error){
+  if(result.status===409||result.error.code==='PT409')return {status:'conflict'};
+  if(result.status===401||result.status===403)return {status:'unauthorized'};
+  return {status:'unavailable'};
+ }
+ try{await services.authenticateOwner();}
+ catch{return {status:'unauthorized'};}
+ if(!isCurrent())return {status:'unavailable'};
+ const d=result.data as {id?:unknown;revision?:unknown;replayed?:unknown}|null;
+ if(!d||d.id!==c.entryId||!Number.isSafeInteger(d.revision)
+   ||(d.revision as number)<1||typeof d.replayed!=='boolean')return {status:'unavailable'};
+ return {status:'saved',entryId:c.entryId,revision:d.revision as number,replayed:d.replayed};
 }
 export async function writeOwnedManualFood(
  client:SupabaseClient<Database>,command:ManualFoodCommand,
