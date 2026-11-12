@@ -65,3 +65,15 @@ Priority: current accepted structure + hard exclusions > fresh relevant observat
 **Gate C — ALL-232 / ALL-241:** Connect real domain readers once their canonical records exist. Validate complete/partial/unknown coverage, freshness, consent, corrections, action receipts and end-to-end mobile journeys across athlete types.
 
 **Deployment:** None authorized by this packet. Keep ALL-222, ALL-210, ALL-217 and ALL-241 open until evidence proves their respective acceptance gates.
+
+
+## 7. First physical SQL and security acceptance candidate — 2026-11-11
+
+The following are **review-only** source files under `docs/architecture/sql/`, deliberately **outside** `supabase/migrations/` so they cannot be auto-applied:
+
+- [V2-COACH-PERSISTENCE-CANDIDATE.sql](./sql/V2-COACH-PERSISTENCE-CANDIDATE.sql): one permanent V2 conversation per authenticated account; owner/thread composite foreign keys; role-checked, append-only messages; unique client action and service response identifiers; private successful-append ledger; owner-bound first-open and append RPCs; service-role-only assistant writer; paginated history reader; table RLS and narrow EXECUTE grants.
+- [V2-COACH-PERSISTENCE-SECURITY-CHECKS.sql](./sql/V2-COACH-PERSISTENCE-SECURITY-CHECKS.sql): executable **local-only** catalog assertions for relation RLS, direct table-grant denial, RPC presence, and assistant-writer privilege boundaries, followed by required behavioral replay checklist.
+
+**Proposal refinement:** The SQL candidate implements three tables now and deliberately defers the optional settled-context table, because conversation replay can work without a second summarized state. The selected active-thread policy is one durable thread per owner; future multiple-thread support would require an explicitly reviewed schema transition. Failed service calls do not create successful assistant messages. Accepted user messages remain in history and service failures must be represented truthfully in the application.
+
+**Not yet proven:** The candidate has not been executed against a disposable PostgreSQL/Supabase instance. The catalog checks and two-owner authenticated integration replay have **not** run. These files are not approved for production migration. Privacy retention/export/deletion scope, secure service writer implementation and exact integration with currently in-flight ALL-222 physical schema work remain approval gates. A proposed SQL file is not equivalent to a working V2 Coach service.
