@@ -118,7 +118,7 @@ jobs:
         run: node --test scripts/check-v2-ingredient-hosted-reviewer-connection.test.cjs
       - name: Verify protected temporary workload login guardrails without credentials
         run: node --test scripts/check-v2-ingredient-hosted-workload-connection.test.cjs
-      - name: Test safe local staging credential provisioning (mocked; no passwords)
-        run: python3 scripts/provision-v2-ingredient-temp-login.test.py
       - name: Test pinned USDA reconciliation and no-auto-approval gates
         run: node --test scripts/reconcile-usda-foundation-identities.test.cjs
+      - name: Test safe local staging credential provisioning (mocked; no passwords)
+        run: python3 scripts/provision-v2-ingredient-temp-login.test.py
