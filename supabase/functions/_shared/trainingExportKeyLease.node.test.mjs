@@ -56,6 +56,7 @@ test('rotation or revocation during unwrap denies release',async()=>{
   const f=fixture(change);
   await assert.rejects(createAccountExportKeyLease(f.deps).resolveEncryptionKey({ownerId,requestId}),/changed/);
   assert.equal(f.unwraps,1);assert.equal(f.reads,2);
+  assert(f.secret.every(b=>b===0),'Unwrapped data key must be wiped after gate revocation');
  }
 });
 test('invalid KMS return and missing provider denied',async()=>{
