@@ -62,6 +62,17 @@ export function createCoachModelGenerator({
     context,message:input.userContent.trim()});
   if(!text(instructions,25000))rejected("coach_model_instructions_unavailable");
 
+  // Reject over-budget/oversized prompts BEFORE making a durable hold.
+  // Only trusted server-owned model transports expose this deterministic
+  // preflight; never accept cost limits from the caller's request body.
+  if(typeof invokeModel.preflight==="function"){
+   const check=invokeModel.preflight({
+    instructions,userContent:input.userContent.trim(),context,maxOutputTokens
+   });
+   if(!check||!finite(check.worstCostUsd,0,maxCostUsd))
+    rejected("coach_model_preflight_budget_denied");
+  }
+
   // A durable reservation is required before any model request. The server
   // must bind this to the authenticated owner and stable client request ID.
   const reservation=await reserveBudget({ownerId,clientRequestId,
