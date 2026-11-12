@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
 import path from 'node:path';
 import {pairVerifiedAppleWatch,revokeVerifiedAppleWatch}
  from '../apps/mobile-v2/src/features/training/appleWatchPairingHandoff.ts';
