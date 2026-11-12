@@ -36,6 +36,8 @@ on:
       - 'scripts/test-v2-billing-local-foundation.psql'
       - 'scripts/test-v2-billing-backup-seed-local.psql'
       - 'scripts/test-v2-billing-backup-restored-local.psql'
+      - 'scripts/all12-recovery-domain-manifest.mjs'
+      - 'scripts/all12-recovery-domain-manifest.test.mjs'
       - 'scripts/verify-v2-billing-postdeploy-readonly.psql'
       - 'scripts/test-v2-billing-preupgrade-seed.psql'
       - 'scripts/test-v2-billing-schema-rollback-local.psql'
@@ -109,6 +111,8 @@ jobs:
           # Match the established Training PostgreSQL replay's v2 service
           # contract; avoid the rate-limited "latest" release lookup.
           version: v2.stable
+      - name: Reject incomplete ALL-12 recovery scope
+        run: node --test scripts/all12-recovery-domain-manifest.test.mjs
       - name: Verify applied foundation SQL has not drifted
         run: |
           node --test scripts/check-v2-applied-migration-integrity.test.mjs
