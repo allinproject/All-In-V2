@@ -1,7 +1,8 @@
 /**
- * ALL-251 disposable LOCAL Supabase Storage end-to-end acceptance.
- * Never touches a hosted project. Requires CI=1, local CLI status and loopback
- * API; creates/removes fixed temporary private buckets in freshly reset CI.
+ * ALL-251 private Storage acceptance, LOCAL by default.
+ * Hosted mode is explicitly opt-in and hard-pinned to the temporary approved
+ * Supabase staging project; credentials are server-only environment secrets.
+ * Never touches live V2/V1. Never creates or deletes hosted buckets.
  */
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -11,15 +12,35 @@ import {stageLargeAccountExport,createLargeAccountDownloadResponse} from '../sup
 import {verifyAccountExportDownload} from '../supabase/functions/_shared/trainingExportDownloadVerifier.mjs';
 
 if(!['1','true'].includes(process.env.CI??''))
- throw Error('Storage acceptance is limited to disposable CI');
-const envText=execFileSync('supabase',['status','-o','env'],{encoding:'utf8',timeout:15000});
-const vars=Object.fromEntries(envText.split(/\r?\n/).map(x=>x.trim())
- .filter(x=>/^[A-Z_]+=/.test(x))
- .map(x=>{const i=x.indexOf('=');return [x.slice(0,i),x.slice(i+1).replace(/^["']|["']$/g,'')];}));
+ throw Error('Storage acceptance requires explicit CI mode');
+const hosted=process.env.ALL251_ALLOW_HOSTED_TEST==='true';
+const vars=hosted ? {
+ API_URL:process.env.ALL251_HOSTED_URL,
+ SERVICE_ROLE_KEY:process.env.ALL251_HOSTED_SERVICE_ROLE_KEY,
+ ANON_KEY:process.env.ALL251_HOSTED_ANON_KEY,
+} : (() => {
+ const envText=execFileSync('supabase',['status','-o','env'],{
+  encoding:'utf8',timeout:15000,
+ });
+ return Object.fromEntries(envText.split(/\r?\n/).map(x=>x.trim())
+  .filter(x=>/^[A-Z_]+=/.test(x))
+  .map(x=>{const i=x.indexOf('=');return [
+   x.slice(0,i),x.slice(i+1).replace(/^["']|["']$/g,''),
+  ];}));
+})();
 const url=new URL(vars.API_URL??'');
-if(!['localhost','127.0.0.1','::1'].includes(url.hostname)
- ||url.protocol!=='http:'||url.port!=='54321'
- ||typeof vars.SERVICE_ROLE_KEY!=='string'||vars.SERVICE_ROLE_KEY.length<40)
+if(typeof vars.SERVICE_ROLE_KEY!=='string'||vars.SERVICE_ROLE_KEY.length<40
+ ||typeof vars.ANON_KEY!=='string'||vars.ANON_KEY.length<20)
+ throw Error('Trusted ephemeral Storage test credentials unavailable');
+if(hosted){
+ // ONLY the separately approved, temporary $10/month staging project.
+ // Even if the environment is compromised, the script will not use live V2.
+ if(process.env.ALL251_HOSTED_PROJECT_REF!=='fbtgknlxjyeqrxemskbl'
+   ||url.protocol!=='https:'
+   ||url.hostname!=='fbtgknlxjyeqrxemskbl.supabase.co')
+   throw Error('Refusing non-approved ALL-251 hosted staging project');
+}else if(!['localhost','127.0.0.1','::1'].includes(url.hostname)
+ ||url.protocol!=='http:'||url.port!=='54321')
  throw Error('Not an approved disposable localhost Supabase target');
 const owner='a1111111-a111-4111-8111-a11111111111';
 const requestId='a2222222-a222-4222-8222-a22222222222';
@@ -39,11 +60,41 @@ async function api(method,path,{data,body,token=vars.SERVICE_ROLE_KEY,contentTyp
  if(data!==undefined){payload=JSON.stringify(data);headers['Content-Type']='application/json';}
  else if(body!==undefined)headers['Content-Type']=contentType;
  const res=await fetch(url.origin+'/storage/v1'+path,{method,headers,body:payload});
- if(ok&&!res.ok)throw Error('Local Storage '+method+' '+path+' failed with HTTP '+res.status+
+ if(ok&&!res.ok)throw Error('ALL-251 Storage '+method+' '+path+' failed with HTTP '+res.status+
   ' '+(await res.text()).slice(0,180));
  return res;
 }
 async function sourceCatalog(){
+ if(hosted){
+  // Storage REST list is hierarchical. Traverse each owner-only folder.
+  // A flat Storage.list(owner) is NOT an exhaustive object inventory.
+  const names=[],seenDirs=new Set();
+  async function visit(prefix,depth){
+   if(depth>8||seenDirs.has(prefix))throw Error('Storage inventory traversal unsafe');
+   seenDirs.add(prefix);
+   const response=await api('POST','/object/list/'+sourceBucket,{
+    data:{prefix,limit:1000,offset:0,sortBy:{column:'name',order:'asc'}},
+   });
+   const entries=await response.json();
+   if(!Array.isArray(entries)||entries.length>=1000)
+    throw Error('Host Storage catalog incomplete or malformed');
+   for(const entry of entries){
+    const name=entry?.name;
+    if(typeof name!=='string'||!name||name.includes('/')
+      ||name==='.'||name==='..')throw Error('Unapproved Storage catalog entry');
+    const full=prefix?prefix+'/'+name:name;
+    if(entry.id===null||entry.id===undefined){
+     await visit(full,depth+1);
+    }else{
+     if(!full.startsWith(owner+'/')||names.includes(full)||names.length>=128)
+      throw Error('Foreign or duplicate owner Storage object');
+     names.push(full);
+    }
+   }
+  }
+  await visit(owner,0);
+  return names;
+ }
  const container=execFileSync('docker',['ps','--filter','name=supabase_db_','--format','{{.ID}}'],{encoding:'utf8'}).trim().split('\n')[0];
  if(!container)throw Error('Disposable PostgreSQL container unavailable');
  const sql="SELECT coalesce(json_agg(name ORDER BY name),'[]'::json)::text "+
@@ -66,11 +117,22 @@ async function removeAll(){
 try{
  const existing=await api('GET','/bucket');
  const buckets=await existing.json();
- if(!Array.isArray(buckets)||buckets.some(b=>[sourceBucket,archiveBucket].includes(b.id)))
-  throw Error('Disposable Storage fixture buckets already exist');
- for(const id of [sourceBucket,archiveBucket]){
-  await api('POST','/bucket',{data:{id,name:id,public:false}});
-  insertedBuckets.push(id);
+ if(!Array.isArray(buckets))
+  throw Error('Storage bucket catalog malformed');
+ if(hosted){
+  if(buckets.length!==2||[sourceBucket,archiveBucket].some(id=>
+    !buckets.some(b=>b.id===id&&b.public===false)))
+   throw Error('Hosted staging bucket catalog differs from approved private inventory');
+  const prior=await sourceCatalog();
+  if(prior.length!==0)
+   throw Error('Existing owner media present; refuse non-disposable staging fixture');
+ }else{
+  if(buckets.some(b=>[sourceBucket,archiveBucket].includes(b.id)))
+   throw Error('Disposable Storage fixture buckets already exist');
+  for(const id of [sourceBucket,archiveBucket]){
+   await api('POST','/bucket',{data:{id,name:id,public:false}});
+   insertedBuckets.push(id);
+  }
  }
  for(const [path,bytes] of original){
   await api('POST','/object/'+sourceBucket+'/'+encPath(path),{
