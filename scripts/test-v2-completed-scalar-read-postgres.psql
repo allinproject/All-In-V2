@@ -52,9 +52,9 @@ BEGIN
  ('00000000-0000-4000-8000-000000000001',ride,a,src_a,
   'avg_power_w',1,200,'source_measured','trusted',repeat('a',64)),
  ('00000000-0000-4000-8000-000000000002',ride,a,src_b,
-  'avg_power_w',1,200,'source_measured','partial',repeat('b',64)),
+  'avg_power_w',1,200,'source_measured','trusted',repeat('b',64)),
  ('00000000-0000-4000-8000-000000000003',ride,a,src_a,
-  'cadence_rpm',1,0,'source_measured','trusted',repeat('a',64)),
+  'cadence_rpm',1,0,'source_measured','partial',repeat('a',64)),
  ('00000000-0000-4000-8000-000000000004',ride,a,src_c,
   'hr_bpm',1,160,'source_measured','unverified',repeat('c',64));
  -- Interval power is NOT an activity-global average and must not
@@ -75,6 +75,7 @@ BEGIN
  OR (v->'metrics'->0->>'quality')<>'partial'
  OR (v->'metrics'->0->>'sourceCount')<>'2'
  OR (v->'metrics'->1->>'valueNumeric')<>'0'
+ OR (v->'metrics'->1->>'quality')<>'partial'
  OR (v->'unresolvedMetrics'->0->>'reason')<>'source_review_required'
  THEN RAISE EXCEPTION 'Agreed evidence and known-zero projection wrong: %',v; END IF;
  INSERT INTO public.v2_activity_sources
