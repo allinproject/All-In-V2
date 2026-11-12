@@ -353,12 +353,14 @@ test('ALL-217/230 private export redacts replay hashes, provider correlators and
  const slice=reader.slice(start,end);
  const sqlOnly=slice.split('\n').filter(line=>!line.trim().startsWith('--')).join('\n');
  for(const forbidden of [
-  "'''request_hash''","'''client_request_id''",
-  "'''reservation_id''","'''request_fingerprint''",
-  "'''service_role''","'''api_key''","pg_catalog.to_jsonb(t)"
+  'request_hash','client_request_id','reservation_id',
+  'request_fingerprint','service_role','api_key'
  ]){
-  assert(!sqlOnly.includes(forbidden),'Private/internal field leaked into athlete export: '+forbidden);
+  assert(!sqlOnly.includes("''"+forbidden+"''"),
+   'Private/internal field leaked into athlete export: '+forbidden);
  }
+ assert(!sqlOnly.includes('pg_catalog.to_jsonb(t)'),
+  'Unredacted raw private records cannot enter athlete export');
  for(const expected of [
   'subject','status','certified_revision',
   'result_revision','period_start','held_usd',
