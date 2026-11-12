@@ -117,6 +117,69 @@ try{
   process.stdout.write('PASS: real hosted owner request, idempotency, service approval, exact session and foreign-owner denial\\n');
  }
 
+
+ if(env.ALL247_TEST_FOOD_RPC==='true'){
+  // ALL-247 single canonical Food Log, tested with genuine Auth JWTs against
+  // the installed TEMPORARY staging schema only. No other project permitted.
+  const rpc=async(name,body,token=null)=>request('/rest/v1/rpc/'+name,{
+   method:'POST',body,userJwt:token,apiKey:anon,
+  });
+  const day='2026-11-12', entryId=randomUUID(), actionId=randomUUID();
+  const food={
+   p_expected_user_id:a.id,p_action_id:actionId,p_entry_id:entryId,
+   p_consumed_at:'2026-11-12T18:00:00Z',p_local_date:day,
+   p_timezone_name:'America/Chicago',p_meal_slot:'lunch',
+   p_label:'ALL247 synthetic test food',p_quantity:1,p_unit:'serving',
+   p_kcal:300,p_nutrition_source:'user_entered',
+  };
+  const anonymous=await rpc('v2_food_log_read_complete_day',{
+   p_expected_user_id:a.id,p_local_date:day,
+  });
+  assert([401,403,404].includes(anonymous.status),'Anonymous Food Log RPC unexpectedly readable');
+  const foreign=await rpc('v2_food_log_read_complete_day',{
+   p_expected_user_id:a.id,p_local_date:day,
+  },bToken);
+  assert([400,401,403].includes(foreign.status),'Other owner accessed Food Log');
+  const addition=await rpc('v2_food_log_add_manual',food,aToken);
+  assert.equal(addition.status,200,'Owner could not add food via real RPC');
+  const added=await addition.json();
+  assert.equal(added.id,entryId);
+  assert.equal(added.revision,1);
+  const retry=await rpc('v2_food_log_add_manual',food,aToken);
+  assert.equal(retry.status,200,'Idempotent exact add retry failed');
+  assert.equal((await retry.json()).replayed,true);
+  const changed=await rpc('v2_food_log_add_manual',{
+   ...food,p_kcal:301,
+  },aToken);
+  assert([400,409,422].includes(changed.status),'Changed idempotent replay was accepted');
+  const reader=async(token,ownerId,date)=>rpc('v2_food_log_read_complete_day',{
+   p_expected_user_id:ownerId,p_local_date:date,
+  },token);
+  const before=await reader(aToken,a.id,day);
+  assert.equal(before.status,200,'Authorized Food Log day reader unavailable');
+  const first=await before.json();
+  assert.equal(first.complete,true);
+  assert(first.sourceRevision?.startsWith('fuel-food-day-v1:'));
+  assert.equal(first.entries?.length,1);
+  assert.equal(first.entries[0]?.id,entryId);
+  assert.equal(first.entries[0]?.user_id,a.id);
+  const bDay=await reader(bToken,b.id,day);
+  assert.equal(bDay.status,200,'Other owner cannot read own day');
+  assert.equal((await bDay.json()).entries?.length,0,'A food leaked into B day');
+  const deleted=await rpc('v2_food_log_mutate_manual',{
+   p_expected_user_id:a.id,p_action_id:randomUUID(),p_entry_id:entryId,
+   p_expected_revision:1,p_operation:'delete',
+  },aToken);
+  assert.equal(deleted.status,200,'Owner could not delete synthetic Food Log entry');
+  const after=await reader(aToken,a.id,day);
+  assert.equal(after.status,200,'Food Log day unavailable after delete');
+  const final=await after.json();
+  assert.equal(final.complete,true);
+  assert.equal(final.entries?.length,0,'Deleted food was still visible');
+  assert.notEqual(final.sourceRevision,first.sourceRevision,'Food Log revision not updated');
+  process.stdout.write('PASS: hosted Food Log owner add/replay/read/delete; anon and foreign owner denied\n');
+ }
+
  for(const token of [aToken,bToken]){
   const res=await request('/functions/v1/v2-account-export-download',{
     method:'POST',userJwt:token,apiKey:anon,body:{request_id:randomUUID()}});
