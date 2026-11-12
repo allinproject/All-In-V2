@@ -102,9 +102,20 @@ export function assessIndependentLogicalRecoveryEvidence(evidence={}) {
   ['unsafeSqlAndScheduledJobsExcluded',v=>v===true],
   ['sourceAtCutoffManifestVerified',v=>v===true],
   ['deployedDomainsReconciled',v=>v===true],
-  ['authDatabaseAndSignInRecovered',v=>v===true],
+  // At the verified snapshot cutoff, zero users/objects require empty-inventory
+  // evidence and working service/config tests, not fabricated restored accounts.
+  // Populated sources MUST still prove sign-in and exact private object recovery.
+  ['authSourceUserCount',v=>Number.isSafeInteger(v)&&v>=0],
+  ['authSourceInventoryVerified',v=>v===true],
+  ['authDatabaseAndSignInRecovered',v=>v===true||(
+    evidence.authSourceUserCount===0&&evidence.emptyAuthTargetVerified===true&&
+    evidence.authServiceBootVerified===true)],
   ['authProviderConfigurationRecreated',v=>v===true],
-  ['privateStorageInventoryAndBytesRecovered',v=>v===true],
+  ['storageSourceObjectCount',v=>Number.isSafeInteger(v)&&v>=0],
+  ['storageSourceInventoryVerified',v=>v===true],
+  ['privateStorageInventoryAndBytesRecovered',v=>v===true||(
+    evidence.storageSourceObjectCount===0&&evidence.emptyStorageTargetVerified===true&&
+    evidence.storageAccessPolicyVerified===true)],
   ['rlsAndCrossOwnerDenialsPassed',v=>v===true],
   ['allPresentOwnerDataDigestsMatch',v=>v===true],
   ['measuredRpoSeconds',nonNegative],
