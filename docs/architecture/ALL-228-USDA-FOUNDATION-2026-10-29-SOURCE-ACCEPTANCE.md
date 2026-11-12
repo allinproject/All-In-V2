@@ -32,6 +32,32 @@ The source may contain multiple nutrient observations; **do not simply
 select the first**. The ALL-228 generic normalization was hardened to hold
 ambiguous duplicate facts as unknown until reviewed.
 
+## Actual deterministic candidate preview
+
+Real-source replay of the extracted JSON on the protected no-deploy GitHub
+runner passed six synthetic parser/regression tests and inspected all 424
+source records from this exact SHA-256 release.
+
+- Source preview run: https://github.com/allinproject/All-In-V2/actions/runs/43326911274
+- Records: **424**
+- `candidate_insert`: **424**
+- `unchanged`: **0** (no approved V2 mapping baseline supplied yet)
+- `review_changed_source`: **0**
+- `conflict`: **0**
+- Malformed records: **0**
+- Missing `foodNutrients` arrays: **0**
+- Duplicate nutrient identifier+unit observations observed by the conservative
+  source preview: **0**
+- Published `calculation_ready` profiles: **0**
+
+The preview is implemented in
+`scripts/inspect-v2-usda-foundation-candidates.mjs`. It computes deterministic
+source-record digests and reuses the existing
+`apps/mobile-v2/src/features/cookbook/ingredientSeedPreview.ts` reconciliation.
+The inspection did NOT create canonical ingredient identities, select profile
+preparation states, approve nutrition, or persist database rows. The source ZIP
+was held on an ephemeral runner, not added to the repository.
+
 ## Next guarded pipeline
 
 1. Verify the archive's byte hash against this exact release manifest in
