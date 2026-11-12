@@ -129,3 +129,14 @@ test('a source digest with an unapproved USDA archive hash cannot be attested',a
   assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations')).rows[0].n,0);
  }finally{await db.close()}
 });
+
+test('future-dated IdP verification cannot authorize a reviewer',async()=>{
+ const db=await create();
+ try{
+  await db.exec(energyInsert(2048,115));
+  await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET identity_verified_at=clock_timestamp()+interval '2 hours' WHERE login_role='ingredient_test_operator'");
+  await db.exec('SET SESSION AUTHORIZATION ingredient_test_operator');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
+  await denied(db,attest(),'42501');
+ }finally{await db.close()}
+});
