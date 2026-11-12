@@ -52,6 +52,31 @@ remain unchanged until opt-in.
 If a native build fails, leave the feature off and record the exact Xcode
 error in ALL-243. Do not weaken entitlement, app ID or source-proof checks.
 
+## Verified Linux acceptance checkpoint (no macOS required)
+
+On 2026-11-12, the existing `V2 Node and PostgreSQL smoke (no deploy)`
+workflow completed **SUCCESS**, [GitHub Actions run #43264420622](https://github.com/allinproject/All-In-V2/actions/runs/43264420622)
+at exact commit `78e00aeebd8865b82e8032d176aa2042bed0958d`.
+
+The independent `ALL-243 generated Watch Xcodeproj and Swift syntax
+(Ubuntu, no Xcode)` job installed `xcodeproj` 1.27.0 and **actually
+generated** a disposable Expo-like `.xcodeproj` twice using
+`scripts/integrate-apple-watch-target.rb`; verified one iPhone and one
+modern single-target watchOS app, correct PlugIns embedding, both Swift
+source groups, correct derived Watch bundle ID, and no duplicated build
+phase/source references on reapplication. The five canonical Swift files
+all passed the Linux Swift frontend **parse-only** gate. The existing
+Node/auth, subscription and disposable PostgreSQL jobs also passed.
+
+This proves project-file generation and language syntax, **not**
+Apple-framework type-checking, actual Xcode compilation, signing, binary
+installation, watch networking, App Attest hardware behavior or real-device
+end-to-end acceptance. Modern single-target Watch app embedding uses
+PlugIns/ (`dstSubfolderSpec=13`); the old WatchKit dual-target generator
+was corrected after the first true xcodeproj idempotence test exposed the
+target-discovery bug. Future changes must keep both real xcodeproj and
+Swift parse gates green.
+
 ## Real device test matrix — required, NOT yet performed
 
 Prerequisites: an enrolled and trusted iPhone App Attest key that was
