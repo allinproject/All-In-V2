@@ -49,6 +49,12 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
  const [form,setForm]=useState<FoodFormInput>(()=>defaultForm(day));
  const [notice,setNotice]=useState<string|null>(null);
  const [busy,setBusy]=useState(false);
+ // An installed native runtime may not expose WebCrypto getRandomValues.
+ // Block the editor BEFORE a user types a meal if action IDs cannot be
+ // generated securely. Never substitute timestamps or Math.random.
+ const [secureIdsAvailable,setSecureIdsAvailable]=useState(
+  ()=>!V2_FUEL_MANUAL_WRITE_ENABLED||newFoodActionId()!==null,
+ );
  const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
  const pending=useRef<{key:string;command:ManualFoodCommand}|null>(null);
  const busyRef=useRef(false);
@@ -60,6 +66,7 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
  },[]);
  useFocusEffect(useCallback(()=>{
   focused.current=true;
+  if(V2_FUEL_MANUAL_WRITE_ENABLED)setSecureIdsAvailable(newFoodActionId()!==null);
   setRefresh(r=>r+1);
   return()=>{focused.current=false;};
  },[]));
@@ -85,7 +92,7 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
   return()=>{current=false;};
  },[ownerId,day,accessReady,refresh]);
  const canWrite=V2_FUEL_MANUAL_WRITE_ENABLED&&V2_FUEL_DAY_READ_ENABLED&&
-  accessReady&&snapshot!==null&&!loading;
+  secureIdsAvailable&&accessReady&&snapshot!==null&&!loading;
  const beginAdd=()=>{
   if(!canWrite)return;
   pending.current=null;setEditor({kind:'add'});setForm(defaultForm(day));
@@ -224,6 +231,10 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
    {canWrite&&!editor?<Pressable accessibilityRole="button" onPress={beginAdd}
     style={styles.goldButton}><Text style={styles.goldButtonLabel}>+ Add Food</Text></Pressable>:null}
    {!V2_FUEL_MANUAL_WRITE_ENABLED?<Text style={styles.small}>Manual Food Log editing is not enabled in this build.</Text>:null}
+   {V2_FUEL_MANUAL_WRITE_ENABLED&&!secureIdsAvailable?
+    <Text accessibilityRole="alert" style={styles.notice}>
+     This device cannot generate secure Food Log action IDs. Saving is unavailable in this build.
+    </Text>:null}
    {editor&&canWrite?<View style={styles.form}>
     <Text accessibilityRole="header" style={styles.mealHeading}>
      {editor.kind==='add'?'Add Food':'Edit Food'}
