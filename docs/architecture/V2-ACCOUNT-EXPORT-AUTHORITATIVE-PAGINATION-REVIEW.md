@@ -194,3 +194,37 @@ revisions, public-feed visibility, or other athletes' content are exported.
 Activating this projection requires a coordinated owner schema/migration,
 per-source privacy/retention and media acceptance, and two-owner SQL tests;
 only then can the canonical inventory and scoped reader be extended together.
+
+## Step-3 rollback-only two-owner source-projection validation — 2026-11-12
+
+The canonical paginated reader now contains **two deliberately inactive**
+source projections. Neither is registered in the real inventory and neither
+authorizes mobile access or a complete export:
+
+- `community.my_posts`: original `allin_private.v2_community_posts` rows
+  for exact `owner_id`; owner-only `private`, `followers` and `public`
+  post history, stable `published_at,id` pagination, source ID, revision,
+  audience, text and timestamps. Never use the public-feed reader for the
+  owner's own archive. Any third-party relationship state remains excluded.
+- `food.my_entries`: original `public.v2_food_log_entries` for exact
+  `user_id`, including `deleted_at` tombstones, revisions, date/meal,
+  quantity/unit, entered and unknown nutrition values. Do not use the active
+  Food Log view, which would omit deleted owner history. The private
+  `allin_private.v2_food_log_write_actions` request-fingerprint ledger is
+  **not** serialized.
+
+In the isolated foundation replay, the new rollback-only fixtures
+`scripts/test-all251-community-post-export-projection-local.psql` and
+`scripts/test-all251-food-log-export-projection-local.psql` load the exact
+canonical source candidates, create two synthetic Auth sessions and approved
+requests, and first prove the **real registry rejects** the unapproved
+source tables. Within the same transaction, a **test-only inventory override**
+simulates future source approval while keeping the real owner/session/request
+authorization gate. The tests then exercise the actual paginated projection,
+owner isolation, 25-row page boundaries and the private/deleted data lifecycle.
+`ROLLBACK` removes all fixtures and restores the actual inventory function.
+
+**This harness does NOT imply actual source approval.** Production remains
+without these source migrations and without their media bucket ownership,
+privacy policy, retention acceptance or external KMS. The canonical registry
+still reports `complete=false`; the download function stays disabled.
