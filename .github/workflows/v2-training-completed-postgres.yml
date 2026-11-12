@@ -79,6 +79,7 @@ on:
       - 'supabase/migrations/**'
       - 'scripts/check-v2-applied-migration-integrity.mjs'
       - 'scripts/check-v2-applied-migration-integrity.test.mjs'
+      - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - '.github/workflows/v2-training-completed-postgres.yml'
   workflow_dispatch:
 
@@ -103,6 +104,57 @@ jobs:
         run: |
           node --test scripts/check-v2-applied-migration-integrity.test.mjs
           node scripts/check-v2-applied-migration-integrity.mjs
+  full-applied-foundation-local-replay:
+    name: Reapply deployed V2 foundation (isolated Supabase; no deploy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Determine whether a full local foundation replay is needed
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            enabled=true
+          elif [[ -n "$BEFORE_SHA" ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+            changed="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" --               supabase/migrations/ scripts/test-v2-applied-foundation-local-postgres.psql               .github/workflows/v2-training-completed-postgres.yml)"
+            if [[ -n "$changed" ]]; then enabled=true; else enabled=false; fi
+          else
+            # Insufficient shallow history must NOT accidentally skip replay.
+            enabled=true
+          fi
+          echo "run=$enabled" >> "$GITHUB_OUTPUT"
+      - uses: supabase/setup-cli@v3
+        if: steps.scope.outputs.run == 'true'
+        with:
+          version: latest
+      - name: Apply historical migrations to disposable LOCAL Supabase Postgres
+        if: steps.scope.outputs.run == 'true'
+        env:
+          # Intentionally no SUPABASE_ACCESS_TOKEN, remote DB URL, or secrets.
+          # Never use --remote/--linked/db push in this acceptance job.
+          CI: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/check-v2-applied-migration-integrity.mjs
+          supabase db start
+          container="$(docker ps --filter name=supabase_db_ --format '{{.ID}}' | head -n 1)"
+          test -n "$container" || { echo 'Missing isolated Supabase PostgreSQL container'; exit 1; }
+          docker cp scripts/test-v2-applied-foundation-local-postgres.psql             "$container:/tmp/test-v2-applied-foundation-local-postgres.psql"
+          docker exec "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1             -f /tmp/test-v2-applied-foundation-local-postgres.psql
+      - name: Stop isolated Supabase database
+        if: always() && steps.scope.outputs.run == 'true'
+        run: supabase stop --no-backup || true
+
   review-only:
     name: PostgreSQL 17 Training, Completed Activity and Competition owner replay
     runs-on: ubuntu-latest
