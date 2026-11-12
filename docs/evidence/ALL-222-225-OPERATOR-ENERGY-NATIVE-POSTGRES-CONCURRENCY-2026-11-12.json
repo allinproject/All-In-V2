@@ -55,8 +55,9 @@
         "athleteUnreviewedProfileRead": "hidden",
         "immutableAuditEventsForTwoTransitions": 2,
         "calculationReadyProfiles": 0,
-        "concurrentCredentialRevocation": "independent reviewer waits on admin operator row UPDATE lock; transaction resumes after revoked commit and denies",
-        "credentialRevocationLockVerified": true
+        "concurrentCredentialRevocation": "operator UPDATE FOR UPDATE lock serialized against reviewer shared enrollment row lock; reviewer waited and denied after revoke committed",
+        "credentialRevocationLockVerified": true,
+        "verifiedPerFoodSourceDigests": true
       },
       "success": true
     },
@@ -68,7 +69,8 @@
     "staticContractTests": {
       "passed": 8,
       "total": 8,
-      "note": "Static guards updated after native lock validation; see newest test commit"
+      "note": "Static guards updated after native lock validation; see newest test commit",
+      "latestBlobSha": "5e24404beb407ca0d922fc9875eca60edba58cee"
     }
   },
   "files": [
@@ -78,7 +80,7 @@
     },
     {
       "path": "docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql",
-      "blobSha": "eff11e543a60f68e354ea348f816262c5253ffd1"
+      "blobSha": "bbc2ef48999fd27c1039dfe2dbefbc401deb3a97"
     },
     {
       "path": "docs/architecture/sql/V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql",
@@ -86,7 +88,7 @@
     },
     {
       "path": "docs/architecture/sql/V2-INGREDIENT-USDA-ENERGY-ATTESTATION-CANDIDATE.sql",
-      "blobSha": "aafdb355d28367f03f8baeba64074d780628ad5d"
+      "blobSha": "05ac7a734ad6b7e88246475825c164a1331a8e1a"
     },
     {
       "path": "docs/evidence/ALL-225-USDA-EIGHT-PER-FOOD-ENERGY-DIGESTS-2026-11-12.json",
@@ -98,7 +100,7 @@
     },
     {
       "path": "scripts/check-v2-ingredient-writer-candidate.test.cjs",
-      "blobSha": "72ab4c7df94cb822f26d1b61c985e7506cf33533"
+      "blobSha": "5e24404beb407ca0d922fc9875eca60edba58cee"
     },
     {
       "path": "scripts/test-v2-ingredient-review-writer-isolated.cjs",
