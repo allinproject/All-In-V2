@@ -67,24 +67,25 @@ jobs:
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
             docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
           done
-          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -c "
-            DO \\\$check\\\$
-            BEGIN
-              IF to_regclass('public.v2_training_plans') IS NULL
-                 OR to_regclass('public.v2_completed_activities') IS NULL
-                 OR to_regclass('public.v2_training_revision_sessions') IS NULL
-              THEN RAISE EXCEPTION 'Training/Activity candidate objects absent'; END IF;
-              IF EXISTS (
-                SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-                WHERE n.nspname='public' AND c.relname IN
-                  ('v2_training_plans','v2_completed_activities','v2_training_revision_sessions')
-                  AND NOT c.relrowsecurity
-              ) THEN RAISE EXCEPTION 'Training/Activity RLS disabled'; END IF;
-              IF has_table_privilege('authenticated','public.v2_training_plans','INSERT')
-                 OR has_table_privilege('anon','public.v2_completed_activities','SELECT')
-              THEN RAISE EXCEPTION 'Unreviewed candidate client grants'; END IF;
-              RAISE NOTICE 'PASS: 18 real foundation migrations + owner identity/calendar DDL';
-            END \\\$check\\\$;"
+          docker exec -i "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          DO $check$
+          BEGIN
+            IF to_regclass('public.v2_training_plans') IS NULL
+               OR to_regclass('public.v2_completed_activities') IS NULL
+               OR to_regclass('public.v2_training_revision_sessions') IS NULL
+            THEN RAISE EXCEPTION 'Training/Activity candidate objects absent'; END IF;
+            IF EXISTS (
+              SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+              WHERE n.nspname='public' AND c.relname IN
+                ('v2_training_plans','v2_completed_activities','v2_training_revision_sessions')
+                AND NOT c.relrowsecurity
+            ) THEN RAISE EXCEPTION 'Training/Activity RLS disabled'; END IF;
+            IF has_table_privilege('authenticated','public.v2_training_plans','INSERT')
+               OR has_table_privilege('anon','public.v2_completed_activities','SELECT')
+            THEN RAISE EXCEPTION 'Unreviewed candidate client grants'; END IF;
+            RAISE NOTICE 'PASS: 18 real foundation migrations + owner identity/calendar DDL';
+          END $check$;
+          SQL
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
