@@ -27,7 +27,7 @@ WITH RECURSIVE cascade_reachable(relid,depth,path) AS (
    AND a.attname=ANY(ARRAY[
     'user_id','owner_id','athlete_id','actor_id','created_by_user_id',
     'athlete_user_id','follower_id','followed_id','blocker_id','blocked_id',
-    'account_id','profile_id'
+    'lower_user_id','upper_user_id','target_id','account_id','profile_id'
    ])
 )
 SELECT rc.schema_name,rc.table_name,rc.owner_column,
@@ -36,13 +36,15 @@ SELECT rc.schema_name,rc.table_name,rc.owner_column,
    AND rc.table_name='v2_account_deletion_execution_audit'
    THEN 'audit_retention_policy_required'
   WHEN rc.owner_column=ANY(ARRAY[
-   'actor_id','follower_id','followed_id','blocker_id','blocked_id'])
+   'actor_id','follower_id','followed_id','blocker_id','blocked_id',
+   'lower_user_id','upper_user_id','target_id'])
    THEN 'relationship_or_actor_retention_policy_required'
   ELSE 'no_verified_auth_cascade_path'
  END::text AS reason
 FROM rel_columns rc
 WHERE rc.owner_column=ANY(ARRAY[
-  'actor_id','follower_id','followed_id','blocker_id','blocked_id'])
+  'actor_id','follower_id','followed_id','blocker_id','blocked_id',
+   'lower_user_id','upper_user_id','target_id'])
  OR NOT EXISTS(SELECT 1 FROM cascade_reachable r WHERE r.relid=rc.relid)
 UNION ALL
 -- A bucket can retain orphan private bytes even with perfect DB cascades.
