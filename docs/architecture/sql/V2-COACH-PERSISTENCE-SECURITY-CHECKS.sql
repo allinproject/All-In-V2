@@ -26,7 +26,11 @@ BEGIN
          OR has_table_privilege('authenticated',v_rel,'SELECT')
          OR has_table_privilege('authenticated',v_rel,'INSERT')
          OR has_table_privilege('authenticated',v_rel,'UPDATE')
-         OR has_table_privilege('authenticated',v_rel,'DELETE')) THEN
+         OR has_table_privilege('authenticated',v_rel,'DELETE')
+         OR has_table_privilege('service_role',v_rel,'SELECT')
+         OR has_table_privilege('service_role',v_rel,'INSERT')
+         OR has_table_privilege('service_role',v_rel,'UPDATE')
+         OR has_table_privilege('service_role',v_rel,'DELETE')) THEN
       v_errors := array_append(v_errors, 'direct API access: ' || v_rel);
     END IF;
     -- Existing V2 deletion preflight demands a DIRECT one-column owner FK
