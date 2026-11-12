@@ -5,6 +5,7 @@
 DO $foundation_parity$
 DECLARE
  v_count integer;
+ v_mismatch boolean;
 BEGIN
  WITH expected(version) AS (VALUES
   ('20261110021548'),
@@ -28,11 +29,11 @@ BEGIN
  ), actual AS (
    SELECT version FROM supabase_migrations.schema_migrations
  )
- SELECT (SELECT count(*) FROM actual) INTO v_count;
- IF v_count<>18
-    OR EXISTS(SELECT version FROM expected EXCEPT SELECT version FROM actual)
-    OR EXISTS(SELECT version FROM actual EXCEPT SELECT version FROM expected)
- THEN
+ SELECT (SELECT count(*) FROM actual),
+        EXISTS(SELECT version FROM expected EXCEPT SELECT version FROM actual)
+        OR EXISTS(SELECT version FROM actual EXCEPT SELECT version FROM expected)
+ INTO v_count,v_mismatch;
+ IF v_count<>18 OR v_mismatch THEN
    RAISE EXCEPTION 'Applied foundation migration versions diverge; found %',v_count;
  END IF;
 
