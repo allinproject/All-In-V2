@@ -88,3 +88,10 @@ The local-only backup fixture now includes a verified **Stripe web checkout** al
 The recovery workflow also selects the event identity sequence explicitly in its `pg_dump -Fc --data-only` archive, verifies the presence of a `SEQUENCE SET` entry, deliberately resets the local sequence to 1 before restoring, and requires a new event after restore to succeed. This guards against restoring receipt rows but losing identity sequence state.
 
 **Acceptance not yet proven for this expansion:** the previous [green local recovery run #43142378420](https://github.com/allinproject/All-In-V2/actions/runs/43142378420) predates the Stripe-inclusive and reset-sequence tests. New local CI must pass before they can be marked validated. Billing checks now run directly after the canonical foundation verification, ahead of unrelated Goals/Coach candidates; none of those later checks are skipped. This remains a synthetic local review-only rehearsal, not remote data recovery, production migration approval or permission to activate billing.
+
+
+### Verified result for the expanded Stripe and sequence recovery
+
+[Local V2 foundation workflow #43186663819](https://github.com/allinproject/All-In-V2/actions/runs/43186663819), at exact SHA `446ab5e20bb562149c88ca25d5f0430a2888fa9b`, **passed every billing-specific step**: pre-upgrade owner seed, DDL/grants rollback, populated owner-bound upgrade, and the custom-format `pg_dump`/`pg_restore` test including verified Stripe checkout provenance and intentionally reset event sequence. The restored test asserted five historical provider events and a sixth after a new Google Play renewal, with no cross-owner entitlements, duplicate trial, or foreign checkout takeover.
+
+**Whole-workflow caveat:** The same run subsequently failed at the **independent Goals identity candidate** test. Therefore the overall foundation workflow is **not** green; the validated claim is limited to its four billing checks. Keep the candidate **review-only**, and do not infer live rollback/PITR, signed store acceptance, endpoint deployment or permission to charge customers from these checks.
