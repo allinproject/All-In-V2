@@ -6,6 +6,8 @@ BEGIN;
 
 CREATE TABLE allin_private.v2_goal_acceptance_actions (
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  -- Do not cascade with auth.sessions: receipts must survive session revocation.
+  session_id uuid NOT NULL,
   action_id uuid NOT NULL,
   goal_id uuid NOT NULL,
   candidate_revision_id uuid NOT NULL,
@@ -22,7 +24,7 @@ REVOKE ALL ON allin_private.v2_goal_acceptance_actions
   FROM PUBLIC,anon,authenticated,service_role;
 
 CREATE FUNCTION allin_private.v2_goal_accept_revision_candidate(
- p_user_id uuid,p_goal_id uuid,p_candidate_id uuid,
+ p_user_id uuid,p_session_id uuid,p_goal_id uuid,p_candidate_id uuid,
  p_action_id uuid,p_expected_version bigint,p_payload_sha256 text
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $accept$
@@ -37,7 +39,7 @@ BEGIN
  IF current_setting('role',true) NOT IN ('service_role','postgres','none') THEN
    RAISE EXCEPTION 'Service authorization required' USING ERRCODE='42501';
  END IF;
- IF p_user_id IS NULL OR p_goal_id IS NULL OR p_candidate_id IS NULL
+ IF p_user_id IS NULL OR p_session_id IS NULL OR p_goal_id IS NULL OR p_candidate_id IS NULL
     OR p_action_id IS NULL OR p_expected_version IS NULL
     OR p_expected_version<1 OR p_payload_sha256 IS NULL
     OR p_payload_sha256 !~ '^[0-9a-f]{64}$' THEN
@@ -46,6 +48,16 @@ BEGIN
  -- Ensure the owner still exists before even reading replay receipts.
  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id=p_user_id) THEN
    RAISE EXCEPTION 'Goal owner no longer exists' USING ERRCODE='42501';
+ END IF;
+ -- Lock the live Auth session for the lifetime of the acceptance transaction.
+ -- Concurrent revocation/deletion must serialize with this approval; a
+ -- removed or expired session cannot replay a previously accepted action.
+ PERFORM 1 FROM auth.sessions s
+  WHERE s.id=p_session_id AND s.user_id=p_user_id
+    AND (s.not_after IS NULL OR s.not_after>pg_catalog.clock_timestamp())
+  FOR SHARE;
+ IF NOT FOUND THEN
+   RAISE EXCEPTION 'Current Goal approval session required' USING ERRCODE='42501';
  END IF;
  -- Lock canonical goal BEFORE examining receipt: serializes competing actions.
  SELECT * INTO g FROM public.v2_goals
@@ -56,7 +68,7 @@ BEGIN
  SELECT * INTO prior FROM allin_private.v2_goal_acceptance_actions
   WHERE user_id=p_user_id AND action_id=p_action_id;
  IF FOUND THEN
-   IF prior.goal_id<>p_goal_id OR prior.candidate_revision_id<>p_candidate_id
+   IF prior.session_id<>p_session_id OR prior.goal_id<>p_goal_id OR prior.candidate_revision_id<>p_candidate_id
       OR prior.payload_sha256<>p_payload_sha256
       OR prior.result_version<>p_expected_version+1 THEN
      RAISE EXCEPTION 'Goal action key reused with different payload or version'
@@ -102,14 +114,14 @@ BEGIN
   WHERE id=g.id AND user_id=p_user_id AND version=p_expected_version;
  IF NOT FOUND THEN RAISE EXCEPTION 'Goal concurrent mutation detected' USING ERRCODE='40001'; END IF;
  INSERT INTO allin_private.v2_goal_acceptance_actions(
-   user_id,action_id,goal_id,candidate_revision_id,payload_sha256,result_version
- ) VALUES(p_user_id,p_action_id,p_goal_id,p_candidate_id,p_payload_sha256,new_version);
+   user_id,session_id,action_id,goal_id,candidate_revision_id,payload_sha256,result_version
+ ) VALUES(p_user_id,p_session_id,p_action_id,p_goal_id,p_candidate_id,p_payload_sha256,new_version);
  RETURN pg_catalog.jsonb_build_object(
    'goalId',p_goal_id,'revisionId',p_candidate_id,'version',new_version,'replayed',false);
 END;
 $accept$;
 REVOKE ALL ON FUNCTION allin_private.v2_goal_accept_revision_candidate(
- uuid,uuid,uuid,uuid,bigint,text) FROM PUBLIC,anon,authenticated;
+ uuid,uuid,uuid,uuid,uuid,bigint,text) FROM PUBLIC,anon,authenticated;
 -- Private, non-PostgREST owner routine. A later reviewed server-only
 -- public gateway may delegate after validating the live Auth session and
 -- exact athlete-approved Goal preview; no such gateway is deployed here.

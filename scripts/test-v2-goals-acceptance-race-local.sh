@@ -3,6 +3,7 @@
 set -euo pipefail
 db="$1"
 owner="33333333-3333-4333-8333-333333333333"
+session="99999999-3333-4333-8333-333333333333"
 goal="aaaaaaaa-3333-4333-8333-333333333333"
 rev_a="bbbbbbbb-3333-4333-8333-333333333333"
 rev_b="cccccccc-3333-4333-8333-333333333333"
@@ -18,6 +19,7 @@ cleanup() {
 trap cleanup EXIT
 docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<SQL
 INSERT INTO auth.users(id) VALUES ('$owner');
+INSERT INTO auth.sessions(id,user_id) VALUES ('$session','$owner');
 INSERT INTO public.v2_goals(id,user_id,goal_kind,title,status)
 VALUES ('$goal','$owner','endurance_distance','CAS race','active');
 INSERT INTO public.v2_goal_revisions(id,goal_id,user_id,revision_number,status,source_kind)
@@ -30,7 +32,7 @@ SELECT pg_advisory_xact_lock($key);
 SELECT id FROM public.v2_goals WHERE id='$goal' FOR UPDATE;
 SELECT pg_sleep(10);
 SELECT allin_private.v2_goal_accept_revision_candidate(
- '$owner','$goal','$rev_a','$action_a',1,repeat('a',64));
+ '$owner','$session','$goal','$rev_a','$action_a',1,repeat('a',64));
 COMMIT;
 SQL
 pid_a=$!
@@ -46,7 +48,7 @@ if [[ "$locked" != true ]]; then echo "No first-writer lock" >&2; exit 1; fi
 docker exec -e PGAPPNAME=all239_goal_loser -i "$db" \
   psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 >"$tmp/b.out" 2>&1 <<SQL &
 SELECT allin_private.v2_goal_accept_revision_candidate(
- '$owner','$goal','$rev_b','$action_b',1,repeat('b',64));
+ '$owner','$session','$goal','$rev_b','$action_b',1,repeat('b',64));
 SQL
 pid_b=$!
 blocked=false
