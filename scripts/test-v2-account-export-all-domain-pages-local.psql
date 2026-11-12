@@ -29,6 +29,26 @@ INSERT INTO public.v2_coach_messages(user_id,thread_id,role,content,client_actio
 INSERT INTO public.v2_goals(id,user_id,goal_kind,title)
  VALUES ('99999999-9999-4999-8999-999999999999','91111111-9111-4111-8111-911111111111',
  'endurance_distance','Owner A private goal');
+-- Populate representative rows in every major training-related owner domain:
+-- planned Training, independently completed Activity, and EventHub.
+INSERT INTO public.v2_training_plans(id,user_id,plan_kind) VALUES
+ ('a9111111-9111-4111-8111-911111111111','91111111-9111-4111-8111-911111111111','general'),
+ ('a9222222-9222-4222-8222-922222222222','92222222-9222-4222-8222-922222222222','maintenance');
+INSERT INTO public.v2_completed_activities
+ (id,user_id,sport,activity_kind,athlete_local_date,timezone,capture_kind,status)
+ VALUES
+ ('b9111111-9111-4111-8111-911111111111','91111111-9111-4111-8111-911111111111',
+  'running','manual_entry','2026-11-12','America/Chicago','manual_only','completed'),
+ ('b9222222-9222-4222-8222-922222222222','92222222-9222-4222-8222-922222222222',
+  'cycling','manual_entry','2026-11-12','America/Chicago','manual_only','completed');
+INSERT INTO public.v2_events(id,name,sport,event_kind)
+ VALUES ('c9111111-9111-4111-8111-911111111111','Representative race','running','race');
+INSERT INTO public.v2_event_participations
+ (user_id,event_id,state,source_kind,source_note) VALUES
+ ('91111111-9111-4111-8111-911111111111',
+  'c9111111-9111-4111-8111-911111111111','interested','athlete_confirmed','A private race note'),
+ ('92222222-9222-4222-8222-922222222222',
+  'c9111111-9111-4111-8111-911111111111','interested','athlete_confirmed','B private race note');
 INSERT INTO allin_private.v2_community_visibility(user_id,profile_visibility)
  VALUES ('91111111-9111-4111-8111-911111111111','private'),
  ('92222222-9222-4222-8222-922222222222','public');
@@ -81,6 +101,22 @@ BEGIN
   v_token:=v_page->>'nextCursor';
  END LOOP;
  IF v_messages<>53 THEN RAISE EXCEPTION 'Coach pagination lost or duplicated rows: %',v_messages; END IF;
+ -- Representative populated Training, Activity and EventHub pages belong to A.
+ v_page:=public.v2_account_export_page_review_candidate(
+  v_owner,v_session,v_request,'public.v2_training_plans',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>1 OR
+   v_page#>>'{rows,0,plan_kind}'<>'general'
+ THEN RAISE EXCEPTION 'Owner Training plan missing or foreign plan leaked'; END IF;
+ v_page:=public.v2_account_export_page_review_candidate(
+  v_owner,v_session,v_request,'public.v2_completed_activities',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>1 OR
+   v_page#>>'{rows,0,sport}'<>'running'
+ THEN RAISE EXCEPTION 'Owner completed Activity missing or foreign activity leaked'; END IF;
+ v_page:=public.v2_account_export_page_review_candidate(
+  v_owner,v_session,v_request,'public.v2_event_participations',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>1 OR
+   v_page#>>'{rows,0,source_note}'<>'A private race note'
+ THEN RAISE EXCEPTION 'EventHub owner export omitted private participation'; END IF;
  v_page:=public.v2_account_export_page_review_candidate(
   v_owner,v_session,v_request,'community.outgoing_blocks',NULL,25);
  IF pg_catalog.jsonb_array_length(v_page->'rows')<>1
@@ -171,6 +207,14 @@ SET LOCAL ROLE service_role;
 DO $hidden_block$
 DECLARE v_page jsonb;
 BEGIN
+ v_page:=public.v2_account_export_page_review_candidate(
+   '92222222-9222-4222-8222-922222222222',
+   '94444444-9444-4444-8444-944444444444',
+   '96666666-9666-4666-8666-966666666666',
+   'public.v2_event_participations',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>1 OR
+   v_page#>>'{rows,0,source_note}'<>'B private race note'
+ THEN RAISE EXCEPTION 'B EventHub record omitted or A private note leaked'; END IF;
  v_page:=public.v2_account_export_page_review_candidate(
    '92222222-9222-4222-8222-922222222222',
    '94444444-9444-4444-8444-944444444444',
