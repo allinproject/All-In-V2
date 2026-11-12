@@ -1,0 +1,97 @@
+\set ON_ERROR_STOP on
+-- ALL-244: review-only existing Community privacy owner candidate.
+-- Real disposable V2 Supabase foundation, synthetic two-account ROLLBACK.
+BEGIN;
+DO $community$
+DECLARE
+ a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ action uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ table_name text;
+BEGIN
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ IF NOT EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id=a)
+ OR NOT EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id=b)
+ THEN RAISE EXCEPTION 'Canonical profile Auth triggers absent'; END IF;
+ INSERT INTO allin_private.v2_community_visibility(user_id)
+ VALUES(a),(b);
+ IF (SELECT profile_visibility FROM allin_private.v2_community_visibility
+     WHERE user_id=a)<>'private'
+ THEN RAISE EXCEPTION 'Community profile is not private by default'; END IF;
+ UPDATE allin_private.v2_community_visibility
+ SET profile_visibility='public',version=2 WHERE user_id=b;
+ INSERT INTO allin_private.v2_community_pair_revisions(
+   lower_user_id,upper_user_id)
+ VALUES(a,b);
+ BEGIN
+  INSERT INTO allin_private.v2_community_pair_revisions(
+   lower_user_id,upper_user_id) VALUES(b,a);
+  RAISE EXCEPTION 'Unsorted athlete pair identity was allowed';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ INSERT INTO allin_private.v2_community_follows(
+  follower_id,followed_id,state)
+ VALUES(a,b,'pending');
+ INSERT INTO allin_private.v2_community_follows(
+  follower_id,followed_id,state,approved_at)
+ VALUES(b,a,'approved',now());
+ IF (SELECT count(*) FROM allin_private.v2_community_follows
+   WHERE follower_id<>followed_id)<>2
+ THEN RAISE EXCEPTION 'Directional follow identities were merged'; END IF;
+ BEGIN
+  INSERT INTO allin_private.v2_community_follows(
+   follower_id,followed_id,state)
+  VALUES(a,a,'pending');
+  RAISE EXCEPTION 'Self-follow was allowed';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  UPDATE allin_private.v2_community_follows SET state='approved'
+   WHERE follower_id=a AND followed_id=b;
+  RAISE EXCEPTION 'Approval without approved_at was allowed';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ INSERT INTO allin_private.v2_community_blocks(
+  blocker_id,blocked_id) VALUES(a,b),(b,a);
+ IF (SELECT count(*) FROM allin_private.v2_community_blocks)<>2
+ THEN RAISE EXCEPTION 'Opposite block directions were collapsed'; END IF;
+ INSERT INTO allin_private.v2_community_action_receipts(
+  actor_id,action_id,target_id,action,expected_version,
+  result_version,payload_sha256)
+ VALUES(a,action,b,'request_follow',1,2,repeat('a',64));
+ BEGIN
+  INSERT INTO allin_private.v2_community_action_receipts(
+   actor_id,action_id,target_id,action,expected_version,
+   result_version,payload_sha256)
+  VALUES(a,action,b,'unfollow',1,2,repeat('b',64));
+  RAISE EXCEPTION 'Action ID reused with a competing receipt';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ FOR table_name IN
+  SELECT unnest(ARRAY['v2_community_visibility',
+    'v2_community_pair_revisions','v2_community_follows',
+    'v2_community_blocks','v2_community_action_receipts'])
+ LOOP
+  IF NOT EXISTS(SELECT 1 FROM pg_catalog.pg_class c
+   JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='allin_private' AND c.relname=table_name AND c.relrowsecurity)
+  THEN RAISE EXCEPTION 'Community privacy RLS absent: %',table_name; END IF;
+  IF pg_catalog.has_table_privilege('anon',
+      pg_catalog.format('allin_private.%I',table_name),'SELECT')
+    OR pg_catalog.has_table_privilege('authenticated',
+      pg_catalog.format('allin_private.%I',table_name),'INSERT')
+    OR pg_catalog.has_table_privilege('service_role',
+      pg_catalog.format('allin_private.%I',table_name),'UPDATE')
+  THEN RAISE EXCEPTION 'Unreviewed private Community grant: %',table_name; END IF;
+ END LOOP;
+ DELETE FROM auth.users WHERE id=a;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_community_visibility WHERE user_id=a)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_community_action_receipts WHERE actor_id=a)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_community_pair_revisions
+   WHERE lower_user_id=a OR upper_user_id=a)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_community_follows
+   WHERE follower_id=a OR followed_id=a)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_community_blocks
+   WHERE blocker_id=a OR blocked_id=a)
+ THEN RAISE EXCEPTION 'Deleted athlete retained Community relationship data'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_community_visibility WHERE user_id=b)
+ THEN RAISE EXCEPTION 'Unrelated Community profile was deleted'; END IF;
+ RAISE NOTICE 'PASS ALL-244: canonical profile privacy, directional relationships, pair CAS and two-owner cascade';
+END $community$;
+ROLLBACK;
