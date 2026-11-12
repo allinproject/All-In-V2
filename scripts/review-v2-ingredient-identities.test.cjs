@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {normalize,review}=require('./review-v2-ingredient-identities.cjs');
+const {normalize,review,reviewSourceBindings}=require('./review-v2-ingredient-identities.cjs');
 function food(key,state='cooked') {return {source_profile_key:key,canonical_name:'Chicken breast',
   identity_kind:'generic_food',preparation_state:state,locale:'en',
   aliases:['Chicken breast, boneless']};}
@@ -68,4 +68,43 @@ test('rejects missing locale or invalid alias candidates without identity guessi
 test('rejects external ID without source data type',()=>{
   const a=food('x');a.sources=[{provider:'usda_fdc',external_record_id:'123'}];
   assert(review([a]).issues.some(v=>v.code==='invalid_source_reference'));
+});
+
+test('eight source review bindings match pinned USDA evidence without approving identities or nutrition',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const evidence=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'),'utf8'));
+ const bindings=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'),'utf8'));
+ const r=reviewSourceBindings(bindings,evidence);
+ assert.equal(r.structuralEvidencePassed,true);
+ assert.equal(r.bindingCount,8);
+ assert.equal(r.reviewedSourceCount,8);
+ assert.equal(r.identityApproved,false);
+ assert.equal(r.calculationReady,false);
+ assert.equal(r.publicationApproved,false);
+ assert.equal(r.authorizedToWrite,false);
+});
+test('tampered energy code, source URL, approval or yield fails closed',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const evidence=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'),'utf8'));
+ const original=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'),'utf8'));
+ const clone=()=>JSON.parse(JSON.stringify(original));
+ const energy=clone();energy.bindings[0].nutrition_evidence.energy_source_nutrient_id=2048;
+ assert(reviewSourceBindings(energy,evidence).issues.some(x=>x.code==='nutrient_basis_or_energy_provenance_mismatch'));
+ const url=clone();url.bindings[0].reviewed_source_reference.source_url='https://fake.example/food-details/328841/nutrients';
+ assert(reviewSourceBindings(url,evidence).issues.some(x=>x.code==='source_reference_mismatch'));
+ const approval=clone();approval.bindings[0].profile_approval='calculation_ready';
+ assert(reviewSourceBindings(approval,evidence).issues.some(x=>x.code==='unreviewed_identity_or_alias_scope'));
+ const yieldRecord=clone();yieldRecord.bindings[0].conversion_review.household_and_purchase_yields_approved=true;
+ assert(reviewSourceBindings(yieldRecord,evidence).issues.some(x=>x.code==='measurement_evidence_or_yield_override'));
+});
+test('missing source, duplicate binding, and wrong archive fail closed',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const evidence=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'),'utf8'));
+ const original=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'),'utf8'));
+ const duplicate=JSON.parse(JSON.stringify(original));duplicate.bindings[1].source_profile_key=duplicate.bindings[0].source_profile_key;
+ assert(reviewSourceBindings(duplicate,evidence).issues.some(x=>x.code==='duplicate_or_missing_source_profile_key'));
+ const wrong=JSON.parse(JSON.stringify(original));wrong.sourceEvidenceArchiveSha256='0'.repeat(64);
+ assert(reviewSourceBindings(wrong,evidence).issues.some(x=>x.code==='archive_hash_mismatch'));
+ const missing=JSON.parse(JSON.stringify(original));missing.bindings.pop();
+ assert(reviewSourceBindings(missing,evidence).issues.some(x=>x.code==='reviewed_source_coverage_mismatch'));
 });
