@@ -57,12 +57,11 @@ def provision():
     env = safe_environment()
     # Hex has no .pgpass or SQL quoting special characters.
     secret = secrets.token_hex(32)
-    pgpass = f"{HOST}:5432:postgres:{LOGIN}:{secret}\n"
     if not sys.stdin.isatty():
         raise RuntimeError("Run interactively so psql can securely prompt for admin password.")
     print("Target: temporary project " + PROJECT)
     host = input("Paste the SESSION POOLER hostname from that project's Supabase Connect panel: ").strip()
-    if not __import__("re").fullmatch(r"[a-z0-9-]+\\.pooler\\.supabase\\.com", host):
+    if not __import__("re").fullmatch(r"[a-z0-9-]+\.pooler\.supabase\.com", host):
         raise RuntimeError("Only a verified Supabase session pooler hostname is accepted.")
     print("This will configure the restricted login for 45 minutes and dispatch")
     print("the existing read-only hosted authentication workflow. No production changes.")
@@ -70,7 +69,7 @@ def provision():
     if answer != "TEMP":
         raise RuntimeError("Cancelled without provisioning.")
     # Supavisor session mode is IPv4 compatible for GitHub Actions.
-    pgpass = f"{host}:5432:postgres:{LOGIN}.{PROJECT}:{secret}\\n"
+    pgpass = f"{host}:5432:postgres:{LOGIN}.{PROJECT}:{secret}\n"
     print("Saving protected GitHub environment secret (never displayed)...")
     subprocess.run(["gh", "secret", "set", SECRET_NAME,
                     "--env", ENVIRONMENT, "--repo", REPO],
