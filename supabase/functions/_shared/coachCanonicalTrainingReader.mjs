@@ -59,6 +59,20 @@ export function createCoachCanonicalTrainingReader({
     canonicalRef:w.revisionId,confidence:"verified",
     summary:(w.sessionKind+": "+w.purpose).slice(0,600)};
   });
+  // Preserve the accepted session-intent data exactly. The purpose string
+  // alone cannot represent exercise order, pairings, rounds or prescription.
+  // Bound the entire model-facing slice rather than silently dropping blocks.
+  if(d.data.plannedWorkouts.length>8)die();
+  const sessions=d.data.plannedWorkouts.map(w=>({
+   planId:w.planId,revisionId:w.revisionId,sessionId:w.sessionId,
+   localDate:w.localDate,sport:w.sport,sessionKind:w.sessionKind,
+   purpose:w.purpose,intentSchemaVersion:w.intentSchemaVersion,intent:w.intent
+  }));
+  if(JSON.stringify(sessions).length>16000)die();
+  const plannedDay={localDate,
+   calendarDays:days.map(day=>({planId:day.planId,
+    revisionId:day.revisionId,dayState:day.dayState})),
+   sessions,verified:true};
   const restrictions=r.restrictions.map(rule=>{
    if(!uuid(rule?.id)||!categories.includes(rule.category)||
       !sources.includes(rule.source)||rule.status!=="active"||
@@ -79,7 +93,7 @@ export function createCoachCanonicalTrainingReader({
     completeness:"partial",
     warnings:["Only the authenticated Training calendar day was read; complete workout history and recovery are not yet certified."],
     // Never choose arbitrarily between multiple active plans.
-    currentPlan:null,restrictions,
+    currentPlan:null,plannedDay,restrictions,
     coverage:covered.map(sport=>({sport,fromDate:localDate,throughDate:localDate,
      status:"partial",missingIntervals:[]})),events}};
  };
