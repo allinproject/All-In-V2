@@ -360,11 +360,12 @@ test('ALL-217/230 private export redacts replay hashes, provider correlators and
   assert(!sqlOnly.includes(forbidden),'Private/internal field leaked into athlete export: '+forbidden);
  }
  for(const expected of [
-  "'''subject''","'''status''","'''certified_revision''",
-  "'''result_revision''","'''period_start''","'''held_usd''",
-  "'''spent_usd''","'''settled_usd''","'''metered_input_tokens''",
-  "'''metered_output_tokens''"
- ])assert(sqlOnly.includes(expected),'Portable athlete history missing '+expected);
+  'subject','status','certified_revision',
+  'result_revision','period_start','held_usd',
+  'spent_usd','settled_usd','metered_input_tokens',
+  'metered_output_tokens'
+ ])assert(sqlOnly.includes("''"+expected+"''"),
+  'Portable athlete history missing '+expected);
  const r=readFileSync('docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql','utf8');
  const c=readFileSync('docs/architecture/sql/V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql','utf8');
  const b=readFileSync('docs/architecture/sql/V2-COACH-BUDGET-LEDGER-REVIEW-CANDIDATE.sql','utf8');
