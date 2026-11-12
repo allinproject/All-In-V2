@@ -230,33 +230,33 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
     </Text>
     <Text style={styles.small}>Meal</Text>
     <View style={styles.choices}>{mealOrder.map(m=>(
-     <Pressable key={m} accessibilityRole="button" accessibilityState={{selected:form.mealSlot===m}}
+     <Pressable key={m} disabled={busy} accessibilityRole="button" accessibilityState={{selected:form.mealSlot===m}}
       style={[styles.choice,form.mealSlot===m&&styles.choiceSelected]}
       onPress={()=>updateForm('mealSlot',m)}><Text style={styles.small}>{mealLabels[m]}</Text></Pressable>
     ))}</View>
     <Text style={styles.small}>Food name</Text>
-    <TextInput accessibilityLabel="Food name" placeholder="Food or meal" placeholderTextColor={colors.mutedText}
+    <TextInput editable={!busy} accessibilityLabel="Food name" placeholder="Food or meal" placeholderTextColor={colors.mutedText}
       value={form.label} onChangeText={v=>updateForm('label',v)} style={styles.input} maxLength={200}/>
     <View style={styles.twoCols}>
      <View style={styles.flex}><Text style={styles.small}>Quantity</Text>
-      <TextInput accessibilityLabel="Quantity" keyboardType="decimal-pad" value={form.quantity}
+      <TextInput editable={!busy} accessibilityLabel="Quantity" keyboardType="decimal-pad" value={form.quantity}
        onChangeText={v=>updateForm('quantity',v)} style={styles.input}/></View>
      <View style={styles.flex}><Text style={styles.small}>Unit</Text>
-      <View style={styles.choices}>{units.map(u=><Pressable key={u} accessibilityRole="button"
+      <View style={styles.choices}>{units.map(u=><Pressable key={u} disabled={busy} accessibilityRole="button"
        accessibilityState={{selected:form.unit===u}} onPress={()=>updateForm('unit',u)}
        style={[styles.choice,form.unit===u&&styles.choiceSelected]}>
        <Text style={styles.small}>{u}</Text></Pressable>)}</View></View>
     </View>
     <Text style={styles.small}>Calories (optional, only if known)</Text>
-    <TextInput accessibilityLabel="Calories optional" keyboardType="decimal-pad"
+    <TextInput editable={!busy} accessibilityLabel="Calories optional" keyboardType="decimal-pad"
       placeholder="Unknown" placeholderTextColor={colors.mutedText}
       value={form.calories} onChangeText={v=>updateForm('calories',v)} style={styles.input}/>
     <View style={styles.twoCols}>
      <View style={styles.flex}><Text style={styles.small}>Local date (YYYY-MM-DD)</Text>
-      <TextInput accessibilityLabel="Food date" value={form.day}
+      <TextInput editable={!busy} accessibilityLabel="Food date" value={form.day}
        onChangeText={v=>updateForm('day',v)} style={styles.input}/></View>
      <View style={styles.flex}><Text style={styles.small}>Local time (HH:MM)</Text>
-      <TextInput accessibilityLabel="Food time" value={form.clock}
+      <TextInput editable={!busy} accessibilityLabel="Food time" value={form.clock}
        onChangeText={v=>updateForm('clock',v)} style={styles.input}/></View>
     </View>
     <Text style={styles.note}>Time zone: {form.timezoneName}. For accurate edits, your device must use the same time zone as this entry.</Text>
