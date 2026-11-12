@@ -177,3 +177,32 @@ node scripts/all12-verify-logical-archive.mjs \
 Inspection fails closed on a missing/extra/duplicate table or sequence, unapproved schemas, a mismatched archive digest, missing source identity/cutoff, and unsupported TOC entries including function definitions, extensions, jobs or non-allowlisted executable restore objects. A data-only TOC that matches exactly is **not** proof of per-row integrity, full domain coverage, artifact confidentiality, provider configuration recovery, absence of side effects in preexisting target functions/triggers, safe import, or measured RPO/RTO. The actual target must still be independently prepared with outbound capabilities disabled *before* any import.
 
 This guard is a prerequisite only, **not** a substitute for the genuine source-consistent backup, actual isolated restore, Auth/Storage and ownership verification, cleanup, and explicit founder release acceptance. No hosted source dump, shared staging reset, physical Supabase restore or paid recovery resource has been authorized or run by this change.
+
+
+## Operator-only logical capture: first real archive
+
+The independent logical-recovery path has a guarded, **locally operated** source capture tool: `scripts/all12-capture-approved-logical-backup.mjs`. It uses PostgreSQL's normal `pg_dump -Fc --data-only` against exactly the approved source table list. It **does not** restore anything, execute SQL against the target, access the shared temporary staging project, or export the archive through GitHub Actions. This is an operator-only mechanism: the existing CI runs *guard tests*, not the capture.
+
+**Prerequisites before running:** An authorized PostgreSQL backup role with SELECT access to the specifically approved V2 tables (ideally read-only and limited lifetime), locally installed `pg_dump` matching the server major version, an encrypted-at-rest operator-controlled backup directory, verified TLS connection settings/certificate chain, and a reviewed local inventory JSON. The table list must come from a reviewed live source inventory and remain a separately approved source of truth—not generated from the archive's own TOC. A source table lacking authorization must stop the capture rather than be silently skipped. Do not store database credentials, a backup archive, an inventory containing sensitive data, or private manifests in Git or any CI artifact.
+
+Example approved inventory **shape only**, not an approved final table list (do not run this example against production):
+
+```json
+{
+  "sourceProjectRef": "xarhuczrtzuiljmtdaeu",
+  "approvedForLogicalBackup": true,
+  "tables": ["auth.users", "public.v2_profiles"]
+}
+```
+
+On the authorized operator's PC, set environment variables locally (do not paste values into chat, screenshots, repository settings, or CI logs): `PGHOST`, `PGUSER`, `PGDATABASE=postgres`, `PGPASSWORD`, `PGSSLMODE=verify-full` (and the required CA configuration, port and connection parameters). Then set `ALL12_CAPTURE_APPROVED=YES`, `ALL12_SOURCE_PROJECT_REF=xarhuczrtzuiljmtdaeu`, `ALL12_BACKUP_DIRECTORY` to an encrypted-at-rest private local directory, and `ALL12_SECURE_BACKUP_DIRECTORY_CONFIRMED=YES` only after actually verifying the destination's security. Run:
+
+```powershell
+node scripts/all12-capture-approved-logical-backup.mjs --inventory C:\secure\all12-approved-tables.json
+```
+
+The script refuses GitHub/CI execution, missing approval, other project refs, weaker TLS settings, a missing source identity or unapproved table list. It creates private-permission archive/metadata files in the designated location, emits only status and SHA-256, and deletes partial outputs on capture failure. The written capture metadata includes a **bounded snapshot-cutoff window** between the dump's start and completion, **not a fabricated exact snapshot timestamp or measured RPO**. Actual encryption at rest and authenticity of operator input cannot be independently established by this script.
+
+**Next separate steps (not done by capture):** Independently attest the actual source-at-cutoff inventory and compatible sequence list, inspect the archive with `all12-verify-logical-archive.mjs`, provision an unrelated isolated database with outbound actions disabled before import, restore only onto that disposable target, compare source/target data and RLS, validate Auth configuration/sign-in and private Storage according to actual counts, record true RPO/RTO, securely clean up temporary artifacts, and explicitly accept or decline the scoped release. Do **not** enter acceptance flags by hand or claim `ALL-12 Done` from an archive checksum alone.
+
+**Operational limitation:** The connected Supabase tools in ChatGPT cannot run `pg_dump` against the authorized V2 source or retrieve the resulting archive. This capture must be executed by an authorized operator in an isolated/local environment with credentials never disclosed to ChatGPT. No paid clone or provider physical restoration is required.
