@@ -566,6 +566,7 @@ jobs:
           for file in \
             docs/architecture/candidates/ALL-247-food-log-first-writer.review.sql \
             docs/architecture/candidates/ALL-247-food-log-lifecycle.review.sql \
+            docs/architecture/candidates/ALL-247-hydration-manual-lifecycle.review.sql \
             scripts/test-all251-food-log-export-projection-local.psql; do
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
           done
