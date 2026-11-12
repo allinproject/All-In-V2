@@ -284,15 +284,38 @@ def main():
             admin("UPDATE allin_private.v2_ingredient_review_operators "
                   "SET credential_expires_at=now()+interval '1 day' "
                   f"WHERE login_role={lit(actors[0])}")
-            admin("UPDATE allin_private.v2_ingredient_review_operators "
-                  "SET enabled=false,revoked_at=clock_timestamp() "
-                  f"WHERE login_role={lit(actors[0])}")
-            revoked=client(actors[0],
-               "SELECT allin_private.v2_attest_ingredient_energy("
-               f"{lit(rows[0][0])},3,{lit(rows[0][2])},"
-               "'Revoked credentials should deny this request')")
-            require(revoked.returncode!=0 and "unauthorized" in revoked.stderr,
-                    "revoked credential was permitted")
+            # An administrator transaction holds the operator record while a
+            # second REAL TCP session attempts its review. The verified actor
+            # gate's FOR SHARE must wait, then recheck the revoked state.
+            op_locker=subprocess.Popen(
+                ["runuser","-u","postgres","--","psql","-X","-v",
+                 "ON_ERROR_STOP=1","-Atq","-d",db],
+                stdin=subprocess.PIPE,stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,text=True,bufsize=1)
+            try:
+                op_locker.stdin.write("BEGIN; SELECT 'OPERATOR_LOCKED' "
+                   "FROM allin_private.v2_ingredient_review_operators "
+                   f"WHERE login_role={lit(actors[0])} FOR UPDATE;\n")
+                op_locker.stdin.flush()
+                require(op_locker.stdout.readline().strip()=="OPERATOR_LOCKED",
+                        "operator registry row lock not acquired")
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    pending=pool.submit(client,actors[0],
+                       "SELECT allin_private.v2_attest_ingredient_energy("
+                       f"{lit(rows[0][0])},3,{lit(rows[0][2])},"
+                       "'Revoked credentials should deny this request')")
+                    time.sleep(0.25)
+                    require(not pending.done(),"review bypassed operator row lock")
+                    op_locker.stdin.write("UPDATE allin_private.v2_ingredient_review_operators "
+                      "SET enabled=false,revoked_at=clock_timestamp() "
+                      f"WHERE login_role={lit(actors[0])}; COMMIT;\n")
+                    op_locker.stdin.flush()
+                    revoked=pending.result(timeout=15)
+                    require(revoked.returncode!=0 and "unauthorized" in revoked.stderr,
+                            "concurrent revoked credential was permitted")
+            finally:
+                op_locker.stdin.close()
+                op_locker.wait(timeout=10)
             require(int(admin("SELECT count(*) FROM allin_private.v2_ingredient_operator_credential_events").stdout.strip())>=4,
                     "credential lifecycle changes were not audited")
             print(json.dumps({"database":"ephemeral localhost native PostgreSQL 15",
@@ -302,6 +325,7 @@ def main():
                               "idempotentReplay":"passed","auditEvents":2,
                               "energyAttestations":attested,"generalOnlyEnergy":"rejected",
                               "expiredAndRevokedCredentials":"denied",
+                              "concurrentCredentialRevocation":"waited_and_denied",
                               "sourceDigests":"verified_official_archive_per_food",
                               "calculationReady":0,
                               "externalSupabaseTouched":False},sort_keys=True))
