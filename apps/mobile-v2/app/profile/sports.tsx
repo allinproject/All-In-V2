@@ -11,6 +11,7 @@ import {
   chooseSportsFocus, parseSportsPreferences, setStartingFromZero,
   sportsPreferencesPatch, toggleActiveSport, type SportsPreferences,
 } from '../../src/features/training/sportsPreferences';
+import {deviceTrainingTimezone,savedTrainingTimezone,trainingTimezonePatch} from '../../src/features/training/trainingTimezone';
 import { supabase } from '../../src/lib/supabase';
 import { colors } from '../../src/theme/tokens';
 import { GuidedTourPanel } from '../../src/features/tutorials/GuidedTourPanel';
@@ -38,6 +39,9 @@ function SportsOwnerRoute() {
   const router = useRouter();
   const ownerId = user?.id ?? null;
   const [draft, setDraft] = useState<SportsPreferences>({ primaryFocus: '', currentSports: [] });
+  const [savedZone,setSavedZone]=useState<string|null>(null);
+  const [selectedDeviceZone,setSelectedDeviceZone]=useState<string|null>(null);
+  const [deviceZone]=useState(()=>deviceTrainingTimezone());
   const [settingsVersion, setSettingsVersion] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -70,7 +74,11 @@ function SportsOwnerRoute() {
     const training = record(record(settings?.settings).training_preferences);
     if (!isCurrent()) return;
     setSettingsVersion(version);
-    if (!preserveDraft) setDraft(parseSportsPreferences(training));
+    setSavedZone(savedTrainingTimezone(training));
+    if (!preserveDraft) {
+      setDraft(parseSportsPreferences(training));
+      setSelectedDeviceZone(null);
+    }
   }, [ownerId]);
 
   useFocusEffect(useCallback(() => {
@@ -95,7 +103,7 @@ function SportsOwnerRoute() {
     if (!ownerId || settingsVersion === null || busy.current || loading) return;
     busy.current = true; setSaving(true); setError(null); setNotice(null);
     try {
-      const patch = sportsPreferencesPatch(draft);
+      const patch = {...sportsPreferencesPatch(draft),...(selectedDeviceZone?trainingTimezonePatch(selectedDeviceZone):{})};
       const serialized = JSON.stringify(patch);
       const previous = pendingSave.current;
       const actionId = previous?.version === settingsVersion && previous.patch === serialized
@@ -165,6 +173,19 @@ function SportsOwnerRoute() {
             disabled={saving} onPress={() => edit(old => toggleActiveSport(old, option.value))} />)}</View>
           <Chip label="I'm just getting started" selected={draft.currentSports.includes(NOT_TRAINING_YET)}
             disabled={saving} onPress={() => edit(setStartingFromZero)} />
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.heading}>Training Timezone</Text>
+          <Text style={styles.helper}>Coach uses your saved timezone to find the correct day on your training calendar. Travel does not automatically change it.</Text>
+          <Text style={styles.helper}>Saved: {savedZone??'Not set'}</Text>
+          <Text style={styles.helper}>This device: {deviceZone??'Unavailable'}</Text>
+          {deviceZone&&deviceZone!==savedZone?<Pressable accessibilityRole="button"
+            accessibilityState={{selected:selectedDeviceZone===deviceZone,disabled:saving}}
+            disabled={saving} style={[styles.chip,selectedDeviceZone===deviceZone&&styles.chipSelected]}
+            onPress={()=>{pendingSave.current=null;setSelectedDeviceZone(deviceZone);setNotice(null)}}>
+            <Text style={[styles.chipText,selectedDeviceZone===deviceZone&&styles.chipTextSelected]}>Use device timezone when saving</Text>
+          </Pressable>:null}
+          {selectedDeviceZone?<Text style={styles.gold}>Will save: {selectedDeviceZone}</Text>:null}
         </View>
         {notice ? <Text accessibilityRole="text" style={styles.gold}>{notice}</Text> : null}
         <Pressable onLayout={onTargetLayout('save')} accessibilityRole="button" accessibilityState={{ disabled: saving, busy: saving }} disabled={saving}
