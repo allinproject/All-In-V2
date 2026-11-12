@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/v2-foundation-clean-replay.yml'
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
+      - 'scripts/test-v2-billing-local-foundation.psql'
+      - 'docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql'
       - 'scripts/test-v2-training-local-populated-owner-deletion.psql'
       - 'scripts/test-v2-training-local-role-boundaries.psql'
       - 'docs/architecture/sql/V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql'
@@ -252,6 +255,21 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-training-local-populated-owner-deletion.psql "$db_container:/tmp/v2-owner-deletion.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-owner-deletion.psql
+      - name: Verify billing candidate against real local foundation Auth and two accounts
+        run: |
+          set -euo pipefail
+          # Review-only DDL and exact service permissions on ephemeral local
+          # Supabase. NEVER use --remote, --linked, --db-url or db push.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql \
+            docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
+          done
+          docker cp scripts/test-v2-billing-local-foundation.psql "$db_container:/tmp/v2-billing-foundation-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-foundation-qa.psql
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
