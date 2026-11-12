@@ -16,6 +16,7 @@ import sys
 import unicodedata
 import zipfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 EXPECTED_ZIP_SHA256 = "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579"
 EXPECTED_JSON_SHA256 = "990e7731dcec30cecbbb212896a0fe4333f38c65ce7f525e2b679f0dc27658a1"
@@ -82,7 +83,9 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
     for p in profiles:
         raw_id = p.get("source_fdc_id")
         url = p.get("source_url") or ""
-        match = re.search(r"/food-details/([0-9]+)(?:/|$)", url) if isinstance(url, str) else None
+        match = (re.search(r"/food-details/([0-9]+)(?:/|$)", url)
+                 if isinstance(url, str) and urlparse(url).scheme == "https"
+                 and urlparse(url).hostname == "fdc.nal.usda.gov" else None)
         fdc_id = int(raw_id) if isinstance(raw_id, str) and raw_id.isdigit() else (
             raw_id if isinstance(raw_id, int) else int(match.group(1)) if match else None)
         if fdc_id is not None:
