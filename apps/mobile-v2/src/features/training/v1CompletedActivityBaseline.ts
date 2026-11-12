@@ -352,8 +352,22 @@ export const V1_COMPLETED_ACTIVITY_BASELINE=[
     ]
   }
 ] as const;
-export type V1CompletedActivitySport = typeof V1_COMPLETED_ACTIVITY_BASELINE[number]['sport'];
+/** V2-only addition from the founder-approved 2026-10-28 V1 completed
+ * metric registry. Keep V1_COMPLETED_ACTIVITY_BASELINE an exact 17-sport
+ * transcription; add a source-conditional rowing policy without faking
+ * machine measurements or rewriting V1's historical display authority. */
+export const V2_ROWING_PRESENTATION={
+ sport:'rowing',
+ label:'Rowing',
+ overview:['Distance','Duration','Pace / 500 m','Stroke rate'],
+ details:['Distance','Duration','Pace / 500 m','Stroke rate','Max stroke rate',
+  'Distance per stroke','Power','Average HR','Max HR','Drag factor',
+  'Active energy','Effort'],
+} as const;
+export type V1CompletedActivitySport =
+ typeof V1_COMPLETED_ACTIVITY_BASELINE[number]['sport']|typeof V2_ROWING_PRESENTATION['sport'];
 export function v1SportBaseline(sport:string){
+ if(sport===V2_ROWING_PRESENTATION.sport)return V2_ROWING_PRESENTATION;
  return V1_COMPLETED_ACTIVITY_BASELINE.find(item=>item.sport===sport)??null;
 }
 /** Scalar stats in V1 Details include the Overview fields, not only the extra
