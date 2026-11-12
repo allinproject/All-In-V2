@@ -27,7 +27,7 @@ export default function FuelScreen(){
 /** One existing Fuel route, not a new root tab or second owner store. */
 function OwnedFuelScreen(){
  const params=useLocalSearchParams<{date?:string;section?:string}>();
- const context=parseFuelDayContext(params.date,params.section);
+ const context=parseFuelDayContext(params.date, params.section);
  const {user,loading}=useAuth();
  const gate=useAccessGate();
  const [day,setDay]=useState(()=>context?.date??deviceLocalToday()??'');
