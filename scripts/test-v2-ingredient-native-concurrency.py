@@ -60,6 +60,10 @@ def main():
         # human login that the SECURITY DEFINER function verifies.
         if actor in actors:
             statement = "SET ROLE allin_v2_ingredient_reviewer; " + statement
+        elif actor == athlete:
+            # Ordinary NOINHERIT athlete also explicitly assumes only the
+            # authenticated read role; never the private reviewer capability.
+            statement = "SET ROLE authenticated; " + statement
         env = {**os.environ, "PGPASSWORD": passwords[actor]}
         return run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-At",
                     "-h", "127.0.0.1", "-p", "5432",
