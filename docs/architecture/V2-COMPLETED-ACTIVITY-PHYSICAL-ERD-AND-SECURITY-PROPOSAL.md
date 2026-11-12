@@ -559,3 +559,28 @@ The segment writer serializes by owner, requires a same-owner non-invalidated ac
 Expanded the existing disposable \`test-v2-completed-segments-postgres.psql\` to exercise exact replay, changing values/hash, foreign-owner denial, missing-vs-zero, nested leg sport, two sources disagreeing on power while independently agreeing on cadence, and global-versus-leg fact isolation. Existing source reconciliation client certification now rejects foreign-athlete candidates **before** unsupported-provider/pagination fallback; cross-athlete data is never treated as an ordinary review state.
 
 **Important independent remaining gates:** the SQL writer is a private **candidate**, not an authenticated provider endpoint; actual source-to-segment observation certification is not implemented. The candidate segment owner now has a same-activity advisory-serialized `BEFORE INSERT/UPDATE OF parent_segment_id` acyclic hierarchy trigger, rejecting cycles and ancestry beyond 32 levels; the disposable PG fixture asserts a cyclic UPDATE fails without a partial hierarchy write. This remains **untested at the latest SHA** and is not a released/deployed security guarantee. The full provider revision, observed-device namespace, unit-conversion/version and published metric dictionary require their respective owners. Accepted activity-global and segment facts must be assessed together under a single source-quality reconciliation policy before being used for public comparisons. Clean PostgreSQL/Node CI runs at these commits, full 18+ live-migration replay, service-role security, and installed device ingestion remain unverified. **No production DDL, client grants or device integration in this slice.**
+
+
+## ALL-243 founder-approved metric/source-quality policy — 2026-11-12 (design only)
+
+The founder approved the product principles for **one canonical activity, all eligible source-backed sport facts, compact Overview, complete authorized Details, and Coach using the same evidence**. This approval does not publish a registry, approve SQL, or authorize deployment.
+
+### Required immutable per-measurement evidence contract (next implementation gate)
+
+The existing review-only scalar and segment writers currently derive each metric's quality solely from its parent source (`v_quality := v_source.quality`). This **cannot represent a poor sensor sample from an otherwise trusted device**. Extend those canonical writers, not a parallel metric ledger, only after the domain owner signs off the following input and authorization contract:
+
+1. A trusted, authenticated provider adapter supplies the exact canonical activity, same-owner source, metric code/definition version, typed value, measurement kind, source evidence hash, **metric-specific quality** and quality-evidence classification. Untrusted clients cannot assert `trusted` quality or call the private writer directly.
+2. The writer validates the source's owner/activity, published definition and sport/value/measurement applicability, source evidence hash, and a bounded allowed quality vocabulary. It persists both parent source quality (via the existing source relationship) and **independent measurement quality** on the existing metric value. It never silently upgrades measurement quality to source quality.
+3. For display, effective quality is `trusted` only if **both** source and measurement are trusted; `partial` if both are usable and either is partial; otherwise withhold the metric and emit a specific unresolved reason. A real recorded zero remains zero. A missing value creates no metric row.
+4. An exact idempotent replay must compare quality as well as value, definition, source hash and immutable identity. Changed quality/evidence must go through an explicit correction/version workflow; it must not mutate an existing certified measurement silently or duplicate an activity.
+5. Same metric code with conflicting published definition versions on one activity/segment must be withheld as `conflicting_versions`, never chosen by arrival order. Per-sport semantic segment and strength-set identity remain canonical.
+6. Published reader DTOs preserve `measurementQuality`, `sourceQuality`, `quality`, exact metric definition/version, approved unit formatter, and an opaque authorized source reference. Private provider IDs, raw Storage paths and unapproved samples never reach the app or Coach.
+
+### Acceptance tests required before release
+
+- Trusted source + trusted sample; trusted + partial; partial + trusted; trusted + rejected/unverified; source rejected + trusted sample; measured numeric zero; absent sample; source/metric replay quality conflict.
+- Two authenticated owners, anon, expired/revoked session, same-owner cross-activity source spoof, conflicting published versions, concurrent duplicate provider callbacks and corrected evidence.
+- Every supported sport's approved metric code, unit, applicability and version must be explicitly enumerated in the registry before publication. No device-specific metric becomes universally comparable merely because units match.
+- Verify complete private Storage export/deletion under ALL-251, actual provider-device provenance, owner-scoped RPC adapter, and installed Overview/Details/Coach. Run commit-matched PostgreSQL and app tests.
+
+**Release gate remains OPEN:** exact writer signature, provider trust classification, correction ledger and published registry are not approved here; review-only SQL candidates are not versioned hosted migrations. No production SQL, grants or feature flags authorized.
