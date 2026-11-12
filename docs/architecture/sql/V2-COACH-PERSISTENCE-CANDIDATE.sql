@@ -64,9 +64,10 @@ ALTER TABLE public.v2_coach_threads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.v2_coach_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE allin_private.v2_coach_message_actions ENABLE ROW LEVEL SECURITY;
 
--- No directly granted table access: the canonical RPCs own all reads/writes.
-REVOKE ALL ON TABLE public.v2_coach_threads FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON TABLE public.v2_coach_messages FROM PUBLIC, anon, authenticated;
+-- No directly granted table access, including from service_role:
+-- the narrowly granted SECURITY DEFINER RPCs own all reads/writes.
+REVOKE ALL ON TABLE public.v2_coach_threads FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE public.v2_coach_messages FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON TABLE allin_private.v2_coach_message_actions
   FROM PUBLIC, anon, authenticated, service_role;
 
