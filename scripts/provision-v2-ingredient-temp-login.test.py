@@ -33,6 +33,7 @@ class ProvisionSafety(unittest.TestCase):
              patch.object(module, "safe_environment", return_value={"PGSSLMODE": "verify-full"}), \
              patch.object(module.subprocess, "run", side_effect=run), \
              patch.object(module.sys, "stdin", FakeInput()), \
+             patch.object(module.getpass, "getpass", return_value="synthetic-test-admin-password"), \
              patch("builtins.input", side_effect=["aws-0-us-east-1.pooler.supabase.com","TEMP"]), \
              patch("builtins.print"):
             module.provision()
