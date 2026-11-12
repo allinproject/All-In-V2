@@ -138,7 +138,7 @@ create function public.v2_kitchen_write_manual_shopping(
  p_state text
 ) returns bigint
 language plpgsql security definer set search_path=''
-as $
+as $kitchen_write$
 declare
  v_user uuid:=auth.uid();
  v_payload jsonb;
@@ -215,7 +215,7 @@ begin
  values (v_user,p_action_id,p_line_id,v_payload,v_version);
  return v_version;
 end;
-$;
+$kitchen_write$;
 revoke all on function public.v2_kitchen_write_manual_shopping(
  uuid,uuid,bigint,uuid,text,text,text,text,numeric,text)
  from public,anon,authenticated,service_role;
