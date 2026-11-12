@@ -356,7 +356,7 @@ jobs:
       - name: Apply canonical Coach owner candidate to disposable local Supabase
         run: |
           set -euo pipefail
-          test "$CI" = "true"
+          test "$CI" = "1"
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
           docker cp docs/architecture/sql/V2-COACH-OWNER-MIGRATION-CANDIDATE.sql "$db_container:/tmp/v2-coach-owner.sql"
@@ -364,7 +364,7 @@ jobs:
       - name: Prove canonical Coach concurrent first-open and request claims
         run: |
           set -euo pipefail
-          test "$CI" = "true"
+          test "$CI" = "1"
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
           docker exec "$db_container" createdb -U postgres allin_coach_race_test
