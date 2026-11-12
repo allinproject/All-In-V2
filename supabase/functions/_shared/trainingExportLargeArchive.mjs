@@ -47,7 +47,7 @@ function unprotect(envelope,key,ownerId,requestId,collection,index){
  return plain;
 }
 function checkedServices(services){
- for(const name of ['authorizeExport','readPage','resolveEncryptionKey','writePrivatePage',
+ for(const name of ['authorizeExport','getCanonicalInventory','readPage','resolveEncryptionKey','writePrivatePage',
   'commitPrivateManifest','readPrivateManifest','readPrivatePage','purgePrivateRequest']){
   if(typeof services?.[name]!=='function')throw Error('Incomplete trusted export dependencies: '+name);
  }
@@ -65,9 +65,18 @@ function checkedCollections(collections){
    throw Error('Invalid reviewed export inventory');
  return collections;
 }
-function checkedManifest(m,ownerId,requestId,collections){
+async function verifiedInventory(services,ownerId,requestId,collections) {
+ const inventory=await services.getCanonicalInventory({ownerId,requestId});
+ if(inventory?.ownerId!==ownerId||inventory?.requestId!==requestId
+    ||inventory?.complete!==true||!validId(inventory.snapshotId)
+    ||JSON.stringify(inventory.collections)!==JSON.stringify(collections))
+    throw Error('Canonical owner export inventory incomplete');
+ return inventory.snapshotId;
+}
+function checkedManifest(m,ownerId,requestId,collections,snapshotId){
  if(!m||m.version!==VERSION||m.ownerId!==ownerId||m.requestId!==requestId
   ||m.completeUserExport!==true||m.private!==true||m.encrypted!==true
+  ||m.snapshotId!==snapshotId
   ||!Array.isArray(m.pages)||m.pages.length>MAX_CHUNKS
   ||JSON.stringify(m.collections)!==JSON.stringify(collections)) throw Error('Unverified complete account export');
  const seen=new Set();let total=0;
@@ -92,6 +101,7 @@ export async function stageLargeAccountExport({requestId,collections,services}){
  if(!validId(requestId))throw Error('Exact export request required');
  checkedCollections(collections);checkedServices(services);
  const ownerId=await ownerGate(services,requestId,null);
+ const snapshotId=await verifiedInventory(services,ownerId,requestId,collections);
  const key=checkedKey(await services.resolveEncryptionKey({ownerId,requestId}));
  const pages=[];let rowCount=0;
  try{
@@ -102,6 +112,7 @@ export async function stageLargeAccountExport({requestId,collections,services}){
     await ownerGate(services,requestId,ownerId);
     const page=await services.readPage({ownerId,requestId,collection,cursor,limit:MAX_PAGE_ROWS});
     if(!page||page.ownerId!==ownerId||page.collection!==collection
+      ||page.snapshotId!==snapshotId
       ||!Array.isArray(page.rows)||page.rows.length>MAX_PAGE_ROWS
       ||page.rows.some(row=>!row||typeof row!=='object'||Array.isArray(row))
       ||typeof page.done!=='boolean')throw Error('Invalid canonical account export page');
@@ -125,7 +136,9 @@ export async function stageLargeAccountExport({requestId,collections,services}){
    }
   }
   await ownerGate(services,requestId,ownerId);
-  const manifest=Object.freeze({version:VERSION,ownerId,requestId,collections:[...collections],
+  if(await verifiedInventory(services,ownerId,requestId,collections)!==snapshotId)
+    throw Error('Canonical owner data changed during export');
+  const manifest=Object.freeze({version:VERSION,ownerId,requestId,snapshotId,collections:[...collections],
    completeUserExport:true,private:true,encrypted:true,rowCount,pages});
   const saved=await services.commitPrivateManifest({ownerId,requestId,manifest});
   if(saved?.committed!==true||saved.ownerId!==ownerId||saved.requestId!==requestId)
@@ -144,11 +157,14 @@ export async function* streamLargeAccountExport({requestId,collections,services}
  if(!validId(requestId))throw Error('Exact export request required');
  checkedCollections(collections);checkedServices(services);
  const ownerId=await ownerGate(services,requestId,null);
- const m=checkedManifest(await services.readPrivateManifest({ownerId,requestId}),ownerId,requestId,collections);
+ const snapshotId=await verifiedInventory(services,ownerId,requestId,collections);
+ const m=checkedManifest(await services.readPrivateManifest({ownerId,requestId}),ownerId,requestId,collections,snapshotId);
  const key=checkedKey(await services.resolveEncryptionKey({ownerId,requestId}));
  yield Buffer.from(JSON.stringify({format:VERSION,export_owner:ownerId,collections,records:m.rowCount})+'\n');
  for(const p of m.pages){
   await ownerGate(services,requestId,ownerId);
+  if(await verifiedInventory(services,ownerId,requestId,collections)!==snapshotId)
+    throw Error('Canonical owner data changed during download');
   const sealed=await services.readPrivatePage({ownerId,requestId,collection:p.collection,index:p.index});
   const plain=unprotect(sealed,key,ownerId,requestId,p.collection,p.index);
   if(sha(plain)!==p.sha256)throw Error('Account export page differs from manifest');
