@@ -12,6 +12,7 @@ import {createTrainingSupabaseEvidenceAdapter} from '../supabase/functions/_shar
 import {createTrainingEncryptedArchiveSink} from './v2-training-export-archive-writer.mjs';
 import {createSupabasePrivateArchivePersistence,createSupabasePagedAccountExportStorage} from '../supabase/functions/_shared/trainingExportSupabaseArchive.mjs';
 import {stageLargeAccountExport,createLargeAccountDownloadResponse} from '../supabase/functions/_shared/trainingExportLargeArchive.mjs';
+import {createApprovedPrivateMediaPageReader} from '../supabase/functions/_shared/trainingExportPrivateMediaPages.mjs';
 import {stageTrainingPrivateStorageExport} from './v2-training-private-storage-stage.mjs';
 import {auditPrivateMediaExportCoverage,createSupabaseTrainingMediaAuditAdapters} from '../supabase/functions/_shared/trainingExportMediaCoverage.mjs';
 
@@ -123,11 +124,24 @@ export function createTrainingAccountExportWorkerCandidate({
             ||!Array.isArray(inventory.collections)) {
             throw new Error('Canonical export source coverage or privacy review incomplete');
           }
+          // Media bytes are a reviewed canonical collection, not an optional
+          // sidecar silently omitted from the supposedly complete archive.
+          // This branch is unreachable while SQL inventory.complete=false.
+          const approvedMedia=inventory.collections.includes('private_media');
+          const media=approvedMedia
+            ?await createApprovedPrivateMediaPageReader({
+              ownerId:gate.ownerId,requestId,snapshotId:inventory.snapshotId,
+              scoped,downloadPrivateObject:storageAdapter.downloadPrivateObject,
+            })
+            :null;
+          const sourcePage=async args=>args.collection==='private_media'
+            ?media?.readPage(args)??Promise.reject(Error('Private media not approved'))
+            :scoped.readPage(args);
           const result=await stageLargeAccountExport({
             requestId,collections:inventory.collections,
             services:{...largeServices,
               getCanonicalInventory:scoped.getCanonicalInventory,
-              readPage:scoped.readPage,
+              readPage:sourcePage,
             },
           });
           // The encrypted manifest is written before the database commit.
