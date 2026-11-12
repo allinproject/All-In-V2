@@ -49,6 +49,20 @@ The existing Training season preview now has a separate, test-covered, **source-
 
 This is a **fail-closed read/preflight boundary**, not proof that these owner snapshots are available in Supabase or that database FKs/permissions are approved. The existing preview remains non-mutating; release activation must wire actual owner services and uphold freshness and version checks again in the transactional Training writer. Test registration lives in the existing `apps/mobile-v2/package.json` Training logic suite. An EventHub URL resolver or group membership receipt is not a substitute for authoritative Event/Goal evidence.
 
+### ALL-239 canonical Goal identity candidate (review-only)
+
+The existing ALL-239 physical ERD now has a first concrete proposal,
+`docs/architecture/sql/V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql`,
+and follow-on immutable revision guard
+`docs/architecture/sql/V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql`.
+They define **Goals-owned** stable identity and same-owner revision keys,
+allow independent accepted primary goals and undated intentions, and do not
+store any Training session or EventHub group. A local Supabase rollback-only
+fixture tests foreign owner rejection, revision supersession and two-athlete
+Auth-deletion isolation. This first candidate does not yet establish an owner
+writer, published authenticated read API, user-approved target evidence, or the
+authoritative Event FK. Do not mistake a green local replay for schema approval.
+
 ## 4. Release cut acceptance (all must pass before hosted DDL)
 
 - [ ] ALL-222/243/246 sign off source identity, canonical aggregate FKs, plan revision lifecycle, metric registry and exact source/quality model.
