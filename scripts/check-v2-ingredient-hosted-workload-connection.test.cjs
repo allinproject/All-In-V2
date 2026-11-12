@@ -9,11 +9,11 @@ test('accept only the exact staging project, private pgpass and verified TLS',()
    fs.writeFileSync(pass,'placeholder-not-a-credential',{mode:0o600});
    fs.writeFileSync(ca,'placeholder');
    const env={ALL228_ALLOW_HOSTED_INGEST_SMOKE:'1',ALL228_TEMP_STAGING_PROJECT_REF:PROJECT,
-     PGHOST:'db.'+PROJECT+'.supabase.co',PGPORT:'5432',PGDATABASE:'postgres',PGUSER:LOGIN,
+     PGHOST:'aws-0-us-east-1.pooler.supabase.com',PGPORT:'5432',PGDATABASE:'postgres',PGUSER:LOGIN+'.'+PROJECT,
      PGSSLMODE:'verify-full',PGSSLROOTCERT:ca,PGPASSFILE:pass};
    assert.equal(assertConfig(env).login,LOGIN);
    for(const [key,value] of [
-     ['ALL228_ALLOW_HOSTED_INGEST_SMOKE','0'],['PGUSER','postgres'],
+     ['ALL228_ALLOW_HOSTED_INGEST_SMOKE','0'],['PGUSER','postgres'],['PGUSER',LOGIN],
      ['PGHOST','db.xarhuczrtzuiljmtdaeu.supabase.co'],['PGPORT','6543'],
      ['PGSSLMODE','require'],['PGPASSWORD','any'],['PGHOSTADDR','127.0.0.1'],
      ['PGOPTIONS','-c role=postgres'],['DATABASE_URL','postgresql://test'],
