@@ -21,7 +21,7 @@ function tokens(s){
   const n=normalize(s);
   // "without salt" and "salt added" describe a food's processing,
   // not the core ingredient "salt". Do not suggest table salt for soup.
-  const seasoning=/\\b(?:without|with)\\s+salt\\b|\\bsalt\\s+added\\b/.test(n);
+  const seasoning=/\b(?:without|with)\s+salt\b|\bsalt\s+added\b/.test(n);
   const words=n.split(' ').map(stem).filter(t=>t&&!COMMON.has(t));
   return [...new Set(seasoning&&words.some(t=>t!=='salt')
     ? words.filter(t=>t!=='salt') : words)].sort();
