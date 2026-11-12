@@ -33,7 +33,9 @@ CREATE TABLE IF NOT EXISTS allin_private.v2_ingredient_review_events (
   previous_revision integer NOT NULL,
   next_revision integer NOT NULL,
   source_record_id uuid,
-  source_payload_sha256 text NOT NULL CHECK (source_payload_sha256 ~ '^[a-fA-F0-9]{64}
+  source_payload_sha256 text NOT NULL CHECK (source_payload_sha256 ~ '^[a-fA-F0-9]{64}$'),
+  required_nutrient_set_version text NOT NULL,
+  decision_reason text NOT NULL,
   UNIQUE(actor_db_login, idempotency_key)
 );
 ALTER TABLE allin_private.v2_ingredient_review_operators ENABLE ROW LEVEL SECURITY;
