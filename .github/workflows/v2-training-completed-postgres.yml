@@ -31,6 +31,7 @@ on:
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-PRIVATE-INGEST-GATEWAY-CANDIDATE.sql'
       - 'scripts/test-v2-device-ingest-rls-guard.mjs'
       - 'scripts/test-v2-device-ingest-two-owner-postgres.psql'
+      - 'scripts/test-v2-device-ingest-invalidation-race.sh'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql'
       - 'scripts/test-v2-completed-scalar-metrics-postgres.psql'
@@ -225,6 +226,12 @@ jobs:
             docker cp "scripts/$f" "$PG_CONTAINER:/tmp/allin/scripts/$f"
           done
           docker exec "$PG_CONTAINER" psql -U postgres -d device_ingest_rls -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-device-ingest-two-owner-postgres.psql
+      - name: Race device metric ingest against activity invalidation and rejected source
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          bash scripts/test-v2-device-ingest-invalidation-race.sh
 
   review-only:
     name: PostgreSQL 17 Training, Completed Activity and Competition owner replay
