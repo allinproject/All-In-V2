@@ -404,3 +404,23 @@ The identity candidate preflight uses the existing targeted Cookbook no-deploy C
 The evidence record is versioned at `docs/evidence/ALL-228-USDA-FOUNDATION-2026-10-29-SOURCE-VERIFICATION.json`; it matches the manifest contract already used by `scripts/verify-v2-usda-foundation-manifest.mjs`. **The full 696,866 ZIP bytes were verified in an isolated hosted environment but are not deposited in this Git repository, the V2 Supabase project, or the user's PC.** The committed record provides a reference SHA against which any subsequent on-PC download can be checked, rather than pretending a locally retained archive exists.
 
 **Remaining acceptance:** official ZIP byte integrity and JSON structural inventory are verified; individual nutrient mappings, approved ingredient identities/preparation state/source rights, canonical database writer and RLS (ALL-222), USDA profile review, seed idempotency, application integration, and production migration are **not** verified or authorized. No USDA records were ingested or marked calculation-ready. If the official URL later serves different bytes, treat it as source change requiring new evidence and review—not a silent manifest replacement.
+
+
+## ALL-228 USDA↔V1 identity candidate reconciliation — 2026-11-12
+
+A **complete review-only 424-record reconciliation** was executed against the **actual pinned USDA Foundation Foods October 2026 archive** (SHA-256 `dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579`) and the committed **408-profile V1 macro-free identity source snapshot**. The existing and canonical offline owner is `scripts/reconcile-usda-foundation-identities.py`. It verifies the real archive hash/JSON structure before matching; the result is committed in `docs/evidence/ALL-228-USDA-FOUNDATION-V1-IDENTITY-RECONCILIATION-2026-11-12.json`. The temporary overlapping JS matching helpers were retired in favor of this owner.
+
+**Exclusive USDA record outcomes (sum = 424):**
+
+| Human review lane | USDA foods | Meaning |
+|---|---:|---|
+| `source_fdc_reference_review` | 8 | V1 profile source URL explicitly references FDC ID in this snapshot; verify food identity, form and basis |
+| `exact_name_review` | 3 | FDC description exactly equals normalized V1 label or alias; still needs source/state review |
+| `similar_name_review` | 110 | Token overlap (Jaccard ≥ 0.42, top three); **weak suggestions only**, not equality |
+| `no_candidate` | 303 | No link established by these rules; **not evidence of an unavailable food** |
+
+The eight explicit FDC URL review pairs are `328841:milk_cottage_2pct`, `790577:red_onion_raw`, `2346407:cabbage_green_raw`, `2644285:black_beans_canned_drained`, `2644288:chickpeas_canned_drained_rinsed`, `2644289:beans_kidney_canned_drained`, `2685580:tomato_paste_canned_unsalted`, `2685581:tomatoes_crushed_canned`. These links are stronger than text similarity but still not proof of matched ingredient preparation state, nutrient basis, salt/added-sugar form, provenance rights or calculation-ready coverage.
+
+The complete committed report was reread and checked: 424 records, 424 distinct FDC IDs, status counts match the summary, every record has `canonicalIdentityApproved:false` and `nutrientProfileApproved:false`. The canonical Python source was executed successfully in an isolated hosted Python runtime on the real USDA archive and exact committed 408-profile snapshot; the full artifact is **not** a seeded database or approved mapping. A preceding exploratory lexical audit yielded different counts; those were superseded by this source-ID-aware canonical run. The canonical test file includes source-URL review cases; GitHub Actions status for the exact newest branch commit is not independently confirmed.
+
+**Remaining reviews before canonical identities can be accepted:** resolve alias and food-form ambiguity; verify raw/cooked/dried/drained/state-specific identities; branded/generic distinction; exact primary source and nutrient-basis evidence (including the Foundation archive record IDs and any other USDA/OFF source needed); reviewer authority and ALL-222 physical RLS/write contracts; deterministic seed acceptance and app validation. Do not auto-promote 424 USDA source records or 408 V1 source profiles to V2 approved identity rows. No live V2 schema, data, publication or `main` changes were authorized.
