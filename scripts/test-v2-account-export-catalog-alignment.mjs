@@ -150,8 +150,15 @@ test('ALL-251 source ownership: canonical Community posts and ALL-247 food logs 
  for(const candidate of [source,reader]){
   assert(candidate.includes("'v2_food_%'"),'ALL-247 food owner history must fail closed');
   assert(candidate.includes("'owner_id'"),'Community posts owner_id must fail closed');
-  assert(candidate.includes('v2_community_posts')===false,
-   'Community posts cannot enter the reviewed export registry without explicit approval');
+  if(candidate===reader){
+   assert(candidate.includes("ELSIF p_collection='community.my_posts' THEN"),
+    'Gated owner-only Community projection must remain explicit');
+   const inventory=candidate.slice(0,candidate.indexOf('$inventory$;'));
+   assert(!inventory.includes("'community.my_posts'"),
+    'Community post projection must not enter the approved inventory before source acceptance');
+   assert(inventory.includes("'complete',false"),
+    'Community source review cannot set whole-export completion');
+  }
   if(candidate===reader)assert(candidate.includes("'complete',false"),
    'Paginated inventory must remain incomplete until media/owner approvals');
  }
@@ -174,4 +181,25 @@ test('ALL-251 private media remains Training-only until explicit Community, Nutr
    'Source now migrated: reconcile ALL-251 source ownership before whole-account export');
  }
  assert(reader.includes("'complete',false"),'Unapproved domain must keep inventory incomplete');
+});
+
+test('ALL-251 owner-only Community post projection stays gated and excludes third-party material',()=>{
+ const begin=reader.indexOf("ELSIF p_collection='community.my_posts' THEN");
+ const end=reader.indexOf(" ELSIF p_collection LIKE 'community.%' THEN",begin);
+ assert(begin>0&&end>begin,'Missing gated canonical Community post projection');
+ const sql=reader.slice(begin,end);
+ for(const field of ["'id'","'owner_id'","'kind'","'audience'","'title'",
+  "'body'","'source_id'","'post_version'","'published_at'","'updated_at'"])
+  assert(sql.includes(field),'Missing owner-post provenance '+field);
+ assert(sql.includes("WHERE p.owner_id=$1"),'Post export must filter at source by owner');
+ assert(sql.includes("ORDER BY p.published_at,p.id LIMIT $2 OFFSET $3"),
+  'Post export must have deterministic bounded pagination');
+ assert(!sql.includes('to_jsonb(p)'),'Raw Community table export is not approved');
+ for(const forbidden of ['follower_id','followed_id','blocker_id','blocked_id','payload_sha256'])
+  assert(!sql.includes(forbidden),'Projection may not include private third-party material');
+ const inventory=reader.slice(0,reader.indexOf('$inventory$;'));
+ assert(!inventory.includes("'community.my_posts'"),
+  'Future Community source acceptance must be explicit, not a reader-side grant');
+ assert(reader.includes("NOT (v_inventory->'collections' ? p_collection)"),
+  'Candidate page reader must refuse any collection not approved in inventory');
 });
