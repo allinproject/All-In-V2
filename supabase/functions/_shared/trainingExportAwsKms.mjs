@@ -50,14 +50,20 @@ export function createAwsKmsExportKeyProvider({
    const result=await client.send(new GenerateDataKeyCommand({
     KeyId:keyArn,KeySpec:'AES_256',EncryptionContext:context,
    }));
-   if(result?.KeyId!==keyArn
-     ||!(result?.CiphertextBlob instanceof Uint8Array)
-     ||result.CiphertextBlob.byteLength<24||result.CiphertextBlob.byteLength>6144)
-     throw Error('KMS key identity or ciphertext invalid');
-   const key=checkedBytes(result.Plaintext);
-   return {kmsKeyId:keyArn,keyVersion:VERSION,keyPurpose:PURPOSE,
-    wrappedDataKey:Buffer.from(result.CiphertextBlob).toString('base64'),
-    encryptionKey:key};
+   // The AWS SDK returns a mutable plaintext buffer. The provider must
+   // release it after making the single caller-owned copy, including failures.
+   try {
+    if(result?.KeyId!==keyArn
+      ||!(result?.CiphertextBlob instanceof Uint8Array)
+      ||result.CiphertextBlob.byteLength<24||result.CiphertextBlob.byteLength>6144)
+      throw Error('KMS key identity or ciphertext invalid');
+    const key=checkedBytes(result.Plaintext);
+    return {kmsKeyId:keyArn,keyVersion:VERSION,keyPurpose:PURPOSE,
+     wrappedDataKey:Buffer.from(result.CiphertextBlob).toString('base64'),
+     encryptionKey:key};
+   }finally{
+    if(result?.Plaintext instanceof Uint8Array)result.Plaintext.fill(0);
+   }
   },
   async unwrapDataKey({kmsKeyId,wrappedDataKey,keyVersion,purpose,context}){
    if(kmsKeyId!==keyArn)throw Error('Unapproved KMS key');
@@ -67,8 +73,12 @@ export function createAwsKmsExportKeyProvider({
     KeyId:keyArn,CiphertextBlob:blob,
     EncryptionContext:encryptionContext,
    }));
-   if(result?.KeyId!==keyArn)throw Error('KMS decrypted with unexpected key');
-   return checkedBytes(result.Plaintext);
+   try {
+    if(result?.KeyId!==keyArn)throw Error('KMS decrypted with unexpected key');
+    return checkedBytes(result.Plaintext);
+   }finally{
+    if(result?.Plaintext instanceof Uint8Array)result.Plaintext.fill(0);
+   }
   },
  });
 }
