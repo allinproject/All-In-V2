@@ -23,12 +23,12 @@ test('exact source matches pass, and newer staged migrations remain separate',()
 test('missing, modified or renamed historical SQL fails closed',()=>{
  let out=auditAppliedMigrations([base[0][0]],read,base);
  assert.equal(out.ok,false);
- assert.match(out.problems.join(';'),'Missing applied migration');
+ assert.match(out.problems.join(';'),/Missing applied migration/);
  out=auditAppliedMigrations(base.map(x=>x[0]),name=>
    name===base[0][0]?'select 3;':read(name),base);
  assert.equal(out.ok,false);
- assert.match(out.problems.join(';'),'contents changed');
+ assert.match(out.problems.join(';'),/contents changed/);
  out=auditAppliedMigrations([...base.map(x=>x[0]),'20261110000000_duplicate.sql'],read,base);
  assert.equal(out.ok,false);
- assert.match(out.problems.join(';'),'Unrecorded historical migration');
+ assert.match(out.problems.join(';'),/Unrecorded historical migration/);
 });
