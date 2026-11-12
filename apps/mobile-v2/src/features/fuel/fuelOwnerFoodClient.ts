@@ -22,30 +22,36 @@ export type FoodDayReadServices={
 };
 
 /** Small injectable boundary to allow race/error and owner-isolation tests. */
-export async function readCanonicalFuelDay(
- services:FoodDayReadServices,
- expectedOwnerId:string,
- day:string,
- isCurrent:()=>boolean=()=>true,
- enabled=V2_FUEL_DAY_READ_ENABLED,
-):Promise<FuelLogDayEvidence>{
- const unavailable:FuelLogDayEvidence={status:'unavailable'};
- if(!enabled||!expectedOwnerId.trim()||!isCurrent())return unavailable;
+/** The owner-checked raw payload is shared by Today preview and Fuel editing.
+ * Both authenticate before and after the RPC, and reject partial days.
+ */
+export async function readCanonicalFuelPayload(
+ services:FoodDayReadServices,expectedOwnerId:string,day:string,
+ isCurrent:()=>boolean=()=>true,enabled=V2_FUEL_DAY_READ_ENABLED,
+):Promise<CanonicalFuelFoodDay|null>{
+ if(!enabled||!expectedOwnerId.trim()||!isCurrent())return null;
  try{
   await services.authenticateOwner();
-  if(!isCurrent())return unavailable;
+  if(!isCurrent())return null;
   const result=await services.readCompleteDay('v2_food_log_read_complete_day',{
-   p_expected_user_id:expectedOwnerId,
-   p_local_date:day,
+   p_expected_user_id:expectedOwnerId,p_local_date:day,
   });
-  if(!isCurrent()||result.error||!result.data)return unavailable;
+  if(!isCurrent()||result.error||!result.data)return null;
   await services.authenticateOwner();
-  if(!isCurrent())return unavailable;
-  return foodDayForToday(result.data as CanonicalFuelFoodDay,expectedOwnerId,day);
- }catch{
-  // Missing/stale RPC or expired session is NOT evidence of an empty day.
-  return unavailable;
- }
+  if(!isCurrent())return null;
+  const payload=result.data as CanonicalFuelFoodDay;
+  return foodDayForToday(payload,expectedOwnerId,day).status==='ready'
+   ? payload:null;
+ }catch{return null;}
+}
+export async function readCanonicalFuelDay(
+ services:FoodDayReadServices,expectedOwnerId:string,day:string,
+ isCurrent:()=>boolean=()=>true,enabled=V2_FUEL_DAY_READ_ENABLED,
+):Promise<FuelLogDayEvidence>{
+ const payload=await readCanonicalFuelPayload(
+  services,expectedOwnerId,day,isCurrent,enabled,
+ );
+ return payload?foodDayForToday(payload,expectedOwnerId,day):{status:'unavailable'};
 }
 
 /** Authenticated mobile client; generated RPC types follow reviewed migration. */
@@ -55,6 +61,20 @@ export async function readOwnedFuelDay(
 ):Promise<FuelLogDayEvidence>{
  const rpc=client.rpc.bind(client) as unknown as FuelRpc;
  return readCanonicalFuelDay({
+  authenticateOwner:()=>assertV2SessionOwner(client,owner),
+  readCompleteDay:rpc,
+ },owner,day,isCurrent);
+}
+
+/** Raw complete-day response for Fuel. The editing layer must separately
+ * validate all replacement-specific fields before offering edit actions.
+ */
+export async function readOwnedFuelDayPayload(
+ client:SupabaseClient<Database>,owner:string,day:string,
+ isCurrent:()=>boolean=()=>true,
+):Promise<CanonicalFuelFoodDay|null>{
+ const rpc=client.rpc.bind(client) as unknown as FuelRpc;
+ return readCanonicalFuelPayload({
   authenticateOwner:()=>assertV2SessionOwner(client,owner),
   readCompleteDay:rpc,
  },owner,day,isCurrent);
