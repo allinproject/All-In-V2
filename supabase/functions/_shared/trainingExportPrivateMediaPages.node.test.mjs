@@ -112,3 +112,21 @@ test('another owner cannot use already pinned media reader or traverse source id
  ])
   await assert.rejects(media.readPage(args),/Unapproved/);
 });
+
+test('pinned media refuses pending/revoked evidence and disallowed route privacy before downloading bytes',async()=>{
+ for(const change of [
+  refs=>{refs.series[0].state='pending';},
+  refs=>{refs.series[0].state='revoked';},
+  refs=>{refs.routes[0].state='pending';},
+  refs=>{refs.routes[0].privacy_state='public';},
+  refs=>{refs.routes[0].privacy_state=null;},
+ ]){
+  const f=fixture();
+  change(f.refs);
+  await assert.rejects(createApprovedPrivateMediaPageReader({
+   ownerId:owner,requestId,snapshotId,scoped:f.scoped,
+   downloadPrivateObject:f.downloadPrivateObject,
+  }),/Invalid or duplicated canonical media reference/);
+  assert.equal(f.calls.length,0,'Unapproved evidence must not trigger privileged byte download');
+ }
+});
