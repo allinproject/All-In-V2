@@ -1,6 +1,6 @@
 # V2 Coach persistence and athlete-context schema approval packet (ALL-222)
 
-**Status:** Proposed physical contract for review; not approved DDL, not deployed.  
+**Status:** Founder Stage-1 Coach architecture principles **APPROVED** on 2026-11-12 for isolated/staging implementation only; final versioned DDL, production migration, retention/legal publication and user activation **NOT APPROVED**.  
 **Authority:** `docs/architecture/V2-DOMAIN-OWNERSHIP-SECURITY-AND-EVENT-CONTRACTS.md`, ALL-210, ALL-217, ALL-232, ALL-240, ALL-241.  
 **Backend:** isolated V2 Supabase `xarhuczrtzuiljmtdaeu`.  
 **Snapshot:** 2026-11-11. Live V2 currently has no Coach thread/message tables or Coach Edge Function. The V1 deployed Coach v18 is reference, not a V2 endpoint.
@@ -76,7 +76,7 @@ The following are **review-only** source files under `docs/architecture/sql/`, d
 
 **Proposal refinement:** The SQL candidate implements three tables now and deliberately defers the optional settled-context table, because conversation replay can work without a second summarized state. The selected active-thread policy is one durable thread per owner; future multiple-thread support would require an explicitly reviewed schema transition. Failed service calls do not create successful assistant messages. Accepted user messages remain in history and service failures must be represented truthfully in the application.
 
-**Not yet proven:** The candidate has not been executed against a disposable PostgreSQL/Supabase instance. The catalog checks and two-owner authenticated integration replay have **not** run. These files are not approved for production migration. Privacy retention/export/deletion scope, secure service writer implementation and exact integration with currently in-flight ALL-222 physical schema work remain approval gates. A proposed SQL file is not equivalent to a working V2 Coach service.
+**Later verification update (2026-11-12):** The candidate **has passed** disposable local PostgreSQL security, two-owner integration and independent-session race tests in [CI run #43203104074](https://github.com/allinproject/All-In-V2/actions/runs/43203104074). This supersedes the original pre-execution status of this section. Stage-1 founder architecture approval is recorded below; no hosted migration or production Coach service is approved. Privacy export/deletion scope, secure service integration, domain data and installed-app continuity remain separate release gates.
 
 ## 8. Disposable foundation CI integration — 2026-11-12
 
