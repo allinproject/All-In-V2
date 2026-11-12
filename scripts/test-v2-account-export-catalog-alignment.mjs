@@ -205,7 +205,7 @@ test('ALL-251 owner-only Community post projection stays gated and excludes thir
 });
 
 test('ALL-251 gated Food Log projection exports deleted owner history, not private action fingerprints',()=>{
- const marker="ELSIF p_collection='food.my_entries' THEN";
+ const marker="ELSIF p_collection='public.v2_food_log_entries' THEN";
  const begin=reader.indexOf(marker),end=reader.indexOf(" ELSIF p_collection='community.my_posts' THEN",begin);
  assert(begin>0&&end>begin,'Gated ALL-247 food projection missing');
  const projection=reader.slice(begin,end);
@@ -220,6 +220,6 @@ test('ALL-251 gated Food Log projection exports deleted owner history, not priva
  for(const secret of ['request_fingerprint','result_revision','v2_food_log_write_actions','to_jsonb(e)'])
    assert(!projection.includes(secret),'Food export leaked action internals: '+secret);
  const inventory=reader.slice(0,reader.indexOf('$inventory$;'));
- assert(!inventory.includes("'food.my_entries'"),'Food export cannot be enabled until domain accepted');
+ assert(!inventory.includes("('public','v2_food_log_entries')"),'Food export cannot be enabled until domain accepted');
  assert(inventory.includes("'complete',false"),'Full export must remain off');
 });
