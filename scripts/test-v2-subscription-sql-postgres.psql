@@ -196,15 +196,47 @@ BEGIN
     IF NOT t.relrowsecurity THEN
       RAISE EXCEPTION 'Billing table % has RLS off',t.relname;
     END IF;
+    -- Billing rows are intentionally service-only, with no client RLS
+    -- policies. A future policy must trigger a deliberate security review.
+    IF EXISTS (SELECT 1 FROM pg_policy WHERE polrelid=t.oid) THEN
+      RAISE EXCEPTION 'Unexpected client-facing billing policy on %',t.relname;
+    END IF;
     FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
       IF has_table_privilege(api_role,t.oid,'SELECT') OR
          has_table_privilege(api_role,t.oid,'INSERT') OR
          has_table_privilege(api_role,t.oid,'UPDATE') OR
-         has_table_privilege(api_role,t.oid,'DELETE') THEN
+         has_table_privilege(api_role,t.oid,'DELETE') OR
+         has_table_privilege(api_role,t.oid,'TRUNCATE') OR
+         has_table_privilege(api_role,t.oid,'REFERENCES') OR
+         has_table_privilege(api_role,t.oid,'TRIGGER') THEN
         RAISE EXCEPTION 'Role % can directly access billing table %',
           api_role,t.relname;
       END IF;
     END LOOP;
+  END LOOP;
+  -- Sequence identity values are private receipt provenance too. Default
+  -- privileges can accidentally expose them independently of table RLS.
+  FOR t IN
+    SELECT c.oid,c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='allin_private' AND c.relkind='S'
+      AND c.relname LIKE 'v2_subscription_%'
+  LOOP
+    FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF has_sequence_privilege(api_role,t.oid,'USAGE') OR
+         has_sequence_privilege(api_role,t.oid,'SELECT') OR
+         has_sequence_privilege(api_role,t.oid,'UPDATE') THEN
+        RAISE EXCEPTION 'Role % can access billing sequence %',
+          api_role,t.relname;
+      END IF;
+    END LOOP;
+  END LOOP;
+  FOREACH api_role IN ARRAY ARRAY['anon','authenticated'] LOOP
+    IF has_schema_privilege(api_role,'allin_private','USAGE') OR
+       has_schema_privilege(api_role,'allin_private','CREATE') THEN
+      RAISE EXCEPTION 'Role % can access private billing schema',api_role;
+    END IF;
   END LOOP;
 END
 $billing_privilege_inventory$;
