@@ -135,7 +135,7 @@ BEGIN
     OR jsonb_array_length(v_data->'eventhub'->'group_actions') <> 1
     OR v_data->'community'->'visibility'->>'profile_visibility' <> 'private'
     OR jsonb_array_length(v_data->'community'->'outgoing_follows')<>1
-    OR jsonb_array_length(v_data->'community'->'incoming_follow_requests')<>1
+    OR jsonb_array_length(v_data->'community'->'incoming_follow_requests')<>0
     OR jsonb_array_length(v_data->'community'->'outgoing_blocks')<>1
     OR jsonb_array_length(v_data->'community'->'my_action_receipts')<>1
     OR v_data->'community'->>'complete_community_export'<>'false'
@@ -177,7 +177,7 @@ BEGIN
     OR jsonb_array_length(v_data->'eventhub'->'group_actions') <> 1
     OR v_data->'community'->'visibility'->>'profile_visibility' <> 'public'
     OR jsonb_array_length(v_data->'community'->'outgoing_follows')<>1
-    OR jsonb_array_length(v_data->'community'->'incoming_follow_requests')<>1
+    OR jsonb_array_length(v_data->'community'->'incoming_follow_requests')<>0
     OR jsonb_array_length(v_data->'community'->'outgoing_blocks')<>0
     OR jsonb_array_length(v_data->'community'->'my_action_receipts')<>1
     OR v_data->'community'->>'incoming_blocks_disclosed'<>'false'
