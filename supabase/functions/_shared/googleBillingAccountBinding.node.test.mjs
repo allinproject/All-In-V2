@@ -20,6 +20,12 @@ test('wrong owner or production environment yields a different binding',async()=
  assert.notEqual(original,other);
  assert.notEqual(original,production);
 });
+test('former four-group pseudo-UUID never derives a billing account binding',async()=>{
+ assert.equal(await derive({ownerId:'00000000-0000-0000-000000000001',
+  environment:'sandbox',serverPepper:pepper}),null);
+ assert.match(await derive({ownerId:owner,
+  environment:'sandbox',serverPepper:pepper}),/^[a-f0-9]{64}$/);
+});
 test('no weak, missing, or client-derived configuration is accepted',async()=>{
  for(const options of [
   {ownerId:owner,environment:'sandbox',serverPepper:''},
