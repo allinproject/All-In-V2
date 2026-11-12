@@ -1,0 +1,45 @@
+\set ON_ERROR_STOP on
+-- ALL-96 disposable populated PostgreSQL clone only. Simulate interruption
+-- after candidate DDL and ledger write, before transaction commit.
+-- PostgreSQL transactional DDL must roll back together with ledger/data.
+DO $pre$
+BEGIN
+ IF to_regprocedure('allin_private.v2_activity_segment_scalar_projection_candidate(uuid,uuid,uuid)') IS NOT NULL
+ THEN RAISE EXCEPTION 'ALL-96 rollback fixture already upgraded'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.v2_completed_activities)
+ OR NOT EXISTS(SELECT 1 FROM public.v2_activity_sources)
+ THEN RAISE EXCEPTION 'ALL-96 rollback requires populated baseline'; END IF;
+END $pre$;
+CREATE TEMP TABLE all96_snapshot AS
+SELECT
+ (SELECT count(*) FROM public.v2_completed_activities) AS activity_count,
+ (SELECT count(*) FROM public.v2_activity_sources) AS source_count,
+ (SELECT md5(coalesce(string_agg(row_to_json(a)::text,'|' ORDER BY a.id),'')) FROM public.v2_completed_activities a) AS activity_hash,
+ (SELECT md5(coalesce(string_agg(row_to_json(s)::text,'|' ORDER BY s.id),'')) FROM public.v2_activity_sources s) AS source_hash;
+BEGIN;
+CREATE SCHEMA allin_upgrade_qa;
+CREATE TABLE allin_upgrade_qa.applied_candidate(candidate text PRIMARY KEY);
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql
+INSERT INTO allin_upgrade_qa.applied_candidate VALUES('segment_scalar_projection_v1');
+DO $during$
+BEGIN
+ IF to_regprocedure('allin_private.v2_activity_segment_scalar_projection_candidate(uuid,uuid,uuid)') IS NULL
+ OR NOT EXISTS(SELECT 1 FROM allin_upgrade_qa.applied_candidate)
+ THEN RAISE EXCEPTION 'ALL-96 interruption was not staged after DDL and ledger'; END IF;
+END $during$;
+-- Simulate a controlled failure before COMMIT. This verifies transactional
+-- rollback, not a forced process kill or infrastructure crash.
+ROLLBACK;
+DO $after$
+DECLARE s record;
+BEGIN
+ SELECT * INTO STRICT s FROM all96_snapshot;
+ IF to_regprocedure('allin_private.v2_activity_segment_scalar_projection_candidate(uuid,uuid,uuid)') IS NOT NULL
+ OR to_regclass('allin_upgrade_qa.applied_candidate') IS NOT NULL
+ OR s.activity_count<>(SELECT count(*) FROM public.v2_completed_activities)
+ OR s.source_count<>(SELECT count(*) FROM public.v2_activity_sources)
+ OR s.activity_hash<>(SELECT md5(coalesce(string_agg(row_to_json(a)::text,'|' ORDER BY a.id),'')) FROM public.v2_completed_activities a)
+ OR s.source_hash<>(SELECT md5(coalesce(string_agg(row_to_json(a)::text,'|' ORDER BY a.id),'')) FROM public.v2_activity_sources a)
+ THEN RAISE EXCEPTION 'ALL-96 interrupted upgrade left DDL, ledger, or data changes'; END IF;
+ RAISE NOTICE 'PASS ALL-96: controlled interruption rolls back DDL and ledger without changing populated data';
+END $after$;
