@@ -37,6 +37,7 @@ on:
       - 'scripts/integrate-apple-watch-build.cjs'
       - 'scripts/integrate-apple-watch-target.rb'
       - 'scripts/test-v2-watch-native-target.mjs'
+      - 'scripts/test-v2-watch-xcodeproj.rb'
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
       - 'scripts/check-v2-supabase-target.mjs'
@@ -102,6 +103,7 @@ on:
       - 'scripts/integrate-apple-watch-build.cjs'
       - 'scripts/integrate-apple-watch-target.rb'
       - 'scripts/test-v2-watch-native-target.mjs'
+      - 'scripts/test-v2-watch-xcodeproj.rb'
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
       - 'scripts/check-v2-supabase-target.mjs'
@@ -303,3 +305,29 @@ jobs:
           docker cp scripts/test-v2-coach-race-setup.psql "$POSTGRES_CONTAINER_ID:/tmp/allin/scripts/test-v2-coach-race-setup.psql"
           docker exec "$POSTGRES_CONTAINER_ID" psql -U "$PGUSER" -d allin_coach_race_test -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-coach-race-setup.psql
           bash scripts/test-v2-coach-race-postgres.sh
+
+  watch-native-project:
+    name: ALL-243 generated Watch Xcodeproj and Swift syntax (Ubuntu, no Xcode)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - name: Install only xcodeproj project-file parser (no Apple toolchain)
+        run: gem install xcodeproj -v 1.27.0 --no-document
+      - name: Create two disposable watch target generations and verify the resulting project
+        run: ruby scripts/test-v2-watch-xcodeproj.rb
+      - name: Parse every canonical iOS/watchOS Swift source, without claiming platform compilation
+        run: |
+          set -euo pipefail
+          if ! command -v swiftc >/dev/null 2>&1; then
+            echo 'Swift parser unavailable on this Ubuntu image; native Swift syntax remains unverified'
+            exit 1
+          fi
+          for source in apps/mobile-v2/native/apple-watch/*.swift; do
+            echo "Swift parse: $source"
+            swiftc -frontend -parse "$source"
+          done
+          echo 'PASS ALL-243 Linux Swift parser (not Apple SDK or Xcode compilation)'
