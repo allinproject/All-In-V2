@@ -103,6 +103,17 @@ function TrainingCalendarOwnerScreen() {
         </Link>
         <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
         <Text accessibilityRole="header" style={styles.title}>Training Calendar</Text>
+        <Link href="/goals" asChild>
+          <Pressable accessibilityRole="button" accessibilityLabel="Review your goals"
+            style={styles.card}>
+            <Text style={styles.section}>Goals &amp; Milestones</Text>
+            <Text style={styles.muted}>
+              Review race, strength, endurance and everyday goals. Athlete approval
+              stays disabled until verified Goal records are connected.
+            </Text>
+            <Text style={styles.gold}>View Goals ›</Text>
+          </Pressable>
+        </Link>
         {level === 'month' ? (
           <>
             <View style={styles.header}>
