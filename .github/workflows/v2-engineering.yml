@@ -48,6 +48,10 @@ jobs:
         run: node ../../scripts/check-v2-supabase-target.mjs
       - name: Verify committed dependency lockfile contract
         run: node ../../scripts/check-v2-dependency-manifest.mjs --require-lockfile
+      - name: Verify applied V2 migration provenance (static, no database)
+        run: node ../../scripts/check-v2-applied-migration-integrity.mjs
+      - name: Test migration integrity rejection cases
+        run: node --test ../../scripts/check-v2-applied-migration-integrity.test.mjs
       - name: Clean dependency install
         run: npm ci --no-audit --no-fund
       - name: Test Auth, Legal and Onboarding
