@@ -60,6 +60,27 @@ For every activity, Details exposes *every metric actually available* from its a
 
 **Completeness acceptance:** Inventory the V1 metric registry and Completed Workout Detail Gap Audit as well as the V1 locked sport screens; build a traceable coverage matrix of each metric -> canonical definition -> allowed sources -> persistence/quality -> Details location -> automated fixture. Any missing metric remains explicitly tracked until closed. Present all *recorded* eligible fields even if not part of the default Overview; provide collapsible sections and per-sport customization so completeness does not become an unreadable wall. Source-less metrics are absent/unknown, never zero. No invented charts, computed physiology, rankings or measurement certainty. The user controls display priority, not the truth of recorded measurements. Details remains named **Details**.
 
+## Explicit V1 sport contract carry-forward — parity review
+
+The locked [V1 sport-specific decision](https://github.com/allinproject/ALL-IN/blob/integration/native-watch-v301/docs/decisions/2026-10-29-sport-specific-completed-activity-screens.md) names the following distinct Details surfaces. They are **required scope for ALL-243**, not optional generic metric cards. The detailed metric registry/adapter/quality/fixture inventory below remains **unapproved and must be populated from real sources**, not guessed from sport labels.
+
+| Activity context | Required when actually sourced | Never infer or display as sourced |
+| --- | --- | --- |
+| Treadmill run | speed/pace and incline timeline, authored interval target versus execution, HR zones, recorded cadence and machine/calibration provenance | outdoor GPS route from a treadmill-only record; corrected distance as original machine measurement |
+| Elliptical | duration, HR trend/zones, actual cadence/stride rate, resistance/ramp timeline, equipment-reported distance **only when present** | running mileage/pace inferred from elliptical movement |
+| Stair stepper/climber | actual steps/floors, step rate, machine resistance/level, HR zones and machine source | distance or elevation gain derived merely from step/floor count |
+| Open-water swim | GPS route, distance, elapsed time, pace-per-100 and supported swim stroke/HR/splits with GPS-quality context | fabricated pool length or pool lap/set structure |
+| Pool swim | pool length, actual lengths/sets/laps, pace-per-100, rest, stroke rate/count, measured SWOLF, HR when source quality permits | open-water GPS route or inferred GPS distance |
+| Hiking and rucking | vertical/elevation profile, navigation/route, actual pace/HR; explicit recorded pack weight for rucking | inferred pack weight or load-adjusted result without a recorded load |
+| Yoga and mobility | duration, optional authored blocks/poses, actual block timing and notes, HR only when measured | invented performance score, pace, competition rank or physiological readiness |
+| Multisport/hybrid | one activity with ordered sport legs, source-specific metrics per leg, measured transition time, device handoff quality | flattening all legs into one sport or duplicating the single physical activity |
+| Indoor trainer | actual versus authored interval execution, measured power/cadence/HR, valid power zones, verified trainer context and continuity | GPS route, raw-watt global rank or permanent achievement from an unverified attempt |
+| Strength | complete per-exercise set ledger, load/reps/rest/RPE/RIR when recorded, substitutions and validated comparable PRs | distance/pace/elevation hero cards or unsupported inferred training volume |
+
+**Acceptance trace for each row:** (1) versioned canonical metric code + unit or typed segment/set field, (2) exact provider/device/manual capability and owner identity, (3) source/quality and correction contract, (4) private persistence and retention policy, (5) sport-specific Details renderer section and customization behavior, and (6) a positive source-backed and negative missing-source fixture. No row is considered fully implemented merely because this decision is documented or its candidate SQL compiles.
+
+**Non-negotiable privacy:** Cross-source sensor metadata, location/route, user physiology, medical context and private trainer challenge baselines cannot leak through the Community share subset. Present manually corrected values as corrected facts with origin preserved, never as untouched sensor readings.
+
 ## Implementation gates
 
 1. ALL-243 canonical schema/metric registry/source merge and least-privilege user reads approved and deployed.
