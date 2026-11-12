@@ -7,6 +7,7 @@ import {v2AuthenticatedScreenKey} from '../src/auth/authRoute';
 import {useAccessGate} from '../src/auth/AccessGateProvider';
 import {FuelFoodLogPanel} from '../src/features/fuel/FuelFoodLogPanel';
 import {KitchenWeekPlanPanel} from '../src/features/kitchen/KitchenWeekPlanPanel';
+import {KitchenStockSummaryPanel} from '../src/features/kitchen/KitchenStockSummaryPanel';
 import {V2BottomNavigation} from '../src/navigation/V2BottomNavigation';
 import {deviceLocalToday} from '../src/features/today/todayEntry';
 import {parseFuelDayContext} from '../src/features/today/todayFuelNavigation';
@@ -109,11 +110,11 @@ function OwnedFuelScreen(){
       </>:foodPlanSection==='shopping'?<>
        <Text style={styles.description}>Shopping will combine missing ingredients from planned recipes with individual scheduled foods, including fruit, snacks and drinks.</Text>
        <Text style={styles.description}>Only verified shortages after usable Pantry quantities and reservations are considered belong on this list. Purchases must be confirmed before changing Pantry.</Text>
-       <Text style={styles.note}>Shopping data is not connected yet. No shopping cart or purchase has been created.</Text>
+       <KitchenStockSummaryPanel ownerId={user.id} kind="shopping" accessReady={gate.status==='ready'}/>
       </>:<>
        <Text style={styles.description}>Pantry will track actual available stock, reserved quantities, and food stored in the pantry, fridge or freezer.</Text>
        <Text style={styles.description}>Planning and Shopping never assume an item was purchased or eaten. Only verified inventory writes change available stock.</Text>
-       <Text style={styles.note}>Pantry data is not connected yet. Existing stock is not assumed empty.</Text>
+       <KitchenStockSummaryPanel ownerId={user.id} kind="pantry" accessReady={gate.status==='ready'}/>
       </>}
      </View>}
    </ScrollView>
