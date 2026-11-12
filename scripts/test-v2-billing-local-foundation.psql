@@ -1,0 +1,103 @@
+\set ON_ERROR_STOP on
+-- ALL-222 / ALL-266: review-only billing candidate against the ACTUAL
+-- 18-migration local Supabase Auth/Profile foundation. Never execute remotely.
+-- Candidate ledger + exact service grants must already be applied to the
+-- disposable local PostgreSQL instance. All synthetic rows roll back.
+BEGIN;
+DO $setup$
+DECLARE first_owner uuid:='33333333-3333-4333-8333-333333333333';
+        second_owner uuid:='44444444-4444-4444-8444-444444444444';
+BEGIN
+  IF to_regclass('auth.users') IS NULL OR
+     to_regclass('public.v2_profiles') IS NULL OR
+     to_regclass('allin_private.v2_subscription_purchases') IS NULL
+  THEN RAISE EXCEPTION 'Real local Supabase foundation or billing candidate absent'; END IF;
+  INSERT INTO auth.users(id) VALUES(first_owner),(second_owner);
+  IF (SELECT count(*) FROM public.v2_profiles
+       WHERE user_id IN (first_owner,second_owner)) <> 2
+  THEN RAISE EXCEPTION 'Actual Auth-to-V2-profile trigger missing'; END IF;
+  IF has_schema_privilege('anon','allin_private','USAGE') OR
+     has_schema_privilege('authenticated','allin_private','USAGE') OR
+     has_table_privilege('authenticated',
+       'allin_private.v2_subscription_purchases','SELECT') OR
+     has_function_privilege('authenticated',
+       'public.v2_billing_commit_verified_native(uuid,text,text,text,text,text,timestamptz)',
+       'EXECUTE')
+  THEN RAISE EXCEPTION 'Actual Supabase billing permissions exposed to client'; END IF;
+END $setup$;
+
+SET ROLE service_role;
+DO $binding$
+DECLARE result text;
+        first_owner uuid:='33333333-3333-4333-8333-333333333333';
+        second_owner uuid:='44444444-4444-4444-8444-444444444444';
+BEGIN
+  SELECT public.v2_billing_commit_verified_native(
+    first_owner,'app_store','sandbox','real_foundation_sub_A',
+    'real_foundation_purchase_A','paid','2027-12-01 UTC') INTO result;
+  IF result <> 'committed' THEN RAISE EXCEPTION 'Native owner A bind: %',result; END IF;
+
+  SELECT public.v2_billing_commit_verified_native(
+    first_owner,'app_store','sandbox','real_foundation_sub_A',
+    'real_foundation_purchase_A','paid','2027-12-01 UTC') INTO result;
+  IF result <> 'duplicate' THEN RAISE EXCEPTION 'Native duplicate was not idempotent: %',result; END IF;
+
+  BEGIN
+    PERFORM public.v2_billing_commit_verified_native(
+      second_owner,'app_store','sandbox','real_foundation_sub_A',
+      'forged_owner_B_event','paid','2027-12-01 UTC');
+    RAISE EXCEPTION 'Foreign owner claimed immutable native subscription';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+
+  IF NOT EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+    first_owner,'sandbox') WHERE entitled) THEN
+    RAISE EXCEPTION 'Owner A sandbox purchase not entitled';
+  END IF;
+  IF EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+    second_owner,'sandbox') WHERE entitled) OR
+     EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+       first_owner,'production') WHERE entitled) THEN
+    RAISE EXCEPTION 'Cross-owner or cross-environment entitlement leak';
+  END IF;
+
+  SELECT public.v2_billing_commit_verified_native(
+    second_owner,'google_play','sandbox','real_foundation_sub_B',
+    'real_foundation_purchase_B','paid','2027-12-01 UTC') INTO result;
+  IF result <> 'committed' THEN RAISE EXCEPTION 'Native owner B bind: %',result; END IF;
+
+  SELECT public.v2_billing_commit_verified_native(
+    first_owner,'app_store','sandbox','real_foundation_sub_A',
+    'real_foundation_refund_A','refunded',NULL) INTO result;
+  IF result <> 'committed' THEN RAISE EXCEPTION 'Native refund: %',result; END IF;
+  IF EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+    first_owner,'sandbox') WHERE entitled) THEN
+    RAISE EXCEPTION 'Refunded owner A retained subscription';
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.v2_billing_read_owner_access(
+    second_owner,'sandbox') WHERE entitled) THEN
+    RAISE EXCEPTION 'Refund of A removed B entitlement';
+  END IF;
+END $binding$;
+RESET ROLE;
+
+-- This must use the actual profile FK / Supabase Auth deletion path, not a
+-- stubbed auth.users or v2_profiles table as in isolated contract tests.
+DELETE FROM auth.users WHERE id='33333333-3333-4333-8333-333333333333';
+DO $deletion$
+BEGIN
+  IF EXISTS(SELECT 1 FROM allin_private.v2_subscription_checkout_attempts
+             WHERE owner_id='33333333-3333-4333-8333-333333333333')
+     OR EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
+             WHERE owner_id='33333333-3333-4333-8333-333333333333')
+     OR EXISTS(
+       SELECT 1 FROM allin_private.v2_subscription_verified_events e
+       JOIN allin_private.v2_subscription_purchases p ON p.id=e.purchase_id
+       WHERE p.owner_id='33333333-3333-4333-8333-333333333333')
+  THEN RAISE EXCEPTION 'Real Auth account deletion retained owner billing rows'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
+                WHERE owner_id='44444444-4444-4444-8444-444444444444')
+  THEN RAISE EXCEPTION 'Owner A deletion damaged owner B billing rows'; END IF;
+  RAISE NOTICE 'PASS ALL-222: two owners, service-only subscription binding, refund, Auth deletion and cross-environment isolation on real Supabase foundation';
+END $deletion$;
+ROLLBACK;
