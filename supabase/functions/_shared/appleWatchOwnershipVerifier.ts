@@ -213,7 +213,7 @@ export async function verifyAppleWatchControlAndIssueProof(
    decode(key.publicKeySpkiB64url,512),{
     name:'ECDSA',namedCurve:'P-256'},false,['verify']);
   const validPhone=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},
-   phoneKey,byteBuffer(p256Signature(phoneSignature)),byteBuffer(join(authData,clientHash)));
+   phoneKey,byteBuffer(p256Signature(phoneSignature)),byteBuffer(await digest(join(authData,clientHash))));
   if(!validPhone)throw Error('Apple app assertion signature invalid');
   if(!await store.advancePhoneCounter({
    ownerId:identity.ownerId,keyId:key.keyId,
