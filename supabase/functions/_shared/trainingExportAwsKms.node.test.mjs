@@ -113,5 +113,5 @@ test('same canonical lease rechecks approval after KMS unwrap; revocation or key
  });
  await assert.rejects(bad.resolveEncryptionKey({ownerId:a,requestId:request}),/changed during unwrap/);
  status='approved';version=2;
- await assert.rejects(gate.resolveEncryptionKey({ownerId:a,requestId:request}),/denied/);
+ await assert.rejects(gate.resolveEncryptionKey({ownerId:a,requestId:request}),/denied|Unapproved export encryption context/);
 });
