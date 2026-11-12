@@ -81,3 +81,18 @@ test('founder build configurations do not enable unaccepted Fuel read or write f
   assert.notEqual(env.EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED,'true');
  }
 });
+
+test('native Expo crypto dependency is locked and drives Food Log IDs without weak fallback',()=>{
+ const pkg=JSON.parse(source('../../../package.json'));
+ const lock=JSON.parse(source('../../../package-lock.json'));
+ const native=source('./fuelFoodSecureNative.ts');
+ const panel=source('./FuelFoodLogPanel.tsx');
+ assert.equal(pkg.dependencies['expo-crypto'],'~58.0.8');
+ assert.equal(lock.packages[''].dependencies['expo-crypto'],'~58.0.8');
+ assert.equal(lock.packages['node_modules/expo-crypto']?.version,'58.0.8');
+ assert.match(lock.packages['node_modules/expo-crypto'].integrity,/^sha512-/);
+ assert.match(native,/import \{randomUUID\} from 'expo-crypto'/);
+ assert.match(native,/foodActionIdFromNative\(randomUUID\)/);
+ assert.match(panel,/newNativeFoodActionId\(\)/);
+ assert.doesNotMatch(native,/Math\.random\s*\(/);
+});
