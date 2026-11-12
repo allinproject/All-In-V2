@@ -72,7 +72,17 @@ SELECT
     JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='public' AND c.relname='v2_ingredient_nutrition_profiles'
       AND c.relrowsecurity) AS profiles_rls_enabled,
-  has_schema_privilege(session_user,'public','CREATE') AS login_public_create;
+  has_schema_privilege(session_user,'public','CREATE') AS login_public_create,
+  COALESCE(has_table_privilege(session_user,
+    to_regclass('public.v2_ingredient_nutrition_profiles'),'UPDATE'),false) AS login_direct_profile_write,
+  COALESCE(has_table_privilege(session_user,
+    to_regclass('allin_private.v2_ingredient_review_events'),'SELECT'),false) AS login_private_audit_read,
+  COALESCE(has_function_privilege(session_user,
+    to_regprocedure('allin_private.v2_review_ingredient_profile_status(uuid,integer,text,text,text,uuid)'),
+    'EXECUTE'),false) AS login_review_execute,
+  COALESCE(has_function_privilege(session_user,
+    to_regprocedure('allin_private.v2_attest_ingredient_energy(uuid,integer,text,text)'),
+    'EXECUTE'),false) AS login_energy_execute;
 `;
 async function checkHostedIngestReadiness(client,{requirePublisher=false}={}) {
   if(!client||typeof client.query!=='function')throw Error('Trusted database session required');
@@ -82,12 +92,16 @@ async function checkHostedIngestReadiness(client,{requirePublisher=false}={}) {
   const proof=response.rows[0];
   const required=['ingredients','profiles','sources','review_events','energy_attestations',
     'review_writer','energy_writer','reviewer_role','publisher_role',
-    'login_least_privileged','reviewer_member','profiles_rls_enabled'];
+    'login_least_privileged','reviewer_member','profiles_rls_enabled',
+    'login_review_execute','login_energy_execute'];
   const missing=required.filter(k=>proof[k]!==true);
   if(typeof proof.login!=='string'||
      !/^allin_ing_workload_[a-z0-9_]{6,35}$/.test(proof.login)||
      !['allin_v2_ingredient_reviewer',proof.login].includes(proof.effective_role)||
-     proof.login_public_create!==false||proof.publisher_member!==requirePublisher||
+     proof.login_public_create!==false||
+     proof.login_direct_profile_write!==false||
+     proof.login_private_audit_read!==false||
+     proof.publisher_member!==requirePublisher||
      missing.length)
     throw Error('Hosted ingest readiness denied: '+(missing.join(',')||'identity, publish grant or schema creation'));
   // Not proof of a real service connection until executed on a genuine,
