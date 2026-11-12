@@ -117,7 +117,8 @@ CREATE FUNCTION allin_private.v2_activity_append_segment_scalar_candidate(
  p_user_id uuid,p_activity_id uuid,p_segment_id uuid,p_source_id uuid,
  p_value_id uuid,p_metric_code text,p_definition_version integer,
  p_measurement_kind text,p_value_numeric numeric,p_value_text text,
- p_value_boolean boolean,p_source_payload_hash text
+ p_value_boolean boolean,p_source_payload_hash text,
+ p_measurement_quality text DEFAULT NULL
 ) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=''
 AS $segment_writer$
@@ -196,7 +197,17 @@ BEGIN
  OR (v_definition.value_kind='boolean' AND
     (p_value_boolean IS NULL OR p_value_numeric IS NOT NULL OR p_value_text IS NOT NULL))
  THEN RAISE EXCEPTION 'Segment scalar type mismatch' USING ERRCODE='22023'; END IF;
- v_quality:=v_source.quality;
+ -- A verified provider may certify an individual sample below its source.
+ -- Legacy callers default conservatively to source quality.
+ IF p_measurement_quality IS NOT NULL AND
+    p_measurement_quality NOT IN ('trusted','partial','unverified','low_quality','rejected') THEN
+   RAISE EXCEPTION 'Invalid segment measurement quality' USING ERRCODE='22023'; END IF;
+ v_quality:=COALESCE(p_measurement_quality,v_source.quality);
+ IF (v_source.quality='rejected' AND v_quality<>'rejected') OR
+    (v_source.quality='low_quality' AND v_quality IN ('trusted','partial','unverified')) OR
+    (v_source.quality='unverified' AND v_quality IN ('trusted','partial')) OR
+    (v_source.quality='partial' AND v_quality='trusted') THEN
+   RAISE EXCEPTION 'Segment measurement exceeds source certification' USING ERRCODE='22023'; END IF;
  SELECT * INTO v_existing FROM public.v2_activity_metric_values
  WHERE activity_id=p_activity_id AND user_id=p_user_id
    AND segment_id=p_segment_id AND source_id=p_source_id
@@ -208,7 +219,8 @@ BEGIN
       v_existing.value_numeric IS DISTINCT FROM p_value_numeric OR
       v_existing.value_text IS DISTINCT FROM p_value_text OR
       v_existing.value_boolean IS DISTINCT FROM p_value_boolean OR
-      v_existing.source_payload_hash IS DISTINCT FROM p_source_payload_hash THEN
+      v_existing.source_payload_hash IS DISTINCT FROM p_source_payload_hash OR
+      v_existing.quality<>v_quality THEN
      RAISE EXCEPTION 'Conflicting same-segment source metric retry'
        USING ERRCODE='23505'; END IF;
    RETURN pg_catalog.jsonb_build_object('metricId',v_existing.id,
@@ -226,5 +238,5 @@ BEGIN
 END;
 $segment_writer$;
 REVOKE ALL ON FUNCTION allin_private.v2_activity_append_segment_scalar_candidate(
- uuid,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text)
+ uuid,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
  FROM PUBLIC,anon,authenticated,service_role;
