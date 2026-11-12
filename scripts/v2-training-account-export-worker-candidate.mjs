@@ -10,12 +10,14 @@
 import {createTrainingExportAuthServices} from '../supabase/functions/_shared/trainingExportAuthServices.mjs';
 import {createTrainingSupabaseEvidenceAdapter} from '../supabase/functions/_shared/trainingExportSupabaseStorage.mjs';
 import {createTrainingEncryptedArchiveSink} from './v2-training-export-archive-writer.mjs';
-import {createSupabasePrivateArchivePersistence} from '../supabase/functions/_shared/trainingExportSupabaseArchive.mjs';
+import {createSupabasePrivateArchivePersistence,createSupabasePagedAccountExportStorage} from '../supabase/functions/_shared/trainingExportSupabaseArchive.mjs';
+import {stageLargeAccountExport,createLargeAccountDownloadResponse} from '../supabase/functions/_shared/trainingExportLargeArchive.mjs';
 import {stageTrainingPrivateStorageExport} from './v2-training-private-storage-stage.mjs';
 
 export function createTrainingAccountExportWorkerCandidate({
   bearerToken,authClient,serviceClient,resolveEncryptionKey,
   persistPrivateEnvelope,deletePrivateRequest,readApprovedRequestExpiry,
+  canonicalPageReader,
 }) {
   if(!serviceClient?.storage?.getBucket||!serviceClient?.from||!serviceClient?.rpc)
     throw new Error('Trusted Supabase service client missing');
@@ -40,10 +42,51 @@ export function createTrainingAccountExportWorkerCandidate({
     bearerToken,authClient,serverClient:serviceClient,
     storageAdapter,archiveSink,
   });
+  // Optional large-history capability remains owned by this SAME ALL-251
+  // worker. It is unusable until a reviewed canonical page-reader implements
+  // all private/public source inventories and stable data snapshots.
+  if (canonicalPageReader !== undefined && (
+     typeof canonicalPageReader?.getCanonicalInventory !== 'function'
+     || typeof canonicalPageReader?.readPage !== 'function'
+     || typeof readApprovedRequestExpiry !== 'function')) {
+    throw new Error('Large account history needs the canonical page reader and request lease');
+  }
+  const largeServices = canonicalPageReader === undefined ? null : {
+    ...createSupabasePagedAccountExportStorage({
+      serviceClient,readApprovedRequestExpiry,
+    }),
+    authorizeExport: services.authorizeExport,
+    getCanonicalInventory: canonicalPageReader.getCanonicalInventory,
+    readPage: canonicalPageReader.readPage,
+    resolveEncryptionKey,
+  };
+  async function ownerCollections(requestId) {
+    const gate = await services.authorizeExport(requestId);
+    const inventory = await largeServices.getCanonicalInventory({
+      ownerId:gate.ownerId,requestId,
+    });
+    if(inventory?.ownerId!==gate.ownerId||inventory.requestId!==requestId
+       ||inventory.complete!==true||!Array.isArray(inventory.collections)) {
+      throw new Error('Unapproved canonical account inventory');
+    }
+    return inventory.collections;
+  }
   return Object.freeze({
     async stageApprovedRequest(requestId) {
       // No caller-supplied ownerId, path, bucket, key, archive URL or privileges.
       return stageTrainingPrivateStorageExport({requestId,services});
+    },
+    async stageApprovedLargeHistory(requestId) {
+      if(!largeServices)throw new Error('Large export source inventory not configured');
+      return stageLargeAccountExport({
+        requestId,collections:await ownerCollections(requestId),services:largeServices,
+      });
+    },
+    async openApprovedLargeHistoryDownload(requestId) {
+      if(!largeServices)throw new Error('Large export source inventory not configured');
+      return createLargeAccountDownloadResponse({
+        requestId,collections:await ownerCollections(requestId),services:largeServices,
+      });
     },
   });
 }
