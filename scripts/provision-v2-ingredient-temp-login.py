@@ -20,7 +20,6 @@ import subprocess
 import sys
 
 PROJECT = "fbtgknlxjyeqrxemskbl"
-HOST = "db." + PROJECT + ".supabase.co"
 LOGIN = "allin_ing_workload_temp_all228"
 REPO = "allinproject/All-In-V2"
 ENVIRONMENT = "all251-temporary-staging"
@@ -62,11 +61,16 @@ def provision():
     if not sys.stdin.isatty():
         raise RuntimeError("Run interactively so psql can securely prompt for admin password.")
     print("Target: temporary project " + PROJECT)
+    host = input("Paste the SESSION POOLER hostname from that project's Supabase Connect panel: ").strip()
+    if not __import__("re").fullmatch(r"[a-z0-9-]+\\.pooler\\.supabase\\.com", host):
+        raise RuntimeError("Only a verified Supabase session pooler hostname is accepted.")
     print("This will configure the restricted login for 45 minutes and dispatch")
     print("the existing read-only hosted authentication workflow. No production changes.")
     answer = input("Type TEMP to confirm this exact temporary project: ").strip()
     if answer != "TEMP":
         raise RuntimeError("Cancelled without provisioning.")
+    # Supavisor session mode is IPv4 compatible for GitHub Actions.
+    pgpass = f"{host}:5432:postgres:{LOGIN}.{PROJECT}:{secret}\\n"
     print("Saving protected GitHub environment secret (never displayed)...")
     subprocess.run(["gh", "secret", "set", SECRET_NAME,
                     "--env", ENVIRONMENT, "--repo", REPO],
@@ -93,7 +97,7 @@ def provision():
         "COMMIT;\n"
     )
     command = ["psql", "-X", "-v", "ON_ERROR_STOP=1",
-               "-h", HOST, "-p", "5432", "-U", "postgres",
+               "-h", host, "-p", "5432", "-U", "postgres." + PROJECT,
                "-d", "postgres", "-W", "-q", "-f", "-"]
     try:
         print("psql will prompt for this TEMP project admin database password.")
@@ -111,7 +115,8 @@ def provision():
     del secret
     print("Restricted staging login configured; dispatching read-only login test.")
     subprocess.run(["gh", "workflow", "run", WORKFLOW,
-                    "--ref", "integration/v2-foundation", "--repo", REPO],
+                    "--ref", "integration/v2-foundation", "--repo", REPO,
+                    "-f", "session_pooler_host=" + host],
                    check=True)
     print("Check GitHub Actions for the run. Revoke the staging role and")
     print("delete the GitHub secret after tests; do not extend project lifetime.")
