@@ -28,7 +28,7 @@ docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 >"$tmp/a
 BEGIN;
 SELECT pg_advisory_xact_lock($key);
 SELECT id FROM public.v2_goals WHERE id='$goal' FOR UPDATE;
-SELECT pg_sleep(5);
+SELECT pg_sleep(10);
 SELECT public.v2_goal_accept_revision_candidate(
  '$owner','$goal','$rev_a','$action_a',1,repeat('a',64));
 COMMIT;
