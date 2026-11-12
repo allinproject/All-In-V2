@@ -1,0 +1,102 @@
+\set ON_ERROR_STOP on
+-- ALL-239: local Supabase only; staged review issuance + commit, all ROLLBACK.
+BEGIN;
+DO $issuance$
+DECLARE
+ a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ sa uuid:='33333333-3333-4333-8333-333333333333';
+ sb uuid:='44444444-4444-4444-8444-444444444444';
+ g uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ r uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ review_id uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ action_id uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ finger text;
+ proof jsonb;
+ result jsonb;
+BEGIN
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO auth.sessions(id,user_id) VALUES(sa,a),(sb,b);
+ INSERT INTO public.v2_goals(id,user_id,goal_kind,title,status)
+  VALUES(g,a,'activity_habit','Move more regularly','active');
+ INSERT INTO public.v2_goal_revisions(
+  id,goal_id,user_id,revision_number,status,source_kind
+ ) VALUES(r,g,a,1,'candidate','athlete_authored');
+ INSERT INTO public.v2_goal_revision_behavior_targets(
+  id,user_id,goal_id,goal_revision_id,behavior_description,
+  cadence_kind,evidence_policy,user_confirmed
+ ) VALUES('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',a,g,r,
+  'Find activity that is fun','qualitative_no_fixed_cadence',
+  'no_tracking',false);
+ finger:=allin_private.v2_goal_snapshot_fingerprint_candidate(a,g,r,1);
+ BEGIN
+  PERFORM allin_private.v2_goal_issue_review_candidate(
+   a,sa,g,r,review_id,action_id,1,finger,true);
+  RAISE EXCEPTION 'Unconfirmed supporting habit was issued as approved';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE public.v2_goal_revision_behavior_targets
+  SET user_confirmed=true WHERE user_id=a AND goal_revision_id=r;
+ finger:=allin_private.v2_goal_snapshot_fingerprint_candidate(a,g,r,1);
+ BEGIN
+  PERFORM allin_private.v2_goal_issue_review_candidate(
+   a,sa,g,r,review_id,action_id,1,finger,false);
+  RAISE EXCEPTION 'No athlete confirmation was required';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_goal_issue_review_candidate(
+   a,sb,g,r,review_id,action_id,1,finger,true);
+  RAISE EXCEPTION 'Foreign Auth session minted review';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_goal_issue_review_candidate(
+   a,sa,g,r,review_id,action_id,1,repeat('b',64),true);
+  RAISE EXCEPTION 'Unreviewed digest minted consent';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ proof:=allin_private.v2_goal_issue_review_candidate(
+  a,sa,g,r,review_id,action_id,1,finger,true);
+ IF proof->>'ownerId'<>a::text OR proof->>'sessionId'<>sa::text
+   OR proof->>'goalId'<>g::text OR proof->>'reviewId'<>review_id::text
+   OR proof->>'sha256'<>finger OR proof->>'approved'<>'true'
+ THEN RAISE EXCEPTION 'Issuer did not bind actual athlete review: %',proof; END IF;
+ IF (SELECT count(*) FROM allin_private.v2_goal_approval_reviews
+    WHERE user_id=a AND id=review_id)<>1
+ THEN RAISE EXCEPTION 'Issuer did not persist exactly one review'; END IF;
+ proof:=allin_private.v2_goal_issue_review_candidate(
+  a,sa,g,r,review_id,action_id,1,finger,true);
+ IF proof->>'sha256'<>finger THEN
+  RAISE EXCEPTION 'Exact issuance retry changed canonical review'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_goal_issue_review_candidate(
+   a,sa,g,r,review_id,'99999999-9999-4999-8999-999999999999',1,finger,true);
+  RAISE EXCEPTION 'Action collision changed reviewed identity';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ UPDATE public.v2_goals SET title='Edited after displayed preview' WHERE id=g;
+ BEGIN
+  PERFORM allin_private.v2_goal_commit_reviewed_candidate(
+   a,sa,g,r,action_id,review_id,1,finger);
+  RAISE EXCEPTION 'Modified Goal passed previously approved review';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE public.v2_goals SET title='Move more regularly' WHERE id=g;
+ result:=allin_private.v2_goal_commit_reviewed_candidate(
+   a,sa,g,r,action_id,review_id,1,finger);
+ IF result->>'version'<>'2' OR result->>'replayed'<>'false'
+ THEN RAISE EXCEPTION 'Reviewed Goal commit failed: %',result; END IF;
+ result:=allin_private.v2_goal_commit_reviewed_candidate(
+   a,sa,g,r,action_id,review_id,1,finger);
+ IF result->>'version'<>'2' OR result->>'replayed'<>'true'
+ THEN RAISE EXCEPTION 'Exact reviewed retry was not idempotent: %',result; END IF;
+ DELETE FROM auth.sessions WHERE id=sa;
+ BEGIN
+  PERFORM allin_private.v2_goal_issue_review_candidate(
+   a,sa,g,r,review_id,action_id,1,finger,true);
+  RAISE EXCEPTION 'Revoked session issued review';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF pg_catalog.has_function_privilege('service_role',
+   'allin_private.v2_goal_issue_review_candidate(uuid,uuid,uuid,uuid,uuid,uuid,bigint,text,boolean)',
+   'EXECUTE') OR pg_catalog.has_function_privilege('authenticated',
+   'allin_private.v2_goal_issue_review_candidate(uuid,uuid,uuid,uuid,uuid,uuid,bigint,text,boolean)',
+   'EXECUTE')
+ THEN RAISE EXCEPTION 'Review issuer was granted prior to owner approval'; END IF;
+ RAISE NOTICE 'PASS: private Goal issuance, preview hash, explicit confirmation, collision and revoked-session tests';
+END $issuance$;
+ROLLBACK;
