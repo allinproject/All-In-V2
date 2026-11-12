@@ -68,6 +68,7 @@ on:
       - 'docs/architecture/sql/V2-COACH-PERSISTENCE-SECURITY-CHECKS.sql'
       - 'docs/architecture/sql/V2-COACH-PERSISTENCE-TWO-OWNER-LOCAL.psql'
       - 'scripts/check-v2-coach-sql-candidate.mjs'
+      - 'scripts/test-v2-coach-persistence-race-local.sh'
   workflow_dispatch:
 
 permissions:
@@ -290,6 +291,13 @@ jobs:
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
             docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
           done
+      - name: Prove Coach first-open and message replay under real concurrent sessions
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          bash scripts/test-v2-coach-persistence-race-local.sh "$db_container"
       - name: Check foundation-to-canonical schema compatibility in disposable DB
         run: |
           set -euo pipefail
