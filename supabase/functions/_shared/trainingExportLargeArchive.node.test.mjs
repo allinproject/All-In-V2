@@ -18,7 +18,7 @@ function fixture(config={}){
    return {ownerId:config.owner??owner,activeSession:active,exportPermitted:active};},
   getCanonicalInventory:async({ownerId,requestId:rid})=>({ownerId,requestId:rid,
     snapshotId:config.changedInventory&&authCalls>=4?another:requestId,
-    collections:config.missingCollection?['coach_messages']:collections,
+    collections:config.missingCollection?['coach_messages']:(config.sourceCollections??collections),
     complete:true}),
   resolveEncryptionKey:async()=>key,
   readPage:async({ownerId,collection,cursor})=>{
@@ -216,4 +216,23 @@ test('interrupted real paged worker response is not a verified account export',a
  await assert.rejects(verifyAccountExportDownload({
   stream:partial,expectedOwnerId:owner,expectedCollections:collections,
  }),/truncated|completion/);
+});
+
+test('canonical SQL and Billing dotted collection IDs survive AES-GCM staging and full download',async()=>{
+ const names=['public.v2_coach_messages','allin_private.v2_subscription_purchases',
+  'billing.verified_events'];
+ const f=fixture({sourceCollections:names,data:{
+  'public.v2_coach_messages':[{id:'coach',user_id:owner}],
+  'allin_private.v2_subscription_purchases':[{purchaseId:'p',phase:'trial'}],
+  'billing.verified_events':[{purchaseId:'p',revision:1}],
+ }});
+ const stage=await stageLargeAccountExport({requestId,collections:names,services:f.services});
+ assert.equal(stage.recordCount,3);
+ assert.equal(stage.pageCount,3);
+ const response=await createLargeAccountDownloadResponse({requestId,collections:names,services:f.services});
+ const verified=await verifyAccountExportDownload({
+  stream:response.body,expectedOwnerId:owner,expectedCollections:names,
+ });
+ assert.equal(verified.verified,true);
+ assert.equal(verified.recordCount,3);
 });
