@@ -78,7 +78,8 @@ BEGIN
  IF (SELECT auth.uid()) IS NULL OR (SELECT auth.uid()) <> p_owner_id THEN
   RAISE EXCEPTION 'Verified athlete owner binding required' USING ERRCODE='42501';
  END IF;
- IF p_nonce_hash IS NULL OR p_nonce_hash !~ '^[0-9a-f]{64}  OR p_callback_hash IS NULL OR p_callback_hash !~ '^[0-9a-f]{64}$'
+ IF p_nonce_hash IS NULL OR p_nonce_hash !~ '^[0-9a-f]{64}$'
+  OR p_callback_hash IS NULL OR p_callback_hash !~ '^[0-9a-f]{64}$'
   OR p_owner_id IS NULL OR p_activity_id IS NULL OR p_source_id IS NULL THEN
   RAISE EXCEPTION 'Invalid callback binding' USING ERRCODE='22023';
  END IF;
