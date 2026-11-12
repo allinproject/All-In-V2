@@ -1,6 +1,15 @@
-name: ALL-251 temporary staging Auth and HTTP smoke (manual only)
+name: ALL-251 temporary staging Auth and HTTP smoke
+# No manual Run workflow button is required: this protected staging-only job
+# runs when its own test script or workflow changes on the integration branch.
+# Other product commits do not spend Actions minutes on this hosted test.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - integration/v2-foundation
+    paths:
+      - .github/workflows/v2-all251-temporary-auth-smoke.yml
+      - scripts/test-v2-all251-staging-auth-smoke.mjs
 permissions:
   contents: read
 concurrency:
@@ -29,5 +38,7 @@ jobs:
           node-version: '22.16.0'
       - name: Create isolated Auth users, test disabled HTTP route and remove users
         run: node scripts/test-v2-all251-staging-auth-smoke.mjs
-# Requires manual protected secret provisioning for ONLY the temporary project.
+# The environment still requires its existing protected staging credentials.
+# Push trigger is restricted to the exact integration branch and two test paths.
+# Requires protected secret provisioning for ONLY the temporary project.
 # This does NOT certify authorization, full exports, KMS or device downloads.
