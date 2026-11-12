@@ -112,7 +112,7 @@ BEGIN
        SELECT 1 FROM allin_private.v2_ingredient_review_operators o
        WHERE o.login_role=v_actor AND o.enabled=true
          AND o.identity_issuer IS NOT NULL AND o.identity_subject IS NOT NULL
-         AND o.identity_verified_at IS NOT NULL
+         AND o.identity_verified_at IS NOT NULL AND o.identity_verified_at <= clock_timestamp()
          AND o.credential_vault_reference IS NOT NULL
          AND o.credential_expires_at > clock_timestamp()
          AND o.revoked_at IS NULL
