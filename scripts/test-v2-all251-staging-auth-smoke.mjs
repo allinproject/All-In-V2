@@ -266,6 +266,41 @@ try{
   assert.equal(final.complete,true);
   assert.equal(final.entries?.length,0,'Deleted food was still visible');
   assert.notEqual(final.sourceRevision,newSnapshot.sourceRevision,'Food Log revision not updated');
+  acceptanceStep='ALL247 simultaneous same-revision edit race';
+  // Two independent authenticated HTTP requests compete for one event at
+  // revision 1. Exactly one wins; both may NOT commit or overwrite the winner.
+  const raceId=randomUUID();
+  const raceAdd=await rpc('v2_food_log_add_manual',{
+   ...food,p_action_id:randomUUID(),p_entry_id:raceId,p_label:'Race original',
+  },aToken);
+  assert.equal(raceAdd.status,200,'Could not seed concurrency test');
+  const raceReplace=label=>({
+   p_expected_user_id:a.id,p_action_id:randomUUID(),p_entry_id:raceId,
+   p_expected_revision:1,p_operation:'edit',p_consumed_at:food.p_consumed_at,
+   p_local_date:day,p_timezone_name:food.p_timezone_name,
+   p_meal_slot:'lunch',p_label:label,p_quantity:1,p_unit:'serving',
+   p_kcal:300,p_nutrition_source:'user_entered',
+  });
+  const [raceOne,raceTwo]=await Promise.all([
+   rpc('v2_food_log_mutate_manual',raceReplace('First candidate'),aToken),
+   rpc('v2_food_log_mutate_manual',raceReplace('Second candidate'),aToken),
+  ]);
+  const raceStatuses=[raceOne.status,raceTwo.status].sort((x,y)=>x-y);
+  assert.deepEqual(raceStatuses,[200,409],
+    'Concurrent revision-1 edits must yield one success and one conflict');
+  const raceRead=await reader(aToken,a.id,day);
+  assert.equal(raceRead.status,200,'Owner could not read concurrent winner');
+  const raceState=await raceRead.json();
+  assert.equal(raceState.entries?.length,1,'Unexpected concurrent Food row count');
+  assert.equal(raceState.entries[0]?.revision,2,'Concurrent edit did not advance once');
+  assert(['First candidate','Second candidate'].includes(raceState.entries[0]?.label),
+    'Concurrent winner data was lost');
+  const raceCleanup=await rpc('v2_food_log_mutate_manual',{
+   p_expected_user_id:a.id,p_action_id:randomUUID(),p_entry_id:raceId,
+   p_expected_revision:2,p_operation:'delete',
+  },aToken);
+  assert.equal(raceCleanup.status,200,'Race fixture tombstone failed');
+  process.stdout.write('PASS: concurrent Food Log edits serialize; exactly one 200, one 409, winner preserved\n');
   process.stdout.write('PASS: hosted Food Log add/edit/move/delete; revisions, replay, both days and owner isolation\n');
  }
 
