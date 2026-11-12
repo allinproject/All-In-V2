@@ -10,14 +10,14 @@ INSERT INTO public.v2_coach_threads(id,user_id) VALUES
  ('a8111111-8111-4111-8111-811111111111','81111111-8111-4111-8111-811111111111'),
  ('a8222222-8222-4222-8222-822222222222','82222222-8222-4222-8222-822222222222');
 INSERT INTO public.v2_coach_messages
- (id,user_id,thread_id,role,content,client_action_id)
+ (id,user_id,thread_id,role,content,client_request_id)
 SELECT gen_random_uuid(),'81111111-8111-4111-8111-811111111111'::uuid,
        'a8111111-8111-4111-8111-811111111111'::uuid,'user',
        repeat('representative-coach-history-',1000)||lpad(i::text,5,'0'),
        gen_random_uuid()
 FROM generate_series(1,190) i;
 INSERT INTO public.v2_coach_messages
- (id,user_id,thread_id,role,content,client_action_id)
+ (id,user_id,thread_id,role,content,client_request_id)
 SELECT gen_random_uuid(),'82222222-8222-4222-8222-822222222222'::uuid,
        'a8222222-8222-4222-8222-822222222222'::uuid,'user',
        'Owner B private history '||i,gen_random_uuid()
