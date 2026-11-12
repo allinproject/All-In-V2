@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,createHash} from 'node:crypto';
 import {stageLargeAccountExport,streamLargeAccountExport,createLargeAccountDownloadResponse} from './trainingExportLargeArchive.mjs';
 const owner='11111111-1111-4111-8111-111111111111';
 const another='22222222-2222-4222-8222-222222222222';
@@ -64,6 +64,9 @@ test('exports >5MB of owner history in bounded encrypted pages and streams exact
  assert.equal(lines.at(-1).export_complete,true);
  assert.equal(lines.at(-1).records,251);
  assert.match(lines.at(-1).sha256,/^[a-f0-9]{64}$/);
+ const recordLines=output.trimEnd().split('\n').slice(1,-1).join('\n')+'\n';
+ assert.equal(createHash('sha256').update(recordLines).digest('hex'),
+   lines.at(-1).sha256);
  assert(f.authCalls>receipt.pageCount+3);
  assert.equal(f.purges,0);
 });
