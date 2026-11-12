@@ -18,14 +18,14 @@ INSERT INTO allin_private.v2_account_export_requests_candidate
 INSERT INTO public.v2_coach_threads(id,user_id) VALUES
  ('97777777-9777-4777-8777-977777777777','91111111-9111-4111-8111-911111111111'),
  ('98888888-9888-4888-8888-988888888888','92222222-9222-4222-8222-922222222222');
-INSERT INTO public.v2_coach_messages(user_id,thread_id,role,content,client_action_id)
- SELECT '91111111-9111-4111-8111-911111111111'::uuid,
+INSERT INTO public.v2_coach_messages(id,user_id,thread_id,role,content,client_request_id)
+ SELECT pg_catalog.gen_random_uuid(),'91111111-9111-4111-8111-911111111111'::uuid,
   '97777777-9777-4777-8777-977777777777'::uuid,'user',
-  'Owner A Coach page '||lpad(i::text,3,'0'),gen_random_uuid()
+  'Owner A Coach page '||lpad(i::text,3,'0'),pg_catalog.gen_random_uuid()
  FROM generate_series(1,53) i;
-INSERT INTO public.v2_coach_messages(user_id,thread_id,role,content,client_action_id)
- VALUES('92222222-9222-4222-8222-922222222222',
- '98888888-9888-4888-8888-988888888888','user','Owner B private Coach',gen_random_uuid());
+INSERT INTO public.v2_coach_messages(id,user_id,thread_id,role,content,client_request_id)
+ VALUES(pg_catalog.gen_random_uuid(),'92222222-9222-4222-8222-922222222222',
+ '98888888-9888-4888-8888-988888888888','user','Owner B private Coach',pg_catalog.gen_random_uuid());
 INSERT INTO public.v2_goals(id,user_id,goal_kind,title)
  VALUES ('99999999-9999-4999-8999-999999999999','91111111-9111-4111-8111-911111111111',
  'endurance_distance','Owner A private goal');
