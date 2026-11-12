@@ -27,6 +27,8 @@ on:
       - 'scripts/check-v2-ingredient-writer-candidate.test.cjs'
       - 'scripts/check-v2-ingredient-hosted-reviewer-connection.cjs'
       - 'scripts/check-v2-ingredient-hosted-reviewer-connection.test.cjs'
+      - 'scripts/check-v2-ingredient-hosted-workload-connection.cjs'
+      - 'scripts/check-v2-ingredient-hosted-workload-connection.test.cjs'
       - 'scripts/test-v2-ingredient-review-writer-isolated.cjs'
       - 'apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts'
       - 'apps/mobile-v2/src/features/cookbook/recipeNutritionCalculator.ts'
@@ -61,6 +63,8 @@ on:
       - 'scripts/check-v2-ingredient-writer-candidate.test.cjs'
       - 'scripts/check-v2-ingredient-hosted-reviewer-connection.cjs'
       - 'scripts/check-v2-ingredient-hosted-reviewer-connection.test.cjs'
+      - 'scripts/check-v2-ingredient-hosted-workload-connection.cjs'
+      - 'scripts/check-v2-ingredient-hosted-workload-connection.test.cjs'
       - 'scripts/test-v2-ingredient-review-writer-isolated.cjs'
       - 'apps/mobile-v2/src/features/cookbook/localIngredientProfiles.ts'
       - 'apps/mobile-v2/src/features/cookbook/recipeNutritionCalculator.ts'
@@ -108,5 +112,7 @@ jobs:
         run: node --test scripts/check-v2-ingredient-writer-candidate.test.cjs
       - name: Check read-only hosted reviewer connection safety preflight (no credential required)
         run: node --test scripts/check-v2-ingredient-hosted-reviewer-connection.test.cjs
+      - name: Verify protected temporary workload login guardrails without credentials
+        run: node --test scripts/check-v2-ingredient-hosted-workload-connection.test.cjs
       - name: Test pinned USDA reconciliation and no-auto-approval gates
         run: node --test scripts/reconcile-usda-foundation-identities.test.cjs
