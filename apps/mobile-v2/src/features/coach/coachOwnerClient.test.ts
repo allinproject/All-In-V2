@@ -71,3 +71,39 @@ test('unauthorized or mixed-thread history fails closed',async()=>{
   createdAt:'2026-11-12T20:00:00Z'}]});
  assert.equal((await createCoachOwnerClient(x.services,owner,()=>true,true).history(thread)).status,'unavailable');
 });
+
+test('canonical history cursor is bound to oldest verified message, not an arbitrary caller cursor',async()=>{
+ const x=fixture();
+ const older='11111111-1111-4111-8111-111111111111';
+ const earlier='2026-11-12T19:00:00Z';
+ const later='2026-11-12T20:00:00Z';
+ const cursor={beforeCreatedAt:later,beforeMessageId:userMessage};
+ let received:unknown=null;
+ x.services.request=async body=>{
+  received=body.cursor;
+  return {status:'ok',hasMore:true,messages:[{
+   id:older,threadId:thread,role:'assistant',content:'Older answer',createdAt:earlier
+  }],nextCursor:{beforeCreatedAt:earlier,beforeMessageId:older}};
+ };
+ const c=createCoachOwnerClient(x.services,owner,()=>true,true);
+ const page=await c.history(thread,cursor);
+ assert.equal(page.status,'ready');
+ if(page.status==='ready')assert.deepEqual(page.nextCursor,
+  {beforeCreatedAt:earlier,beforeMessageId:older});
+ assert.deepEqual(received,cursor);
+});
+test('forged history cursor, duplicate messages, or newer-than-cursor records fail closed',async()=>{
+ const x=fixture();
+ const c=createCoachOwnerClient(x.services,owner,()=>true,true);
+ assert.equal((await c.history(thread,{beforeCreatedAt:'bad',beforeMessageId:userMessage})).status,'unavailable');
+ x.services.request=async()=>({status:'ok',hasMore:true,messages:[{
+  id:userMessage,threadId:thread,role:'user',content:'Hello',createdAt:'2026-11-12T20:00:00Z'
+ }],nextCursor:{beforeCreatedAt:'2026-11-12T19:00:00Z',beforeMessageId:userMessage}});
+ assert.equal((await c.history(thread)).status,'unavailable');
+ x.services.request=async()=>({status:'ok',hasMore:false,messages:[{
+  id:userMessage,threadId:thread,role:'user',content:'Hello',createdAt:'2026-11-12T21:00:00Z'
+ }]});
+ assert.equal((await c.history(thread,{
+  beforeCreatedAt:'2026-11-12T20:00:00Z',beforeMessageId:assistantMessage
+ })).status,'unavailable');
+});
