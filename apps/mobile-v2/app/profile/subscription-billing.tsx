@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { useAccessGate } from '../../src/auth/AccessGateProvider';
@@ -50,6 +50,12 @@ function OwnedSubscriptionBillingScreen() {
   if (gate.status === 'onboarding_required') return <Redirect href="/onboarding-required" />;
   if (authLoading || gate.status !== 'ready' || !ownerId) return <Redirect href="/" />;
 
+  const nativeStoreReady = (Platform.OS === 'ios' || Platform.OS === 'android') &&
+    nativeBillingReleaseGate.enabled &&
+    nativeBillingReleaseGate.signedNativeBuild &&
+    nativeBillingReleaseGate.storeCatalogApproved &&
+    nativeBillingReleaseGate.serverSecurityApproved;
+
   const description = status === 'entitled'
     ? 'Your account currently has server-confirmed subscription access.'
     : status === 'not_entitled'
@@ -83,15 +89,18 @@ function OwnedSubscriptionBillingScreen() {
         </View>
         <View style={styles.card}>
           <Text style={styles.heading}>Purchases and restoration</Text>
-          <Text style={styles.body}>Native purchases and Restore Purchases are not yet available in this build. No charge can be initiated from this screen.</Text>
-          <Text style={styles.body}>Once enabled, iPhone subscriptions will be managed through Apple and Android subscriptions through Google Play. Restoring a purchase will require verification against the original account.</Text>
-          {nativeBillingReleaseGate.enabled &&
-           nativeBillingReleaseGate.signedNativeBuild &&
-           nativeBillingReleaseGate.storeCatalogApproved &&
-           nativeBillingReleaseGate.serverSecurityApproved ? (
-            <NativeBillingActions ownerId={ownerId}
-              onVerified={() => setRetry(value => value + 1)} />
-          ) : null}
+          {nativeStoreReady ? (
+            <>
+              <Text style={styles.body}>Subscribe or restore using your device's official store. We confirm access with the billing service before updating your account.</Text>
+              <NativeBillingActions ownerId={ownerId}
+                onVerified={() => setRetry(value => value + 1)} />
+            </>
+          ) : (
+            <>
+              <Text style={styles.body}>Native purchases and Restore Purchases are not yet available in this build. No charge can be initiated from this screen.</Text>
+              <Text style={styles.body}>Once enabled, iPhone subscriptions will be managed through Apple and Android subscriptions through Google Play. Restoring a purchase will require verification against the original account.</Text>
+            </>
+          )}
           <Text style={styles.note}>Your training, nutrition and account data are not deleted simply because subscription access changes.</Text>
         </View>
       </ScrollView>
