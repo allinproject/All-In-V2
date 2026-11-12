@@ -11,7 +11,7 @@ export type BillingFunctionsClient=Readonly<{
   invoke:(name:string,options:{method:'GET'|'POST';body?:unknown})=>Promise<Result>;
 }>;
 const uuid=(s:unknown):s is string=>typeof s==='string'&&
-  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(s);
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(s);
 const product=(s:unknown)=>typeof s==='string'&&/^[A-Za-z0-9_.-]{3,180}$/.test(s);
 const hash=(s:unknown)=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
 export function createNativeBillingServerClient({
