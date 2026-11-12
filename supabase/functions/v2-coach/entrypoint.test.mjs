@@ -7,7 +7,7 @@ const src=readFileSync(fileURLToPath(new URL("./index.ts",import.meta.url)),"utf
 test("V2 Coach Edge source retains default-OFF and read-only model gate",()=>{
  assert.match(src,/ALLIN_V2_COACH_READ_ARMED/);
  assert.match(src,/!=="true"\)return disabled\(\)/);
- assert.match(src,/executeExchange:async\(\)=>\(\{status:"blocked"/);
+ assert.match(src,/executeExchange:armed\?armed\.executeExchange:async\(\)=>\(\{status:"blocked"/);
  assert.match(src,/createCoachSupabaseDependencies/);
  assert.match(src,/handleCoachRuntimeRequest/);
  assert.doesNotMatch(src,/OPENAI_API_KEY|ANTHROPIC_API_KEY|ALLIN_V1_/);
@@ -19,4 +19,15 @@ test("V2 Coach Edge still requires Auth bearer and owner RPCs, not request-suppl
  assert.match(src,/readTranscriptPage:deps\.readTranscriptPage/);
  assert.match(src,/createOrResumeThread:deps\.createOrResumeThread/);
  assert.doesNotMatch(src,/req\.json\(\).*providerGenerate/);
+});
+
+test("paid Coach sends require independent release flag and server-only secrets",()=>{
+ assert.match(src,/ALLIN_V2_COACH_SEND_ARMED/);
+ assert.match(src,/ALLIN_V2_COACH_PROVIDER_SECRET/);
+ assert.match(src,/SUPABASE_SERVICE_ROLE_KEY/);
+ assert.match(src,/ALLIN_V2_COACH_REVIEWED_MODEL/);
+ assert.match(src,/createCoachArmedRuntime/);
+ assert.match(src,/if\(sendArmed\)/);
+ assert.match(src,/if\(!serviceKey\|\|!apiKey\|\|!model/);
+ assert.doesNotMatch(src,/req\.json\(\).*apiKey/);
 });
