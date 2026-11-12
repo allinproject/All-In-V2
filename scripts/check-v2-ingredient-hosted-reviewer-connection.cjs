@@ -14,6 +14,7 @@ function assertConfig(env){
  if(env.PGSSLMODE!=='verify-full'||!env.PGSSLROOTCERT||!existsSync(env.PGSSLROOTCERT))deny('Verified server TLS and a trusted CA file required');
  if(!env.PGPASSFILE||!existsSync(env.PGPASSFILE))deny('Vault-managed PGPASSFILE required');
  if(env.PGPASSWORD||env.DATABASE_URL||env.PGURI)deny('Inline password/URI not accepted');
+ if(['PGHOSTADDR','PGSERVICE','PGSERVICEFILE','PGOPTIONS','PGCONNECT_TIMEOUT','PGTARGETSESSIONATTRS'].some(key=>env[key]))deny('Connection override is prohibited for reviewer acceptance');
  const login=env.ALLIN_REVIEWER_EXPECTED_DB_LOGIN||'';
  if(!/^allin_ing_reviewer_[a-z0-9_]{6,35}$/.test(login))deny('Approved unique reviewer login required');
  const direct=env.PGHOST==='db.'+PROJECT+'.supabase.co';
