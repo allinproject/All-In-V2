@@ -42,6 +42,26 @@ END $deny_graph$;
 DROP TABLE allin_private.v2_all251_unapproved_owner_gate;
 DROP TABLE allin_private.v2_all251_unapproved_relationship_gate;
 
+-- Storage SQL cleanup is intentionally forbidden. The savepoint rollback is
+-- the only cleanup for this disposable bucket; no privileged byte APIs run.
+SAVEPOINT all251_review_storage_probe;
+INSERT INTO storage.buckets(id,name,public)
+ VALUES ('all251-claim-review-private-media','all251-claim-review-private-media',false);
+DO $deny_storage$
+DECLARE reason text;
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_deletion_assert_approved_coverage_review();
+  RAISE EXCEPTION 'Unknown private Storage bucket was not denied';
+ EXCEPTION WHEN insufficient_privilege THEN
+  GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
+  IF reason NOT LIKE '%unreviewed_storage_bucket_cleanup%'
+  THEN RAISE EXCEPTION 'Unexpected Storage gate reason %',reason; END IF;
+ END;
+END $deny_storage$;
+ROLLBACK TO SAVEPOINT all251_review_storage_probe;
+RELEASE SAVEPOINT all251_review_storage_probe;
+
 DO $audit_block$
 DECLARE reason text;
 BEGIN
