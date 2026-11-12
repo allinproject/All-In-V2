@@ -80,15 +80,24 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
     # V1 stores exact FDC references predominantly inside source_url, rather
     # than source_fdc_id. Preserve those as explicit evidence requiring review.
     source_links = collections.defaultdict(set)
+    conflicting_source_references = []
     for p in profiles:
         raw_id = p.get("source_fdc_id")
         url = p.get("source_url") or ""
         match = (re.search(r"/food-details/([0-9]+)(?:/|$)", url)
                  if isinstance(url, str) and urlparse(url).scheme == "https"
                  and urlparse(url).hostname == "fdc.nal.usda.gov" else None)
-        fdc_id = int(raw_id) if isinstance(raw_id, str) and raw_id.isdigit() else (
-            raw_id if isinstance(raw_id, int) else int(match.group(1)) if match else None)
-        if fdc_id is not None:
+        # Boolean is an int in Python but is not a USDA ID. A text source
+        # identity must be a bounded positive decimal, not a coerced guess.
+        raw_value = (int(raw_id) if type(raw_id) is int and 0 < raw_id < 10**12
+                     else int(raw_id) if isinstance(raw_id, str)
+                     and re.fullmatch(r"[1-9][0-9]{0,11}", raw_id) else None)
+        url_value = int(match.group(1)) if match else None
+        if raw_value is not None and url_value is not None and raw_value != url_value:
+            conflicting_source_references.append(p["source_profile_key"])
+            continue
+        fdc_id = raw_value if raw_value is not None else url_value
+        if fdc_id is not None and 0 < fdc_id < 10**12:
             source_links[fdc_id].add(p["source_profile_key"])
     names = collections.defaultdict(set)
     for p in profiles:
@@ -141,6 +150,7 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
         "policy": "review_only_no_automatic_identity_merges_no_nutrition_import",
         "publicationApproved": False,
         "calculationReady": False,
+        "conflictingV1SourceReferenceKeys": sorted(conflicting_source_references),
         "reconciliationApproved": False,
         "sourceCount": {"usdaFoundation": len(foods), "v1Profiles": len(profiles)},
         "summary": {
@@ -153,6 +163,7 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
                 key for e in entries for key in e["direct_fdc_source_profile_keys"])),
             "sourceVsExactAliasDisagreements": sum(
                 bool(e["identity_evidence_disagreement"]) for e in entries),
+            "conflictingV1SourceReferenceProfiles": len(conflicting_source_references),
         },
         "method": "Unicode NFKC casefold whitespace exact label/alias; fallback token Jaccard >=0.42 top 3 review suggestions. No inferred form, synonym or nutrient equivalence.",
         "rows": entries,
