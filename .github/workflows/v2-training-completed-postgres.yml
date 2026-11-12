@@ -163,7 +163,10 @@ jobs:
           set -euo pipefail
           cli_version="$(supabase --version)"
           echo "Supabase local replay CLI: $cli_version"
-          [[ "$cli_version" =~ ^2\. ]] || { echo 'Expected Supabase CLI v2 local replay contract'; exit 1; }
+          case "$cli_version" in
+            2.*) ;;
+            *) echo 'Expected Supabase CLI v2 local replay contract'; exit 1 ;;
+          esac
           node scripts/check-v2-applied-migration-integrity.mjs
           # Start only the local stack and force a clean, deterministic
           # replay. Do not depend on db start to apply pending migrations.
