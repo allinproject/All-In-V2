@@ -157,7 +157,10 @@ export async function auditOwnerPrivateMediaCoverage({
   if(evidence?.ownerId!==ownerId||!Array.isArray(evidence.series)
     ||!Array.isArray(evidence.routes))
     throw Error('Canonical private evidence owner mismatch');
-  const sources=[...evidence.series,...evidence.routes];
+  const sources=[
+    ...evidence.series.map(row=>({...row,kind:'series'})),
+    ...evidence.routes.map(row=>({...row,kind:'route'})),
+  ];
   if(sources.length>MAX_OBJECTS)throw Error('Canonical owner media object limit exceeded');
   const expected=new Set();
   for(const row of sources){
