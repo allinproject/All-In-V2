@@ -76,7 +76,7 @@ function OwnedFuelScreen(){
        <Text style={styles.linkText}>Open Food Log</Text>
       </Pressable>
      </View>:
-      <FuelFoodLogPanel ownerId={user.id} day={day} accessReady={gate.status==='ready'}/>}
+      <FuelFoodLogPanel ownerId={user.id} day={day} onDayChange={setDay} accessReady={gate.status==='ready'}/>}
     </>:
      section==='recipes'?<View style={styles.card}>
       <Text accessibilityRole="header" style={styles.subhead}>Recipes</Text>
