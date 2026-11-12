@@ -17,8 +17,11 @@
 | Synthetic populated two-owner Auth deletion | [run 43133938802](https://github.com/allinproject/All-In-V2/actions/runs/43133938802) — SUCCESS | Test rows rolled back; no real user deletion |
 | Complete candidate catalog RLS and actual local Supabase anon/authenticated ACL probes | [run 43134562411](https://github.com/allinproject/All-In-V2/actions/runs/43134562411) — SUCCESS | Existing proposed API functions intentionally remain uncallable by clients |
 | Reduced Postgres17 plan/source/metric/concurrency suites | Existing `.github/workflows/v2-training-completed-postgres.yml` | Separate candidate integration test; does not substitute for installed-device acceptance |
+| **Latest complete 18-migration + 30-candidate compatibility acceptance** | **[run 43138298262](https://github.com/allinproject/All-In-V2/actions/runs/43138298262), `f209ceb` — ALL THREE JOBS PASSED** | Local CLI v2.122.1 clean replay of all 18, foundation RLS/export/deletion/cron PASS; 30 staged review-only candidates/14 wrappers, 6 staging tests PASS, DDL/ACL candidate overlay PASS, ROLLBACK restores base export function and removes candidate schema; PostgreSQL 17 real-role, writer, concurrency and sport-source suites PASS. **Not hosted migration approval.** |
 
 All runs are local/disposable or CI review-only. **No hosted Training or Completed Activity DDL was deployed by these tests.**
+
+**2026-11-11 engineering gate decision:** the isolated full-history replay is **VALIDATED / closed as a compatibility prerequisite**. Do not keep this specific test marked pending or introduce another replay harness. The production-approval checkboxes in §4 remain open until the domain owners sign off exact source-backed sport metrics, Goal/Event race identity, complete ALL-251 Storage export/deletion and installed-device behavior. Passing the candidate overlay **does not turn these review-only SQL files into approved, versioned migrations**, nor grant client access. On later SQL changes, require a new green workflow run at the changed commit before using this evidence for a release cut.
 
 ## 2. Dependency-ordered review units — one canonical graph
 
