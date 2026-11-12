@@ -1,0 +1,34 @@
+name: V2 Cookbook candidate validation (no deploy)
+
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - 'scripts/validate-cookbook-candidates.cjs'
+      - 'scripts/validate-cookbook-candidates.test.cjs'
+      - '.github/workflows/v2-cookbook-candidate-validation.yml'
+  pull_request:
+    paths:
+      - 'scripts/validate-cookbook-candidates.cjs'
+      - 'scripts/validate-cookbook-candidates.test.cjs'
+      - '.github/workflows/v2-cookbook-candidate-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cookbook-candidates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-only-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Reject malformed and unsafe staged source candidates
+        run: node --test scripts/validate-cookbook-candidates.test.cjs
