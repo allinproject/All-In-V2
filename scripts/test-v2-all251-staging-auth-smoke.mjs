@@ -183,6 +183,13 @@ try{
   assert.equal(first.entries?.length,1);
   assert.equal(first.entries[0]?.id,entryId);
   assert.equal(first.entries[0]?.user_id,a.id);
+  // The mounted Fuel editor requires the complete original portion, source,
+  // and time zone, never a guessed 1 serving or zero-calorie replacement.
+  assert.equal(first.entries[0]?.quantity,1);
+  assert.equal(first.entries[0]?.unit,'serving');
+  assert.equal(first.entries[0]?.kcal,300);
+  assert.equal(first.entries[0]?.nutrition_source,'user_entered');
+  assert.equal(first.entries[0]?.timezone_name,'America/Chicago');
   process.stdout.write('ALL247 own-day output passed\n');
   acceptanceStep='ALL247 second-owner empty day';
   const bDay=await reader(bToken,b.id,day);
@@ -203,6 +210,8 @@ try{
   assert.equal(afterEdit.status,200,'Edited food day unavailable');
   const editSnapshot=await afterEdit.json();
   assert.equal(editSnapshot.entries?.[0]?.label,'ALL247 edited food');
+  assert.equal(editSnapshot.entries?.[0]?.kcal,350);
+  assert.equal(editSnapshot.entries?.[0]?.nutrition_source,'user_entered');
   assert.notEqual(editSnapshot.sourceRevision,first.sourceRevision,'Edit revision unchanged');
 
   acceptanceStep='ALL247 stale edit denial';
