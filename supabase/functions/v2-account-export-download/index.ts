@@ -3,7 +3,7 @@
  * session/request gate and complete inventory are NOT installed in staging.
  * Never enable this endpoint without a separately reviewed worker factory.
  */
-import {handleAccountExportDownload} from './trainingExportDownloadHandler.mjs';
+import {handleAccountExportDownload} from '../_shared/trainingExportDownloadHandler.mjs';
 
 Deno.serve((request) => handleAccountExportDownload(request, {
   enabled: false,
