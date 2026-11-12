@@ -209,3 +209,49 @@ test('store restore transport error after owner switch reports wrong_account',as
  rejectRestore(Error('store unavailable'));
  assert.equal(await task,'wrong_account');
 });
+
+test('restore preserves pending acknowledgment instead of reporting verification failure',async()=>{
+ const flow=createNativeBillingFlow({
+  platform:'android',productId,
+  store:{platform:'android',getProducts:async()=>[{id:productId}],
+    purchase:async()=>null,restore:async()=>[androidEvidence]},
+  server:{submitEvidence:async()=> 'pending',
+    readOwnerEntitlement:async()=>({entitled:false})},
+  getAuthenticatedOwner:()=>owner,
+ });
+ assert.equal(await flow.restore(),'purchase_pending');
+});
+
+test('restore prioritizes server-entitled receipt over earlier pending receipt',async()=>{
+ const earlier={...androidEvidence,purchaseToken:'first-purchase'};
+ const later={...androidEvidence,purchaseToken:'second-purchase'};
+ const flow=createNativeBillingFlow({
+  platform:'android',productId,
+  store:{platform:'android',getProducts:async()=>[{id:productId}],
+    purchase:async()=>null,restore:async()=>[earlier,later]},
+  server:{submitEvidence:async({evidence})=>
+    evidence.purchaseToken===earlier.purchaseToken?'pending':'verified',
+    readOwnerEntitlement:async()=>({entitled:true})},
+  getAuthenticatedOwner:()=>owner,
+ });
+ assert.equal(await flow.restore(),'server_entitled');
+});
+
+test('product discovery after owner switch cannot return needs_setup for previous owner',async()=>{
+ let activeOwner=owner;
+ let completeProducts;
+ const flow=createNativeBillingFlow({
+  platform:'ios',productId,
+  store:{platform:'ios',
+    getProducts:async()=>new Promise(resolve=>{completeProducts=resolve;}),
+    purchase:async()=>null,restore:async()=>[]},
+  server:{submitEvidence:async()=> 'rejected',
+    readOwnerEntitlement:async()=>({entitled:false})},
+  getAuthenticatedOwner:()=>activeOwner,
+ });
+ const task=flow.purchase();
+ await waitForCheckpoint(()=>completeProducts,'completeProducts');
+ activeOwner='00000000-0000-0000-0000-000000000002';
+ completeProducts([]);
+ assert.equal(await task,'wrong_account');
+});
