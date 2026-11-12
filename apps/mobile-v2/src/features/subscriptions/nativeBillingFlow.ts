@@ -85,8 +85,8 @@ export function createNativeBillingFlow(input:{
       busy=true;
       try{
         const products=await input.store!.getProducts([input.productId!]);
-        if(!products.some(p=>p.id===input.productId))return 'needs_setup';
         if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
+        if(!products.some(p=>p.id===input.productId))return 'needs_setup';
         const evidence=await input.store!.purchase(input.productId!);
         if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
         if(!evidence)return 'canceled';
@@ -111,11 +111,16 @@ export function createNativeBillingFlow(input:{
           if(input.getAuthenticatedOwner()!==owner)return 'wrong_account';
           return read?.entitled===true?'server_entitled':'not_entitled';
         }
+        let pending=false;
         for(const receipt of evidence){
           const outcome=await reconcile(owner,receipt);
           if(outcome==='server_entitled'||outcome==='wrong_account')return outcome;
+          // Verification may be awaiting Google acknowledgment or a
+          // server-confirmed transaction finish. Never collapse this to a
+          // generic failure when no other receipt grants entitlement.
+          if(outcome==='purchase_pending')pending=true;
         }
-        return 'verification_unavailable';
+        return pending?'purchase_pending':'verification_unavailable';
       }catch{return input.getAuthenticatedOwner()===owner?
         'verification_unavailable':'wrong_account'}
       finally{busy=false}
