@@ -30,7 +30,11 @@ test('Food Log uses only the approved owner-guarded RPC and no shadow store',()=
  assert.match(panel,/pending\.current=/);
  assert.match(panel,/confirmDelete/);
  assert.match(panel,/secureIdsAvailable&&accessReady/);
- assert.match(panel,/setSecureIdsAvailable\(newFoodActionId\(\)!==null\)/);
+ assert.match(panel,/setSecureIdsAvailable\\(newNativeFoodActionId\\(\\)!==null\\)/);
+ assert.match(panel,/import \\{newNativeFoodActionId\\} from '\\.\\/fuelFoodSecureNative\\.ts'/);
+ const native=source('./fuelFoodSecureNative.ts');
+ assert.match(native,/import \\{randomUUID\\} from 'expo-crypto'/);
+ assert.match(native,/foodActionIdFromNative\\(randomUUID\\)/);
  assert.match(panel,/This device cannot generate secure Food Log action IDs/);
  assert.match(panel,/onDayChange\(command\.replacement\.localDate\)/);
  assert.match(client,/EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED === 'true'/);
