@@ -169,6 +169,10 @@ test('approved names and incompatible food forms cannot be broadened into aliase
  invalidSearch.records.find(r=>r.source_profile_key==='red_onion_raw').search_only_not_exact_aliases.push({
  value:'yellow onion',behavior:'search_only_requires_user_or_reviewer_form_selection'});
  assert(reviewAliasAndPreparationAcceptance(invalidSearch,sources).issues.some(x=>x.code==='incompatible_form_reentered_targeted_search'));
+ const widened=clone();
+ widened.records.find(x=>x.source_profile_key==='red_onion_raw').search_only_not_exact_aliases.push({
+ value:'white onion',behavior:'search_only_requires_user_or_reviewer_form_selection'});
+ assert(reviewAliasAndPreparationAcceptance(widened,sources).issues.some(x=>x.code==='approved_search_only_scope_changed'));
  const renamed=clone();
  renamed.records.find(x=>x.source_profile_key==='beans_kidney_canned_drained').display_name='Kidney Beans';
  assert(reviewAliasAndPreparationAcceptance(renamed,sources).issues.some(x=>x.code==='approved_display_name_state_or_exact_alias_changed'));
