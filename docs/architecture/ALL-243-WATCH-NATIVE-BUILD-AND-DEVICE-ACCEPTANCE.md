@@ -105,6 +105,91 @@ Record for each scenario: iOS/watchOS/Xcode versions, build SHA, app/watch bundl
 result and related Linear issue. Do not share private keys, bearer tokens,
 signed assertion bytes, or personal health data.
 
+## Apple App Attest / signed-receipt physical acceptance protocol (NOT YET RUN)
+
+This is the **single** reproducible ALL-243 acceptance checklist for a future
+approved native build; keep the existing private registration tables and
+trusted-server enrollment path. Synthetic CMS tests, disposable PostgreSQL,
+and Linux Swift parsing do **not** substitute for these steps.
+
+**Preflight** — on a real App Attest-capable iPhone (not Simulator) and paired
+Apple Watch, with approved temporary staging accounts A and B:
+
+1. Record source commit SHA, Xcode/iOS/watchOS versions, signed iOS bundle ID,
+   verified 10-character Team ID, expected app ID, application environment,
+   native entitlement, and watch target signing. Do not infer these values.
+2. Confirm the temporary staging database has the approved isolated
+   enrollment schema, the restricted operator connection, and no client grants
+   to attested keys or the private registration writer. Keep production
+   untouched and enrollment routes default-off except explicitly authorized
+   staging acceptance.
+3. Enable only the dedicated protected **staging** enrollment route; record
+   operator identity, short-lived access scope, staging-only credentials,
+   test accounts, and a cleanup owner. Never print a service key, private key,
+   bearer token, actual signed receipt, or raw health data into CI.
+4. Sign in as A. Obtain an authenticated, five-minute challenge; verify owner,
+   active session, challenge ID, app ID and environment. Generate/load the
+   device-protected key and call `attestKey` with SHA-256 of the exact challenge.
+5. Submit the real attestation object and key ID. Collect only sanitized
+   evidence: receipt SHA-256, leaf certificate fingerprint, challenge ID,
+   environment, expected app ID, rejection reason or trust-record count.
+   The server must validate Apple-rooted certificate chain, nonce, P-256 key,
+   CMS receipt signature and chain, signed payload IDs/client hash, creation
+   time, and single-use transactional registration.
+6. Verify **exactly one** private key registration owned by A, a consumed
+   challenge, zero authorization by direct client SQL/API, and no duplicate
+   under an idempotent/replayed request. No client may choose a receipt
+   verifier or claim `receiptValid`.
+
+**Required negative scenarios** — repeat with fresh challenges and isolated
+keys where necessary; every rejection must leave **zero new registrations**
+and must not consume a challenge unless a successful enrollment committed:
+
+| Case | Expected server result |
+| --- | --- |
+| Missing/truncated CMS, indefinite-length ASN.1, malformed receipt | Reject before private registration |
+| CMS signed under unrelated CA, substituted intermediate, expired/not-yet-valid cert | Reject Apple trust chain |
+| Same signed CMS with altered payload or signature | Reject signature |
+| Correct receipt but wrong Team/bundle app ID, challenge hash, or public key | Reject evidence binding |
+| Sandbox AAGUID with production challenge, or vice versa | Reject environment |
+| Receipt type `RECEIPT` instead of original `ATTEST` | Reject initial key enrollment |
+| Stale (older than 5 minutes), future-dated, or expired receipt | Reject freshness |
+| Invalid Auth session, account B using account A challenge | Reject owner/session |
+| Duplicate key insert fails after challenge update, or transaction abort after writer | Roll back both key and consumption |
+| Concurrent completion of same challenge | At most one registration |
+| Watch decline, wrong watch key, replayed watch signature | No pairing approval |
+| Revoke, reinstall, watch reset, offline retry | No resurrection or cross-account transfer |
+
+**End-to-end acceptance after enrollment** — watch must require on-device
+approval; pairing proof must be bound to registered iPhone key and active
+account session. Execute owner A/B isolation, nonce replay, monotone assertion
+counter, disconnect/revoke, re-pair, offline resume, and data-ingestion refusal
+for revoked devices. Confirm app behavior on a real phone and watch, including
+navigation, accessibility and battery impact. Do not weaken default-off gates
+to work around a failed native or hosted test.
+
+**Evidence record per scenario:**
+
+```text
+ALL-243 scenario:
+Build commit SHA / signing IDs (no secrets):
+iPhone model + iOS / Watch model + watchOS / Xcode:
+Staging project reference (not credentials):
+Test account alias A or B / environment:
+Challenge ID / receipt SHA-256 / key fingerprint (safe identifiers only):
+Expected result:
+Observed result and sanitized failure code:
+Private key count before/after; challenge consumed before/after:
+CI run / device log artifact location (redacted):
+PASS / FAIL / BLOCKED; date and reviewer:
+Cleanup: routes disabled, credentials revoked, test records removed:
+```
+
+A positive result **must** include a genuine Apple-issued attestation and
+CMS receipt. A synthetic signed receipt should only be used to prove negative
+cases. No native build, physical pairing, hosted enrollment, or production
+release is claimed by preparing this protocol.
+
 ## Unresolved blockers
 
 - This environment **cannot run Xcode or access the user's physical iPhone
