@@ -343,6 +343,10 @@ BEGIN
    ('v2_nutrition_future_food_log','owner_id'),
    ('v2_progress_future_milestones','athlete_id'),
    ('v2_gear_future_inventory','created_by_user_id'),
+   ('v2_meal_entries','account_id'),
+   ('v2_body_measurements','profile_id'),
+   ('v2_equipment_inventory','athlete_user_id'),
+   ('v2_race_results','account_id'),
    ('v2_community_posts','owner_id')
   ) AS future(name,owner_column)
  LOOP
