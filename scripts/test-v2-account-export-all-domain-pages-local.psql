@@ -312,6 +312,22 @@ BEGIN
  RAISE NOTICE 'PASS ALL-251: Nutrition/Progress/gear/Community owner-key tables force export review';
 END $new_domains$;
 
+-- Unclassified Nutrition-like tables must be reviewed even without an owner column.
+CREATE TABLE public.v2_nutrition_reference_probe(provider_ref text);
+SET LOCAL ROLE service_role;
+DO $unknown_domain$
+BEGIN
+ BEGIN
+  PERFORM public.v2_account_export_inventory_review_candidate(
+   '91111111-9111-4111-8111-911111111111',
+   '93333333-9333-4333-8333-933333333333',
+   '95555555-9555-4555-8555-955555555555');
+  RAISE EXCEPTION 'Future Nutrition domain bypassed export classification';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $unknown_domain$;
+RESET ROLE;
+DROP TABLE public.v2_nutrition_reference_probe;
+
 -- A directional relationship table without user_id is equally sensitive.
 CREATE TABLE allin_private.v2_community_unreviewed_directional (
  actor_id uuid, target_id uuid
