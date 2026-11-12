@@ -47,3 +47,14 @@ Founder and appropriate legal/privacy reviewer must sign off the final three **f
 5. Surface working current legal links from the canonical app settings/privacy screen and web site. Preserve separate public/paid launch compliance in ALL-72; do not close ALL-209 solely because legal rows exist.
 
 **State as of this review:** source recovery done, accuracy blockers identified, formal approval pending, V2 database has no published legal rows, signup deliberately closed.
+
+
+## 2026-11-12 — newer ALL-251 account-lifecycle source reconciliation
+
+**This is a later source-code observation, not a retrospective correction to the November 11 database inventory.** The current V2 integration branch now contains `apps/mobile-v2/app/profile/account-deletion.tsx` and `apps/mobile-v2/app/profile/account-export.tsx`:
+
+- The account deletion screen implements an authenticated, account-bound **request intake/status/cancel** UI. It reads `v2_my_account_deletion_request`, calls `v2_request_account_deletion` after explicit `DELETE MY ACCOUNT` confirmation, and cancels a specific still-requested ID with `v2_cancel_account_deletion_request`. It reconciles uncertain write outcomes by re-reading owner-bound status, instead of blindly retrying a possibly committed request.
+- **Crucial limitation displayed in the UI itself:** “The secure deletion processor is not enabled yet, and this beta flow is not validated for public release.” Request intake is **not** evidence of actual durable erasure, full downstream purge, retention guarantees or platform compliance. Verify current deployed RPCs, worker processing and authenticated installed-device end-to-end results with ALL-251 before approval or distribution.
+- The account export screen supports owner-bound `v2_export_my_account_snapshot` to a temporary JSON file on iOS/Android with explicit confirmation and cleanup. It explicitly describes this as **not** a complete archive of all activities, media or connected providers. Do not describe it as complete portability/export functionality without an approved scope and verified backend/device evidence.
+- This newly observed UI changes the older claim that there is no V2 account-deletion initiation interface. It does **not** resolve the policy candidate's email-only interim description or the missing processor/retention/backup/privacy review gates. Legal reviewers must reconcile the final text against the actual shipped deletion/request lifecycle rather than freeze either earlier wording.
+- Evidence scope: V2 GitHub source inspection on 2026-11-12; **not** a fresh Supabase deployment inventory, production query, legal approval, actual account deletion, document publication, or device acceptance. Preserve original recovered V1 legal text and unapproved candidate redlines unchanged.
