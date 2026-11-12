@@ -69,3 +69,22 @@ A lightweight deterministic inventory fingerprint using sorted `id|updated_at` i
 - Linear ALL-218 source issue and architecture contracts ALL-222/225/226/228/229.
 
 **Status:** source audit and import hazard classification progressed; no snapshot export or production seed has been executed. V2 has no recipe catalog table as of this inspection.
+
+## ALL-229 explicit freezer-kit and raw/cooked evidence triage
+
+The V1 `metadata.preparation_modes` object has `freezer_kit` on **20** recipes, `freezer` on **730**, and `fridge` on **875**. Ordinary cooked-food freezer storage is **not** a freezer kit. The 20 explicit freezer-kit mode rows are **exception candidates** requiring lifecycle review, not automatic exemptions.
+
+Heuristic source-text scanning finds 441 line mentions of `raw`, 186 of `dry`, 364 of `cooked`, and **89 lines in 50 recipes** containing both a raw/dry and cooked term. These overlap and are wording-based; they are review queues, **not** audited yield relationships, verified quantities or proof of compliance. The new SQL audit includes a sorted explicit freezer-kit evidence queue and this triage summary.
+
+## Projection acceptance check — executed against current V1
+
+The committed `ALL-218-REVIEW-ONLY-NO-MACRO-CANDIDATE-PROJECTION.sql` contains four independent `SELECT` projections using explicit `jsonb_build_object` fields (no `SELECT *` or whole-metadata copy). Each SELECT was retrieved from the committed file and executed read-only in a count/nested-key validation wrapper on V1:
+
+| Candidate records | Count | Nested `nutrition` keys | Nested `nutrition_delta` keys |
+|---|---:|---:|---:|
+| Recipe candidates (including stripped variant content) | 907 | 0 | 0 |
+| Selector candidates | 1,293 | 0 | 0 |
+| Option candidates | 5,876 | 0 | 0 |
+| Component candidates | 2,855 | 0 | 0 |
+
+The projection retains **source IDs and source review states** but labels unnormalized ingredient and selector values review-only. This proves the projection does not carry the two forbidden legacy macro JSON key types across the observed V1 rows; it does not establish correct nutrition arithmetic, complete legal provenance, cooked-state compliance or V2 public readiness. The candidate SQL remains read-only and has not been used to write V2.
