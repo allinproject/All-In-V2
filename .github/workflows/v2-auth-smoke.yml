@@ -33,6 +33,10 @@ on:
       - 'docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql'
       - 'apps/mobile-v2/src/monitoring/**'
       - 'apps/mobile-v2/package.json'
+      - 'apps/mobile-v2/native/apple-watch/**'
+      - 'scripts/integrate-apple-watch-build.cjs'
+      - 'scripts/integrate-apple-watch-target.rb'
+      - 'scripts/test-v2-watch-native-target.mjs'
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
       - 'scripts/check-v2-supabase-target.mjs'
@@ -94,6 +98,10 @@ on:
       - 'docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql'
       - 'apps/mobile-v2/src/monitoring/**'
       - 'apps/mobile-v2/package.json'
+      - 'apps/mobile-v2/native/apple-watch/**'
+      - 'scripts/integrate-apple-watch-build.cjs'
+      - 'scripts/integrate-apple-watch-target.rb'
+      - 'scripts/test-v2-watch-native-target.mjs'
       - 'apps/mobile-v2/src/types/database.types.ts'
       - '.github/workflows/v2-auth-smoke.yml'
       - 'scripts/check-v2-supabase-target.mjs'
@@ -149,6 +157,8 @@ jobs:
           node-version: '22.16.0'
       - name: Verify V2 Supabase target isolation
         run: node ../../scripts/check-v2-supabase-target.mjs
+      - name: Check native watch target generation and safe pairing handoff (no Xcode, no hardware)
+        run: node --experimental-strip-types --test ../../scripts/test-v2-watch-native-target.mjs
       - name: Test V2 Supabase guard rejection cases
         run: node --test ../../scripts/check-v2-supabase-target.test.mjs
       - name: Verify pinned React dependency versions
