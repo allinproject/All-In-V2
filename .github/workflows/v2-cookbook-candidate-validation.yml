@@ -8,6 +8,8 @@ on:
       - 'scripts/validate-cookbook-candidates.test.cjs'
       - 'scripts/cookbook-review-triage.cjs'
       - 'scripts/cookbook-review-triage.test.cjs'
+      - 'scripts/review-v2-ingredient-identities.cjs'
+      - 'scripts/review-v2-ingredient-identities.test.cjs'
       - '.github/workflows/v2-cookbook-candidate-validation.yml'
   pull_request:
     paths:
@@ -15,6 +17,8 @@ on:
       - 'scripts/validate-cookbook-candidates.test.cjs'
       - 'scripts/cookbook-review-triage.cjs'
       - 'scripts/cookbook-review-triage.test.cjs'
+      - 'scripts/review-v2-ingredient-identities.cjs'
+      - 'scripts/review-v2-ingredient-identities.test.cjs'
       - '.github/workflows/v2-cookbook-candidate-validation.yml'
   workflow_dispatch:
 
@@ -38,3 +42,5 @@ jobs:
         run: node --test scripts/validate-cookbook-candidates.test.cjs
       - name: Test review-only recipe triage and freezer-kit lifecycle
         run: node --test scripts/cookbook-review-triage.test.cjs
+      - name: Verify candidate ingredient identity isolation and source gates
+        run: node --test scripts/review-v2-ingredient-identities.test.cjs
