@@ -31,6 +31,26 @@ INSERT INTO allin_private.v2_coach_message_actions
   'b2222222-6222-4222-8222-622222222222',
   'c2222222-6222-4222-8222-622222222222');
 
+-- Diagnostic only: do not bypass this export guard. Log qualified missing
+-- table names so the canonical ALL-251 owner can add actual per-domain payloads.
+DO $export_coverage$
+DECLARE v_missing text;
+BEGIN
+ SELECT pg_catalog.string_agg(n.nspname||'.'||c.relname,', ' ORDER BY n.nspname,c.relname)
+ INTO v_missing
+ FROM pg_catalog.pg_class c
+ JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+ JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+   AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
+ WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
+   AND pg_catalog.position(
+     pg_catalog.quote_literal(c.relname) IN
+     pg_catalog.pg_get_functiondef('public.v2_export_my_account_snapshot(uuid)'::regprocedure)
+   )=0;
+ RAISE NOTICE 'Uncovered owner tables in canonical export (fail closed): %',
+   pg_catalog.coalesce(v_missing,'none');
+END $export_coverage$;
+
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','61111111-6111-4111-8111-611111111111',true);
 DO $coach_export$
