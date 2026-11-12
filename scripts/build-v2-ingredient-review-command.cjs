@@ -90,4 +90,29 @@ async function buildReviewCommand(request,dependencies){
     trustedServerTransactionRequired:true,releaseAuthorized:false,
     publicationAuthorized:false,calculationReady:false};
 }
-module.exports={buildReviewCommand,stableCanonical};
+
+/**
+ * Production-shaped dependency adapter for a future TRUSTED SERVER handler.
+ * Supabase Auth getUser(token) validates the current bearer with the Auth
+ * service. Do not replace this with JWT decoding or user_metadata checks.
+ * reviewerRegistry MUST be a server-only read of the owner-managed private
+ * review-authorizations table, never an athlete-editable profile/claim.
+ */
+function createSupabaseReviewerDependencies({authClient,reviewerRegistry,authoritativeSourceReader}) {
+  if(typeof authClient?.auth?.getUser!=='function'||
+     typeof reviewerRegistry?.findByUserId!=='function'||
+     typeof authoritativeSourceReader?.load!=='function')
+     throw Error('Trusted Auth, reviewer registry and canonical source reader required');
+  return {
+    verifyAccessToken:async token=>{
+      const result=await authClient.auth.getUser(token);
+      if(result?.error || !validUuid(result?.data?.user?.id))
+        throw Error('Supabase Auth session not verified');
+      return {id:result.data.user.id};
+    },
+    findReviewerAuthorization:id=>reviewerRegistry.findByUserId(id),
+    loadAuthoritativeReview:(key,id)=>authoritativeSourceReader.load(key,id)
+  };
+}
+
+module.exports={buildReviewCommand,stableCanonical,createSupabaseReviewerDependencies};
