@@ -3,6 +3,7 @@
  * No second Training owner, live reader, or direct plan write.
  */
 import {proposeSeasonFromVerifiedTraining} from './multiEventOwnerBridge.ts';
+import {certifySeasonAgainstGoalEventOwners,type CanonicalEventGoalApproval} from './canonicalEventGoalApprovalGate.ts';
 import {reviewMultiEventPhaseWindows,type EventPhaseDecision,type MultiEventPhaseReview} from './multiEventPhaseReview.ts';
 import type {SeasonPlanDraft} from './multiEventSeasonPlan.ts';
 
@@ -42,4 +43,34 @@ export function seasonPhasePreviewIdentity(preview:SeasonPhasePreview){
  return {ownerId:preview.ownerId,planRevisionId:preview.planRevisionId,
   snapshotVersion:preview.snapshotVersion,requiresAthleteApproval:true as const,
   canWriteAcceptedPlan:false as const};
+}
+
+/**
+ * Coach-facing certified phase preview. Unlike the Training-only preview,
+ * this MUST check authoritative Goal/Event ownership and participation as
+ * well as the current accepted Training revision. No database reads/writes.
+ */
+export function previewGoalEventCertifiedSeasonPhases(input:{
+ ownerSeason:OwnerArgs;
+ goalEventOwners:CanonicalEventGoalApproval|null;
+ expectedPlanRevisionId:string;
+ phaseDecisions:readonly EventPhaseDecision[];
+}):SeasonPhasePreview{
+ const unavailable=(reason:string):SeasonPhasePreview=>({status:'unavailable',reason,draft:null,phases:null});
+ if(!input||!input.ownerSeason||!input.goalEventOwners)
+  return unavailable('goal_event_owner_evidence_required');
+ const approved=certifySeasonAgainstGoalEventOwners(input.ownerSeason,input.goalEventOwners);
+ if(approved.status==='unavailable')return unavailable(approved.reason);
+ if(approved.status==='blocked')return unavailable('conflicting_goal_event_season');
+ const preview=previewCertifiedSeasonPhases(input);
+ if(preview.status==='unavailable')return preview;
+ if(preview.planRevisionId!==approved.planRevisionId||
+    preview.snapshotVersion!==approved.snapshotVersion||
+    preview.draft.events.length!==approved.proposal.events.length||
+    preview.draft.events.some((e,i)=>{
+     const x=approved.proposal.events[i];
+     return e.id!==x.id||e.date!==x.date||e.sport!==x.sport||e.priority!==x.priority;
+    }))
+  return unavailable('goal_event_training_preview_mismatch');
+ return preview;
 }

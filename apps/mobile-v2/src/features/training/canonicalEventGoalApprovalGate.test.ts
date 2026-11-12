@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {certifySeasonAgainstGoalEventOwners} from './canonicalEventGoalApprovalGate.ts';
+import {previewGoalEventCertifiedSeasonPhases} from './multiEventPhaseOwnerPreview.ts';
 import type {CanonicalEventGoalApproval} from './canonicalEventGoalApprovalGate.ts';
 import type {SeasonEvent} from './multiEventSeasonPlan.ts';
 const owner='athlete',generation=4,revision='rev-1',token='snapshot-1';
@@ -142,4 +143,37 @@ test('stale goal target dates or start dates cannot override an event',()=>{
  const valid=fixture();
  valid.proofs.goalSnapshot.goals[0]={...valid.proofs.goalSnapshot.goals[0],startDate:'2027-02-01'};
  assert.equal(certifySeasonAgainstGoalEventOwners(valid.input,valid.proofs).status,'review_required');
+});
+
+test('Coach season phase preview needs both canonical Goal/Event and Training authority',()=>{
+ const f=fixture();
+ const phaseDecisions=[
+  {eventId:'event-a',effort:'supported' as const,taperDays:3,recoveryReviewDays:4,source:'athlete_confirmed' as const,evidenceRefs:[]},
+  {eventId:'event-b',effort:'peak' as const,taperDays:null,recoveryReviewDays:null,source:'athlete_confirmed' as const,evidenceRefs:[]}
+ ];
+ const valid=previewGoalEventCertifiedSeasonPhases({ownerSeason:f.input,goalEventOwners:f.proofs,
+  expectedPlanRevisionId:revision,phaseDecisions});
+ assert.equal(valid.status,'review_required');
+ if(valid.status==='unavailable')throw Error(valid.reason);
+ assert.equal(valid.canWriteAcceptedPlan,false);
+ assert.deepEqual(valid.draft.events.map(e=>e.id),['event-a','event-b']);
+ const missing=previewGoalEventCertifiedSeasonPhases({ownerSeason:f.input,goalEventOwners:null,
+  expectedPlanRevisionId:revision,phaseDecisions});
+ assert.equal(missing.status,'unavailable');
+ const stale=previewGoalEventCertifiedSeasonPhases({ownerSeason:f.input,goalEventOwners:f.proofs,
+  expectedPlanRevisionId:'stale',phaseDecisions});
+ assert.equal(stale.status,'unavailable');
+});
+test('Coach phase preview cannot use stale Goal/Event certification or non-race goals',()=>{
+ const f=fixture();
+ const phaseDecisions=[
+  {eventId:'event-a',effort:'supported' as const,taperDays:2,recoveryReviewDays:3,source:'athlete_confirmed' as const,evidenceRefs:[]},
+  {eventId:'event-b',effort:'supported' as const,taperDays:2,recoveryReviewDays:3,source:'athlete_confirmed' as const,evidenceRefs:[]}
+ ];
+ f.proofs.goalSnapshot.goals[0]={...f.proofs.goalSnapshot.goals[0],goalKind:'other'};
+ assert.equal(previewGoalEventCertifiedSeasonPhases({ownerSeason:f.input,goalEventOwners:f.proofs,
+  expectedPlanRevisionId:revision,phaseDecisions}).status,'unavailable');
+ const g=fixture();g.proofs.eventSnapshot.events[0]={...g.proofs.eventSnapshot.events[0],eventVersion:99};
+ assert.equal(previewGoalEventCertifiedSeasonPhases({ownerSeason:g.input,goalEventOwners:g.proofs,
+  expectedPlanRevisionId:revision,phaseDecisions}).status,'unavailable');
 });
