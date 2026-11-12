@@ -107,7 +107,11 @@ BEGIN
   RAISE EXCEPTION 'Unapproved owner graph claim unexpectedly passed';
  EXCEPTION WHEN insufficient_privilege THEN
   GET STACKED DIAGNOSTICS reason=MESSAGE_TEXT;
+  -- The older canonical direct-user_id Auth-cascade check may deny the
+  -- claim even before the review-only graph gate is reached. Both are
+  -- required fail-closed conditions, never evidence to delete anything.
   IF reason NOT LIKE 'Unapproved account deletion coverage: %'
+     AND reason <> 'Deletion owner-data cascade coverage incomplete'
    THEN RAISE EXCEPTION 'Review claim failed for wrong reason: %',reason; END IF;
  END;
  IF NOT EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_requests
