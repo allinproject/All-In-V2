@@ -89,7 +89,12 @@ BEGIN
   OR pg_catalog.jsonb_array_length(all_rows)<>27
   OR (SELECT count(DISTINCT item->>'id')
       FROM pg_catalog.jsonb_array_elements(all_rows) AS item)<>27
- THEN RAISE EXCEPTION 'ALL-247 owner export incomplete or pagination unstable'; END IF;
+ THEN RAISE EXCEPTION 'ALL-247 owner export incomplete: p1 count %, done %, cursor %, p2 count %, done %, cursor %, B count %, total %, distinct %, complete %',
+  pg_catalog.jsonb_array_length(p1->'rows'),p1->>'done',p1->>'nextCursor',
+  pg_catalog.jsonb_array_length(p2->'rows'),p2->>'done',p2->>'nextCursor',
+  pg_catalog.jsonb_array_length(pb->'rows'),pg_catalog.jsonb_array_length(all_rows),
+  (SELECT count(DISTINCT item->>'id') FROM pg_catalog.jsonb_array_elements(all_rows) AS item),
+  p1->>'completeUserExport'; END IF;
  FOR row IN SELECT item FROM pg_catalog.jsonb_array_elements(all_rows) AS item LOOP
   IF row->>'user_id'<>a::text OR row ? 'request_fingerprint'
    OR row ? 'result_revision' OR row->>'label' LIKE '%OWNER_B%'
