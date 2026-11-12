@@ -29,3 +29,15 @@ test('no scalar baseline should be mistaken for full recorded structured Details
  assert.equal(running.details.some(metric=>metric.toLowerCase()==='splits'),false,
   'Splits are structured records required separately from scalar metrics');
 });
+
+test('rowing extends V2 from approved V1 registry without rewriting the 17 legacy layouts',()=>{
+ assert.equal(V1_COMPLETED_ACTIVITY_BASELINE.length,17);
+ const rowing=v1SportBaseline('rowing');
+ assert.ok(rowing);
+ assert.equal(rowing.label,'Rowing');
+ assert.deepEqual(rowing.overview,['Distance','Duration','Pace / 500 m','Stroke rate']);
+ for(const metric of ['Max stroke rate','Distance per stroke','Power','Drag factor'])
+  assert.ok(v1AllDetailsMetrics('rowing').includes(metric),metric);
+ assert.equal(v1AllDetailsMetrics('rowing').includes('SWOLF'),false);
+ assert.equal(v1AllDetailsMetrics('rowing').includes('Training volume'),false);
+});
