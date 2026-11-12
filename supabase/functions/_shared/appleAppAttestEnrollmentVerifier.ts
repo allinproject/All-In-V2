@@ -58,7 +58,7 @@ export function inspectAppAttestCredentialPayload(authData:Uint8Array,
  if(authData.length<88||expectedPublicPoint.length!==65||
   expectedPublicPoint[0]!==4||!(authData[32]&0x40))
   throw Error('Missing attested App Attest credential');
- const values=decodeMultiple(Buffer.from(authData.slice(87)));
+ const values:unknown[]=decodeMultiple(Buffer.from(authData.slice(87))) as unknown[];
  if(!Array.isArray(values)||values.length<1||values.length>2)
   throw Error('Invalid or trailing App Attest CBOR credential');
  const field=(o:unknown,k:string|number):unknown=>o instanceof Map?
