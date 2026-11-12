@@ -1,4 +1,4 @@
-import type {KitchenWeek,PlannedKitchenEntry} from './kitchenPlanOwnerClient.ts';
+import type {KitchenWeek} from './kitchenPlanOwnerClient.ts';
 import {projectFoodPlanShopping,type ExactNeed,type UnknownNeed,
  type AvailablePantryLot,type PlannedKitchenOccurrence} from './foodPlanShoppingProjection.ts';
 
