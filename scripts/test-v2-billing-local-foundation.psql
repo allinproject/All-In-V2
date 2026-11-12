@@ -15,10 +15,22 @@ BEGIN
        WHERE user_id=owner_a AND display_name='Billing Upgrade A') OR
      NOT EXISTS(SELECT 1 FROM public.v2_profiles
        WHERE user_id=owner_b AND display_name='Billing Upgrade B') OR
-     (SELECT count(*) FROM public.v2_profile_settings
-       WHERE user_id IN (owner_a,owner_b) AND version=1)<>2 OR
-     (SELECT count(*) FROM public.v2_onboarding_progress
-       WHERE user_id IN (owner_a,owner_b) AND version=1)<>2 THEN
+     NOT EXISTS(SELECT 1 FROM public.v2_profile_settings
+       WHERE user_id=owner_a AND version=3
+         AND settings #>> '{privacy,activity_visibility}'='private'
+         AND settings #>> '{training,week_starts_on}'='monday') OR
+     NOT EXISTS(SELECT 1 FROM public.v2_profile_settings
+       WHERE user_id=owner_b AND version=4
+         AND settings #>> '{privacy,activity_visibility}'='followers'
+         AND settings #>> '{training,week_starts_on}'='sunday') OR
+     NOT EXISTS(SELECT 1 FROM public.v2_onboarding_progress
+       WHERE user_id=owner_a AND version=2
+         AND completed_steps=ARRAY['focus','coach']::text[]
+         AND skipped_steps=ARRAY['availability']::text[]) OR
+     NOT EXISTS(SELECT 1 FROM public.v2_onboarding_progress
+       WHERE user_id=owner_b AND version=5
+         AND completed_steps=ARRAY['focus']::text[]
+         AND skipped_steps=ARRAY['coach']::text[]) THEN
     RAISE EXCEPTION 'Candidate upgrade lost previously committed V2 account data';
   END IF;
   IF EXISTS(SELECT 1 FROM allin_private.v2_subscription_purchases
@@ -163,10 +175,22 @@ BEGIN
       WHERE user_id=owner_a AND display_name='Billing Upgrade A') OR
      NOT EXISTS(SELECT 1 FROM public.v2_profiles
       WHERE user_id=owner_b AND display_name='Billing Upgrade B') OR
-     (SELECT count(*) FROM public.v2_profile_settings
-       WHERE user_id IN (owner_a,owner_b) AND version=1)<>2 OR
-     (SELECT count(*) FROM public.v2_onboarding_progress
-       WHERE user_id IN (owner_a,owner_b) AND version=1)<>2 THEN
+     NOT EXISTS(SELECT 1 FROM public.v2_profile_settings
+       WHERE user_id=owner_a AND version=3
+         AND settings #>> '{privacy,activity_visibility}'='private'
+         AND settings #>> '{training,week_starts_on}'='monday') OR
+     NOT EXISTS(SELECT 1 FROM public.v2_profile_settings
+       WHERE user_id=owner_b AND version=4
+         AND settings #>> '{privacy,activity_visibility}'='followers'
+         AND settings #>> '{training,week_starts_on}'='sunday') OR
+     NOT EXISTS(SELECT 1 FROM public.v2_onboarding_progress
+       WHERE user_id=owner_a AND version=2
+         AND completed_steps=ARRAY['focus','coach']::text[]
+         AND skipped_steps=ARRAY['availability']::text[]) OR
+     NOT EXISTS(SELECT 1 FROM public.v2_onboarding_progress
+       WHERE user_id=owner_b AND version=5
+         AND completed_steps=ARRAY['focus']::text[]
+         AND skipped_steps=ARRAY['coach']::text[]) THEN
     RAISE EXCEPTION 'Rollback damaged existing accounts or profile state';
   END IF;
   RAISE NOTICE 'PASS ALL-222: populated preupgrade accounts survived candidate schema, binding and rollback';
