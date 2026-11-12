@@ -122,19 +122,46 @@ begin
  end if;
  -- Only include this domain when its FULL reviewed candidate graph exists.
  -- Missing half a domain is not an empty export: reject it.
+ -- Directional social relations do not carry a user_id column. They MUST be
+ -- reviewed as a complete group, never silently left out of owner export.
+ -- Incoming *block* decisions are another actor's private information and
+ -- must not be disclosed through an account export.
  if exists(select 1 from (values
-   ('allin_private.v2_community_visibility')
+   ('allin_private.v2_community_visibility'),
+   ('allin_private.v2_community_pair_revisions'),
+   ('allin_private.v2_community_follows'),
+   ('allin_private.v2_community_blocks'),
+   ('allin_private.v2_community_action_receipts')
  ) as expected(relation_name)
  where pg_catalog.to_regclass(expected.relation_name) is not null) then
    if exists(select 1 from (values
-     ('allin_private.v2_community_visibility')
+     ('allin_private.v2_community_visibility'),
+     ('allin_private.v2_community_pair_revisions'),
+     ('allin_private.v2_community_follows'),
+     ('allin_private.v2_community_blocks'),
+     ('allin_private.v2_community_action_receipts')
    ) as expected(relation_name)
    where pg_catalog.to_regclass(expected.relation_name) is null) then
-     raise exception 'Partial community export domain schema' using errcode='42501';
+     raise exception 'Partial community relationship export domain schema' using errcode='42501';
    end if;
    select jsonb_build_object(
      'visibility',(select to_jsonb(v) from allin_private.v2_community_visibility v
-       where v.user_id=v_user)
+       where v.user_id=v_user),
+     'outgoing_follows',coalesce((select jsonb_agg(to_jsonb(f) order by f.followed_id)
+       from allin_private.v2_community_follows f where f.follower_id=v_user),'[]'::jsonb),
+     'incoming_follow_requests',coalesce((select jsonb_agg(
+       jsonb_build_object('follower_id',f.follower_id,'state',f.state,
+         'requested_at',f.requested_at,'approved_at',f.approved_at)
+       order by f.follower_id)
+       from allin_private.v2_community_follows f where f.followed_id=v_user),'[]'::jsonb),
+     'outgoing_blocks',coalesce((select jsonb_agg(to_jsonb(b) order by b.blocked_id)
+       from allin_private.v2_community_blocks b where b.blocker_id=v_user),'[]'::jsonb),
+     'my_action_receipts',coalesce((select jsonb_agg(to_jsonb(a) order by a.created_at,a.action_id)
+       from allin_private.v2_community_action_receipts a where a.actor_id=v_user),'[]'::jsonb),
+     'incoming_blocks_disclosed',false,
+     'pair_revisions_disclosed',false,
+     'relationship_export_policy','actor_owned_and_recipient_follow_requests_v1',
+     'complete_community_export',false
    ) into v_community;
  end if;
 

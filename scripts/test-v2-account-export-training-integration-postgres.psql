@@ -16,7 +16,6 @@ CREATE TABLE allin_private.v2_profile_settings_actions(user_id uuid,created_at t
 CREATE TABLE allin_private.v2_onboarding_actions(user_id uuid,created_at timestamptz);
 CREATE TABLE IF NOT EXISTS allin_private.v2_account_deletion_requests(user_id uuid);
 CREATE TABLE allin_private.v2_account_deletion_execution_audit(user_id uuid);
-\i /tmp/allin/docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql
 
