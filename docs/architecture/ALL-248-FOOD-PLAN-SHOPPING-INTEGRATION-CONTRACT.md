@@ -23,6 +23,15 @@
 - `apps/mobile-v2/src/features/kitchen/foodPlanShoppingProjection.test.ts`: seven focused regressions, invoked in the existing `test:calculator` npm script; a change to `src/features/kitchen/**` triggers existing no-deploy smoke workflow.
 - `apps/mobile-v2/src/features/fuel/`: existing guarded owner-scoped food reader/writer and manual diary UI; not to be duplicated or prematurely activated.
 
+## Implemented guarded owner-read and isolated SQL candidate (Nov 12)
+
+- `docs/architecture/sql/V2-KITCHEN-MEAL-PLAN-OWNER-CANDIDATE.sql`: **REVIEW-ONLY**, not a migration. Typed one-week owner record, day/meal-slot entries of recipe/individual food/prepared meal, one-serving recipe occurrence constraint, complete-week owner RPC, versioned/idempotent replace writer, RLS, and revoked direct client-table writes. Temporary `source_id` text is explicitly NOT acceptable for release until canonical Cookbook/Ingredient/Prepared Meal foreign-key admission is settled.
+- `scripts/test-v2-kitchen-plan-postgres.psql`: real disposable PostgreSQL 17 replay, no hosted data; validates multiple distinct foods in one lunch, owner access denial, stale update rejection, stable replay, recipe serving restrictions and empty-plan semantics. Existing no-deploy smoke workflow runs it.
+- `apps/mobile-v2/src/features/kitchen/kitchenPlanOwnerClient.ts`: single expected-owner-checked mobile RPC client and complete-week validation, enabled only by `EXPO_PUBLIC_V2_KITCHEN_PLAN_ENABLED` after approval; no live enablement.
+- `apps/mobile-v2/src/features/kitchen/KitchenWeekPlanPanel.tsx`: account-bound read-only Plan tab showing actual date/meal-slot counts **only from a complete verified response**. Otherwise says unavailable instead of making up an empty schedule. Add/edit/Start Meal Prep remain unavailable until real source/Prep writers are ready.
+- `apps/mobile-v2/src/features/kitchen/kitchenPlanDemandBridge.ts`: pure connector between verified source requirements and existing `foodPlanShoppingProjection.ts`, preserving individual foods, per-recipe quantity, Pantry available-minus-reserved, explicit prepared coverage, unresolved source identity and fractional food portions. It performs no purchase, reservation, Food Log, or Shopping writer action.
+- The focused owner-client, source bridge and Shopping projection regression tests are in the existing `test:calculator` suite. Do not mistake static tests, simulated RPCs or isolated PostgreSQL replay for live release authorization.
+
 ## Canonical integration gates not yet satisfied
 
 1. Under ALL-222/248, settle a single physical owner schema and typed owner-guarded read + versioned/idempotent plan writer for day/slot/source occurrence identities. No generic meal-plan JSON blob and no duplicate store. Integrate with ALL-228/218 canonical food and recipe identities.
