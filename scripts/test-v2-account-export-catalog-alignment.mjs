@@ -394,7 +394,7 @@ test('ALL-217/230 private owner tables must cascade with direct Auth owner FK be
    const end=ddl.indexOf('\n);',pos);
    assert(end>pos,'Owner relation definition is unbounded: '+table);
    const definition=ddl.slice(pos,end);
-   assert.match(definition,/user_id uuid NOT NULL REFERENCES auth\.users\(id\) ON DELETE CASCADE/,
+   assert.match(definition,/user_id uuid (?:NOT NULL|PRIMARY KEY) REFERENCES auth\.users\(id\) ON DELETE CASCADE/,
     'Auth direct owner cascade is required for privacy deletion: '+table);
   }
  }
