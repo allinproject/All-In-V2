@@ -1,0 +1,53 @@
+name: ALL-266 isolated Expo IAP lockfile and contract verification (no deploy)
+
+on:
+  push:
+    branches: [chore/all-266-expo-iap-lock-20261111]
+    paths:
+      - '.github/workflows/all-266-expo-iap-lock.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  lock-and-verify:
+    name: Generate real npm lock, test subscriptions, and validate Expo configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: apps/mobile-v2
+    env:
+      CI: '1'
+      EXPO_PUBLIC_SUPABASE_URL: https://xarhuczrtzuiljmtdaeu.supabase.co
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Generate official npm v3 lockfile for exact OpenIAP version
+        run: npm install expo-iap@6.4.3 --save-exact --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Validate complete dependency manifest and lockfile
+        run: node ../../scripts/check-v2-dependency-manifest.mjs --require-lockfile
+      - name: Commit verified package lock on isolated branch only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          git diff --cached --quiet && { echo 'Lockfile unchanged; refusing empty installation'; exit 1; }
+          git commit -m 'chore(ALL-266): lock expo-iap 6.4.3 from npm registry'
+          git push origin HEAD:chore/all-266-expo-iap-lock-20261111
+      - name: Clean install including native IAP module
+        run: npm ci --no-audit --no-fund
+      - name: Verify expo-iap resolves from the locked install
+        run: node -e "console.log(require.resolve('expo-iap/package.json'))"
+      - name: Test billing purchase and restore contracts
+        run: npm run test:subscriptions
+      - name: TypeScript correctness
+        run: npm run typecheck
+      - name: Validate public Expo plugin configuration
+        run: npx --no-install expo config --type public
