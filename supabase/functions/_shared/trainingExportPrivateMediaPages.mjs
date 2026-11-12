@@ -14,6 +14,7 @@ const CHUNK_BYTES=128*1024;
 const MAX_FILES=128;
 const MAX_FILE_BYTES=16*1024*1024;
 const MAX_RECORDS=MAX_FILES*Math.ceil(MAX_FILE_BYTES/CHUNK_BYTES);
+const MAX_TOTAL_BYTES=64*1024*1024;
 
 export async function createApprovedPrivateMediaPageReader({
  ownerId,requestId,snapshotId,scoped,downloadPrivateObject,
@@ -52,7 +53,7 @@ export async function createApprovedPrivateMediaPageReader({
  // Obtain immutable verified source bytes once per file to avoid mixing
  // revisions across paginated reads in the same DB snapshot. Staging is
  // bounded to 128 x 16MiB and the worker snapshot lifetime (5 minutes).
- const frozen=[];
+ const frozen=[];let totalBytes=0;
  for(const file of counts){
   const bytes=await downloadPrivateObject({
    ownerId,requestId,path:file.object_path,kind:file.kind,
@@ -61,6 +62,8 @@ export async function createApprovedPrivateMediaPageReader({
     ||bytes.byteLength>MAX_FILE_BYTES
     ||createHash('sha256').update(bytes).digest('hex')!==file.checksum_sha256)
     throw Error('Private media changed or checksum mismatch during snapshot');
+  totalBytes+=bytes.byteLength;
+  if(totalBytes>MAX_TOTAL_BYTES)throw Error('Private media snapshot exceeds memory bound');
   frozen.push({...file,bytes:Buffer.from(bytes),
    parts:Math.ceil(bytes.byteLength/CHUNK_BYTES)});
  }
@@ -76,8 +79,6 @@ export async function createApprovedPrivateMediaPageReader({
     throw Error('Unapproved private media page');
    const start=cursor===null?0:Number(cursor);
    if(start>total)throw Error('Private media cursor out of bounds');
-   const end=Math.min(total,start,0); // overwritten by exact bounded page below
-   void end;
    const stop=Math.min(total,start+Math.min(limit,4));
    const rows=[];let ordinal=0;
    for(const file of frozen){
