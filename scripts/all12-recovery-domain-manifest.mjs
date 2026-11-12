@@ -86,7 +86,7 @@ export function assessIndependentRecoveryEvidence(evidence={}) {
  */
 export function assessIndependentLogicalRecoveryEvidence(evidence={}) {
  const isText=v=>typeof v==='string'&&v.trim().length>0;
- const isUtc=v=>isText(v)&&/^\\d{4}-\\d\\d-\\d\\dT.*(?:Z|\\+00:00)$/.test(v)&&Number.isFinite(Date.parse(v));
+ const isUtc=v=>isText(v)&&/^\d{4}-\d\d-\d\dT.*(?:Z|\+00:00)$/.test(v)&&Number.isFinite(Date.parse(v));
  const nonNegative=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
  const checks=[
   ['recoveryMethod',v=>v==='independent_logical'],
