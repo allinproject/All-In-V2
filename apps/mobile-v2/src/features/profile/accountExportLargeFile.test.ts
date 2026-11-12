@@ -63,7 +63,7 @@ test('account changed after completed file verification: delete before preview',
 test('native preview error deletes sensitive temporary export',async()=>{
  const f=fixture();
  await assert.rejects(previewVerifiedLargeAccountExport({
-  ownerId:owner,file:{...f.file,preview:async()=>{throw Error('viewer failed');}},
+  ownerId:owner,file:{...f.file,get exists(){return f.file.exists;},preview:async()=>{throw Error('viewer failed');}},
   downloadToTemporaryFile:f.download,verifyFile:f.verified,stillAuthorized:async()=>true,
  }),/viewer failed/);
  assert.equal(f.file.exists,false);
@@ -71,7 +71,7 @@ test('native preview error deletes sensitive temporary export',async()=>{
 test('unknown cleanup does not claim success',async()=>{
  const f=fixture();
  await assert.rejects(previewVerifiedLargeAccountExport({
-  ownerId:owner,file:{...f.file,remove:async()=>{throw Error('cache locked');}},
+  ownerId:owner,file:{...f.file,get exists(){return f.file.exists;},remove:async()=>{throw Error('cache locked');}},
   downloadToTemporaryFile:async()=>{await f.download();throw Error('download failed');},
   verifyFile:f.verified,stillAuthorized:async()=>true,
  }),/cleanup requires manual attention/);
