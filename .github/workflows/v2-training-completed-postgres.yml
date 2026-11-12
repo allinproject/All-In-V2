@@ -160,7 +160,10 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/check-v2-applied-migration-integrity.mjs
-          supabase db start
+          # Start only the local stack and force a clean, deterministic
+          # replay. Do not depend on db start to apply pending migrations.
+          supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor
+          supabase db reset --local --no-seed
           container="$(docker ps --filter name=supabase_db_ --format '{{.ID}}' | head -n 1)"
           test -n "$container" || { echo 'Missing isolated Supabase PostgreSQL container'; exit 1; }
           docker cp scripts/test-v2-applied-foundation-local-postgres.psql "$container:/tmp/test-v2-applied-foundation-local-postgres.psql"
