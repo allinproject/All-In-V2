@@ -114,3 +114,79 @@ export function createTrainingSupabaseEvidenceAdapter({ supabase }) {
     },
   });
 }
+
+/**
+ * ALL-251 REVIEW ONLY: reconcile actual owner-owned private Storage object
+ * identity against the EXISTING canonical activity-series/route references.
+ * The privileged enumerators must be backed by an exhaustive, consistent
+ * Storage catalog query; ordinary one-directory Storage.list is not enough.
+ *
+ * This is a coverage diagnostic, not a downloadable archive or release gate
+ * approval. Future media/photo buckets MUST be explicitly classified rather
+ * than silently omitted. No Storage or authentication permissions are changed.
+ */
+export async function auditOwnerPrivateMediaCoverage({
+  ownerId,requestId,evidenceAdapter,listBucketCatalog,listOwnerStorageObjects,
+}) {
+  checkOwner(ownerId);
+  if(!UUID.test(requestId??'')
+    ||typeof evidenceAdapter?.listEvidence!=='function'
+    ||typeof listBucketCatalog!=='function'
+    ||typeof listOwnerStorageObjects!=='function')
+    throw Error('Trusted exhaustive Storage coverage dependencies required');
+  const buckets=await listBucketCatalog();
+  if(!Array.isArray(buckets)||buckets.some(b=>!b||typeof b.id!=='string'
+      ||typeof b.public!=='boolean')||new Set(buckets.map(b=>b.id)).size!==buckets.length)
+    throw Error('Unverified Storage bucket inventory');
+  const approved=new Set([TRAINING_PRIVATE_EVIDENCE_BUCKET,'v2-private-account-exports']);
+  if(buckets.some(b=>b.public||!approved.has(b.id)))
+    throw Error('Unreviewed or public Storage bucket requires media export classification');
+  const hasWorkout=buckets.some(b=>b.id===TRAINING_PRIVATE_EVIDENCE_BUCKET);
+  if(!hasWorkout)
+    throw Error('Canonical private workout bucket missing from coverage audit');
+  // Private account-export archives are generated output, NOT source media.
+  // Their separate retention/purge acceptance remains independently required.
+  const evidence=await evidenceAdapter.listEvidence(ownerId,requestId);
+  if(evidence?.ownerId!==ownerId||!Array.isArray(evidence.series)
+    ||!Array.isArray(evidence.routes))
+    throw Error('Canonical private evidence owner mismatch');
+  const sources=[...evidence.series,...evidence.routes];
+  if(sources.length>MAX_OBJECTS)throw Error('Canonical owner media object limit exceeded');
+  const expected=new Set();
+  for(const row of sources){
+    if(row?.user_id!==ownerId||typeof row?.object_path!=='string'
+      ||!row.object_path.startsWith(ownerId+'/')||!SHA.test(row.checksum_sha256??'')
+      ||expected.has(row.object_path))
+      throw Error('Invalid or duplicated canonical media reference');
+    expected.add(row.object_path);
+  }
+  const observed=await listOwnerStorageObjects({
+    ownerId,requestId,bucketId:TRAINING_PRIVATE_EVIDENCE_BUCKET,
+  });
+  if(observed?.ownerId!==ownerId
+    ||observed?.bucketId!==TRAINING_PRIVATE_EVIDENCE_BUCKET
+    ||observed?.exhaustive!==true
+    ||!Number.isSafeInteger(observed.totalCount)
+    ||observed.totalCount<0
+    ||!Array.isArray(observed.paths)
+    ||observed.paths.length!==observed.totalCount
+    ||observed.paths.length>MAX_OBJECTS)
+    throw Error('Storage inventory incomplete or unbounded');
+  const seen=new Set();
+  for(const path of observed.paths){
+    if(typeof path!=='string'||!path.startsWith(ownerId+'/')
+      ||path.includes('..')||path.includes('//')||path.includes('\\')
+      ||seen.has(path)||!expected.has(path))
+      throw Error('Unreferenced, foreign or duplicate private media object');
+    seen.add(path);
+  }
+  if(seen.size!==expected.size)
+    throw Error('Canonical media reference has no corresponding Storage object');
+  return Object.freeze({
+    ownerId,requestId,referencedObjects:expected.size,
+    observedObjects:seen.size,sourceBuckets:[TRAINING_PRIVATE_EVIDENCE_BUCKET],
+    exportArchiveBucketPresent:buckets.some(b=>b.id==='v2-private-account-exports'),
+    referencesReconciled:true,
+    bytesVerified:false,completeUserExport:false,
+  });
+}
