@@ -16,8 +16,8 @@ if(!['1','true'].includes(process.env.CI??''))
 const hosted=process.env.ALL251_ALLOW_HOSTED_TEST==='true';
 const vars=hosted ? {
  API_URL:process.env.ALL251_HOSTED_URL,
- SERVICE_ROLE_KEY:process.env.ALL251_HOSTED_SERVICE_ROLE_KEY,
- ANON_KEY:process.env.ALL251_HOSTED_ANON_KEY,
+ SERVICE_ROLE_KEY:process.env.ALL251_HOSTED_SECRET_KEY,
+ ANON_KEY:process.env.ALL251_HOSTED_PUBLISHABLE_KEY,
 } : (() => {
  const envText=execFileSync('supabase',['status','-o','env'],{
   encoding:'utf8',timeout:15000,
@@ -33,6 +33,11 @@ if(typeof vars.SERVICE_ROLE_KEY!=='string'||vars.SERVICE_ROLE_KEY.length<40
  ||typeof vars.ANON_KEY!=='string'||vars.ANON_KEY.length<20)
  throw Error('Trusted ephemeral Storage test credentials unavailable');
 if(hosted){
+ // Modern keys identify the caller, not the signed-in user: keep API keys
+ // exclusively in apikey, never forge an Authorization bearer JWT.
+ if(!/^sb_secret_[A-Za-z0-9_-]+$/.test(vars.SERVICE_ROLE_KEY)
+  ||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(vars.ANON_KEY))
+  throw Error('Hosted Storage requires modern staging-only API keys');
  // ONLY the separately approved, temporary $10/month staging project.
  // Even if the environment is compromised, the script will not use live V2.
  if(process.env.ALL251_HOSTED_PROJECT_REF!=='fbtgknlxjyeqrxemskbl'
@@ -55,7 +60,7 @@ const original=new Map([[p1,series],[p2,route]]);
 const insertedBuckets=[];const uploaded=[];
 function encPath(p){return p.split('/').map(encodeURIComponent).join('/');}
 async function api(method,path,{data,body,token=vars.SERVICE_ROLE_KEY,contentType='application/json',ok=true}={}){
- const headers={apikey:token,authorization:'Bearer '+token};
+ const headers=hosted?{apikey:token}:{apikey:token,authorization:'Bearer '+token};
  let payload=body;
  if(data!==undefined){payload=JSON.stringify(data);headers['Content-Type']='application/json';}
  else if(body!==undefined)headers['Content-Type']=contentType;
