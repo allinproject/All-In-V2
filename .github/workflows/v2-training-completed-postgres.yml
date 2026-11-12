@@ -290,7 +290,7 @@ jobs:
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -c "UPDATE auth.sessions SET not_after=now()+interval '1 day' WHERE id='11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; UPDATE allin_private.v2_device_registrations_candidate SET revoked_at=NULL WHERE device_ref='paired-trainer-42'"
           docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -c "INSERT INTO public.v2_activity_metric_definitions(metric_code,definition_version,display_name,canonical_unit,value_kind,sport_scope,measurement_kinds,display_group,privacy_class,status) VALUES ('ingest_runtime_metric',1,'Runtime metric','units','numeric',ARRAY['cycling'],ARRAY['source_measured'],'other','private','published')"
           deno check supabase/functions/v2-device-ingest/index.ts
-          deno test --allow-env=ALLIN_PG_TEST_URL,ALLIN_PG_ADMIN_URL --allow-net scripts/test-v2-device-ingest-postgres-runtime.ts
+          deno test --allow-env --allow-net scripts/test-v2-device-ingest-postgres-runtime.ts
 
   authenticated-device-ingest-contract:
     name: ALL-243 authenticated device ingest transaction contracts (Node)
