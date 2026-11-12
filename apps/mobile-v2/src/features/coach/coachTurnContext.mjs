@@ -77,6 +77,34 @@ export function prepareCoachTurnContext(input) {
   if (!model.events.every(e => e && validId(e.id) && validTime(e.occurredAt) &&
       validTime(e.recordedAt) && validId(e.summary) &&
       Date.parse(e.occurredAt) <= Date.parse(e.recordedAt))) return blocked("events_invalid");
+  // A current accepted calendar day is distinct from completed history.
+  // Keep its original structured session-intent blocks, not a generated or
+  // chat-derived description of the routine. Invalid/mixed-day data blocks.
+  const day = model.plannedDay;
+  if (day !== undefined && (
+      !day || day.verified !== true || !validDate(day.localDate) ||
+      day.localDate !== model.requested.fromDate ||
+      day.localDate !== model.requested.throughDate ||
+      !Array.isArray(day.calendarDays) || day.calendarDays.length > 64 ||
+      !Array.isArray(day.sessions) || day.sessions.length > 8 ||
+      JSON.stringify(day.sessions).length > 16000 ||
+      day.calendarDays.some(d => !d || !validId(d.planId) ||
+        !validId(d.revisionId) ||
+        !["planned","rest","recovery","unavailable","race","review_required"].includes(d.dayState)) ||
+      day.sessions.some(s => !s || !validId(s.sessionId) ||
+        !validId(s.planId) || !validId(s.revisionId) ||
+        s.localDate !== day.localDate ||
+        !model.requested.sports.includes(s.sport) ||
+        !validId(s.sessionKind) || !validId(s.purpose) ||
+        s.intentSchemaVersion !== "session-intent-v1" ||
+        !s.intent || typeof s.intent !== "object" ||
+        Array.isArray(s.intent) ||
+        !day.calendarDays.some(d => d.planId === s.planId &&
+          d.revisionId === s.revisionId)))) {
+    return blocked("planned_day_invalid");
+  }
+  if (day && new Set(day.sessions.map(s => s.sessionId)).size !== day.sessions.length)
+    return blocked("planned_day_invalid");
   if (model.completeness === "complete_for_requested_scope") {
     const allCovered = model.requested.sports.every(sport => {
       const reports = model.coverage.filter(c => c.sport === sport);
@@ -121,6 +149,7 @@ export function prepareCoachTurnContext(input) {
       id:e.id,kind:e.kind,sport:e.sport,occurredAt:e.occurredAt,
       source:e.source,canonicalRef:e.canonicalRef,summary:e.summary,confidence:e.confidence
     })),
+    plannedDay:day===undefined?null:day,
     priorConversation:anchors,
     noWriteAuthority:true
   };
