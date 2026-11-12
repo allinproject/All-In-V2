@@ -76,7 +76,7 @@ Aggregated or de-identified information that cannot reasonably be linked to an i
 
 ### Account Deletion
 
-During the founder beta, you may request account or personal-information deletion by contacting **durbenventures@gmail.com**. Requests may require identity verification before processing and will be handled subject to applicable law. An in-app Privacy & Data deletion workflow may be introduced once it has been built and validated; this policy does not represent that workflow as currently available.
+The V2 application currently offers signed-in users an in-app way to submit an account-deletion request, view its status, and cancel the request while it is still pending. **Submitting a request does not immediately delete your account or personal information.** The secure deletion processor is not yet enabled, and permanent deletion has not been validated as a completed service. For privacy or deletion questions you may contact **durbenventures@gmail.com**; requests may require identity verification and will be handled subject to applicable law. This description of current request intake is not a representation that the complete account-deletion lifecycle is ready for release.
 
 Account deletion is intended to delete the user's ALL IN 365 account and associated personal information that we are not legally required or otherwise permitted to retain.
 
