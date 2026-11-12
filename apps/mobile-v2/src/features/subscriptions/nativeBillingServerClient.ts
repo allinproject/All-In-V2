@@ -8,7 +8,7 @@ import type {NativeBillingServer,NativePurchaseEvidence} from './nativeBillingFl
  */
 type Result=Readonly<{data?:unknown;error?:unknown;response?:{status?:number}}>;
 export type BillingFunctionsClient=Readonly<{
-  invoke:(name:string,options:{method:'GET'|'POST';body?:unknown})=>Promise<Result>;
+  invoke:(name:string,options:{method:'GET'|'POST';body?:Record<string,unknown>})=>Promise<Result>;
 }>;
 const uuid=(s:unknown):s is string=>typeof s==='string'&&
   /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(s);
