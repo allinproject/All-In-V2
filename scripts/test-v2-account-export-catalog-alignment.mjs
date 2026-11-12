@@ -206,7 +206,7 @@ test('ALL-251 owner-only Community post projection stays gated and excludes thir
 
 test('ALL-251 gated Food Log projection exports deleted owner history, not private action fingerprints',()=>{
  const marker="ELSIF p_collection='public.v2_food_log_entries' THEN";
- const begin=reader.indexOf(marker),end=reader.indexOf(" ELSIF p_collection='community.my_posts' THEN",begin);
+ const begin=reader.indexOf(marker),end=reader.indexOf(" ELSIF p_collection='public.v2_hydration_events' THEN",begin);
  assert(begin>0&&end>begin,'Gated ALL-247 food projection missing');
  const projection=reader.slice(begin,end);
  for(const field of ["'id'","'user_id'","'consumed_at'","'local_date'",
