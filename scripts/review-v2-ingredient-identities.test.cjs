@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {normalize,review,reviewSourceBindings}=require('./review-v2-ingredient-identities.cjs');
+const {normalize,review,reviewSourceBindings,reviewAliasAndPreparationAcceptance}=require('./review-v2-ingredient-identities.cjs');
 function food(key,state='cooked') {return {source_profile_key:key,canonical_name:'Chicken breast',
   identity_kind:'generic_food',preparation_state:state,locale:'en',
   aliases:['Chicken breast, boneless']};}
@@ -107,4 +107,49 @@ test('missing source, duplicate binding, and wrong archive fail closed',()=>{
  assert(reviewSourceBindings(wrong,evidence).issues.some(x=>x.code==='archive_hash_mismatch'));
  const missing=JSON.parse(JSON.stringify(original));missing.bindings.pop();
  assert(reviewSourceBindings(missing,evidence).issues.some(x=>x.code==='reviewed_source_coverage_mismatch'));
+});
+
+test('eight reviewed alias scopes are disjoint, form-specific and remain unapproved',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const root=path.join(__dirname,'../docs/evidence/');
+ const aliases=JSON.parse(fs.readFileSync(path.join(root,'ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'),'utf8'));
+ const sources=JSON.parse(fs.readFileSync(path.join(root,'ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'),'utf8'));
+ const r=reviewAliasAndPreparationAcceptance(aliases,sources);
+ assert.equal(r.structuralScopePassed,true);
+ assert.equal(r.recordCount,8);
+ assert.equal(r.canonicalIdentityApproved,false);
+ assert.equal(r.calculationReady,false);
+ assert.equal(r.publicationApproved,false);
+ assert.equal(r.requiresDomainOwnerAcceptance,true);
+});
+test('cannot promote ambiguous canned bean aliases or yield across states',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const root=path.join(__dirname,'../docs/evidence/');
+ const original=JSON.parse(fs.readFileSync(path.join(root,'ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'),'utf8'));
+ const sources=JSON.parse(fs.readFileSync(path.join(root,'ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'),'utf8'));
+ const clone=()=>JSON.parse(JSON.stringify(original));
+ const badAlias=clone(),beans=badAlias.records.find(x=>x.source_profile_key==='beans_kidney_canned_drained');
+ beans.exact_alias_candidates.push({value:'kidney beans',kind:'source_scoped_exact',preparation_state:'cooked_drained',
+ selection_scope:'requires_explicit_source_form_confirmation',status:'pending_owner_acceptance'});
+ assert(reviewAliasAndPreparationAcceptance(badAlias,sources).issues.some(x=>x.code==='search_only_alias_promoted_to_exact'));
+ const badState=clone();badState.records[0].preparation_state='raw';
+ assert(reviewAliasAndPreparationAcceptance(badState,sources).issues.some(x=>x.code==='source_identity_or_preparation_scope_mismatch'));
+ const badApprove=clone();badApprove.records[0].canonical_identity_approved=true;
+ assert(reviewAliasAndPreparationAcceptance(badApprove,sources).issues.some(x=>x.code==='source_identity_or_preparation_scope_mismatch'));
+});
+test('cross-source exact alias collisions, missing records and premature document approval fail closed',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const root=path.join(__dirname,'../docs/evidence/');
+ const original=JSON.parse(fs.readFileSync(path.join(root,'ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'),'utf8'));
+ const sources=JSON.parse(fs.readFileSync(path.join(root,'ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json'),'utf8'));
+ const clone=()=>JSON.parse(JSON.stringify(original));
+ const collisions=clone(),a=collisions.records[0].exact_alias_candidates[0];
+ collisions.records[1].exact_alias_candidates.push({...a,preparation_state:collisions.records[1].preparation_state});
+ assert.equal(reviewAliasAndPreparationAcceptance(collisions,sources).structuralScopePassed,true); // separate preparation-state scopes
+ collisions.records[2].exact_alias_candidates.push({...collisions.records[1].exact_alias_candidates[0]});
+ assert(reviewAliasAndPreparationAcceptance(collisions,sources).issues.some(x=>x.code==='cross_source_exact_alias_collision'));
+ const missing=clone();missing.records.pop();
+ assert(reviewAliasAndPreparationAcceptance(missing,sources).issues.some(x=>x.code==='incomplete_source_alias_coverage'));
+ const approval=clone();approval.canonicalIdentityApproved=true;
+ assert(reviewAliasAndPreparationAcceptance(approval,sources).issues.some(x=>x.code==='alias_document_claims_unapproved_authority'));
 });
