@@ -58,9 +58,12 @@ test('exports >5MB of owner history in bounded encrypted pages and streams exact
  assert(Buffer.byteLength(output)>5*1024*1024);
  const lines=output.trimEnd().split('\n').map(line=>JSON.parse(line));
  assert.equal(lines[0].records,251);
- assert.equal(lines.length,252);
+ assert.equal(lines.length,253);
  assert.equal(lines[1].collection,'coach_messages');
- assert.equal(lines.at(-1).collection,'completed_activities');
+ assert.equal(lines.at(-2).collection,'completed_activities');
+ assert.equal(lines.at(-1).export_complete,true);
+ assert.equal(lines.at(-1).records,251);
+ assert.match(lines.at(-1).sha256,/^[a-f0-9]{64}$/);
  assert(f.authCalls>receipt.pageCount+3);
  assert.equal(f.purges,0);
 });
