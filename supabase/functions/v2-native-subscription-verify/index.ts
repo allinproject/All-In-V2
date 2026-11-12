@@ -191,6 +191,9 @@ Deno.serve(async(req:Request)=>{
   if(result.status==="purchase_owned_by_another_account")
     return reply(409,"purchase_owned_by_another_account");
   if(result.status==="acknowledgement_required")
-    return reply(503,"acknowledgement_required");
+    // Pending store acknowledgement is not a transport failure or paid access.
+    // Supabase functions.invoke treats non-2xx as errors; use 202 so the
+    // client can surface purchase_pending without granting entitlement.
+    return reply(202,"acknowledgement_required");
   return reply(503,"verification_unavailable");
 });
