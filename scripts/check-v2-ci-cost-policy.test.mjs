@@ -16,7 +16,17 @@ const triggers = workflow => {
 
 test('paid V2 engineering validation cannot run automatically on integration push or draft PR', () => {
   const events = triggers(engineering);
-  assert.doesNotMatch(events, /^  push:/m);
+  // A targeted, workflow-file-only push may validate edits to this CI
+  // workflow. Ordinary integration source pushes must never run full builds.
+  if (/^  push:/m.test(events)) {
+    const pushBlock=events.match(/^  push:\n([\s\S]*?)(?=^  pull_request:|^  workflow_dispatch:|^  [a-z_]+:|$)/m);
+    assert.ok(pushBlock,'Engineering push trigger must be bounded');
+    assert.match(pushBlock[1], /branches: \[integration\/v2-foundation\]/);
+    assert.match(pushBlock[1], /paths:\n\s+- '\.github\/workflows\/v2-engineering\.yml'/);
+    const allowedPaths=[...pushBlock[1].matchAll(/^\s+- '([^']+)'/gm)].map(m=>m[1]);
+    assert.deepEqual(allowedPaths,['.github/workflows/v2-engineering.yml'],
+      'Engineering push must be restricted to its own workflow file');
+  }
   assert.match(events, /^  pull_request:/m);
   assert.match(events, /ready_for_review/);
   assert.match(events, /^  workflow_dispatch:/m);
