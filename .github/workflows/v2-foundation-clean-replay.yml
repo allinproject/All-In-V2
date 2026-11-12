@@ -7,6 +7,7 @@ on:
       - '.github/workflows/v2-foundation-clean-replay.yml'
       - 'docs/architecture/sql/V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-EVENTHUB-IDENTITY-MEMBERSHIP-PARTICIPATION-CANDIDATE.sql'
+      - 'scripts/test-all12-eventhub-populated-restore-local.sh'
       - 'docs/architecture/sql/V2-EVENTHUB-OWNER-EVENT-PLAN-READER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-EVENTHUB-MEMBERSHIP-WRITER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-EVENTHUB-EVENT-VERSION-GUARD-CANDIDATE.sql'
