@@ -1,0 +1,86 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {certifySeasonAgainstGoalEventOwners} from './canonicalEventGoalApprovalGate.ts';
+import type {CanonicalEventGoalApproval} from './canonicalEventGoalApprovalGate.ts';
+import type {SeasonEvent} from './multiEventSeasonPlan.ts';
+const owner='athlete',generation=4,revision='rev-1',token='snapshot-1';
+const events:SeasonEvent[]=[
+ {id:'event-a',date:'2027-04-10',name:'Trail run',sport:'running',priority:'A',demand:'endurance'},
+ {id:'event-b',date:'2027-06-12',name:'Cycling event',sport:'cycling',priority:'B',demand:'endurance'}
+];
+function dates(){
+ const out:string[]=[];
+ for(let t=Date.parse('2027-04-01T12:00:00Z');t<=Date.parse('2027-06-12T12:00:00Z');t+=86400000)
+  out.push(new Date(t).toISOString().slice(0,10));
+ return out;
+}
+function fixture(){
+ const input={
+  expectedOwnerId:owner,authenticatedOwnerId:owner,activeSessionGeneration:generation,
+  accessGateReady:true,activePlanRevisionId:revision,startDate:'2027-04-01',events,
+  plannedSnapshot:{ownerId:owner,authSessionGeneration:generation,fromDate:'2027-04-01',
+    throughDate:'2027-06-12',snapshotVersion:token,complete:true,nextCursor:null as string|null,
+    records:events.map((e,i)=>({id:'session-'+i,ownerId:owner,planRevisionId:revision,
+      athleteLocalDate:e.date,sport:e.sport,state:'planned' as const}))},
+  daySnapshot:{ownerId:owner,authSessionGeneration:generation,fromDate:'2027-04-01',
+    throughDate:'2027-06-12',snapshotVersion:token,complete:true,nextCursor:null as string|null,
+    records:dates().map((day,i)=>({id:'day-'+i,ownerId:owner,planRevisionId:revision,
+       athleteLocalDate:day,dayState:events.some(e=>e.date===day)?'race' as const:'rest' as const}))},
+  competitionSnapshot:{ownerId:owner,authSessionGeneration:generation,fromDate:'2027-04-01',
+    throughDate:'2027-06-12',snapshotVersion:token,complete:true,nextCursor:null as string|null,
+    records:events.map((e,i)=>({eventId:e.id,sessionId:'session-'+i,planRevisionId:revision,
+      ownerId:owner,athleteLocalDate:e.date,sport:e.sport,priority:e.priority,
+      competitionConfirmed:true as const}))}
+ };
+ const proofs:CanonicalEventGoalApproval={
+  eventSnapshot:{ownerId:owner,authSessionGeneration:generation,complete:true,nextCursor:null,
+    snapshotVersion:token,events:events.map(e=>({eventId:e.id,ownerId:owner,eventVersion:2,
+     date:e.date,timezone:'America/Chicago',sport:e.sport,
+     verification:'organizer_verified',participation:'athlete_confirmed',
+     evidenceGeneration:generation}))},
+  goalSnapshot:{ownerId:owner,authSessionGeneration:generation,complete:true,nextCursor:null,
+    snapshotVersion:token,goals:events.map(e=>({goalId:'goal-'+e.id,ownerId:owner,
+     goalRevisionId:'goal-rev-'+e.id,goalVersion:3,status:'accepted',
+     targetEventId:e.id,startDate:null,targetDate:e.date}))}
+ };
+ return {input,proofs};
+}
+test('two different sports and two events are retained for review only',()=>{
+ const {input,proofs}=fixture();const result=certifySeasonAgainstGoalEventOwners(input,proofs);
+ assert.equal(result.status,'review_required');if(result.status==='unavailable')throw Error(result.reason);
+ assert.deepEqual(result.proposal.events.map(e=>e.id),events.map(e=>e.id));
+ assert.equal(result.proposal.invariants.noAutomaticWrite,true);
+});
+test('missing certification and EventHub group membership do not become race evidence',()=>{
+ const {input,proofs}=fixture();
+ assert.equal(certifySeasonAgainstGoalEventOwners(input,null).status,'unavailable');
+ proofs.eventSnapshot.events=[{...proofs.eventSnapshot.events[0],participation:'group_member'},
+  proofs.eventSnapshot.events[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(input,proofs).status,'unavailable');
+});
+test('stale event version/date and uncoupled goal are not accepted',()=>{
+ const f=fixture();f.proofs.eventSnapshot.events=[{...f.proofs.eventSnapshot.events[0],date:'2027-04-11'},
+  f.proofs.eventSnapshot.events[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(f.input,f.proofs).status,'unavailable');
+ const g=fixture();g.proofs.goalSnapshot.goals=[{...g.proofs.goalSnapshot.goals[0],targetEventId:null},
+  g.proofs.goalSnapshot.goals[1]];
+ assert.equal(certifySeasonAgainstGoalEventOwners(g.input,g.proofs).status,'unavailable');
+});
+test('cross-account, cursor, snapshot version and session generation fail closed',()=>{
+ const cases=[
+  (f:ReturnType<typeof fixture>)=>{f.proofs.goalSnapshot.ownerId='other';},
+  (f:ReturnType<typeof fixture>)=>{f.proofs.eventSnapshot.nextCursor='next';},
+  (f:ReturnType<typeof fixture>)=>{f.proofs.goalSnapshot.snapshotVersion='old';},
+  (f:ReturnType<typeof fixture>)=>{f.proofs.eventSnapshot.authSessionGeneration=5;},
+  (f:ReturnType<typeof fixture>)=>{f.input.authenticatedOwnerId='other';},
+ ];
+ for(const change of cases){const f=fixture();change(f);
+  assert.equal(certifySeasonAgainstGoalEventOwners(f.input,f.proofs).status,'unavailable');}
+});
+test('undated qualitative goal can coexist without manufacturing an event',()=>{
+ const f=fixture();f.proofs.goalSnapshot.goals=[...f.proofs.goalSnapshot.goals,{
+  goalId:'qualitative',ownerId:owner,goalRevisionId:'q-rev',goalVersion:1,
+  status:'accepted',targetEventId:null,startDate:null,targetDate:null
+ }];
+ assert.equal(certifySeasonAgainstGoalEventOwners(f.input,f.proofs).status,'review_required');
+});
