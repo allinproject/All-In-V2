@@ -103,3 +103,13 @@ The canonical release sources remain the **two original SQL candidates**, in thi
 Run `node scripts/attest-v2-billing-release-sources.mjs` in a checked-out copy of the **current** integration branch before seeking approval. This **read-only** command produces SHA-256 digests for each SQL source and the combined ordered contents, the count of service grants, and `ok/problems`. Its source tests reject an absent canonical table, a missing private-RLS/invoker marker, grants to `anon`/`authenticated`/`PUBLIC`, a broad `GRANT ALL`, and new destructive role/schema operations. The existing disposable PostgreSQL function catalog, owner-identity, role/RLS and race tests remain mandatory: a structural attestor is **not** a SQL compiler or a security review.
 
 **Release sign-off rule:** Record the branch commit SHA and all three digests in ALL-222 alongside the reviewed SQL text and the real target migration baseline. If any source digest changes before conversion to a versioned migration, re-run the full isolated tests and require renewed approval. The attestor deliberately **does not** generate or write a versioned migration, mark a release ready, access live Supabase or approve a deployment. This leaves the two existing candidate files as the single source of truth until ALL-222 authorization.
+
+### Recorded read-only source fingerprint — 2026-11-12
+
+GitHub [no-deploy subscription job #43188282991](https://github.com/allinproject/All-In-V2/actions/runs/43188282991) executed the canonical read-only attestor successfully at workflow source SHA `8b8f600eccbb29983a47c3b6ed6b6725f51f758c`, returning **`ok=true`, 25 service-role grants** and the following exact UTF-8 SHA-256 values:
+
+- Ledger SQL: `426af7882638133489ac74f594ab19468150d0d0985026d26dde3b7b9c72f429`
+- Service grants SQL: `010865bf1c0306415628dffa5bba41462396f0285c2fb23d6df552a959d60615`
+- Ordered ledger + grants with release-order separator: `04491ad84c6c3d9d085f480c5ef7bfa20cd34dd096999e0e456931f846acdeeb`
+
+These fingerprints reflect **review-only candidate sources**, not an approval signature. Before converting to versioned migrations, rerun the command on the latest branch and compare all three hashes; changes require a new review. The read-only postdeployment catalog SQL `scripts/verify-v2-billing-postdeploy-readonly.psql` passed its disposable local foundation step in [run #43188105880](https://github.com/allinproject/All-In-V2/actions/runs/43188105880). That isolated pass is not evidence of a live deployment.
