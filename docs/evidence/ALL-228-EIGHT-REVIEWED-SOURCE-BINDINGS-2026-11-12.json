@@ -1,0 +1,381 @@
+{
+  "contract": "ALL-228 canonical Ingredient Database candidate-source bindings; review only, NOT seed",
+  "owner": "ALL-228",
+  "relatedOwner": "ALL-222",
+  "status": "source_evidence_applied_pending_individual_identity_and_nutrient_review",
+  "sourceEvidencePath": "docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json",
+  "sourceEvidenceArchiveSha256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579",
+  "reviewState": "needs_review",
+  "calculationReady": false,
+  "approvedForPublication": false,
+  "authorizedToWrite": false,
+  "bindings": [
+    {
+      "source_profile_key": "milk_cottage_2pct",
+      "proposed_identity_kind": "generic_food",
+      "proposed_preparation_state": "prepared",
+      "reviewed_source_reference": {
+        "provider": "usda_fdc",
+        "source_data_type": "Foundation",
+        "external_record_id": "328841",
+        "source_url": "https://fdc.nal.usda.gov/food-details/328841/nutrients",
+        "evidence_role": "primary_candidate_not_approved",
+        "source_food_description": "Cheese, cottage, lowfat, 2% milkfat"
+      },
+      "source_form_qualifiers": [
+        "2% milkfat",
+        "lowfat cottage cheese"
+      ],
+      "alias_scope_review": "generic_nonbranded_only",
+      "nutrition_evidence": {
+        "basis_quantity": 100,
+        "basis_unit": "g",
+        "energy_source_nutrient_id": 1008,
+        "alternative_energy_source_nutrient_id": null,
+        "energy_selection_status": "pending_ALL-225_energy_policy",
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+      },
+      "conversion_review": {
+        "source_food_portion_evidence": [
+          {
+            "quantity": "1 cup",
+            "grams": 220
+          },
+          {
+            "quantity": "RACC",
+            "grams": 55
+          }
+        ],
+        "household_and_purchase_yields_approved": false
+      },
+      "source_identity_verified_for_review": true,
+      "canonical_v2_id": null,
+      "identity_approval": "pending_reviewer",
+      "profile_approval": "pending_reviewer",
+      "review_caveats": [
+        "generic sample is not any exact branded formulation",
+        "verify exact product or limit generic fallback scope",
+        "verify launch micronutrient coverage and provenance rights"
+      ]
+    },
+    {
+      "source_profile_key": "red_onion_raw",
+      "proposed_identity_kind": "generic_food",
+      "proposed_preparation_state": "raw",
+      "reviewed_source_reference": {
+        "provider": "usda_fdc",
+        "source_data_type": "Foundation",
+        "external_record_id": "790577",
+        "source_url": "https://fdc.nal.usda.gov/food-details/790577/nutrients",
+        "evidence_role": "primary_candidate_not_approved",
+        "source_food_description": "Onions, red, raw"
+      },
+      "source_form_qualifiers": [
+        "red onion",
+        "raw edible"
+      ],
+      "alias_scope_review": "raw_only",
+      "nutrition_evidence": {
+        "basis_quantity": 100,
+        "basis_unit": "g",
+        "energy_source_nutrient_id": 1008,
+        "alternative_energy_source_nutrient_id": null,
+        "energy_selection_status": "pending_ALL-225_energy_policy",
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+      },
+      "conversion_review": {
+        "source_food_portion_evidence": [
+          {
+            "quantity": "1 edible onion",
+            "grams": 197
+          },
+          {
+            "quantity": "RACC",
+            "grams": 85
+          }
+        ],
+        "household_and_purchase_yields_approved": false
+      },
+      "source_identity_verified_for_review": true,
+      "canonical_v2_id": null,
+      "identity_approval": "pending_reviewer",
+      "profile_approval": "pending_reviewer",
+      "review_caveats": [
+        "do not apply to yellow onion, cooked onion or trimmed grocery purchase mass",
+        "1 onion = 197 g is source-specific portion, not every onion"
+      ]
+    },
+    {
+      "source_profile_key": "cabbage_green_raw",
+      "proposed_identity_kind": "generic_food",
+      "proposed_preparation_state": "raw",
+      "reviewed_source_reference": {
+        "provider": "usda_fdc",
+        "source_data_type": "Foundation",
+        "external_record_id": "2346407",
+        "source_url": "https://fdc.nal.usda.gov/food-details/2346407/nutrients",
+        "evidence_role": "primary_candidate_not_approved",
+        "source_food_description": "Cabbage, green, raw"
+      },
+      "source_form_qualifiers": [
+        "green cabbage",
+        "raw"
+      ],
+      "alias_scope_review": "chopped_cut_is_not_source_portion_conversion",
+      "nutrition_evidence": {
+        "basis_quantity": 100,
+        "basis_unit": "g",
+        "energy_source_nutrient_id": 2048,
+        "alternative_energy_source_nutrient_id": 2047,
+        "energy_selection_status": "pending_ALL-225_energy_policy",
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+      },
+      "conversion_review": {
+        "source_food_portion_evidence": [
+          {
+            "quantity": "RACC",
+            "grams": 85
+          }
+        ],
+        "household_and_purchase_yields_approved": false
+      },
+      "source_identity_verified_for_review": true,
+      "canonical_v2_id": null,
+      "identity_approval": "pending_reviewer",
+      "profile_approval": "pending_reviewer",
+      "review_caveats": [
+        "V1 cup chopped 89 g is NOT evidenced by this archive member; avoid approving this household conversion from this record",
+        "no cooked cabbage substitution or trimming/cooking yields",
+        "source uses 2048 specific-factor vs 2047 general-factor energy; select by explicit calorie policy"
+      ]
+    },
+    {
+      "source_profile_key": "black_beans_canned_drained",
+      "proposed_identity_kind": "generic_food",
+      "proposed_preparation_state": "cooked_drained",
+      "reviewed_source_reference": {
+        "provider": "usda_fdc",
+        "source_data_type": "Foundation",
+        "external_record_id": "2644285",
+        "source_url": "https://fdc.nal.usda.gov/food-details/2644285/nutrients",
+        "evidence_role": "primary_candidate_not_approved",
+        "source_food_description": "Beans, black, canned, sodium added, drained and rinsed"
+      },
+      "source_form_qualifiers": [
+        "black beans",
+        "canned",
+        "sodium added",
+        "drained and rinsed"
+      ],
+      "alias_scope_review": "restrict_sodium_added_drained_rinsed",
+      "nutrition_evidence": {
+        "basis_quantity": 100,
+        "basis_unit": "g",
+        "energy_source_nutrient_id": 2048,
+        "alternative_energy_source_nutrient_id": 2047,
+        "energy_selection_status": "pending_ALL-225_energy_policy",
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+      },
+      "conversion_review": {
+        "source_food_portion_evidence": [
+          {
+            "quantity": "RACC",
+            "grams": 130
+          }
+        ],
+        "household_and_purchase_yields_approved": false
+      },
+      "source_identity_verified_for_review": true,
+      "canonical_v2_id": null,
+      "identity_approval": "pending_reviewer",
+      "profile_approval": "pending_reviewer",
+      "review_caveats": [
+        "V1 generic canned beans label omits sodium-added qualifier",
+        "drainage yield from purchased can NOT available",
+        "cannot substitute dry, un-rinsed, no-salt or specific branded beans"
+      ]
+    },
+    {
+      "source_profile_key": "chickpeas_canned_drained_rinsed",
+      "proposed_identity_kind": "generic_food",
+      "proposed_preparation_state": "cooked_drained",
+      "reviewed_source_reference": {
+        "provider": "usda_fdc",
+        "source_data_type": "Foundation",
+        "external_record_id": "2644288",
+        "source_url": "https://fdc.nal.usda.gov/food-details/2644288/nutrients",
+        "evidence_role": "primary_candidate_not_approved",
+        "source_food_description": "Chickpeas (garbanzo beans, bengal gram), canned, sodium added, drained and rinsed"
+      },
+      "source_form_qualifiers": [
+        "chickpeas",
+        "canned",
+        "sodium added",
+        "drained and rinsed"
+      ],
+      "alias_scope_review": "restrict_sodium_added_drained_rinsed",
+      "nutrition_evidence": {
+        "basis_quantity": 100,
+        "basis_unit": "g",
+        "energy_source_nutrient_id": 2048,
+        "alternative_energy_source_nutrient_id": 2047,
+        "energy_selection_status": "pending_ALL-225_energy_policy",
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+      },
+      "conversion_review": {
+        "source_food_portion_evidence": [
+          {
+            "quantity": "RACC",
+            "grams": 130
+          }
+        ],
+        "household_and_purchase_yields_approved": false
+      },
+      "source_identity_verified_for_review": true,
+      "canonical_v2_id": null,
+      "identity_approval": "pending_reviewer",
+      "profile_approval": "pending_reviewer",
+      "review_caveats": [
+        "V1 profile omits sodium-added qualifier",
+        "cannot infer drained mass from unopened can",
+        "do not use for dry, no-salt or un-rinsed beans"
+      ]
+    },
+    {
+      "source_profile_key": "beans_kidney_canned_drained",
+      "proposed_identity_kind": "generic_food",
+      "proposed_preparation_state": "cooked_drained",
+      "reviewed_source_reference": {
+        "provider": "usda_fdc",
+        "source_data_type": "Foundation",
+        "external_record_id": "2644289",
+        "source_url": "https://fdc.nal.usda.gov/food-details/2644289/nutrients",
+        "evidence_role": "primary_candidate_not_approved",
+        "source_food_description": "Beans, kidney, dark red, canned, sodium added, sugar added, drained and rinsed"
+      },
+      "source_form_qualifiers": [
+        "dark red kidney beans",
+        "canned",
+        "sodium added",
+        "sugar added",
+        "drained and rinsed"
+      ],
+      "alias_scope_review": "generic_alias_requires_restriction",
+      "nutrition_evidence": {
+        "basis_quantity": 100,
+        "basis_unit": "g",
+        "energy_source_nutrient_id": 2048,
+        "alternative_energy_source_nutrient_id": 2047,
+        "energy_selection_status": "pending_ALL-225_energy_policy",
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+      },
+      "conversion_review": {
+        "source_food_portion_evidence": [
+          {
+            "quantity": "RACC",
+            "grams": 130
+          }
+        ],
+        "household_and_purchase_yields_approved": false
+      },
+      "source_identity_verified_for_review": true,
+      "canonical_v2_id": null,
+      "identity_approval": "pending_reviewer",
+      "profile_approval": "pending_reviewer",
+      "review_caveats": [
+        "V1 broad canned kidney-beans name lacks dark red variety AND sodium-added AND sugar-added qualifiers",
+        "do not map to light red, sugar-free, unsalted or undrained variants",
+        "purchased can-to-drained yield not evidenced"
+      ]
+    },
+    {
+      "source_profile_key": "tomato_paste_canned_unsalted",
+      "proposed_identity_kind": "generic_food",
+      "proposed_preparation_state": "prepared",
+      "reviewed_source_reference": {
+        "provider": "usda_fdc",
+        "source_data_type": "Foundation",
+        "external_record_id": "2685580",
+        "source_url": "https://fdc.nal.usda.gov/food-details/2685580/nutrients",
+        "evidence_role": "primary_candidate_not_approved",
+        "source_food_description": "Tomato, paste, canned, without salt added"
+      },
+      "source_form_qualifiers": [
+        "tomato paste",
+        "canned",
+        "without salt added"
+      ],
+      "alias_scope_review": "restrict_no_salt_added_not_sodium_free",
+      "nutrition_evidence": {
+        "basis_quantity": 100,
+        "basis_unit": "g",
+        "energy_source_nutrient_id": 2048,
+        "alternative_energy_source_nutrient_id": 2047,
+        "energy_selection_status": "pending_ALL-225_energy_policy",
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+      },
+      "conversion_review": {
+        "source_food_portion_evidence": [
+          {
+            "quantity": "RACC",
+            "grams": 30
+          }
+        ],
+        "household_and_purchase_yields_approved": false
+      },
+      "source_identity_verified_for_review": true,
+      "canonical_v2_id": null,
+      "identity_approval": "pending_reviewer",
+      "profile_approval": "pending_reviewer",
+      "review_caveats": [
+        "no salt added does not mean sodium-free; USDA reports 61.2 mg/100g",
+        "V1 rounded 89 kcal vs source 88.5 kcal",
+        "do not use for double-concentrated paste or branded salted variants"
+      ]
+    },
+    {
+      "source_profile_key": "tomatoes_crushed_canned",
+      "proposed_identity_kind": "generic_food",
+      "proposed_preparation_state": "prepared",
+      "reviewed_source_reference": {
+        "provider": "usda_fdc",
+        "source_data_type": "Foundation",
+        "external_record_id": "2685581",
+        "source_url": "https://fdc.nal.usda.gov/food-details/2685581/nutrients",
+        "evidence_role": "primary_candidate_not_approved",
+        "source_food_description": "Tomatoes, crushed, canned"
+      },
+      "source_form_qualifiers": [
+        "crushed tomatoes",
+        "canned"
+      ],
+      "alias_scope_review": "nonbranded_canned_only",
+      "nutrition_evidence": {
+        "basis_quantity": 100,
+        "basis_unit": "g",
+        "energy_source_nutrient_id": 2048,
+        "alternative_energy_source_nutrient_id": 2047,
+        "energy_selection_status": "pending_ALL-225_energy_policy",
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+      },
+      "conversion_review": {
+        "source_food_portion_evidence": [
+          {
+            "quantity": "RACC",
+            "grams": 130
+          }
+        ],
+        "household_and_purchase_yields_approved": false
+      },
+      "source_identity_verified_for_review": true,
+      "canonical_v2_id": null,
+      "identity_approval": "pending_reviewer",
+      "profile_approval": "pending_reviewer",
+      "review_caveats": [
+        "do not silently substitute salt-free or particular branded tomato products",
+        "USDA reports 140 mg sodium/100g",
+        "no brand-specific spices or draining assumptions"
+      ]
+    }
+  ]
+}
