@@ -62,6 +62,30 @@ WHERE id=$1::uuid`,[challenge.challengeId]);
 SELECT count(*)::int AS n FROM allin_private.v2_apple_attested_companion_keys_candidate
 WHERE owner_id=$1::uuid AND key_id='fake-key-id-untrusted'`,[owner]))[0].n,0);
 
+  // This is a transaction-only synthetic writer fixture, NOT a positive
+  // Apple trust assertion. A downstream failure after INSERT must atomically
+  // roll back both the key row and the consumed challenge timestamp.
+  const rollbackKey='fixture-rollback-after-private-writer';
+  await assert.rejects(backend.withOwnerTransaction(owner,async tx=>{
+   const result=await tx.insertVerifiedKey({
+    challengeId:challenge.challengeId,ownerId:owner,sessionId:session,
+    appId,environment:'sandbox',keyId:rollbackKey,
+    publicKeySpkiBase64url:'c'.repeat(100),
+    receiptHash:'a'.repeat(64),leafHash:'b'.repeat(64),
+   });
+   assert.equal(result,'enrolled');
+   throw Error('simulated downstream rollback');
+  }),/simulated downstream rollback/);
+  const afterRollback=await admin.unsafe(`
+SELECT c.consumed_at,(SELECT count(*)::int
+ FROM allin_private.v2_apple_attested_companion_keys_candidate k
+ WHERE k.owner_id=$2::uuid AND k.key_id=$3) AS key_count
+FROM allin_private.v2_appattest_enrollment_challenges_candidate c
+WHERE c.id=$1::uuid`,[challenge.challengeId,owner,rollbackKey]);
+  assert.equal(afterRollback.length,1);
+  assert.equal(afterRollback[0].consumed_at,null);
+  assert.equal(afterRollback[0].key_count,0);
+
   await admin.unsafe(`
 UPDATE auth.sessions SET not_after=now()-interval '1 second'
 WHERE id=$1::uuid`,[session]);
