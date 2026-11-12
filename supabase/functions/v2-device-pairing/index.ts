@@ -12,6 +12,11 @@ import {
 } from '../_shared/certifiedDevicePairingServer.ts';
 import {createDevicePairingPostgresBackend} from
  '../_shared/certifiedDevicePairingPostgres.ts';
+import {createAppleWatchOwnershipPostgresBackend}
+ from '../_shared/appleWatchOwnershipPostgres.ts';
+import {verifyAppleWatchControlAndIssueProof,
+ type AppleWatchNativePairingRequest}
+ from '../_shared/appleWatchOwnershipVerifier.ts';
 import type {TransactionalSql} from '../_shared/certifiedDevicePostgresAdapter.ts';
 
 const reply=(status:number,code:string)=>
@@ -65,7 +70,7 @@ Deno.serve(async(req)=>{
  if(!payload||typeof payload!=='object'||Array.isArray(payload))
   return reply(400,'invalid_pairing_request');
  const args=payload as Record<string,unknown>;
- if(!['challenge','pair','revoke'].includes(String(args.action)))
+ if(!['challenge','pair','revoke','appleWatchProof'].includes(String(args.action)))
   return reply(400,'invalid_pairing_action');
  // 'pair' is cryptographically denied unless a separate provider verifier
  // signed exact owner/session/challenge/device/evidence with the private key.
@@ -91,6 +96,22 @@ Deno.serve(async(req)=>{
    return new Response(JSON.stringify(result),{status:200,headers:{
     'content-type':'application/json','cache-control':'no-store',
    }});
+  }
+  if(args.action==='appleWatchProof'){
+   // Cryptographically verify watch key possession and Apple-attested
+   // companion assertion against previously enrolled server-side App Attest
+   // key. No client boolean, device id or self-generated key is trusted.
+   // The HMAC signing key is kept only in this protected server process.
+   const verifiedBackend=createAppleWatchOwnershipPostgresBackend(
+    backend,db as unknown as TransactionalSql);
+   const expectedAppId=Deno.env.get('ALLIN_V2_APPLE_APP_ID')??'';
+   const verified=await verifyAppleWatchControlAndIssueProof(
+    token,args.request as AppleWatchNativePairingRequest,
+    verifiedBackend,internalSecret,expectedAppId,now);
+   return new Response(JSON.stringify({proof:verified}),{
+    status:200,headers:{'content-type':'application/json',
+     'cache-control':'no-store'},
+   });
   }
   if(args.action==='revoke'){
    const result=await revokeOwnedDevice(token,String(args.deviceId??''),backend,now);
