@@ -1,0 +1,45 @@
+\set ON_ERROR_STOP on
+-- ALL-12: synthetic Auth recovery authorization acceptance, local-only.
+-- This script does NOT claim to restore password hashes, identities, JWT keys,
+-- refresh tokens or external provider configuration.
+-- Run only in the existing disposable foundation replay after account export
+-- authorization candidate has been loaded.
+BEGIN;
+DO $test$
+DECLARE
+ a uuid := 'c1212121-2121-4121-8121-212121212121';
+ b uuid := 'd1212121-2121-4121-8121-212121212121';
+ sa uuid := 'c1313131-3131-4131-8131-313131313131';
+ sb uuid := 'd1313131-3131-4131-8131-313131313131';
+ v jsonb;
+BEGIN
+ IF to_regprocedure('allin_private.v2_account_export_authorize_session_candidate(uuid,uuid)') IS NULL
+ THEN RAISE EXCEPTION 'Missing Auth session authorization candidate'; END IF;
+ IF EXISTS(SELECT 1 FROM auth.users WHERE id IN(a,b))
+ THEN RAISE EXCEPTION 'Synthetic Auth owner collision'; END IF;
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO auth.sessions(id,user_id) VALUES(sa,a),(sb,b);
+ v := allin_private.v2_account_export_authorize_session_candidate(a,sa);
+ IF v->>'ownerId'<>a::text OR v->>'activeSession'<>'true'
+ THEN RAISE EXCEPTION 'Owner A restored session authorization failed'; END IF;
+ v := allin_private.v2_account_export_authorize_session_candidate(b,sb);
+ IF v->>'ownerId'<>b::text OR v->>'activeSession'<>'true'
+ THEN RAISE EXCEPTION 'Owner B restored session authorization failed'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_account_export_authorize_session_candidate(a,sb);
+  RAISE EXCEPTION 'Cross-owner Auth session accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_account_export_authorize_session_candidate(b,sa);
+  RAISE EXCEPTION 'Reverse cross-owner Auth session accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ DELETE FROM auth.sessions WHERE id=sa;
+ BEGIN
+  PERFORM allin_private.v2_account_export_authorize_session_candidate(a,sa);
+  RAISE EXCEPTION 'Revoked session accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM auth.sessions WHERE id=sa)
+ THEN RAISE EXCEPTION 'Revoked session persisted'; END IF;
+END $test$;
+ROLLBACK;
+\echo PASS ALL-12 synthetic Auth owner/session boundaries (rollback-only; not credential recovery)
