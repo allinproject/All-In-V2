@@ -1,7 +1,8 @@
 -- ALL-247 / ALL-251 REVIEW ONLY: canonical Fuel fragment for existing owner export.
 -- NOT a new export pipeline. Owner export must invoke this only after its own
 -- approved request/session/retention and consistent-snapshot checks.
--- Include tombstones and action receipts for full account data portability.
+-- Include tombstones and redacted action receipts for account portability.
+-- Never export replay fingerprints, nonce/internal auth material.
 -- Prerequisite: ALL-247 Food Log + Hydration candidates installed on disposable DB.
 create function public.v2_account_export_fuel_fragment_review(
  p_expected_user_id uuid
@@ -20,11 +21,11 @@ begin
   'version','fuel_owner_v1',
   'food_entries',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(e) order by e.created_at,e.id)
      from public.v2_food_log_entries e where e.user_id=v_actor),'[]'::jsonb),
-  'food_actions',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(a) order by a.created_at,a.action_id)
+  'food_actions',coalesce((select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('action_id',a.action_id,'result_id',a.result_id,'result_revision',a.result_revision,'created_at',a.created_at) order by a.created_at,a.action_id)
      from allin_private.v2_food_log_write_actions a where a.user_id=v_actor),'[]'::jsonb),
   'hydration_events',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(h) order by h.created_at,h.id)
      from public.v2_hydration_events h where h.user_id=v_actor),'[]'::jsonb),
-  'hydration_actions',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(a) order by a.created_at,a.action_id)
+  'hydration_actions',coalesce((select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('action_id',a.action_id,'result_id',a.result_id,'result_revision',a.result_revision,'created_at',a.created_at) order by a.created_at,a.action_id)
      from allin_private.v2_hydration_actions a where a.user_id=v_actor),'[]'::jsonb)
  );
 end
