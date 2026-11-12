@@ -77,7 +77,9 @@ test('unreviewed canonical media metadata or truncated list blocks the export',a
  }
 });
 test('a single changed byte invalidates the canonical media checksum',async()=>{
- const f=fixture({bytes:new TextEncoder().encode('tampered')});
+ const changed=new Uint8Array(bytes);
+ changed[0]^=1; // Preserve object length; exercise SHA rather than size guard.
+ const f=fixture({bytes:changed});
  await assert.rejects(auditPrivateMediaExportCoverage(f.services),/SHA-256/);
 });
 test('missing Storage reference creates no false complete export result',async()=>{
