@@ -1,0 +1,54 @@
+name: ALL-228 temporary ingredient workload login acceptance (manual only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all228-temporary-staging-workload
+  cancel-in-progress: false
+
+jobs:
+  staging-restricted-login:
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    runs-on: ubuntu-latest
+    environment: all251-temporary-staging
+    timeout-minutes: 7
+    env:
+      ALL228_ALLOW_HOSTED_INGEST_SMOKE: '1'
+      ALL228_TEMP_STAGING_PROJECT_REF: fbtgknlxjyeqrxemskbl
+      PGHOST: db.fbtgknlxjyeqrxemskbl.supabase.co
+      PGPORT: '5432'
+      PGDATABASE: postgres
+      PGUSER: allin_ing_workload_temp_all228
+      PGSSLMODE: verify-full
+      PGSSLROOTCERT: /etc/ssl/certs/ca-certificates.crt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Reject unsafe staging login configuration (without secrets)
+        run: node --test scripts/check-v2-ingredient-hosted-workload-connection.test.cjs
+      - name: Require protected staging-only credential (never printed)
+        env:
+          ALL228_TEMP_STAGING_PGPASS_LINE: ${{ secrets.ALL228_TEMP_STAGING_PGPASS_LINE }}
+        run: |
+          if [ -z "$ALL228_TEMP_STAGING_PGPASS_LINE" ]; then
+            echo "::error::ALL228_TEMP_STAGING_PGPASS_LINE has not been provisioned; no login attempted"
+            exit 1
+          fi
+          # The secret is a single .pgpass record matching exact PGHOST:PGPORT:PGDATABASE:PGUSER.
+          printf '%s\n' "$ALL228_TEMP_STAGING_PGPASS_LINE" > "$RUNNER_TEMP/all228.pgpass"
+          chmod 600 "$RUNNER_TEMP/all228.pgpass"
+      - name: Verify real independent workload login and fail-closed permissions
+        env:
+          PGPASSFILE: ${{ runner.temp }}/all228.pgpass
+        run: node scripts/check-v2-ingredient-hosted-workload-connection.cjs
+      - name: Destroy local credential file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/all228.pgpass"
+# No DDL, source imports, role activation, publisher grant or production change.
+# Temporary Supabase project is scheduled for deletion on 2026-11-13.
