@@ -12,6 +12,14 @@ BEGIN
     CREATE ROLE allin_v2_ingredient_reviewer NOLOGIN NOINHERIT NOBYPASSRLS;
   END IF;
 END $$;
+-- Release-only capability. No grant is made here, and no client can grant it.
+-- A production migration and external owner release approval are separate.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='allin_v2_ingredient_publisher') THEN
+    CREATE ROLE allin_v2_ingredient_publisher NOLOGIN NOINHERIT NOBYPASSRLS;
+  END IF;
+END $$;
 
 -- These are the private objects owned by the existing canonical domain.
 -- No permissive policy and no athlete/anon/service grants.
@@ -128,7 +136,7 @@ BEGIN
       AND o.credential_expires_at>clock_timestamp();
   -- Machine-originated source checks may only move a candidate to reviewed.
   -- They cannot approve calculation readiness, retire or supersede profiles.
-  IF v_principal_kind='workload' AND p_next_status NOT IN ('needs_review','reviewed') THEN
+  IF v_principal_kind='workload' AND p_next_status NOT IN ('needs_review','reviewed','calculation_ready') THEN
     RAISE EXCEPTION 'workload ingredient publication or exception decision forbidden'
       USING ERRCODE='42501';
   END IF;
@@ -217,9 +225,11 @@ BEGIN
     IF v_old.coverage_status NOT IN ('launch_core_complete','expanded_profile')
        OR v_old.required_nutrient_set_version<>'cookbook-launch-macros-v1'
        OR v_old.basis_unit<>'g' OR v_old.basis_quantity<>100
+       OR v_old.is_default IS DISTINCT FROM true
        OR NOT EXISTS (
          SELECT 1 FROM public.v2_ingredient_aliases a
           WHERE a.ingredient_id=v_old.ingredient_id AND a.status='active'
+            AND a.resolution_scope='exact'
             AND a.preparation_state=v_old.preparation_state
        )
        OR (SELECT count(*) FROM public.v2_ingredient_profile_nutrients n
@@ -257,11 +267,37 @@ BEGIN
       RAISE EXCEPTION 'reviewed-source sodium evidence missing'
         USING ERRCODE='23514';
     END IF;
-    -- The canonical schema does NOT YET persist the immutable ALL-225 energy
-    -- method ID/source-revision attestation and ALL-251 authenticated operator
-    -- governance. Prevent premature publication rather than guessing.
-    RAISE EXCEPTION 'calculation_ready blocked pending method attestation and ALL-222/251 acceptance'
-      USING ERRCODE='0A000';
+    -- Publishing is disabled by default: this candidate creates NO publisher
+    -- membership and is NOT an approved production migration. A trusted machine
+    -- login needs a separate owner-controlled publishing capability, and must
+    -- already have passed the same restricted reviewer registry gate.
+    IF v_principal_kind<>'workload'
+       OR NOT pg_has_role(v_actor::text,'allin_v2_ingredient_publisher','member')
+       OR NOT EXISTS (
+         SELECT 1 FROM public.v2_ingredient_source_records s
+         WHERE s.id=v_source AND s.provider='usda_fdc'
+           AND s.source_data_type='Foundation' AND s.mapping_status='mapped'
+           AND s.ingredient_id=v_old.ingredient_id AND s.source_license='CC0'
+       )
+       OR NOT EXISTS (
+         SELECT 1 FROM allin_private.v2_ingredient_energy_attestations a
+         JOIN public.v2_ingredient_profile_nutrients n
+           ON n.profile_id=a.profile_id AND n.nutrient_code='energy_kcal'
+         JOIN public.v2_nutrient_definitions d
+           ON d.code=n.nutrient_code AND d.canonical_unit='kcal'
+         WHERE a.profile_id=p_profile_id AND a.profile_revision=p_expected_revision
+           AND a.source_record_id=v_source
+           AND lower(a.source_payload_sha256)=lower(v_source_sha)
+           AND a.archive_sha256='dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579'
+           AND a.energy_policy_version='usda-fdc-energy-specific-legacy-v1'
+           AND a.required_nutrient_set_version=v_old.required_nutrient_set_version
+           AND a.selected_fdc_nutrient_id IN (2048,1008)
+           AND a.selected_energy_kcal=n.amount
+       )
+    THEN
+      RAISE EXCEPTION 'calculation_ready blocked pending method attestation and ALL-222/251 acceptance'
+        USING ERRCODE='0A000';
+    END IF;
   END IF;
 
   -- The row lock is held until the transaction and audit commit together.
