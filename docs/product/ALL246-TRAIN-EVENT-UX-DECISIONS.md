@@ -1,0 +1,56 @@
+# ALL IN 365 V2 — Train, Routes/Routines and Event Plan: Founder-Approved UX Baseline
+
+**Decision authority:** Founder discussion on 2026-11-12. **Status:** approved product design requirements, NOT assertion of implemented/validated screens, and NOT approval for production migration/grants/deploy/publication. **Primary issue:** ALL-246. Related owners: ALL-250 Today, ALL-249 Progress, ALL-243 Completed Activity, ALL-234 Coach Race Strategy, ALL-239 all-sport goals, ALL-244 EventHub, ALL-245 Watch, ALL-254 UI/UX.
+
+## Authority and conflict resolution
+- This document consolidates the latest explicit founder decisions and **supersedes earlier contradictory V2 navigation and calendar descriptions**, including “Calendar / Plans / Progress,” “Calendar / Plans” only, “Routes” without Routines, “Month / Week / Day,” a vertical week list, large Train navigation tiles, or a saved-routes-only workspace.
+- Keep approved V1 behavior as the baseline where explicitly selected. Do not mistake a design prototype or source-level fixture for a tested installed app. New founder changes should update this document and linked issue rather than silently resurrecting old directions.
+- Global main tabs remain Today / Fuel / Train / Community / Coach. Progress is a compact clickable section on **Today**, linking to the standalone customizable all-sport Progress destination; body-progress photos/private measurements belong under Profile, not Train.
+
+## 1. Train navigation and spatial hierarchy
+- Train has **three compact top-level horizontal segmented tabs: Calendar / Plans / Routes/Routines**. Do not use big cards, oversized tab headers/icons or tall navigation. Preserve reasonable accessibility target sizes on narrow phones.
+- Calendar is the default. While Calendar is selected, a distinct second compact segmented row offers **Month / Week only**.
+- Plans contains **Training Plan / Event Plan**. Both should be compact section choices; daily scheduling lives in Calendar, not duplicated in Plans.
+- Routes/Routines contains **Routes** (full interactive mapping/builder) and **Routines** (reusable workout structures). Do not relocate Routes to nested Plans or remove the Routines half of the name.
+- The content of the active page owns the available screen real estate.
+
+## 2. Calendar
+- **Month:** retain the founder-approved month grid with meaningful workout/rest/day markers. Selecting a date opens its containing Week with that selected date active.
+- **Week:** exactly **seven horizontal selectable day blocks**, all visible in one row, never a vertical 7-row list. When the athlete taps one, **that day's workout cards appear directly below the same horizontal calendar**, without navigation to a separate day screen/tab. No Daily tab/view.
+- Below selected-day workouts, show **+ Add Workout**. Represent planned, active, completed, missed, rest, recovery, unavailable and event states from canonical evidence, not placeholders presented as real workouts.
+- **Card tap contract:** (a) A **today planned, unfinished** workout opens sport-specific **Start Training / pre-workout launch**. If already active, **Resume** the same canonical session; no duplicate. (b) Any **completed** workout, including one completed today, opens its **exact Completed Activity** by canonical completion identity (Overview / Details / Coach). (c) A **future planned** workout opens a **small synopsis/preview** of sourced expected purpose, structure, duration/targets and a **short personalized Coach explanation** of why this is scheduled; offer **Change**. (d) Change requests a Coach-supported proposal and explicit review/accept before any guarded Training revision—never silently mutate the plan. (e) A **past missed/uncompleted** planned workout must never be routed to fictitious Completed Activity; show true status and appropriate review/reschedule pathway.
+- Day/date comparisons use athlete-local dates and truthful complete owner-scoped read models; no automatic moving of missed workouts.
+
+## 3. Training Plan
+- Compact management view for active training plan, current goal/phase, plan duration/progression, multi-sport weekly structure, Coach explanation/review, plan creation and previous plans.
+- This is the **management/approval** area; the actual workout schedule remains in Calendar.
+- Display sport-adaptive summaries—not fixed running-miles/long-run metrics for cyclists, swimmers, lifters or multi-sport athletes. Coach is proposer, Training owns accepted revisions, preserve historical plan revisions and completed evidence.
+
+## 4. Routes/Routines — founder explicitly chose V1 builder
+- **Port and adapt V1's existing full map-based Route Builder, never replace with a reduced saved-route list or duplicate builder architecture.**
+- V1 reference repository: `allinproject/ALL-IN`, branch `integration/native-watch-v301`. Main modules include `Native/src/app/training/routes.tsx`, `route-editor.tsx`, `coach-routes.tsx`, `Native/src/components/RouteMapCanvas.tsx`, `Native/src/lib/trainingRouteEditor.ts`, `trainingRouteGeneration.ts`, `trainingRouteProviderClient.ts`, `Native/src/data/trainingRouteClient.ts`, `trainingRouteDraftStorage.ts`, `supabase/functions/training-route-provider/index.ts`.
+- Preserve interactive map, set/drag start/end/waypoints, freehand tracing, route editing, undo/redo, loop/out-and-back/point-to-point, provider-backed rerouting, evidence-backed route geometry/distance/elevation/surfaces/access/terrain, saved/rename/favorite/duplicate/delete/reopen, draft recovery, Coach route generation with edit/approval, and confirmed attachment to Training workouts.
+- GPX import/export and Watch/offline turn guidance require explicit actual source/device verification; do not falsely claim them already working. Reuse existing V2 canonical owner/security and approved plan/session references, not unreviewed V1 database/RPC migrations. Map tiles and provider operations need licensing, network, security, device and reliability checks.
+- Routines: reusable workout routines in the paired workspace. Exact routine screen requires separate detailed founder review; preserve existing V1 behavior rather than inventing.
+
+## 5. Event Plan — all-sport, not only racing
+- Under Train → Plans → **Event Plan**, present event-level records for running/ultra, cycling, triathlon, swimming, strength/powerlifting, hybrid competitions, etc. Race-specific UI is conditional; noncompetitive athletes are not forced to create events. Multiple upcoming events supported as an existing product requirement, though exact selection interface may be refined.
+- **Approved preferred event detail direction (founder explicitly liked design):** compact sections **Course / Strategy / Race Day**. These were shown as an interactive concept; do not treat every proposed micro-interaction as a separately locked decision.
+- **Course:** official course map/GPX, sourced geometry, distance, elevation profile and per-section climbs/descents, terrain/surface, named aid stations/checkpoints, cutoffs, organizer rules, provenance/version and missing/conflicting data. Race-specific aid and elevation data must never be invented. Athlete-supplied GPX does not prove organizer-verified aid stations.
+- **Strategy:** individualized Coach explanation of pacing/effort (including hills and walk/hike strategy when applicable), fueling/hydration/electrolytes based on real duration/tolerance/conditions/aid supply, appropriate gear and weather/rules. No unsupported numbers/device data. Review major changes.
+- **Race Day:** timing/checkpoint and cutoff view, planned stops, crew/drop bags, aid restock checklist and contingencies, validated phone/Watch navigation when actually supported.
+- If official course updates, invalidate/review affected strategy packages. Preserve one canonical event ID/version linking Event Plan, event registration/participation, Coach, EventHub, Calendar and eventual completion.
+
+## 6. Create Event Plan — website URL is prominent and also feeds EventHub
+- Event creation starts with a **clearly visible official Event website URL input and Get Event Information action**. The athlete may also provide official GPX/files or manual details. Do not bury URL in an advanced upload flow.
+- Secure server-side source intake gathers organizer-backed name, event type, date/time/timezone, venue, distance/discipline, official course/map/GPX, aid stations/checkpoints/cutoffs and rules **only where published**. Show exact sourced/unknown/conflicting info for athlete review and allow provisional private plans when data unavailable.
+- URL intake must identify the **correct event edition** and check for an **existing canonical EventHub event/group**. If one exists, offer **Open/Join EventHub**; otherwise prepare creation of the corresponding EventHub group through the approved owner and permissions. No duplicate groups for same edition; handle URLs with tracking parameters and concurrent creation.
+- **One event identity, two experiences:** athlete-private Event Plan with preparation/strategy; EventHub is the event-specific community workout-sharing group joined through the supplied event URL. EventHub is NOT a generalized event discovery/search/marketplace. No automatic public post, joining or disclosure; explicit participation/sharing choice. Creating a private event plan must not expose private plans, locations or health information.
+- Secure URL handling (https, SSRF/redirect restrictions, source provenance, size/rate limits), owner/RLS controls, canonical event record and idempotency required before enabling actual publishing/joins. Existing ALL-244 owns EventHub; ALL-234 owns source-grounded race strategy; ALL-246 owns Train UI.
+- Creation walkthrough currently envisioned: Event identity & URL → course/official evidence → user goals → explicit Coach plan/strategy review → approved Event Plan; event group linkage presented alongside the review. A URL lookup or strategy preview is not itself publication/approval of changes to Training.
+
+## 7. Scope and implementation safeguards
+- These are **founder-approved product directions**. V1 Route Builder has substantial actual code; full V2 mapping/route builder is **not yet confirmed integrated**. Calendar and other partial V2 screens may be mounted but must be checked against the corrected UX.
+- Keep one canonical Training/active-session/completed-activity/event/route owner. All Coach changes are proposals and require athlete acceptance where material. Preserve source-quality/missing≠zero, privacy, export/deletion, RLS and idempotent writes.
+- **No production migration, grants, app deployment, opening signup, automatic EventHub publication or sharing are authorized by this document.**
+- Before making consequential changes, refresh current integration head and Linear, honor concurrent work, update the canonical record on later founder revisions and verify actual tests/installed device behavior before claiming success.
