@@ -76,6 +76,17 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
     ids = [food.get("fdcId") for food in foods]
     if len(set(ids)) != len(ids):
         raise ValueError("Duplicate USDA FDC IDs")
+    # V1 stores exact FDC references predominantly inside source_url, rather
+    # than source_fdc_id. Preserve those as explicit evidence requiring review.
+    source_links = collections.defaultdict(set)
+    for p in profiles:
+        raw_id = p.get("source_fdc_id")
+        url = p.get("source_url") or ""
+        match = re.search(r"/food-details/([0-9]+)(?:/|$)", url) if isinstance(url, str) else None
+        fdc_id = int(raw_id) if isinstance(raw_id, str) and raw_id.isdigit() else (
+            raw_id if isinstance(raw_id, int) else int(match.group(1)) if match else None)
+        if fdc_id is not None:
+            source_links[fdc_id].add(p["source_profile_key"])
     names = collections.defaultdict(set)
     for p in profiles:
         for value in [p.get("source_label")] + (p.get("source_aliases") or []):
@@ -89,6 +100,7 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
         description = food["description"]
         exact = sorted(names[normalize(description)])
         matched_keys.update(exact)
+        direct_source = sorted(source_links.get(fdc_id, set()))
         suggested = []
         if not exact:
             for profile in profiles:
@@ -105,6 +117,7 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
             "source_data_type": food.get("dataType"),
             "status": status,
             "exact_source_profile_keys": exact,
+            "direct_fdc_source_profile_keys": direct_source,
             "suggestions": [
                 {"source_profile_key": key, "token_jaccard": score}
                 for score, key in suggested[:3]
@@ -124,6 +137,9 @@ def reconcile(foods, profiles, expected_foods=EXPECTED_USDA_COUNT,
             "exactNameLinkedV1ProfileCount": len(matched_keys),
             "v1ProfileCountWithoutExactName": len(profiles) - len(matched_keys),
             "exactNameCandidatePairs": sum(len(e["exact_source_profile_keys"]) for e in entries),
+            "directFdcSourceReferencePairs": sum(len(e["direct_fdc_source_profile_keys"]) for e in entries),
+            "directFdcLinkedV1Profiles": len(set(
+                key for e in entries for key in e["direct_fdc_source_profile_keys"])),
         },
         "method": "Unicode NFKC casefold whitespace exact label/alias; fallback token Jaccard >=0.42 top 3 review suggestions. No inferred form, synonym or nutrient equivalence.",
         "rows": entries,
