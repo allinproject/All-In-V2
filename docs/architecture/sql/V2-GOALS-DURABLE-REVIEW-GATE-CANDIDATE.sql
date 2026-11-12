@@ -1,5 +1,5 @@
 -- ALL-239 / ALL-222: REVIEW-ONLY durable Goal approval, NOT A MIGRATION.
--- Apply after identity, history and v2_goal_accept_revision_candidate.
+-- Apply after identity, history, behavior targets and Goal acceptance writer.
 -- No client/service_role grants. No API endpoint. Trusted issuance of review
 -- rows is NOT implemented: pending verified screen consent + server adapter.
 BEGIN;
@@ -54,6 +54,50 @@ CREATE TRIGGER v2_goal_review_immutable_guard
  BEFORE UPDATE OR DELETE ON allin_private.v2_goal_approval_reviews
  FOR EACH ROW EXECUTE FUNCTION allin_private.v2_goal_approval_review_immutable_candidate();
 
+-- Server-owned canonical preview fingerprint. Do NOT accept arbitrary
+-- client-provided hash as consent to changed goal/revision/behavior content.
+CREATE FUNCTION allin_private.v2_goal_snapshot_fingerprint_candidate(
+ p_user_id uuid,p_goal_id uuid,p_candidate_id uuid,p_expected_version bigint
+) RETURNS text LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
+AS $fingerprint$
+DECLARE
+ snapshot jsonb;
+BEGIN
+ SELECT pg_catalog.jsonb_build_object(
+   'goalId',g.id,'ownerId',g.user_id,'goalKind',g.goal_kind,
+   'title',g.title,'description',g.description,'goalVersion',g.version,
+   'revisionId',r.id,'revisionNumber',r.revision_number,
+   'sourceKind',r.source_kind,'priorityRole',r.priority_role,
+   'priorityOrder',r.priority_order,'startDate',r.start_date,
+   'targetDate',r.target_date,'checkInDate',r.check_in_date,
+   'timezone',r.timezone,'schemaVersion',r.goal_schema_version,
+   'behaviors',coalesce((
+     SELECT pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+      'id',b.id,'code',b.behavior_code,'description',b.behavior_description,
+      'cadence',b.cadence_kind,'targetFrequency',b.target_frequency,
+      'period',b.frequency_period,'evidenceOwner',b.evidence_owner,
+      'evidencePolicy',b.evidence_policy,'confirmed',b.user_confirmed
+     ) ORDER BY b.id)
+     FROM public.v2_goal_revision_behavior_targets b
+     WHERE b.user_id=p_user_id AND b.goal_id=p_goal_id
+       AND b.goal_revision_id=p_candidate_id),'[]'::jsonb))
+ INTO snapshot
+ FROM public.v2_goals g JOIN public.v2_goal_revisions r
+   ON r.goal_id=g.id AND r.user_id=g.user_id
+ WHERE g.id=p_goal_id AND g.user_id=p_user_id
+   AND g.version=p_expected_version
+   AND r.id=p_candidate_id AND r.status='candidate';
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'Goal preview content changed or candidate unavailable'
+    USING ERRCODE='40001';
+ END IF;
+ RETURN pg_catalog.encode(
+   extensions.digest(pg_catalog.convert_to(snapshot::text,'UTF8'),'sha256'),'hex');
+END;
+$fingerprint$;
+REVOKE ALL ON FUNCTION allin_private.v2_goal_snapshot_fingerprint_candidate(
+ uuid,uuid,uuid,bigint) FROM PUBLIC,anon,authenticated,service_role;
+
 CREATE FUNCTION allin_private.v2_goal_commit_reviewed_candidate(
  p_user_id uuid,p_session_id uuid,p_goal_id uuid,p_candidate_id uuid,
  p_action_id uuid,p_review_id uuid,p_expected_version bigint,
@@ -97,6 +141,31 @@ BEGIN
  OR approval.expires_at<=pg_catalog.clock_timestamp()
  THEN RAISE EXCEPTION 'Goal review is missing, stale or not approved'
    USING ERRCODE='42501'; END IF;
+ -- Lock the physical owner aggregate before checking the fingerprint.
+ -- Candidate row lock blocks new behavior FK children; each current behavior
+ -- row's SHARE lock blocks edits until this transaction has accepted the Goal.
+ IF approval.completed_at IS NULL THEN
+   PERFORM 1 FROM public.v2_goals
+     WHERE id=p_goal_id AND user_id=p_user_id FOR UPDATE;
+   IF NOT FOUND THEN
+     RAISE EXCEPTION 'Current reviewed Goal unavailable' USING ERRCODE='42501';
+   END IF;
+   PERFORM 1 FROM public.v2_goal_revisions
+     WHERE id=p_candidate_id AND goal_id=p_goal_id AND user_id=p_user_id
+     FOR UPDATE;
+   IF NOT FOUND THEN
+     RAISE EXCEPTION 'Reviewed Goal candidate missing' USING ERRCODE='42501';
+   END IF;
+   PERFORM 1 FROM public.v2_goal_revision_behavior_targets
+     WHERE goal_revision_id=p_candidate_id AND goal_id=p_goal_id
+       AND user_id=p_user_id FOR SHARE;
+   IF allin_private.v2_goal_snapshot_fingerprint_candidate(
+     p_user_id,p_goal_id,p_candidate_id,p_expected_version)
+      IS DISTINCT FROM approval.payload_sha256 THEN
+     RAISE EXCEPTION 'Reviewed Goal content changed since athlete approval'
+       USING ERRCODE='42501';
+   END IF;
+ END IF;
  receipt:=allin_private.v2_goal_accept_revision_candidate(
    p_user_id,p_session_id,p_goal_id,p_candidate_id,
    p_action_id,p_expected_version,approval.payload_sha256);
