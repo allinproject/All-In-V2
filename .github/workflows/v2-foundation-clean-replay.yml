@@ -11,6 +11,8 @@ on:
       - 'docs/architecture/sql/V2-GOALS-OWNER-SNAPSHOT-READER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-BEHAVIOR-TARGET-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-DURABLE-REVIEW-GATE-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-GOALS-REVIEW-ISSUANCE-CANDIDATE.sql'
+      - 'scripts/test-v2-goals-review-issuance-local-postgres.psql'
       - 'scripts/test-v2-goals-durable-review-local-postgres.psql'
       - 'scripts/test-v2-goals-behavior-local-postgres.psql'
       - 'scripts/test-v2-goals-owner-snapshot-local-postgres.psql'
@@ -402,6 +404,10 @@ jobs:
           docker cp scripts/test-v2-goals-durable-review-local-postgres.psql "$db_container:/tmp/v2-goals-reviewed-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-reviewed.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-reviewed-qa.psql
+          docker cp docs/architecture/sql/V2-GOALS-REVIEW-ISSUANCE-CANDIDATE.sql "$db_container:/tmp/v2-goals-issuance.sql"
+          docker cp scripts/test-v2-goals-review-issuance-local-postgres.psql "$db_container:/tmp/v2-goals-issuance-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-issuance.sql
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-issuance-qa.psql
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
