@@ -67,6 +67,42 @@ try{
  assert.equal(recoveredUser.status,200,'restored identity session must resolve');
  assert.equal((await recoveredUser.json()).id,ownerForIdentity.id,
   'restored identity login must retain original owner');
+ // ALL-12: exercise synthetic Auth password verifier backup/erase/restore
+ // and verify the real GoTrue sign-in rejects the erased verifier.
+ // No production passwords, hashes, signing keys or external providers.
+ const verifierOwner=users[1];
+ const verifierBefore=sql(`SELECT md5(encrypted_password) FROM auth.users
+   WHERE id='${verifierOwner.id}'::uuid`).trim();
+ assert.match(verifierBefore,/[a-f0-9]{32}/);
+ // Preserve the exact synthetic verifier in the disposable database only.
+ sql(`CREATE TABLE IF NOT EXISTS public.all12_ephemeral_auth_verifier_restore
+   (user_id uuid primary key, encrypted_password text not null);
+   INSERT INTO public.all12_ephemeral_auth_verifier_restore(user_id,encrypted_password)
+   SELECT id,encrypted_password FROM auth.users WHERE id='${verifierOwner.id}'::uuid;
+   UPDATE auth.users SET encrypted_password=NULL WHERE id='${verifierOwner.id}'::uuid;`);
+ try {
+  const denied=await req('POST','/auth/v1/token?grant_type=password',anon,null,{
+   email:verifierOwner.email,password:verifierOwner.password,
+  });
+  assert.notEqual(denied.status,200,'erased synthetic verifier must deny password sign-in');
+ } finally {
+  sql(`UPDATE auth.users u SET encrypted_password=v.encrypted_password
+    FROM public.all12_ephemeral_auth_verifier_restore v
+    WHERE u.id=v.user_id AND u.id='${verifierOwner.id}'::uuid;
+    DROP TABLE public.all12_ephemeral_auth_verifier_restore;`);
+ }
+ const verifierAfter=sql(`SELECT md5(encrypted_password) FROM auth.users
+   WHERE id='${verifierOwner.id}'::uuid`).trim();
+ assert.equal(verifierAfter,verifierBefore,'synthetic password verifier fingerprint');
+ const verifierLogin=await req('POST','/auth/v1/token?grant_type=password',anon,null,{
+  email:verifierOwner.email,password:verifierOwner.password,
+ });
+ assert.equal(verifierLogin.status,200,'real password sign-in after verifier restore');
+ const verifierSession=(await verifierLogin.json()).access_token;
+ const verifierIdentity=await req('GET','/auth/v1/user',anon,verifierSession);
+ assert.equal(verifierIdentity.status,200);
+ assert.equal((await verifierIdentity.json()).id,verifierOwner.id,
+  'restored verifier must authenticate only its original owner');
  const [a,b]=users;
  const created=await req('POST','/storage/v1/bucket',admin,null,{id:bucket,name:bucket,public:false});
  assert.ok(created.ok,'create private test bucket');createdBucket=true;
