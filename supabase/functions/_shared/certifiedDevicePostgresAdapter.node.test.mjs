@@ -33,7 +33,7 @@ function dbFixture(){
     can_set_ingest:true}];
    if(q.includes('SELECT 1 AS allowed'))
     return db.sessionActive&&db.deviceRegistered&&db.ownerRegistered&&
-     params[0]===session&&params[1]===owner&&params[4]===source&&params[7]==='trainer-42'? [{allowed:1}]:[];
+     params[0]===session&&params[1]===owner&&params[3]===source&&params[6]==='trainer-42'? [{allowed:1}]:[];
    if(q.includes('INSERT INTO allin_private.v2_device_ingest_nonce_candidate')){
     const hash=params[0];
     if(receipts.has(hash))return [];
