@@ -2,12 +2,14 @@
 // No database access or secrets. Used to gate future full logical dump/restore tests.
 export const recoveryDomains=Object.freeze([
  {name:'auth',tables:['auth.users','auth.identities','auth.sessions','auth.refresh_tokens'],kind:'database'},
- {name:'profile_legal',tables:['public.v2_profiles'],kind:'database'},
+ {name:'profile_legal',tables:['public.v2_profiles','public.v2_profile_settings','public.v2_onboarding_progress','public.v2_legal_documents','public.v2_legal_acceptances','allin_private.v2_profile_settings_actions','allin_private.v2_onboarding_actions'],kind:'database'},
  {name:'training',tables:['public.v2_training_session_instances'],kind:'database'},
  {name:'completed_activity',tables:['public.v2_completed_activities','public.v2_activity_sources'],kind:'database'},
  {name:'coach',tables:['public.v2_coach_threads','public.v2_coach_messages'],kind:'database'},
  {name:'goals',tables:['public.v2_goals','public.v2_goal_revisions'],kind:'database'},
  {name:'billing',tables:['allin_private.v2_subscription_purchases','allin_private.v2_subscription_verified_events'],kind:'database'},
+ {name:'health_privacy',tables:['allin_private.v2_health_considerations','allin_private.v2_account_deletion_requests','allin_private.v2_account_deletion_processor_config','allin_private.v2_account_deletion_execution_audit'],kind:'database'},
+ {name:'provider_cache',tables:['allin_private.v2_provider_cache'],kind:'database'},
  {name:'community',tables:[],kind:'pending_schema'},
  {name:'nutrition',tables:[],kind:'pending_schema'},
  {name:'progress_recovery',tables:[],kind:'pending_schema'},
