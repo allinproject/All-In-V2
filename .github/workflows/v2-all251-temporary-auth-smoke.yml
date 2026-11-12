@@ -15,6 +15,7 @@ jobs:
     env:
       CI: 'true'
       ALL251_STAGING_AUTH_ALLOW: 'true'
+      ALL247_TEST_FOOD_RPC: 'true'
       ALL251_STAGING_REF: fbtgknlxjyeqrxemskbl
       ALL251_STAGING_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
       ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
