@@ -9,6 +9,8 @@ on:
       - 'docs/architecture/sql/V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-REVISION-ACCEPTANCE-WRITER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-OWNER-SNAPSHOT-READER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-GOALS-BEHAVIOR-TARGET-OWNER-CANDIDATE.sql'
+      - 'scripts/test-v2-goals-behavior-local-postgres.psql'
       - 'scripts/test-v2-goals-owner-snapshot-local-postgres.psql'
       - 'scripts/test-v2-goals-acceptance-local-postgres.psql'
       - 'scripts/test-v2-goals-acceptance-race-local.sh'
@@ -365,6 +367,10 @@ jobs:
           docker cp scripts/test-v2-goals-owner-snapshot-local-postgres.psql "$db_container:/tmp/v2-goals-owner-reader-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-reader.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-reader-qa.psql
+          docker cp docs/architecture/sql/V2-GOALS-BEHAVIOR-TARGET-OWNER-CANDIDATE.sql "$db_container:/tmp/v2-goals-behavior.sql"
+          docker cp scripts/test-v2-goals-behavior-local-postgres.psql "$db_container:/tmp/v2-goals-behavior-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-behavior.sql
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-behavior-qa.psql
       - name: Stop local Supabase services
         if: always()
         run: supabase stop --no-backup
