@@ -65,8 +65,10 @@ FROM pg_catalog.pg_roles WHERE rolname=current_user`);
      if(!uuid(x.ownerId)||!uuid(x.sessionId)||!uuid(x.activityId)||
       !uuid(x.sourceId)||x.ownerId!==ownerId||!safe(x.sourceRecordId)||
       !validNow(x.nowMs))return false;
-     // This is the live DB Auth session, not merely an unexpired JWT. Lock
-     // it so account/session deletion cannot race this ingestion commit.
+     // Verify the CURRENT Auth session row, not merely an unexpired JWT.
+     // SELECT-only operator cannot row-lock without UPDATE privileges; a
+     // second Auth/source read before COMMIT narrows but does not eliminate
+     // the revocation/commit race (requires explicit release acceptance).
      const rows=await operator(`
 SELECT 1 AS allowed
 FROM auth.sessions sess
@@ -81,8 +83,7 @@ WHERE sess.id=$1::uuid AND sess.user_id=$2::uuid
   AND src.id=$5::uuid AND src.provider=$6 AND src.source_kind=$7
   AND src.source_record_id=$8 AND src.quality<>'rejected'
   AND reg.revoked_at IS NULL AND reg.provider=src.provider
-  AND ($9::uuid IS NULL OR act.training_session_instance_id=$9::uuid)
-FOR SHARE OF sess,athlete,act,src,reg`,[
+  AND ($9::uuid IS NULL OR act.training_session_instance_id=$9::uuid)`,[
       x.sessionId,x.ownerId,x.nowMs,x.activityId,x.sourceId,
       x.provider,x.sourceKind,x.sourceRecordId,
       x.certifiedSessionInstanceId,
