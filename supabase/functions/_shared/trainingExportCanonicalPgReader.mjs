@@ -83,7 +83,7 @@ export function createCanonicalPgAccountReaderCandidate({pool}) {
      listCanonicalMediaReferences:async({ownerId:o,requestId:r})=>{
       if(o!==ownerId||r!==requestId)throw Error('Media reference owner/request mismatch');
       const rows=await catalogRows(
-       "SELECT 'series' AS kind,user_id,object_path,checksum_sha256 FROM public.v2_activity_series WHERE user_id=$1 UNION ALL SELECT 'route' AS kind,user_id,object_path,checksum_sha256 FROM public.v2_activity_route_objects WHERE user_id=$1 ORDER BY kind,object_path LIMIT 129",
+       "SELECT 'series' AS kind,user_id,object_path,checksum_sha256,state,NULL::text AS privacy_state FROM public.v2_activity_series WHERE user_id=$1 UNION ALL SELECT 'route' AS kind,user_id,object_path,checksum_sha256,state,privacy_state FROM public.v2_activity_route_objects WHERE user_id=$1 ORDER BY kind,object_path LIMIT 129",
        [ownerId],129);
       if(rows.length>128)throw Error('Owner media references exceed review bound');
       return {ownerId,requestId,series:rows.filter(x=>x.kind==='series'),
