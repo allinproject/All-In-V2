@@ -1,0 +1,107 @@
+\set ON_ERROR_STOP on
+-- ALL-232 canonical Completed Activity identity read, isolated Postgres17.
+DO $guard$ BEGIN
+ IF current_database()<>'allin_coach_completed_history_test' THEN
+  RAISE EXCEPTION 'Refusing outside isolated Coach history test DB'; END IF;
+END $guard$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+DO $roles$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN
+  CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
+  CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN
+  CREATE ROLE service_role NOLOGIN BYPASSRLS; END IF;
+END $roles$;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ not_after timestamptz);
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $u$
+ SELECT nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
+$u$;
+CREATE TABLE public.v2_profiles(user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE);
+CREATE TABLE public.v2_completed_activities(
+ id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ sport text NOT NULL,athlete_local_date date NOT NULL,status text NOT NULL,
+ activity_kind text NOT NULL,started_at timestamptz,finished_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now(),capture_kind text NOT NULL,
+ version bigint NOT NULL DEFAULT 1,duration_seconds integer
+);
+ALTER TABLE public.v2_completed_activities ENABLE ROW LEVEL SECURITY;
+\ir ../docs/architecture/sql/V2-COMPLETED-ACTIVITY-COACH-RECENT-READER-REVIEW-CANDIDATE.sql
+INSERT INTO auth.users(id) VALUES
+ ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+ ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+INSERT INTO public.v2_profiles(user_id) SELECT id FROM auth.users;
+INSERT INTO auth.sessions(id,user_id) VALUES
+ ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+ ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+INSERT INTO public.v2_completed_activities
+ (id,user_id,sport,athlete_local_date,status,activity_kind,started_at,finished_at,
+ capture_kind,version)
+VALUES
+ ('11111111-1111-4111-8111-111111111111','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ 'running',current_date,'completed','workout',now()-interval '2 hours',
+ now()-interval '1 hour','device_measured',1),
+ ('22222222-2222-4222-8222-222222222222','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ 'strength',current_date,'needs_review','workout',now()-interval '3 hours',
+ now()-interval '2 hours','manual_only',1),
+ ('33333333-3333-4333-8333-333333333333','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+ 'running',current_date,'completed','race',now()-interval '4 hours',
+ now()-interval '3 hours','device_measured',1),
+ ('44444444-4444-4444-8444-444444444444','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ 'cycling',current_date,'invalidated','workout',now()-interval '3 hours',
+ now()-interval '2 hours','device_measured',1);
+DO $acl$ BEGIN
+ IF has_function_privilege('anon',
+ 'public.v2_completed_activity_coach_recent_candidate(uuid,date,date)','EXECUTE')
+ OR has_function_privilege('authenticated',
+ 'public.v2_completed_activity_coach_recent_candidate(uuid,date,date)','EXECUTE') THEN
+  RAISE EXCEPTION 'Unapproved Completed history RPC grant'; END IF;
+END $acl$;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',false);
+SELECT pg_catalog.set_config('request.jwt.claim.session_id',
+ 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',false);
+DO $cases$
+DECLARE a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ j jsonb; i integer;
+BEGIN
+ j:=public.v2_completed_activity_coach_recent_candidate(a,current_date-29,current_date);
+ IF j->>'verified'<>'true' OR j->>'coverage'<>'partial_canonical_completed_identity'
+ OR pg_catalog.jsonb_array_length(j->'activities')<>2 OR
+ j->>'moreAvailable'<>'false' THEN
+  RAISE EXCEPTION 'Partial owner Completed identity projection wrong'; END IF;
+ IF j::text LIKE '%33333333-3333-4333-8333-333333333333%' OR
+    j::text LIKE '%44444444-4444-4444-8444-444444444444%' THEN
+  RAISE EXCEPTION 'Cross-owner or invalidated activity leaked'; END IF;
+ BEGIN
+  PERFORM public.v2_completed_activity_coach_recent_candidate(b,current_date-29,current_date);
+  RAISE EXCEPTION 'Cross-owner read permitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_completed_activity_coach_recent_candidate(a,current_date-60,current_date);
+  RAISE EXCEPTION 'Unbounded history read permitted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ -- 51 extra owner records test strict 50-cap plus non-complete warning.
+ FOR i IN 1..51 LOOP
+  INSERT INTO public.v2_completed_activities
+   (id,user_id,sport,athlete_local_date,status,activity_kind,capture_kind)
+  VALUES(gen_random_uuid(),a,'walking',current_date,'completed','manual_entry','manual_only');
+ END LOOP;
+ j:=public.v2_completed_activity_coach_recent_candidate(a,current_date-29,current_date);
+ IF pg_catalog.jsonb_array_length(j->'activities')<>50 OR
+    j->>'moreAvailable'<>'true' OR j->>'coverage'='complete' THEN
+  RAISE EXCEPTION 'Bounded owner history did not preserve incomplete coverage'; END IF;
+END $cases$;
+DELETE FROM auth.sessions WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+DO $revoked$ BEGIN
+ BEGIN
+  PERFORM public.v2_completed_activity_coach_recent_candidate(
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',current_date-29,current_date);
+  RAISE EXCEPTION 'Revoked Auth session could still read activity history';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $revoked$;
+SELECT 'PASS ALL-232 AUTHENTICATED CANONICAL COMPLETED HISTORY' AS result;
