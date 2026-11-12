@@ -81,9 +81,10 @@ export function createCoachModelGenerator({
     reservationId:reservation.reservationId
    });
   }catch{
-   await releaseBudget({ownerId,clientRequestId,
-    reservationId:reservation.reservationId,reason:"model_failed"}).catch(()=>{});
-   rejected("coach_model_transport_failed");
+   // A transport error is ambiguous: the upstream provider may have accepted
+   // and billed the request before the connection failed. Hold the durable
+   // reservation for reconciliation; never refund on a timeout/unknown 5xx.
+   rejected("coach_model_transport_unconfirmed");
   }
   // A charged model call must be settled even when the answer is later
   // rejected by content/action policy. Missing or over-budget metering stays
