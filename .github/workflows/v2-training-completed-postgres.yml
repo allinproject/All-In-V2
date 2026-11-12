@@ -88,7 +88,8 @@ permissions:
 
 concurrency:
   group: v2-training-completed-owner-${{ github.ref }}
-  cancel-in-progress: true
+  # Keep a long, isolated foundation replay from being cancelled by unrelated pushes.
+  cancel-in-progress: false
 
 jobs:
   applied-foundation-source-integrity:
@@ -110,6 +111,10 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      # Local Docker only: don't inherit possible repository/environment credentials.
+      SUPABASE_ACCESS_TOKEN: ''
+      SUPABASE_DB_PASSWORD: ''
     steps:
       - uses: actions/checkout@v4
         with:
@@ -125,7 +130,7 @@ jobs:
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             enabled=true
           elif [[ -n "$BEFORE_SHA" ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
-            changed="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" --               supabase/migrations/ scripts/test-v2-applied-foundation-local-postgres.psql               .github/workflows/v2-training-completed-postgres.yml)"
+            changed="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- supabase/migrations/ scripts/test-v2-applied-foundation-local-postgres.psql .github/workflows/v2-training-completed-postgres.yml)"
             if [[ -n "$changed" ]]; then enabled=true; else enabled=false; fi
           else
             # Insufficient shallow history must NOT accidentally skip replay.
@@ -149,8 +154,8 @@ jobs:
           supabase db start
           container="$(docker ps --filter name=supabase_db_ --format '{{.ID}}' | head -n 1)"
           test -n "$container" || { echo 'Missing isolated Supabase PostgreSQL container'; exit 1; }
-          docker cp scripts/test-v2-applied-foundation-local-postgres.psql             "$container:/tmp/test-v2-applied-foundation-local-postgres.psql"
-          docker exec "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1             -f /tmp/test-v2-applied-foundation-local-postgres.psql
+          docker cp scripts/test-v2-applied-foundation-local-postgres.psql "$container:/tmp/test-v2-applied-foundation-local-postgres.psql"
+          docker exec "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-v2-applied-foundation-local-postgres.psql
       - name: Stop isolated Supabase database
         if: always() && steps.scope.outputs.run == 'true'
         run: supabase stop --no-backup || true
