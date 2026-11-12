@@ -51,7 +51,7 @@ They create the V2-owned Auth profile bootstrap, owner-scoped profile/settings/o
 3. Run `npm run test:auth` and `npm run typecheck`.
 4. Start with `npm run start`.
 
-The package lockfile, clean install, TypeScript/app test execution, Expo bundle and physical-device checks have not yet passed. Package scripts currently include `test:auth`, `test:calculator`, `test:training-logic` and `typecheck`. Do not claim build or device acceptance until the exact branch is installed and tested. Node >=22.13 is required by the package; use `npm ci` only after the canonical package lockfile is committed.
+The committed lockfile and native JavaScript engineering pipeline passed on commit `9b249ede0c8575d9959ee72253d723db80025f2a` in [GitHub Actions run 43129860522](https://github.com/allinproject/All-In-V2/actions/runs/43129860522): clean `npm ci`, Auth, Cookbook and Training tests, TypeScript, Expo public config, and separate iOS/Android JS exports. Later branch commits require their own verification. **No installable iOS/Android binary or physical-device flow has been accepted yet.** Node >=22.13 is required; do not regenerate the committed lockfile during ordinary setup.
 
 ## Reproducible V2 dependency checkpoint
 
@@ -67,7 +67,6 @@ From a networked clone of **this repository** (Node 22.16 or later):
 
 ```bash
 cd apps/mobile-v2
-npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 node ../../scripts/check-v2-dependency-manifest.mjs --require-lockfile
 npm ci --no-audit --no-fund
 npm run test:auth
@@ -75,29 +74,44 @@ npm run test:calculator
 npm run test:training-logic
 npm run typecheck
 npx --no-install expo config --type public
-npx --no-install expo export --platform all --output-dir /tmp/allin365-v2-export
+npx --no-install expo export --platform ios --output-dir /tmp/allin365-v2-export-ios
+npx --no-install expo export --platform android --output-dir /tmp/allin365-v2-export-android
 ```
 
-Review and commit `apps/mobile-v2/package-lock.json` only after a successful clean `npm ci` with no `--force` or `--legacy-peer-deps`. The lockfile must be generated for the **current** package manifest, not copied from an older failed workflow artifact. No production credentials are needed for this isolated source-validation sequence; Expo exports may require the deliberately nonfunctional environment placeholders used in `.github/workflows/v2-engineering.yml`. Do not use the placeholder credentials for live authentication testing.
+The canonical `apps/mobile-v2/package-lock.json` is already committed. Use `npm ci` with no `--force` or `--legacy-peer-deps`; do not regenerate or replace the lockfile unless an intentional, reviewed dependency change requires it. No production credentials are needed for this isolated source-validation sequence; Expo exports may require the deliberately nonfunctional environment placeholders used in `.github/workflows/v2-engineering.yml`. Do not use the placeholder credentials for live authentication testing.
 
-The cheap dependency-free smoke workflow checks React/React DOM manifest compatibility on relevant pushes. The full engineering workflow requires a committed matching lockfile and runs only at a non-draft PR review checkpoint. On the current branch, the full lockfile, npm install, TypeScript and Expo validation remain **unverified**. The full engineering job is a release gate, not a per-commit development loop.
+The cheap dependency-free smoke workflow checks React/React DOM manifest compatibility on relevant pushes. The full engineering workflow also accepts an `integration/v2-foundation` push **only when its own workflow file changes**, and continues to skip draft-PR validation. One full run passed at the pinned commit above; normal source pushes do not automatically rerun this costly job. This is a source-and-JavaScript-bundle gate, not native install or production acceptance.
+
+## First native-device acceptance (not yet run)
+
+The successful Expo `export` commands produce platform JavaScript bundles, **not installable app binaries**. Do not claim that the founder beta is installed or working based on exports alone. V2 has no committed `apps/mobile-v2/eas.json` at this checkpoint; do not fabricate an EAS build profile, signing credentials, bundle/package identifiers or a release artifact.
+
+1. Refresh the intended integration SHA and record it with the validation run/build ID. Preserve local working changes and do not merge draft PR #2 or modify `main`.
+2. Determine the founder's physical device platform (iOS vs Android) and approved native build route. iOS requires a trusted signing/provisioning path; Android requires the appropriate Android build environment and device installation method. An Expo JavaScript export does **not** satisfy either requirement.
+3. Confirm the correct **V2-only** Supabase URL and publishable key for a *development* build, never a service-role key. In `app.config.ts`, native identifiers are intentionally optional and taken only from verified `ALLIN_V2_IOS_BUNDLE_ID` / `ALLIN_V2_ANDROID_PACKAGE`. Do not infer or silently borrow V1 identities.
+4. Verify the V2 Auth redirect allowlist contains `allin365v2://**` before testing confirmation or password recovery. The stable deep-link callback is `allin365v2://auth/callback`; Expo Go is not equivalent to a signed/native development build for this test.
+5. Verify **three published and reviewed V2 legal documents** before attempting real founder signup/onboarding. If legal publication is still gated, record that as a blocker and restrict acceptance to signed-out launch/navigation; do not bypass the gate or publish draft legal text.
+6. Install one approved development build on a real device; record platform/OS/build SHA, launch, background/foreground resume, sign-in/sign-out, email confirmation and recovery links, six-step onboarding, profile routes, account switch/stale session resistance and expected error states. Use only an authorized founder test account with no imported V1 personal data.
+7. Review the `@sentry/cli` install-script warnings and the Expo Router package-export fallback warning separately. Do not grant unreviewed install scripts, inject private Sentry credentials or enable athlete telemetry merely to silence warnings. Record the observed result and any rollback in the owning Linear issues.
+
+Device acceptance and native store readiness are separate from **ALL-224's pinned source/CI success** and must be recorded from actual installed-app evidence, not inferred from test titles.
 
 ## Security note
 
 Public API tables use least-privilege grants and owner RLS. The private tables `allin_private.v2_profile_settings_actions`, `allin_private.v2_onboarding_actions` and `allin_private.v2_provider_cache` have RLS enabled and no schema usage or direct table privileges granted to `anon` or `authenticated`. They intentionally have no direct API policies; only the narrowly scoped owning SECURITY DEFINER/service-role RPC paths access them. See Linear ALL-223 for applied migration, grant verification, and rolled-back idempotent-writer replay evidence. Supabase's remaining three no-policy INFO notices for these private tables are intentional; do not add permissive policies to silence them. Four authenticated per-user SECURITY DEFINER RPC advisor warnings are documented; these functions check `auth.uid()` and are required by the current client flow.
 
 
-The access-gate profile-state reader is typed with the generated `Database` contract as well. Compiler validation remains pending the reproducible npm install/typecheck gate.
+The access-gate profile-state reader is typed with the generated `Database` contract as well. Compiler validation passed in the pinned no-deploy engineering run above.
 
 
 ## Onboarding
 
-The short six-step flow covers focus, current training pattern, availability, Coach guidance, food safety and proactivity. Every step can be skipped; skipped values remain unknown. Answers are saved to the existing Training, Coach, Nutrition and Notification Settings sections. The flow does not request blanket OS permissions; Health, notifications, camera and location permissions remain contextual. Full app typecheck, signed-in installed-device behavior and accessibility acceptance are still pending.
+The short six-step flow covers focus, current training pattern, availability, Coach guidance, food safety and proactivity. Every step can be skipped; skipped values remain unknown. Answers are saved to the existing Training, Coach, Nutrition and Notification Settings sections. The flow does not request blanket OS permissions; Health, notifications, camera and location permissions remain contextual. Full typecheck passed at the pinned commit above; signed-in installed-device behavior and accessibility acceptance are still pending.
 
 
 ## Authenticated write ownership
 
-Signup, legal acceptance and onboarding verify that the active Supabase session still belongs to the expected V2 account before sensitive writes. The shared guard lives in `src/auth/accessGateClient.ts`; it fails closed on sign-out, account switch or session lookup failure. This source path has focused unit coverage; installed-device account-switch testing and full package/typecheck acceptance remain pending.
+Signup, legal acceptance and onboarding verify that the active Supabase session still belongs to the expected V2 account before sensitive writes. The shared guard lives in `src/auth/accessGateClient.ts`; it fails closed on sign-out, account switch or session lookup failure. This source path has focused unit coverage; installed-device account-switch testing remains pending; full package/typecheck acceptance passed at the pinned commit above.
 
 
 All user-scoped mutation RPCs now require `p_expected_user_id` and compare it to `auth.uid()` inside PostgreSQL. A mismatch fails closed with SQLSTATE `42501`, even if an account switch occurs after a client-side session check but before the RPC reaches the database. Old signatures were dropped. Client call sites and generated public types pass the captured account ID. Rollback-only SQL tests for all three RPCs and onboarding idempotency/isolation passed.
