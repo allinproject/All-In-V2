@@ -1,0 +1,9 @@
+-- Run only after the three ALL-247 review SQL candidates, inside BEGIN/ROLLBACK, with synthetic account fixtures.
+-- Coverage requirements (pending standalone acceptance):
+-- 1. behavior_only must not expose numeric calorie target
+-- 2. verified_activity without canonical activity source must return null exercise and remaining
+-- 3. an unlogged day remains null rather than zero
+-- 4. an unknown-calorie Food event blocks provisional remaining
+-- 5. edit/move/delete refreshes subtotal without a separate summary store
+-- 6. user B must not retrieve user A's data or settings
+-- This file records follow-up acceptance requirements; it is not a claim these tests ran.
