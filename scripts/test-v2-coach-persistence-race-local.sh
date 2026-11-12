@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ALL-222: two independent PostgreSQL sessions; disposable LOCAL Supabase only.
 set -euo pipefail
-db="\${1:?local DB container required}"
-[[ "\${CI:-}" == "1" ]] || { echo 'CI-only local replay' >&2; exit 1; }
+db="${1:?local DB container required}"
+[[ "${CI:-}" == "1" ]] || { echo 'CI-only local replay' >&2; exit 1; }
 owner='66666666-6666-4666-8666-666666666666'
 action='aaaaaaaa-6666-4666-8666-666666666666'
 tmp="$(mktemp -d)"
