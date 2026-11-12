@@ -39,6 +39,62 @@ function planAutomaticQualification({candidates,documents,sourceProfileKey,profi
       idempotencyKey:requestKey(profileId,p.revision,digest,p.status)})),
     calculationReady:false,publicationApproved:false});
 }
+// Only the real restricted database session may report hosted readiness. This
+// catalog query never creates permissions or data, and never substitutes for a
+// real independent authentication or write/revocation acceptance test.
+const HOSTED_READINESS_SQL=`
+SELECT
+  session_user::text AS login,
+  current_user::text AS effective_role,
+  to_regclass('public.v2_ingredients') IS NOT NULL AS ingredients,
+  to_regclass('public.v2_ingredient_nutrition_profiles') IS NOT NULL AS profiles,
+  to_regclass('public.v2_ingredient_source_records') IS NOT NULL AS sources,
+  to_regclass('allin_private.v2_ingredient_review_events') IS NOT NULL AS review_events,
+  to_regclass('allin_private.v2_ingredient_energy_attestations') IS NOT NULL AS energy_attestations,
+  to_regprocedure('allin_private.v2_review_ingredient_profile_status(uuid,integer,text,text,text,uuid)') IS NOT NULL AS review_writer,
+  to_regprocedure('allin_private.v2_attest_ingredient_energy(uuid,integer,text,text)') IS NOT NULL AS energy_writer,
+  to_regrole('allin_v2_ingredient_reviewer') IS NOT NULL AS reviewer_role,
+  to_regrole('allin_v2_ingredient_publisher') IS NOT NULL AS publisher_role,
+  COALESCE((SELECT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb
+    AND NOT rolcreaterole AND NOT rolreplication AND NOT rolbypassrls
+    FROM pg_catalog.pg_roles WHERE rolname=session_user),false) AS login_least_privileged,
+  EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles role_granted ON role_granted.oid=m.roleid
+    JOIN pg_catalog.pg_roles role_member ON role_member.oid=m.member
+    WHERE role_granted.rolname='allin_v2_ingredient_reviewer'
+      AND role_member.rolname=session_user) AS reviewer_member,
+  EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles role_granted ON role_granted.oid=m.roleid
+    JOIN pg_catalog.pg_roles role_member ON role_member.oid=m.member
+    WHERE role_granted.rolname='allin_v2_ingredient_publisher'
+      AND role_member.rolname=session_user) AS publisher_member,
+  EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relname='v2_ingredient_nutrition_profiles'
+      AND c.relrowsecurity) AS profiles_rls_enabled,
+  has_schema_privilege(session_user,'public','CREATE') AS login_public_create;
+`;
+async function checkHostedIngestReadiness(client,{requirePublisher=false}={}) {
+  if(!client||typeof client.query!=='function')throw Error('Trusted database session required');
+  if(typeof requirePublisher!=='boolean')throw Error('Publisher gate must be an explicit boolean');
+  const response=await client.query(HOSTED_READINESS_SQL);
+  if(!response?.rows||response.rows.length!==1)throw Error('Hosted schema readiness unavailable');
+  const proof=response.rows[0];
+  const required=['ingredients','profiles','sources','review_events','energy_attestations',
+    'review_writer','energy_writer','reviewer_role','publisher_role',
+    'login_least_privileged','reviewer_member','profiles_rls_enabled'];
+  const missing=required.filter(k=>proof[k]!==true);
+  if(typeof proof.login!=='string'||
+     !/^allin_ing_workload_[a-z0-9_]{6,35}$/.test(proof.login)||
+     !['allin_v2_ingredient_reviewer',proof.login].includes(proof.effective_role)||
+     proof.login_public_create!==false||proof.publisher_member!==requirePublisher||
+     missing.length)
+    throw Error('Hosted ingest readiness denied: '+(missing.join(',')||'identity, publish grant or schema creation'));
+  // Not proof of a real service connection until executed on a genuine,
+  // independently authenticated PostgreSQL session.
+  return {ready:true,login:proof.login,publicationEnabled:requirePublisher};
+}
+
 async function runAutomaticQualification({client,attestEnergy=false,...inputs}) {
   // The injected client MUST already be a trusted, server-only, independently
   // authenticated restricted DB session. No public RPC, service_role or anon.
@@ -97,4 +153,4 @@ async function runAutomaticQualification({client,attestEnergy=false,...inputs}) 
     throw error;
   }
 }
-module.exports={planAutomaticQualification,runAutomaticQualification,requestKey,WRITER,ENERGY_WRITER};
+module.exports={planAutomaticQualification,runAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,HOSTED_READINESS_SQL,checkHostedIngestReadiness};
