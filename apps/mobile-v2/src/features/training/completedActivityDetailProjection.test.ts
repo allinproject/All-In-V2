@@ -125,3 +125,18 @@ test('visible confidence warnings distinguish partial measurement, provider and 
   metrics:[{...metric,quality:'partial',sourceQuality:'trusted'}]});
  assert.equal(metricEvidenceQualityNotice(projected.details[0]),'Partial measurement quality');
 });
+
+test('each non-device measurement origin remains visible beside quality in Overview',()=>{
+ const source=fact('effort','Effort','6');
+ const cases=[
+  ['manual','Manually entered value'],['derived','Calculated value'],
+  ['provider','Provider-derived value'],['estimated','Estimated value'],
+ ] as const;
+ for(const [provenance,label] of cases){
+  const m={...source,provenance,quality:'partial' as const,sourceQuality:'trusted' as const};
+  assert.equal(metricEvidenceQualityNotice(m),label+' · Partial measurement quality',provenance);
+  const screen=projectCompletedActivityDetail({sport:'outdoor_run',metrics:[m]});
+  assert.equal(metricEvidenceQualityNotice(screen.details[0]),label+' · Partial measurement quality');
+ }
+ assert.equal(metricEvidenceQualityNotice({...source,provenance:'device'}),null);
+});
