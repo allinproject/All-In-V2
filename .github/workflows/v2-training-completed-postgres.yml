@@ -634,6 +634,12 @@ jobs:
           PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           set -euo pipefail
+          # Independent populated clone: interrupted transactional DDL and
+          # ledger must disappear on rollback before normal upgrade/retry.
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_complete_integration all96_interrupted_upgrade
+          docker cp scripts/test-v2-upgrade-interrupted-rollback-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-upgrade-interrupted-rollback-postgres.psql"
+          docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql"
+          docker exec "$PG_CONTAINER" psql -X -U "$PGUSER" -d all96_interrupted_upgrade -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-upgrade-interrupted-rollback-postgres.psql
           # Clone the populated integration fixture; no writes to the source DB.
           docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_complete_integration all96_populated_upgrade
           docker cp docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql"
