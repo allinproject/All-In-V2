@@ -56,6 +56,24 @@ try{
  const aToken=await login(a),bToken=await login(b);
  assert.notEqual(aToken,bToken);
  process.stdout.write('PASS: two real isolated synthetic GoTrue sessions\\n');
+ // The canonical restricted RPC bridges must never trust a signed-in user
+ // directly or authorize an unapproved request, even through a secret-key
+ // backend. Verify against real hosted Auth user and session identifiers.
+ const sessionId=JSON.parse(Buffer.from(aToken.split('.')[1],'base64url').toString()).session_id;
+ assert(/^[a-f0-9-]{36}$/i.test(sessionId??''),'Missing real Auth session claim');
+ const args={p_user_id:a.id,p_session_id:sessionId,p_request_id:randomUUID()};
+ for(const name of ['v2_account_export_worker_authorize_candidate',
+                    'v2_account_export_worker_approve_candidate']){
+  const deniedUser=await request('/rest/v1/rpc/'+name,{
+   method:'POST',body:args,userJwt:aToken,apiKey:anon});
+  assert([401,403,404].includes(deniedUser.status),
+    'Ordinary authenticated account reached restricted worker RPC');
+  const deniedServer=await request('/rest/v1/rpc/'+name,{
+   method:'POST',body:args,apiKey:key});
+  assert([400,401,403,404].includes(deniedServer.status),
+    'Privileged RPC authorized nonexistent request or missing deletion gate');
+ }
+ process.stdout.write('PASS: hosted user RPC denies client execution and server RPC rejects missing approval\\n');
  for(const token of [aToken,bToken]){
   const res=await request('/functions/v1/v2-account-export-download',{
     method:'POST',userJwt:token,apiKey:anon,body:{request_id:randomUUID()}});
