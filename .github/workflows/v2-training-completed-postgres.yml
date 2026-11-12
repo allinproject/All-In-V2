@@ -433,6 +433,7 @@ jobs:
           PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           set -euo pipefail
+          docker cp docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql"
           docker cp docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql"
           docker cp docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql"
           docker cp scripts/test-v2-account-export-training-integration-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-account-export-training-integration-postgres.psql"

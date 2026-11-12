@@ -7,8 +7,8 @@ CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
  SELECT NULLIF(current_setting('request.jwt.claim.sub',true),'')::uuid
 $$;
 REVOKE ALL ON FUNCTION auth.uid() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION auth.uid() TO allin_v2_device_ingest;
 \i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-PRIVATE-INGEST-GATEWAY-CANDIDATE.sql
+GRANT EXECUTE ON FUNCTION auth.uid() TO allin_v2_device_ingest;
 -- Confirm actual RLS is enabled on every protected canonical table.
 DO $audit$
 DECLARE t text;
@@ -21,6 +21,25 @@ BEGIN
  IF has_function_privilege('authenticated',
  'allin_private.v2_device_ingest_scalar_gateway_candidate(text,text,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)','EXECUTE')
  THEN RAISE EXCEPTION 'Authenticated client can invoke private gateway'; END IF;
+ IF has_table_privilege('authenticated','public.v2_completed_activities','UPDATE')
+ THEN RAISE EXCEPTION 'Authenticated client can update activities'; END IF;
+ IF has_table_privilege('allin_v2_device_ingest',
+   'public.v2_activity_metric_values','UPDATE')
+ THEN RAISE EXCEPTION 'Device ingest role can rewrite canonical metrics'; END IF;
+ IF NOT EXISTS(
+  SELECT 1 FROM pg_catalog.pg_roles
+  WHERE rolname='allin_v2_device_ingest'
+    AND NOT rolcanlogin AND NOT rolinherit AND NOT rolsuper
+    AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication
+    AND NOT rolbypassrls
+ ) THEN RAISE EXCEPTION 'Device ingest role is not restricted'; END IF;
+ IF EXISTS(
+  SELECT 1
+  FROM pg_catalog.pg_auth_members m
+  JOIN pg_catalog.pg_roles ingest_role
+    ON ingest_role.rolname='allin_v2_device_ingest'
+  WHERE m.roleid=ingest_role.oid OR m.member=ingest_role.oid
+ ) THEN RAISE EXCEPTION 'Device ingest role has unexpected membership'; END IF;
 END $audit$;
 -- SET ROLE is only possible in this isolated superuser-driven test; production
 -- MUST NOT grant role membership to any API/client login.
@@ -37,6 +56,12 @@ DECLARE a uuid:='11111111-1111-4111-8111-111111111111';
 BEGIN
  IF (SELECT count(*) FROM public.v2_completed_activities)<>1 THEN
   RAISE EXCEPTION 'Owner A can see another athlete activity'; END IF;
+ IF EXISTS(SELECT 1 FROM public.v2_completed_activities WHERE id=run)
+ OR EXISTS(SELECT 1 FROM public.v2_activity_sources WHERE id=run_src) THEN
+  RAISE EXCEPTION 'Owner A read Owner B activity or source'; END IF;
+ UPDATE public.v2_completed_activities SET id='f3333333-4444-4444-8444-333333333333'
+ WHERE id=run;
+ IF FOUND THEN RAISE EXCEPTION 'Owner A updated Owner B activity'; END IF;
  IF (SELECT count(*) FROM public.v2_activity_sources)<>1 THEN
   RAISE EXCEPTION 'Owner A can see another athlete source'; END IF;
  BEGIN
@@ -51,6 +76,14 @@ BEGIN
    nonce_hash,owner_id,activity_id,source_id,callback_hash)
   VALUES(repeat('3',64),b,run,run_src,repeat('4',64));
   RAISE EXCEPTION 'Cross-owner nonce inserted';
+ EXCEPTION WHEN insufficient_privilege OR check_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.v2_activity_metric_values(
+   id,activity_id,user_id,source_id,metric_code,definition_version,
+   value_numeric,measurement_kind,quality,source_payload_hash)
+  VALUES('f1111111-2222-4222-8222-222222222222',run,b,run_src,
+   'run_distance_m',1,42,'source_measured','partial',repeat('b',64));
+  RAISE EXCEPTION 'Owner A wrote Owner B metric';
  EXCEPTION WHEN insufficient_privilege OR check_violation THEN NULL; END;
  result:=allin_private.v2_device_ingest_scalar_gateway_candidate(
   repeat('5',64),repeat('6',64),a,ride,src,
@@ -73,8 +106,25 @@ BEGIN
  IF (SELECT count(*) FROM public.v2_completed_activities)<>1
  OR (SELECT count(*) FROM public.v2_activity_sources)<>1 THEN
   RAISE EXCEPTION 'Owner B isolation failed'; END IF;
+ IF EXISTS(SELECT 1 FROM public.v2_completed_activities
+   WHERE id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+ OR EXISTS(SELECT 1 FROM public.v2_activity_sources
+   WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc')
+ OR EXISTS(SELECT 1 FROM allin_private.v2_device_ingest_nonce_candidate
+   WHERE nonce_hash=repeat('5',64)) THEN
+  RAISE EXCEPTION 'Owner B read Owner A activity, source, or nonce'; END IF;
  IF EXISTS(SELECT 1 FROM public.v2_activity_metric_values WHERE metric_code='cadence_rpm')
  THEN RAISE EXCEPTION 'Owner B read owner A measurement'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_device_ingest_scalar_gateway_candidate(
+   repeat('7',64),repeat('8',64),
+   '11111111-1111-4111-8111-111111111111',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+   'f2222222-3333-4333-8333-333333333333','cadence_rpm',1,
+   'source_measured',88,NULL,NULL,repeat('a',64),'partial');
+  RAISE EXCEPTION 'Owner B ingested for Owner A';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $owner_b$;
 RESET ROLE;
 \echo 'PASS ALL-243 isolated two-owner RLS, gateway, nonce and client denial'

@@ -10,6 +10,23 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM pg_catalog.pg_roles WHERE rolname='allin_v2_device_ingest') THEN
   CREATE ROLE allin_v2_device_ingest NOLOGIN NOINHERIT NOBYPASSRLS;
  END IF;
+ IF EXISTS(
+  SELECT 1 FROM pg_catalog.pg_roles
+  WHERE rolname='allin_v2_device_ingest'
+    AND (rolcanlogin OR rolinherit OR rolsuper OR rolcreatedb
+      OR rolcreaterole OR rolreplication OR rolbypassrls)
+ ) THEN
+  RAISE EXCEPTION 'Device ingest principal must retain restricted role attributes';
+ END IF;
+ IF EXISTS(
+  SELECT 1
+  FROM pg_catalog.pg_auth_members m
+  JOIN pg_catalog.pg_roles ingest_role
+    ON ingest_role.rolname='allin_v2_device_ingest'
+  WHERE m.roleid=ingest_role.oid OR m.member=ingest_role.oid
+ ) THEN
+  RAISE EXCEPTION 'Device ingest principal must have no role memberships';
+ END IF;
 END $role$;
 -- No membership grants to authenticator, service_role, anon or authenticated.
 GRANT USAGE ON SCHEMA allin_private TO allin_v2_device_ingest;
@@ -20,6 +37,11 @@ GRANT SELECT ON public.v2_completed_activities TO allin_v2_device_ingest;
 GRANT SELECT ON public.v2_activity_sources TO allin_v2_device_ingest;
 GRANT SELECT ON public.v2_activity_metric_definitions TO allin_v2_device_ingest;
 GRANT SELECT,INSERT ON public.v2_activity_metric_values TO allin_v2_device_ingest;
+-- The canonical writer locks an activity FOR UPDATE; only its id column is
+-- granted, and the UPDATE policy is owner-scoped for that row-lock operation.
+GRANT UPDATE (id) ON public.v2_completed_activities TO allin_v2_device_ingest;
+-- It also locks the source FOR SHARE, which has the same narrow requirement.
+GRANT UPDATE (id) ON public.v2_activity_sources TO allin_v2_device_ingest;
 -- Owner-scoped policies below require auth.uid() to match a VERIFIED user.
 -- A custom request.jwt.claims GUC is not a security credential: do not let
 -- this role become reachable through PostgREST or an untrusted SQL session.
@@ -49,9 +71,17 @@ CREATE POLICY v2_device_ingest_nonce_owner_candidate
 CREATE POLICY v2_device_ingest_activity_owner_candidate
  ON public.v2_completed_activities FOR SELECT TO allin_v2_device_ingest
  USING (user_id = (SELECT auth.uid()));
+CREATE POLICY v2_device_ingest_activity_lock_owner_candidate
+ ON public.v2_completed_activities FOR UPDATE TO allin_v2_device_ingest
+ USING (user_id = (SELECT auth.uid()))
+ WITH CHECK (user_id = (SELECT auth.uid()));
 CREATE POLICY v2_device_ingest_source_owner_candidate
  ON public.v2_activity_sources FOR SELECT TO allin_v2_device_ingest
  USING (user_id = (SELECT auth.uid()));
+CREATE POLICY v2_device_ingest_source_lock_owner_candidate
+ ON public.v2_activity_sources FOR UPDATE TO allin_v2_device_ingest
+ USING (user_id = (SELECT auth.uid()))
+ WITH CHECK (user_id = (SELECT auth.uid()));
 CREATE POLICY v2_device_ingest_metric_read_owner_candidate
  ON public.v2_activity_metric_values FOR SELECT TO allin_v2_device_ingest
  USING (user_id = (SELECT auth.uid()));
@@ -115,121 +145,6 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_device_ingest_scalar_gateway_candidat
 COMMIT;
 -- RELEASE BLOCKERS: verify all existing table RLS is enabled, FORCE RLS
 -- where appropriate, and role membership/SET ROLE cannot be abused;
--- secure server session + native provider attestation; nonce retention/cleanup;
--- source registration and stable source-to-activity mapping; batched atomic
--- callbacks; concurrency/denial tests; rollback plan; production approval.
-
-  OR p_callback_hash IS NULL OR p_callback_hash !~ '^[0-9a-f]{64}$'
-  OR p_owner_id IS NULL OR p_activity_id IS NULL OR p_source_id IS NULL THEN
-  RAISE EXCEPTION 'Invalid callback binding' USING ERRCODE='22023';
- END IF;
- -- Transaction-scoped owner lock serializes nonce + canonical writer.
- PERFORM pg_catalog.pg_advisory_xact_lock(
-  pg_catalog.hashtextextended('v2-device-ingest:'||p_owner_id::text,0));
- -- Source/activity and evidence are checked by the existing canonical writer.
- -- Duplicate nonce is a hard failure; never claim a changed payload is replay.
- INSERT INTO allin_private.v2_device_ingest_nonce_candidate
-  (nonce_hash,owner_id,activity_id,source_id,callback_hash)
- VALUES(p_nonce_hash,p_owner_id,p_activity_id,p_source_id,p_callback_hash)
- ON CONFLICT(nonce_hash) DO NOTHING;
- IF NOT FOUND THEN
-  RAISE EXCEPTION 'Device callback nonce already consumed' USING ERRCODE='23505';
- END IF;
- v_result:=allin_private.v2_activity_append_scalar_candidate(
-  p_owner_id,p_activity_id,p_source_id,p_value_id,p_metric_code,
-  p_definition_version,p_measurement_kind,p_value_numeric,p_value_text,
-  p_value_boolean,p_source_payload_hash,p_measurement_quality);
- RETURN v_result;
-END;
-$gateway$;
-REVOKE ALL ON FUNCTION allin_private.v2_device_ingest_scalar_gateway_candidate(
- text,text,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
- FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION allin_private.v2_activity_append_scalar_candidate(
- uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
- TO allin_v2_device_ingest;
-GRANT EXECUTE ON FUNCTION allin_private.v2_device_ingest_scalar_gateway_candidate(
- text,text,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
- TO allin_v2_device_ingest;
-COMMIT;
--- RELEASE BLOCKERS: dedicated role must have carefully reviewed owner-bound RLS;
--- secure server session + native provider attestation; nonce retention/cleanup;
--- source registration and stable source-to-activity mapping; batched atomic
--- callbacks; concurrency/denial tests; rollback plan; production approval.
-
-  OR p_callback_hash IS NULL OR p_callback_hash !~ '^[0-9a-f]{64}$'
-  OR p_owner_id IS NULL OR p_activity_id IS NULL OR p_source_id IS NULL THEN
-  RAISE EXCEPTION 'Invalid callback binding' USING ERRCODE='22023';
- END IF;
- -- Transaction-scoped owner lock serializes nonce + canonical writer.
- PERFORM pg_catalog.pg_advisory_xact_lock(
-  pg_catalog.hashtextextended('v2-device-ingest:'||p_owner_id::text,0));
- -- Source/activity and evidence are checked by the existing canonical writer.
- -- Duplicate nonce is a hard failure; never claim a changed payload is replay.
- INSERT INTO allin_private.v2_device_ingest_nonce_candidate
-  (nonce_hash,owner_id,activity_id,source_id,callback_hash)
- VALUES(p_nonce_hash,p_owner_id,p_activity_id,p_source_id,p_callback_hash)
- ON CONFLICT(nonce_hash) DO NOTHING;
- IF NOT FOUND THEN
-  RAISE EXCEPTION 'Device callback nonce already consumed' USING ERRCODE='23505';
- END IF;
- v_result:=allin_private.v2_activity_append_scalar_candidate(
-  p_owner_id,p_activity_id,p_source_id,p_value_id,p_metric_code,
-  p_definition_version,p_measurement_kind,p_value_numeric,p_value_text,
-  p_value_boolean,p_source_payload_hash,p_measurement_quality);
- RETURN v_result;
-END;
-$gateway$;
-REVOKE ALL ON FUNCTION allin_private.v2_device_ingest_scalar_gateway_candidate(
- text,text,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
- FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION allin_private.v2_activity_append_scalar_candidate(
- uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
- TO allin_v2_device_ingest;
-GRANT EXECUTE ON FUNCTION allin_private.v2_device_ingest_scalar_gateway_candidate(
- text,text,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
- TO allin_v2_device_ingest;
-COMMIT;
--- RELEASE BLOCKERS: verify all existing table RLS is enabled, FORCE RLS
--- where appropriate, and role membership/SET ROLE cannot be abused;
--- secure server session + native provider attestation; nonce retention/cleanup;
--- source registration and stable source-to-activity mapping; batched atomic
--- callbacks; concurrency/denial tests; rollback plan; production approval.
-
-  OR p_callback_hash IS NULL OR p_callback_hash !~ '^[0-9a-f]{64}$'
-  OR p_owner_id IS NULL OR p_activity_id IS NULL OR p_source_id IS NULL THEN
-  RAISE EXCEPTION 'Invalid callback binding' USING ERRCODE='22023';
- END IF;
- -- Transaction-scoped owner lock serializes nonce + canonical writer.
- PERFORM pg_catalog.pg_advisory_xact_lock(
-  pg_catalog.hashtextextended('v2-device-ingest:'||p_owner_id::text,0));
- -- Source/activity and evidence are checked by the existing canonical writer.
- -- Duplicate nonce is a hard failure; never claim a changed payload is replay.
- INSERT INTO allin_private.v2_device_ingest_nonce_candidate
-  (nonce_hash,owner_id,activity_id,source_id,callback_hash)
- VALUES(p_nonce_hash,p_owner_id,p_activity_id,p_source_id,p_callback_hash)
- ON CONFLICT(nonce_hash) DO NOTHING;
- IF NOT FOUND THEN
-  RAISE EXCEPTION 'Device callback nonce already consumed' USING ERRCODE='23505';
- END IF;
- v_result:=allin_private.v2_activity_append_scalar_candidate(
-  p_owner_id,p_activity_id,p_source_id,p_value_id,p_metric_code,
-  p_definition_version,p_measurement_kind,p_value_numeric,p_value_text,
-  p_value_boolean,p_source_payload_hash,p_measurement_quality);
- RETURN v_result;
-END;
-$gateway$;
-REVOKE ALL ON FUNCTION allin_private.v2_device_ingest_scalar_gateway_candidate(
- text,text,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
- FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION allin_private.v2_activity_append_scalar_candidate(
- uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
- TO allin_v2_device_ingest;
-GRANT EXECUTE ON FUNCTION allin_private.v2_device_ingest_scalar_gateway_candidate(
- text,text,uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)
- TO allin_v2_device_ingest;
-COMMIT;
--- RELEASE BLOCKERS: dedicated role must have carefully reviewed owner-bound RLS;
 -- secure server session + native provider attestation; nonce retention/cleanup;
 -- source registration and stable source-to-activity mapping; batched atomic
 -- callbacks; concurrency/denial tests; rollback plan; production approval.

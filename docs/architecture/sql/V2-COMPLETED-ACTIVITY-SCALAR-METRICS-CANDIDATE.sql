@@ -135,10 +135,12 @@ BEGIN
     (v_source.quality='unverified' AND v_quality IN ('trusted','partial')) OR
     (v_source.quality='partial' AND v_quality='trusted') THEN
    RAISE EXCEPTION 'Measurement quality exceeds source certification' USING ERRCODE='22023'; END IF;
+ -- The owner advisory lock serializes all calls to this writer for the same
+ -- account, so the existing fact needs no UPDATE-capable row lock.
  SELECT * INTO v_existing FROM public.v2_activity_metric_values
    WHERE activity_id=p_activity_id AND user_id=p_user_id
      AND segment_id IS NULL AND source_id=p_source_id AND metric_code=p_metric_code
-     AND definition_version=p_definition_version FOR UPDATE;
+     AND definition_version=p_definition_version;
  IF FOUND THEN
   IF v_existing.id<>p_value_id OR
     v_existing.measurement_kind<>p_measurement_kind OR

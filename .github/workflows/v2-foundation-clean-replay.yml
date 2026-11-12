@@ -386,17 +386,23 @@ jobs:
               AND (c.relname LIKE 'v2_training_%'
                    OR c.relname='v2_completed_activities'
                    OR c.relname LIKE 'v2_activity_%'
+                   OR c.relname LIKE 'v2_coach_%'
                    OR c.relname LIKE 'v2_indoor_weekly_%')
               AND c.relkind IN ('r','p');
             IF v_count < 15 THEN
               RAISE EXCEPTION 'Canonical candidate graph incomplete: % tables',v_count;
             END IF;
+            IF to_regclass('public.v2_coach_threads') IS NULL
+               OR to_regclass('public.v2_coach_messages') IS NULL
+               OR to_regclass('allin_private.v2_coach_message_actions') IS NULL
+            THEN RAISE EXCEPTION 'Coach owner tables missing from canonical candidate graph'; END IF;
             IF EXISTS(
               SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
               WHERE n.nspname IN ('public','allin_private')
                 AND (c.relname LIKE 'v2_training_%'
                      OR c.relname='v2_completed_activities'
                      OR c.relname LIKE 'v2_activity_%'
+                     OR c.relname LIKE 'v2_coach_%'
                      OR c.relname LIKE 'v2_indoor_weekly_%')
                 AND c.relkind IN ('r','p') AND NOT c.relrowsecurity
             ) THEN RAISE EXCEPTION 'Candidate table with RLS disabled'; END IF;
@@ -406,6 +412,7 @@ jobs:
                 AND (c.relname LIKE 'v2_training_%'
                      OR c.relname='v2_completed_activities'
                      OR c.relname LIKE 'v2_activity_%'
+                     OR c.relname LIKE 'v2_coach_%'
                      OR c.relname LIKE 'v2_indoor_weekly_%')
                 AND c.relkind IN ('r','p')
                 AND (has_table_privilege('anon',c.oid,'INSERT,UPDATE,DELETE')
@@ -453,6 +460,7 @@ jobs:
                 AND (c.relname LIKE 'v2_training_%'
                      OR c.relname='v2_completed_activities'
                      OR c.relname LIKE 'v2_activity_%'
+                     OR c.relname LIKE 'v2_coach_%'
                      OR c.relname LIKE 'v2_indoor_weekly_%')
             LOOP
               SELECT attnum INTO required_user_column FROM pg_attribute
