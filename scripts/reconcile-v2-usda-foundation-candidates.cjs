@@ -17,7 +17,15 @@ function stem(t){
   if(t.endsWith('s')&&!t.endsWith('ss')&&t.length>4)return t.slice(0,-1);
   return t;
 }
-function tokens(s){return [...new Set(normalize(s).split(' ').map(stem).filter(t=>t&&!COMMON.has(t)))].sort();}
+function tokens(s){
+  const n=normalize(s);
+  // "without salt" and "salt added" describe a food's processing,
+  // not the core ingredient "salt". Do not suggest table salt for soup.
+  const seasoning=/\\b(?:without|with)\\s+salt\\b|\\bsalt\\s+added\\b/.test(n);
+  const words=n.split(' ').map(stem).filter(t=>t&&!COMMON.has(t));
+  return [...new Set(seasoning&&words.some(t=>t!=='salt')
+    ? words.filter(t=>t!=='salt') : words)].sort();
+}
 function prep(s){
   const t=normalize(s);
   const has=v=>(' '+t+' ').includes(' '+v+' ');
@@ -59,7 +67,13 @@ function reconcile(foods,profiles){
       }
     }
     ranked.sort((a,b)=>b.lexicalScore-a.lexicalScore||a.sourceProfileKey.localeCompare(b.sourceProfileKey));
-    const suggestions=ranked.slice(0,5);
+    const suggestions=ranked.slice(0,5).map(row=>({
+      ...row,
+      preparationConflict:row.usdaPreparationHint!=='unspecified' &&
+        row.v1PreparationHint!=='unspecified' &&
+        row.usdaPreparationHint!==row.v1PreparationHint,
+      status:'unreviewed_lexical_hint'
+    }));
     suggestions.forEach(s=>suggestedKeys.add(s.sourceProfileKey));
     records.push({fdcId:f.fdcId,usdaDescription:f.description,
       usdaCategory:f.category||null,
