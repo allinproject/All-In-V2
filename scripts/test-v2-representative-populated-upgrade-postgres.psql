@@ -1,0 +1,79 @@
+\set ON_ERROR_STOP on
+-- ALL-96: disposable PG17 ONLY, cloned from the populated canonical Training
+-- integrated fixture. Never run on a hosted Supabase project.
+-- Replay twice: the second pass must be a no-op (migration ledger guard).
+BEGIN;
+CREATE SCHEMA IF NOT EXISTS allin_upgrade_qa;
+CREATE TABLE IF NOT EXISTS allin_upgrade_qa.applied_candidate (
+ candidate text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE IF NOT EXISTS allin_upgrade_qa.baseline (
+ id text PRIMARY KEY, activity_count bigint NOT NULL, source_count bigint NOT NULL,
+ activity_fingerprint text NOT NULL, source_fingerprint text NOT NULL
+);
+-- Verify the baseline is actually populated before any additive upgrade.
+DO $pre$
+BEGIN
+ IF to_regclass('public.v2_completed_activities') IS NULL
+ OR to_regclass('public.v2_activity_sources') IS NULL
+ OR to_regclass('public.v2_activity_segments') IS NULL
+ OR to_regprocedure('allin_private.v2_activity_scalar_evidence_projection_candidate(uuid,uuid)') IS NULL
+ THEN RAISE EXCEPTION 'ALL-96 ordering failure: canonical source graph missing'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.v2_completed_activities)
+ OR NOT EXISTS (SELECT 1 FROM public.v2_activity_sources)
+ THEN RAISE EXCEPTION 'ALL-96 requires populated Training/Activity baseline'; END IF;
+END $pre$;
+INSERT INTO allin_upgrade_qa.baseline
+SELECT 'pre-upgrade', (SELECT count(*) FROM public.v2_completed_activities),
+ (SELECT count(*) FROM public.v2_activity_sources),
+ (SELECT md5(coalesce(string_agg(row_to_json(a)::text, '|' ORDER BY a.id),'')) FROM public.v2_completed_activities a),
+ (SELECT md5(coalesce(string_agg(row_to_json(s)::text, '|' ORDER BY s.id),'')) FROM public.v2_activity_sources s)
+ON CONFLICT(id) DO NOTHING;
+-- Atomic additive upgrade, with durable test-only ledger. The second invocation
+-- skips CREATE FUNCTION (which is deliberately non-idempotent) and preserves rows.
+SELECT CASE WHEN EXISTS(
+ SELECT 1 FROM allin_upgrade_qa.applied_candidate
+ WHERE candidate='segment_scalar_projection_v1'
+) THEN 'false' ELSE 'true' END AS apply_upgrade \gset
+\if :apply_upgrade
+\i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql
+INSERT INTO allin_upgrade_qa.applied_candidate(candidate)
+ VALUES('segment_scalar_projection_v1');
+\endif
+DO $post$
+DECLARE b allin_upgrade_qa.baseline%ROWTYPE;
+BEGIN
+ SELECT * INTO STRICT b FROM allin_upgrade_qa.baseline WHERE id='pre-upgrade';
+ IF b.activity_count<>(SELECT count(*) FROM public.v2_completed_activities)
+ OR b.source_count<>(SELECT count(*) FROM public.v2_activity_sources)
+ OR b.activity_fingerprint<>(SELECT md5(coalesce(string_agg(row_to_json(a)::text,'|' ORDER BY a.id),'')) FROM public.v2_completed_activities a)
+ OR b.source_fingerprint<>(SELECT md5(coalesce(string_agg(row_to_json(s)::text,'|' ORDER BY s.id),'')) FROM public.v2_activity_sources s)
+ THEN RAISE EXCEPTION 'ALL-96 additive upgrade changed existing activity/source rows'; END IF;
+ IF (SELECT count(*) FROM allin_upgrade_qa.applied_candidate
+ WHERE candidate='segment_scalar_projection_v1')<>1
+ OR to_regprocedure('allin_private.v2_activity_segment_scalar_projection_candidate(uuid,uuid,uuid)') IS NULL
+ THEN RAISE EXCEPTION 'ALL-96 additive upgrade missing or applied more than once'; END IF;
+ -- Verify a second synthetic athlete cannot attach a source to the first
+ -- athlete's activity: the canonical composite owner FK must reject it.
+ INSERT INTO auth.users(id) VALUES('92929292-9292-4929-8929-929292929292')
+ ON CONFLICT DO NOTHING;
+ INSERT INTO public.v2_profiles(user_id) VALUES('92929292-9292-4929-8929-929292929292')
+ ON CONFLICT DO NOTHING;
+ BEGIN
+  INSERT INTO public.v2_activity_sources(id,activity_id,user_id,provider,
+   source_kind,source_record_id,quality,source_payload_hash)
+  SELECT '93939393-9393-4939-8939-939393939393',a.id,
+   '92929292-9292-4929-8929-929292929292',
+   'manual','manual_record','cross-owner-should-fail','unverified',repeat('a',64)
+  FROM public.v2_completed_activities a
+  WHERE a.user_id<>'92929292-9292-4929-8929-929292929292'
+  ORDER BY a.id LIMIT 1;
+  IF FOUND THEN RAISE EXCEPTION 'ALL-96 cross-owner source accepted'; END IF;
+ EXCEPTION WHEN foreign_key_violation THEN NULL;
+ END;
+ IF EXISTS(SELECT 1 FROM public.v2_activity_sources
+ WHERE id='93939393-9393-4939-8939-939393939393')
+ THEN RAISE EXCEPTION 'ALL-96 cross-owner source persisted'; END IF;
+ RAISE NOTICE 'PASS ALL-96: populated additive upgrade, source preservation, owner FK, ledger retry';
+END $post$;
+COMMIT;
