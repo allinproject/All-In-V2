@@ -73,6 +73,18 @@ test('presentation aliases and prototype keys never become canonical metric spor
  }
 });
 
+test('canonical registry rejects missing or malformed units before Details rendering',()=>{
+ const a=base();
+ for(const unit of [null,'','   ','x'.repeat(51)]){
+  const raw={...a,definitions:[{...a.definitions[0],canonicalUnit:unit as string}],
+   metrics:[a.metrics[0]]};
+  assert.throws(()=>canonicalActivityToScreenInput(raw,'owner-A','activity-1'),
+   /Invalid metric registry definition/);
+ }
+ const valid=canonicalActivityToScreenInput(a,'owner-A','activity-1');
+ assert.equal(valid.metrics[0].unit,'m');
+});
+
 test('unverified measurements are not mislabeled validated, rejected source never displays',()=>{
  const a=base();
  const b=canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],quality:'unverified'}]},'owner-A','activity-1');
