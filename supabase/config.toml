@@ -41,3 +41,9 @@ verify_jwt = true
 # Endpoint stays DEFAULT-OFF unless explicitly approved and deployed.
 [functions.v2-device-ingest]
 verify_jwt = true
+
+# ALL-243: staged owner-requested pairing/revocation, verified SERVER proof only.
+# Mandatory Auth JWT, dedicated registrar DB and default OFF flag.
+# Apple Watch/HealthKit owner proof needs an independently approved adapter.
+[functions.v2-device-pairing]
+verify_jwt = true
