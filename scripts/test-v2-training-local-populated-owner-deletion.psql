@@ -1,0 +1,96 @@
+\set ON_ERROR_STOP on
+-- ALL-222 / ALL-243 / ALL-246 / ALL-251: synthetic TWO-owner replay only.
+-- Requires all 18 real local Supabase migrations, the review-only Training /
+-- Activity candidate graph and the owner-cascade/history-guard review snippets.
+-- NEVER run this file against hosted Supabase. All test rows are rolled back.
+BEGIN;
+DO $qa$
+DECLARE
+  first_owner uuid:='11111111-1111-4111-8111-111111111111';
+  second_owner uuid:='22222222-2222-4222-8222-222222222222';
+  plan_id uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  rev_id uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  r record;
+  owned_count bigint;
+  result jsonb;
+BEGIN
+  INSERT INTO auth.users(id) VALUES(first_owner),(second_owner);
+  INSERT INTO public.v2_training_plans(id,user_id,plan_kind)
+    VALUES(plan_id,first_owner,'general');
+  INSERT INTO public.v2_training_plan_revisions(
+    id,plan_id,user_id,revision_number,source_kind,status,
+    calendar_start_date,calendar_end_date,calendar_timezone
+  ) VALUES(
+    rev_id,plan_id,first_owner,1,'athlete_authored','candidate',
+    DATE '2026-11-11',DATE '2026-11-11','America/Chicago'
+  );
+  INSERT INTO public.v2_training_revision_days(
+    id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,
+    day_state,sort_order
+  ) VALUES(
+    'cccccccc-cccc-4ccc-8ccc-cccccccccccc',rev_id,plan_id,
+    first_owner,DATE '2026-11-11','America/Chicago','rest',0
+  );
+  result:=allin_private.v2_training_accept_plan_revision_candidate(
+    first_owner,plan_id,rev_id,
+    'dddddddd-dddd-4ddd-8ddd-dddddddddddd',1
+  );
+  IF result->>'version'<>'2' THEN
+    RAISE EXCEPTION 'Synthetic accepted revision failed';
+  END IF;
+  INSERT INTO public.v2_completed_activities(
+    id,user_id,sport,activity_kind,athlete_local_date,timezone,
+    capture_kind,status
+  ) VALUES
+    ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',first_owner,
+     'running','manual_entry',DATE '2026-11-11','America/Chicago',
+     'manual_only','completed'),
+    ('ffffffff-ffff-4fff-8fff-ffffffffffff',second_owner,
+     'running','manual_entry',DATE '2026-11-11','America/Chicago',
+     'manual_only','completed');
+  -- A directly deleted accepted revision must be rejected with owner present.
+  BEGIN
+    DELETE FROM public.v2_training_plan_revisions WHERE id=rev_id;
+    RAISE EXCEPTION 'Accepted revision deleted before account teardown';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+
+  DELETE FROM auth.users WHERE id=first_owner;
+  IF EXISTS(SELECT 1 FROM auth.users WHERE id=first_owner) THEN
+    RAISE EXCEPTION 'Deleted synthetic Auth owner still present';
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM auth.users WHERE id=second_owner) THEN
+    RAISE EXCEPTION 'Unaffected synthetic Auth owner was removed';
+  END IF;
+
+  FOR r IN
+    SELECT n.nspname AS schema_name,c.relname AS table_name
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+      AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped
+    WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
+      AND (c.relname LIKE 'v2_training_%'
+        OR c.relname='v2_completed_activities'
+        OR c.relname LIKE 'v2_activity_%'
+        OR c.relname LIKE 'v2_indoor_weekly_%')
+  LOOP
+    EXECUTE pg_catalog.format(
+      'SELECT count(*) FROM %I.%I WHERE user_id=$1',
+      r.schema_name,r.table_name
+    ) INTO owned_count USING first_owner;
+    IF owned_count<>0 THEN
+      RAISE EXCEPTION 'Deleted owner retained % records in %.%',
+        owned_count,r.schema_name,r.table_name;
+    END IF;
+  END LOOP;
+  IF NOT EXISTS(
+    SELECT 1 FROM public.v2_completed_activities
+    WHERE id='ffffffff-ffff-4fff-8fff-ffffffffffff'
+      AND user_id=second_owner
+  ) THEN
+    RAISE EXCEPTION 'Unaffected athlete completed activity was removed';
+  END IF;
+  RAISE NOTICE 'PASS: synthetic two-owner actual Supabase Auth deletion cascade';
+END $qa$;
+ROLLBACK;
