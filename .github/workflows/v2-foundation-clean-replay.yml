@@ -14,6 +14,7 @@ on:
       - 'scripts/test-v2-community-privacy-local-postgres.psql'
       - 'scripts/test-v2-eventhub-version-guard-local-postgres.psql'
       - 'scripts/test-v2-eventhub-membership-writer-local-postgres.psql'
+      - 'scripts/test-v2-eventhub-membership-race-local.sh'
       - 'scripts/test-v2-eventhub-owner-reader-local-postgres.psql'
       - 'scripts/test-v2-eventhub-local-postgres.psql'
       - 'docs/architecture/sql/V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql'
@@ -254,6 +255,7 @@ jobs:
           docker cp scripts/test-v2-eventhub-membership-writer-local-postgres.psql "$db_container:/tmp/v2-eventhub-membership-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-membership.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-membership-qa.psql
+          bash scripts/test-v2-eventhub-membership-race-local.sh "$db_container"
           docker cp docs/architecture/sql/V2-EVENTHUB-EVENT-VERSION-GUARD-CANDIDATE.sql "$db_container:/tmp/v2-eventhub-version.sql"
           docker cp scripts/test-v2-eventhub-version-guard-local-postgres.psql "$db_container:/tmp/v2-eventhub-version-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-version.sql
