@@ -65,3 +65,21 @@ test('canonical snapshot and private paginated reader both redact blocked incomi
  assert(!reader.includes("UNION ALL SELECT 'community.pair_revisions'"));
  assert(!reader.includes("UNION ALL SELECT 'community.incoming_blocks'"));
 });
+
+test('Community action export excludes replay hashes and pair CAS internals in BOTH readers',()=>{
+ const inline=source.slice(source.indexOf("'my_action_receipts'"),source.indexOf("'incoming_blocks_disclosed'"));
+ const paged=reader.slice(reader.indexOf("ELSIF p_collection='community.my_action_receipts' THEN\n   --"),
+  reader.indexOf("ELSE\n   v_query:=pg_catalog.format",reader.indexOf("ELSIF p_collection='community.my_action_receipts' THEN\n   --")));
+ for(const field of ["'action_id'","'action'","'target_id'","'created_at'"]){
+  assert(inline.includes(field),'Canonical inline action missing '+field);
+  assert(paged.includes(field),'Paginated action missing '+field);
+ }
+ assert(!inline.includes("to_jsonb(a)"),'Raw Community action receipt cannot be exported');
+ assert(!paged.includes("pg_catalog.to_jsonb(t)"),'Raw paginated action receipt cannot be exported');
+ for(const sensitive of ["'payload_sha256'","'expected_version'","'result_version'"]){
+  assert(!inline.includes(sensitive),'Private replay metadata exposed by inline export');
+  assert(!paged.includes(sensitive),'Private replay metadata exposed by paginated export');
+ }
+ assert(!reader.includes("UNION ALL SELECT 'community.pair_revisions'"));
+ assert(!reader.includes("UNION ALL SELECT 'community.incoming_blocks'"));
+});
