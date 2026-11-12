@@ -30,8 +30,12 @@ BEGIN
   v_session_id:=v_claim::uuid;
  EXCEPTION WHEN invalid_text_representation THEN
   RAISE EXCEPTION 'Invalid Auth session identifier' USING ERRCODE='42501'; END;
- IF NOT EXISTS(SELECT 1 FROM auth.sessions
-  WHERE id=v_session_id AND user_id=v_user) THEN
+ -- A present but expired Auth session is not a valid owner read.
+ -- Use a timestamp, never current_time (time-of-day without the date).
+ IF NOT EXISTS(SELECT 1 FROM auth.sessions session
+  WHERE session.id=v_session_id AND session.user_id=v_user
+    AND (session.not_after IS NULL OR
+         session.not_after>pg_catalog.clock_timestamp())) THEN
   RAISE EXCEPTION 'Auth session is expired or revoked' USING ERRCODE='42501'; END IF;
  SELECT * INTO v_activity FROM public.v2_completed_activities
  WHERE id=p_activity_id AND user_id=v_user;
