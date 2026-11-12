@@ -131,3 +131,121 @@ export async function purgeExpiredAccountExportArchives({
   }
   return {purgedCount:receipts.length,receipts};
 }
+
+/**
+ * ALL-251 REVIEW ONLY: chunk storage for the same private export bucket and
+ * approved owner/request. Implements the trusted adapter shape consumed by
+ * trainingExportLargeArchive.mjs; never creates a signed URL or exposes keys.
+ * The existing request/session authorization must be performed by the caller
+ * for every streamed page; this adapter additionally checks the request lease.
+ */
+export function createSupabasePagedAccountExportStorage({
+ serviceClient,readApprovedRequestExpiry,
+}) {
+ if(typeof serviceClient?.storage?.getBucket!=='function'
+  ||typeof serviceClient?.storage?.from!=='function'
+  ||typeof readApprovedRequestExpiry!=='function')
+  throw Error('Trusted paged account archive services required');
+ const part=(ownerId,requestId)=>{
+  if(!UUID.test(ownerId??'')||!UUID.test(requestId??''))
+   throw Error('Exact owner and request required');
+  return ownerId+'/'+requestId;
+ };
+ const pageName=(collection,index)=>{
+  if(!/^[a-z][a-z0-9_]{0,63}$/.test(collection??'')
+   ||!Number.isInteger(index)||index<0||index>20000)
+   throw Error('Invalid private archive page identity');
+  return collection+'_'+index+'.page.json';
+ };
+ async function gate(ownerId,requestId) {
+  const approved=await readApprovedRequestExpiry({ownerId,requestId});
+  const expiry=Date.parse(approved?.expiresAt??'');
+  if(approved?.ownerId!==ownerId||approved?.requestId!==requestId
+   ||!['approved','staging','staged'].includes(approved?.status)
+   ||approved.cancelled!==false||!Number.isFinite(expiry)
+   ||expiry<=Date.now()||expiry>Date.now()+24*60*60*1000)
+   throw Error('Account archive request lease invalid');
+  const {data,error}=await serviceClient.storage.getBucket(PRIVATE_ACCOUNT_EXPORT_BUCKET);
+  if(error||data?.id!==PRIVATE_ACCOUNT_EXPORT_BUCKET||data.public!==false)
+   throw Error('Account export archive bucket is not private');
+ }
+ async function write(ownerId,requestId,path,obj){
+  const raw=new TextEncoder().encode(JSON.stringify(obj));
+  if(raw.byteLength===0||raw.byteLength>MAX_ENVELOPE_BYTES)
+   throw Error('Oversized private export object');
+  const {data,error}=await serviceClient.storage.from(PRIVATE_ACCOUNT_EXPORT_BUCKET)
+   .upload(path,new Blob([raw],{type:'application/octet-stream'}),{
+    upsert:false,contentType:'application/octet-stream',cacheControl:'0',
+   });
+  if(error||data?.path!==path)throw Error('Private account export write unconfirmed');
+ }
+ async function read(ownerId,requestId,path){
+  await gate(ownerId,requestId);
+  const {data,error}=await serviceClient.storage.from(PRIVATE_ACCOUNT_EXPORT_BUCKET).download(path);
+  if(error||!data||typeof data.arrayBuffer!=='function'
+    ||(Number.isFinite(data.size)&&data.size>MAX_ENVELOPE_BYTES))
+    throw Error('Private account export read denied');
+  const bytes=await data.arrayBuffer();
+  if(bytes.byteLength>MAX_ENVELOPE_BYTES)throw Error('Oversized account export read');
+  return JSON.parse(new TextDecoder().decode(bytes));
+ }
+ return Object.freeze({
+  async writePrivatePage({ownerId,requestId,collection,index,sealed}){
+   const base=part(ownerId,requestId);
+   const name=pageName(collection,index);
+   await gate(ownerId,requestId);
+   if(typeof sealed?.ciphertext!=='string'||!sealed.ciphertext)
+     throw Error('Missing encrypted account export page');
+   await write(ownerId,requestId,base+'/pages/'+name,sealed);
+   return {ownerId,requestId,collection,index,stored:true};
+  },
+  async commitPrivateManifest({ownerId,requestId,manifest}){
+   const base=part(ownerId,requestId);
+   await gate(ownerId,requestId);
+   if(manifest?.ownerId!==ownerId||manifest?.requestId!==requestId
+     ||manifest?.completeUserExport!==true)
+     throw Error('Incomplete export manifest refused');
+   await write(ownerId,requestId,base+'/manifest.json',manifest);
+   return {ownerId,requestId,committed:true};
+  },
+  async readPrivateManifest({ownerId,requestId}){
+   return read(ownerId,requestId,part(ownerId,requestId)+'/manifest.json');
+  },
+  async readPrivatePage({ownerId,requestId,collection,index}){
+   return read(ownerId,requestId,part(ownerId,requestId)+'/pages/'+pageName(collection,index));
+  },
+  async purgePrivateRequest({ownerId,requestId}){
+   const base=part(ownerId,requestId),bucket=serviceClient.storage.from(PRIVATE_ACCOUNT_EXPORT_BUCKET);
+   // Cleanup must still work for expired/revoked requests: never require a
+   // currently approved lease for purging bytes, but require private bucket.
+   const b=await serviceClient.storage.getBucket(PRIVATE_ACCOUNT_EXPORT_BUCKET);
+   if(b.error||b.data?.id!==PRIVATE_ACCOUNT_EXPORT_BUCKET||b.data.public!==false)
+     throw Error('Private archive purge bucket unavailable');
+   const paths=[];const seen=new Set();
+   for(let offset=0;offset<=20000;offset+=1000){
+    const {data,error}=await bucket.list(base+'/pages',{limit:1000,offset});
+    if(error||!Array.isArray(data))throw Error('Private page cleanup listing failed');
+    for(const entry of data){
+     const name=entry?.name;
+     if(!/^[a-z][a-z0-9_]{0,63}_[0-9]+\.page\.json$/.test(name??'')
+      ||seen.has(name))throw Error('Unexpected account export cleanup entry');
+     seen.add(name);paths.push(base+'/pages/'+name);
+    }
+    if(data.length<1000)break;
+    if(offset===20000)throw Error('Account export cleanup exceeded page bound');
+   }
+   paths.push(base+'/manifest.json');
+   // An uncommitted manifest may not exist. Storage remove is idempotent,
+   // but each returned existing page must have a confirmed delete receipt.
+   for(let i=0;i<paths.length;i+=100){
+    const chunk=paths.slice(i,i+100);
+    const {data,error}=await bucket.remove(chunk);
+    if(error||!Array.isArray(data))throw Error('Account export cleanup unconfirmed');
+    const removed=new Set(data.map(x=>x?.name));
+    const missing=chunk.filter(x=>x!==base+'/manifest.json'&&!removed.has(x));
+    if(missing.length)throw Error('Private export pages remain after purge');
+   }
+   return true;
+  },
+ });
+}
