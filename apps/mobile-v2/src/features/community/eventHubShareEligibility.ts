@@ -59,7 +59,7 @@ function requireEvidence(e:EventHubShareEvidence,b:EventHubCandidateBatch):void{
    !day(c.eventLocalDay)||!day(c.publishedEventLocalDay)||
    !day(c.workoutEventLocalDay)||!valid(c.eventTimezone)||
    !Array.isArray(c.acceptedSportKinds)||c.acceptedSportKinds.length>20||
-   c.acceptedSportKinds.some(x=>!valid(x))||seen.has(c.groupId))
+   c.acceptedSportKinds.some((x:string)=>!valid(x))||seen.has(c.groupId))
    throw new Error('Foreign, duplicate or invalid EventHub candidate.');
   seen.add(c.groupId);
  }
