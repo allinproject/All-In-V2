@@ -40,6 +40,7 @@ on:
       - 'scripts/all12-recovery-domain-manifest.test.mjs'
       - 'scripts/test-all12-live-schema-inventory-local.mjs'
       - 'scripts/test-all12-candidate-dump-inventory-local.mjs'
+      - 'scripts/test-all12-auth-logical-backup-local.mjs'
       - 'scripts/test-all12-multidomain-logical-restore-local.sh'
       - 'scripts/test-all12-auth-recovery-boundaries-local.psql'
       - 'scripts/test-all12-auth-identity-restore-local.psql'
@@ -627,6 +628,12 @@ jobs:
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
           node scripts/test-all12-candidate-dump-inventory-local.mjs "$db_container"
+      - name: ALL-12 verify complete local Auth logical backup coverage
+        run: |
+          set -euo pipefail
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          node scripts/test-all12-auth-logical-backup-local.mjs "$db_container"
       - name: ALL-12 populated foundation owner data backup and restore
         run: |
           set -euo pipefail
