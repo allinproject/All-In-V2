@@ -68,6 +68,41 @@ test('invalid date, clock, density and calorie claims fail closed',()=>{
  ])assert.equal(prepareFoodReplacement(f),null);
 });
 
+test('repeated fall-back wall-clock time is refused rather than silently resolving the wrong instant',()=>{
+ const previous=process.env.TZ;
+ try{
+  process.env.TZ='America/Chicago';
+  const repeated=prepareFoodReplacement({
+   ...sample,day:'2026-11-01',clock:'01:30',timezoneName:'America/Chicago',
+  });
+  assert.equal(repeated,null);
+  const clear=prepareFoodReplacement({
+   ...sample,day:'2026-11-01',clock:'03:30',timezoneName:'America/Chicago',
+  });
+  assert.equal(clear?.localDate,'2026-11-01');
+  const springGap=prepareFoodReplacement({
+   ...sample,day:'2026-03-08',clock:'02:30',timezoneName:'America/Chicago',
+  });
+  assert.equal(springGap,null);
+ }finally{
+  if(previous===undefined)delete process.env.TZ;
+  else process.env.TZ=previous;
+ }
+});
+test('insecure or unavailable entropy fails closed and never produces an action ID',()=>{
+ assert.equal(newFoodActionId(null),null);
+ const throwing={
+  getRandomValues(){throw new Error('Native entropy unavailable');},
+ } as unknown as Pick<Crypto,'getRandomValues'>;
+ assert.equal(newFoodActionId(throwing),null);
+});
+test('secure byte provider results have UUID version and variant bits',()=>{
+ const entropy={
+  getRandomValues(bytes:Uint8Array){bytes.fill(0);return bytes;},
+ } as unknown as Pick<Crypto,'getRandomValues'>;
+ assert.equal(newFoodActionId(entropy),'00000000-0000-4000-8000-000000000000');
+});
+
 test('secure id constructor generates RFC 4122 version 4 when available',()=>{
  const id=newFoodActionId();
  if(id===null)return; // devices without secure entropy fail closed
