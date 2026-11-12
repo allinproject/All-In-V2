@@ -206,7 +206,7 @@ authorizes mobile access or a complete export:
   post history, stable `published_at,id` pagination, source ID, revision,
   audience, text and timestamps. Never use the public-feed reader for the
   owner's own archive. Any third-party relationship state remains excluded.
-- `food.my_entries`: original `public.v2_food_log_entries` for exact
+- `public.v2_food_log_entries`: original `public.v2_food_log_entries` for exact
   `user_id`, including `deleted_at` tombstones, revisions, date/meal,
   quantity/unit, entered and unknown nutrition values. Do not use the active
   Food Log view, which would omit deleted owner history. The private
@@ -228,3 +228,24 @@ owner isolation, 25-row page boundaries and the private/deleted data lifecycle.
 without these source migrations and without their media bucket ownership,
 privacy policy, retention acceptance or external KMS. The canonical registry
 still reports `complete=false`; the download function stays disabled.
+
+## Fuel four-owner-table registry gate — 2026-11-12
+
+ALL-247 also authored `ALL-247-ALL-251-fuel-export-fragment.review.sql`
+and `ALL-247-ALL-251-fuel-privacy-preflight.review.sql` covering Food Log,
+hydration and redacted owner-visible action receipts. This **review-only**
+fragment has no general client EXECUTE grant; the privacy preflight explicitly
+reports `export_registered=false` and `ready_for_release=false`.
+
+The paginated ALL-251 candidate keeps provisional, owner-filtered
+projections for `public.v2_food_log_entries`,
+`allin_private.v2_food_log_write_actions`,
+`public.v2_hydration_events`, and
+`allin_private.v2_hydration_actions`. None of the four enters the active
+42-table canonical owner registry until ALL-222, ALL-247 and ALL-251 accept
+the shared schema, inline-export parity, Auth/session owner gate, private
+metadata redaction, media coverage and retention. A premature four-table
+registration on 2026-11-12 caused the canonical Node source parity test to
+fail; the review-only projections were preserved while deferring registration.
+Unknown Fuel tables continue to **block** a complete export rather than
+silently disappearing. Never activate a second `food.my_entries` alias.
