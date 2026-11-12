@@ -55,14 +55,14 @@ UPDATE allin_private.v2_apple_attested_companion_keys_candidate
  AND owner_id='11111111-1111-4111-8111-111111111111'
  AND assertion_sign_count=0 RETURNING key_id;
 DO $replay$
+DECLARE v_key_id text;
 BEGIN
- IF EXISTS(
-  UPDATE allin_private.v2_apple_attested_companion_keys_candidate
+ UPDATE allin_private.v2_apple_attested_companion_keys_candidate
    SET assertion_sign_count=1
    WHERE key_id='fixture-previously-apple-attested-key-1'
     AND assertion_sign_count=0
-   RETURNING key_id
- ) THEN RAISE EXCEPTION 'Stale phone assertion counter succeeded'; END IF;
+   RETURNING key_id INTO v_key_id;
+ IF FOUND THEN RAISE EXCEPTION 'Stale phone assertion counter succeeded'; END IF;
 END $replay$;
 RESET ROLE;
 \echo 'PASS ALL-243 Apple App Attest trust policy and monotone counter CAS'
