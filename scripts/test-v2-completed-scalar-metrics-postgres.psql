@@ -131,7 +131,7 @@ BEGIN
  IF has_table_privilege('authenticated','public.v2_activity_metric_values','SELECT')
  OR has_table_privilege('authenticated','public.v2_activity_metric_definitions','INSERT')
  OR has_function_privilege('authenticated',
-   'allin_private.v2_activity_append_scalar_candidate(uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text)','EXECUTE')
+   'allin_private.v2_activity_append_scalar_candidate(uuid,uuid,uuid,uuid,text,integer,text,numeric,text,boolean,text,text)','EXECUTE')
  THEN RAISE EXCEPTION 'Metric ingestion exposed to untrusted client'; END IF;
  RAISE NOTICE 'PASS ALL-243 scalar registry/source evidence, known zero, owner, exact replay, and private grants';
 END $qa$;
