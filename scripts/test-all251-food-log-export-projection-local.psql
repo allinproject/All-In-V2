@@ -267,4 +267,78 @@ BEGIN
  RAISE NOTICE 'PASS ALL-251 Fuel four projections: 28 A hydration entries/2 pages, refill and tombstone retained, A/B private action receipts redacted, cross-session denial, incomplete export';
 END $fuel_four$;
 RESET ROLE;
+
+-- ALL-251 deletion coverage of the SAME four owner tables: verify Auth
+-- cascade for an isolated third synthetic account without enabling or
+-- exercising the disabled destructive worker. A and B stay intact.
+INSERT INTO auth.users(id) VALUES
+ ('c6333333-3333-4333-8333-333333333333');
+INSERT INTO public.v2_food_log_entries
+ (id,user_id,consumed_at,local_date,timezone_name,meal_slot,label,quantity,unit,kcal,nutrition_source)
+VALUES
+ ('c6444444-4444-4444-8444-444444444444',
+  'c6333333-3333-4333-8333-333333333333',
+  '2026-11-12 12:00:00+00','2026-11-12','America/Chicago',
+  'snack','Deleted-account-only food',1,'each',100,'user_entered');
+INSERT INTO public.v2_hydration_events
+ (id,user_id,occurred_at,local_date,timezone_name,event_kind,original_volume,original_unit,volume_ml)
+VALUES
+ ('c6555555-5555-4555-8555-555555555555',
+  'c6333333-3333-4333-8333-333333333333',
+  '2026-11-12 12:00:00+00','2026-11-12','America/Chicago','drink',250,'ml',250.000);
+INSERT INTO allin_private.v2_food_log_write_actions
+ (user_id,action_id,request_fingerprint,result_id,result_revision)
+VALUES
+ ('c6333333-3333-4333-8333-333333333333',
+  'c6666666-6666-4666-8666-666666666666',
+  'SYNTHETIC_REMOVABLE_FOOD_FINGERPRINT',
+  'c6444444-4444-4444-8444-444444444444',1);
+INSERT INTO allin_private.v2_hydration_actions
+ (user_id,action_id,request_fingerprint,result_id,result_revision)
+VALUES
+ ('c6333333-3333-4333-8333-333333333333',
+  'c6777777-7777-4777-8777-777777777777',
+  'SYNTHETIC_REMOVABLE_HYDRATION_FINGERPRINT',
+  'c6555555-5555-4555-8555-555555555555',1);
+DO $pre_cascade$
+DECLARE n integer;
+BEGIN
+ SELECT count(*) INTO n FROM (
+  SELECT user_id FROM public.v2_food_log_entries
+  UNION ALL SELECT user_id FROM allin_private.v2_food_log_write_actions
+  UNION ALL SELECT user_id FROM public.v2_hydration_events
+  UNION ALL SELECT user_id FROM allin_private.v2_hydration_actions
+ ) AS owner_rows WHERE user_id='c6333333-3333-4333-8333-333333333333';
+ IF n<>4 OR NOT EXISTS (
+  SELECT 1 FROM allin_private.v2_account_deletion_processor_config
+  WHERE singleton=true AND execution_enabled=false
+ ) THEN RAISE EXCEPTION 'Synthetic Fuel cascade precondition or deletion OFF gate changed'; END IF;
+END $pre_cascade$;
+-- This SQL DELETE runs only inside the local rolled-back transaction. It is
+-- not the hosted account-deletion worker or a production release approval.
+DELETE FROM auth.users WHERE id='c6333333-3333-4333-8333-333333333333';
+DO $verify_cascade$
+DECLARE n integer;
+BEGIN
+ SELECT count(*) INTO n FROM (
+  SELECT user_id FROM public.v2_food_log_entries
+  UNION ALL SELECT user_id FROM allin_private.v2_food_log_write_actions
+  UNION ALL SELECT user_id FROM public.v2_hydration_events
+  UNION ALL SELECT user_id FROM allin_private.v2_hydration_actions
+ ) AS owner_rows WHERE user_id='c6333333-3333-4333-8333-333333333333';
+ IF n<>0 OR EXISTS(SELECT 1 FROM auth.users
+  WHERE id='c6333333-3333-4333-8333-333333333333')
+  OR (SELECT count(*) FROM public.v2_food_log_entries
+      WHERE user_id='a6111111-1111-4111-8111-111111111111')<>27
+  OR (SELECT count(*) FROM public.v2_hydration_events
+      WHERE user_id='a6111111-1111-4111-8111-111111111111')<>28
+  OR (SELECT count(*) FROM public.v2_food_log_entries
+      WHERE user_id='b6222222-2222-4222-8222-222222222222')<>1
+  OR (SELECT count(*) FROM public.v2_hydration_events
+      WHERE user_id='b6222222-2222-4222-8222-222222222222')<>1
+  OR NOT EXISTS (SELECT 1 FROM allin_private.v2_account_deletion_processor_config
+      WHERE singleton=true AND execution_enabled=false)
+ THEN RAISE EXCEPTION 'Fuel Auth cascade failed or affected another owner/worker gate'; END IF;
+ RAISE NOTICE 'PASS ALL-251 Fuel four owner tables Auth cascade: synthetic C removed, A/B retained, destructive worker disabled';
+END $verify_cascade$;
 ROLLBACK;
