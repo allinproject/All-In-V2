@@ -224,6 +224,18 @@ expected version, reviewed payload SHA-256, explicit athlete confirmation,
 review time, and strictly bounded expiration. It does **not** create another
 Goal, Training plan, calendar, habit engine, EventHub registry or consent UI.
 
+**Canonical review-content SHA-256:** the private
+`v2_goal_snapshot_fingerprint_candidate` computes a server-side digest
+from the exact owner-bound Goal identity, editable revision fields and
+confirmed supporting behavior targets in deterministic order. The final
+transaction locks the Goal, revision and existing behavior rows, rechecks
+that digest against the immutable review record, and refuses a draft edited
+after the athlete saw their preview. A completed exact replay keeps its
+original acceptance receipt; it does not recertify rewritten history.
+The digest comes from the existing Goal and behavior owners, not from a
+client-provided string. The review-only fixture intentionally edits both
+Goal title and behavior text after approval to verify denial.
+
 The private `v2_goal_commit_reviewed_candidate` gateway locks the current
 Auth session and reviewed record, checks exact match and time bounds, then
 invokes the existing canonical revision writer **in the same transaction**.
