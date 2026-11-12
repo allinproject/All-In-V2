@@ -32,20 +32,20 @@ BEGIN
     OR result->>'snapshotVersion' IS NULL
     OR pg_catalog.jsonb_array_length(result->'records')<>2
     OR EXISTS(
-      SELECT 1 FROM pg_catalog.jsonb_array_elements(result->'records') row
-      WHERE row->>'title'='Other owner private goal'
+      SELECT 1 FROM pg_catalog.jsonb_array_elements(result->'records') AS row(value)
+      WHERE row.value->>'title'='Other owner private goal'
     )
   THEN RAISE EXCEPTION 'Goal snapshot leaked foreign owner or lost own goals'; END IF;
   IF NOT EXISTS(
-    SELECT 1 FROM pg_catalog.jsonb_array_elements(result->'records') row
-    WHERE row->>'goalId'=gid::text
-      AND row->>'activeRevisionId'=rev::text
-      AND row->>'priorityRole'='primary'
+    SELECT 1 FROM pg_catalog.jsonb_array_elements(result->'records') AS row(value)
+    WHERE row.value->>'goalId'=gid::text
+      AND row.value->>'activeRevisionId'=rev::text
+      AND row.value->>'priorityRole'='primary'
   ) THEN RAISE EXCEPTION 'Accepted Goal revision missing'; END IF;
   IF NOT EXISTS(
-    SELECT 1 FROM pg_catalog.jsonb_array_elements(result->'records') row
-    WHERE row->>'goalId'=qid::text
-      AND row->>'startDate' IS NULL AND row->>'targetDate' IS NULL
+    SELECT 1 FROM pg_catalog.jsonb_array_elements(result->'records') AS row(value)
+    WHERE row.value->>'goalId'=qid::text
+      AND row.value->>'startDate' IS NULL AND row.value->>'targetDate' IS NULL
   ) THEN RAISE EXCEPTION 'Qualitative Goal incorrectly given a deadline'; END IF;
   BEGIN
     PERFORM allin_private.v2_goal_owner_snapshot_candidate(b);
