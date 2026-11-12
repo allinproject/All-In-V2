@@ -7,8 +7,10 @@ CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
  SELECT NULLIF(current_setting('request.jwt.claim.sub',true),'')::uuid
 $$;
 REVOKE ALL ON FUNCTION auth.uid() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION auth.uid() TO allin_v2_device_ingest;
+-- The canonical gateway candidate creates the dedicated NOLOGIN role.
+-- Grant only after that review-only candidate has installed the role.
 \i /tmp/allin/docs/architecture/sql/V2-COMPLETED-ACTIVITY-PRIVATE-INGEST-GATEWAY-CANDIDATE.sql
+GRANT EXECUTE ON FUNCTION auth.uid() TO allin_v2_device_ingest;
 -- Confirm actual RLS is enabled on every protected canonical table.
 DO $audit$
 DECLARE t text;
