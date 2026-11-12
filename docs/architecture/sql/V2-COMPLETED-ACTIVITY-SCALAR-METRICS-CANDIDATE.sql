@@ -193,6 +193,8 @@ BEGIN
       NEW.provider IS DISTINCT FROM OLD.provider OR
       NEW.source_kind IS DISTINCT FROM OLD.source_kind OR
       NEW.source_record_id IS DISTINCT FROM OLD.source_record_id OR
+      NEW.source_revision IS DISTINCT FROM OLD.source_revision OR
+      NEW.source_device_ref IS DISTINCT FROM OLD.source_device_ref OR
       NEW.captured_at IS DISTINCT FROM OLD.captured_at THEN
     RAISE EXCEPTION 'Registered source identity and activity binding are immutable'
      USING ERRCODE='42501';
