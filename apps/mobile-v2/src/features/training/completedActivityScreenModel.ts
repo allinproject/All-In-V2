@@ -14,10 +14,20 @@ export type CompletedActivityCoachEvidence={
 };
 export type CompletedActivityScreenInput={
  id:string;sport:string;terrain?:'road'|'trail'|null;title:string;completedAt:string;
+ /** Exact canonical owner and revision isolate view-local drafts on account switches or corrections. */
+ ownerId?:string;revision?:number;
  sourceLabel:string;metrics:readonly MetricEvidence[];sections?:readonly StructuredEvidence[];
  overviewLayout?:MetricLayout;detailsLayout?:MetricLayout;
  coach?:CompletedActivityCoachEvidence|null;
 };
+/** A new canonical owner/activity/revision must mount a fresh tab and layout draft.
+ * Names and timestamps distinguish legacy pre-owner previews as best effort;
+ * final authenticated account-switch safety still belongs to the parent. */
+export function completedActivityViewKey(input:CompletedActivityScreenInput):string{
+ return JSON.stringify([input.ownerId??'',input.id,input.revision??null,
+  input.completedAt,input.sourceLabel]);
+}
+
 export type CompletedActivityScreenModel={
  id:string;sport:string;terrain:'road'|'trail'|null;sportLabel:string;title:string;completedAt:string;sourceLabel:string;
  tabs:readonly CompletedActivityTab[];
