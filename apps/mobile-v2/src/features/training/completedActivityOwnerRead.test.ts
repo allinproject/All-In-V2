@@ -51,6 +51,17 @@ test('unregistered metric, sport mismatch and conflicting duplicate codes fail c
  assert.throws(()=>canonicalActivityToScreenInput({...a,sport:'strength',sportSubtype:null},'owner-A','activity-1'),/definition/);
  assert.throws(()=>canonicalActivityToScreenInput({...a,metrics:[a.metrics[0],a.metrics[0]]},'owner-A','activity-1'),/Conflicting/);
 });
+test('metric registry requires exact sport scope, not an unapproved global wildcard',()=>{
+ const a=base();
+ const invalid={...a,definitions:[{...a.definitions[0],sportScope:['all']}],
+  metrics:[a.metrics[0]]};
+ assert.throws(()=>canonicalActivityToScreenInput(invalid,'owner-A','activity-1'),
+  /Metric definition does not allow this activity/);
+ const explicitlyApplicable={...a,definitions:[{...a.definitions[0],sportScope:['running','walking']}],
+  metrics:[a.metrics[0]]};
+ assert.equal(canonicalActivityToScreenInput(explicitlyApplicable,'owner-A','activity-1').metrics.length,1);
+});
+
 test('unverified measurements are not mislabeled validated, rejected source never displays',()=>{
  const a=base();
  const b=canonicalActivityToScreenInput({...a,metrics:[{...a.metrics[0],quality:'unverified'}]},'owner-A','activity-1');
