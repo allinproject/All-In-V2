@@ -314,3 +314,61 @@ test('ALL-251 claim and completion review integration preserves both release gua
  assert(!sql.includes('ALTER TABLE allin_private.v2_account_deletion_processor_config'),
   'Review SQL must not arm the processor');
 });
+
+test('ALL-217/230 private Coach budget and athlete restrictions stay outside approved export inventory',()=>{
+ const pending=[
+  ['public','v2_training_athlete_restrictions'],
+  ['allin_private','v2_training_restriction_certifications'],
+  ['allin_private','v2_training_restriction_action_receipts'],
+  ['allin_private','v2_coach_budget_periods'],
+  ['allin_private','v2_coach_budget_reservations'],
+ ];
+ const registered=candidateTables(reader);
+ const inline=sourceTables(source);
+ for(const [schema,table] of pending){
+  const qualified=schema+'.'+table;
+  assert(!registered.includes(qualified),
+   'Private owner table must not enter paginated export inventory until consent and acceptance: '+qualified);
+  assert(!inline.includes(qualified),
+   'Private owner table must not silently enter inline export allowlist: '+qualified);
+  const start=reader.indexOf("ELSIF p_collection='"+qualified+"' THEN");
+  assert(start>0,'Staged owner-only export projection missing: '+qualified);
+  const next=reader.indexOf(' ELSIF p_collection=',start+8);
+  assert(next>start,'Projection branch must be isolated: '+qualified);
+  const sql=reader.slice(start,next);
+  assert(sql.includes('WHERE t.user_id=$1'),'Export projection must filter owner at source: '+qualified);
+  assert(sql.includes('LIMIT $2 OFFSET $3'),'Export projection must be bounded: '+qualified);
+  assert(sql.includes('pg_catalog.jsonb_build_object('),'Never expose raw table rows: '+qualified);
+  assert(!sql.includes('pg_catalog.to_jsonb(t)'),'Raw owner export disallowed: '+qualified);
+ }
+ const inventory=reader.slice(0,reader.indexOf('$inventory$;'));
+ assert(inventory.includes("'complete',false"),'Incomplete user export must never report complete');
+ assert(reader.includes("NOT (v_inventory->'collections' ? p_collection)"),
+  'Even staged projections must be blocked until approved inventory registration');
+});
+test('ALL-217/230 private export redacts replay hashes, provider correlators and internal reservation identifiers',()=>{
+ const start=reader.indexOf("ELSIF p_collection='public.v2_training_athlete_restrictions' THEN");
+ const end=reader.indexOf(" ELSIF p_collection='allin_private.v2_account_export_requests_candidate' THEN",start);
+ assert(start>0&&end>start,'Coach/Training projections must be one review-only scope');
+ const slice=reader.slice(start,end);
+ const sqlOnly=slice.split('\n').filter(line=>!line.trim().startsWith('--')).join('\n');
+ for(const forbidden of [
+  "'''request_hash''","'''client_request_id''",
+  "'''reservation_id''","'''request_fingerprint''",
+  "'''service_role''","'''api_key''","pg_catalog.to_jsonb(t)"
+ ]){
+  assert(!sqlOnly.includes(forbidden),'Private/internal field leaked into athlete export: '+forbidden);
+ }
+ for(const expected of [
+  "'''subject''","'''status''","'''certified_revision''",
+  "'''result_revision''","'''period_start''","'''held_usd''",
+  "'''spent_usd''","'''settled_usd''","'''metered_input_tokens''",
+  "'''metered_output_tokens''"
+ ])assert(sqlOnly.includes(expected),'Portable athlete history missing '+expected);
+ const r=readFileSync('docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql','utf8');
+ const c=readFileSync('docs/architecture/sql/V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql','utf8');
+ const b=readFileSync('docs/architecture/sql/V2-COACH-BUDGET-LEDGER-REVIEW-CANDIDATE.sql','utf8');
+ for(const candidate of [r,c,b])assert(candidate.includes('ON DELETE CASCADE'),
+  'Owner deletion must cascade to each new private data domain');
+ assert(!reader.includes("'completeUserExport',true"),'Do not promise complete export before approval');
+});
