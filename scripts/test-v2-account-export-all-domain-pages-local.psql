@@ -84,7 +84,7 @@ BEGIN
  v_page:=public.v2_account_export_page_review_candidate(
   v_owner,v_session,v_request,'community.outgoing_blocks',NULL,25);
  IF pg_catalog.jsonb_array_length(v_page->'rows')<>1
- THEN RAISE EXCEPTION 'Owner's block missing'; END IF;
+ THEN RAISE EXCEPTION 'Owner block missing'; END IF;
  v_page:=public.v2_account_export_page_review_candidate(
   v_owner,v_session,v_request,'community.incoming_follow_requests',NULL,25);
  IF pg_catalog.jsonb_array_length(v_page->'rows')<>0
