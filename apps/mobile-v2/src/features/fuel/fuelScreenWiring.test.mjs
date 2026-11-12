@@ -96,3 +96,14 @@ test('native Expo crypto dependency is locked and drives Food Log IDs without we
  assert.match(panel,/newNativeFoodActionId\(\)/);
  assert.doesNotMatch(native,/Math\.random\s*\(/);
 });
+
+test('Expo crypto package manifest and locked native version stay aligned',()=>{
+ const pkg=JSON.parse(source('../../../package.json'));
+ const lock=JSON.parse(source('../../../package-lock.json'));
+ assert.equal(pkg.dependencies['expo-crypto'],'~58.0.8');
+ assert.equal(lock.packages[''].dependencies['expo-crypto'],'~58.0.8');
+ assert.equal(lock.packages['node_modules/expo-crypto'].version,'58.0.8');
+ assert.match(lock.packages['node_modules/expo-crypto'].integrity,/^sha512-/);
+ const native=source('./fuelFoodSecureNative.ts');
+ assert.ok(native.includes("from 'expo-crypto'"));
+});
