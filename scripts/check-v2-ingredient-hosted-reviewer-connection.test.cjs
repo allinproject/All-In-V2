@@ -1,0 +1,8 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const {checkProof,acceptanceQuery,assertConfig}=require('./check-v2-ingredient-hosted-reviewer-connection.cjs');
+const valid={session_matches_expected:true,role_matches_reviewer:true,reviewer_membership:true,review_function_execute:true,athlete_profile_write:false,private_audit_read:false};
+test('valid reviewer session is narrow and read-only',()=>assert.equal(checkProof(valid).ok,true));
+test('rejects mismatched identity or excessive privileges',()=>{for(const key of Object.keys(valid))assert.throws(()=>checkProof({...valid,[key]:!valid[key]}))});
+test('rejects unapproved staging and missing operator before connection',()=>{assert.throws(()=>assertConfig({}),/opt-in/);assert.throws(()=>assertConfig({ALLIN_ALLOW_HOSTED_REVIEWER_SMOKE:'1',ALLIN_SUPABASE_PROJECT_REF:'xarhuczrtzuiljmtdaeu'}),/staging/)});
+test('acceptance SQL is read-only and has scoped role activation',()=>{const sql=acceptanceQuery('allin_ing_reviewer_test_operator');assert.match(sql,/BEGIN READ ONLY/);assert.match(sql,/SET LOCAL ROLE/);assert.match(sql,/ROLLBACK/);assert.doesNotMatch(sql,/\b(?:INSERT|UPDATE\s+public|DELETE\s+FROM|CREATE\s+ROLE|ALTER\s+ROLE)\b/i)});
