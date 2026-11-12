@@ -26,6 +26,11 @@ BEGIN
  INSERT INTO public.v2_goal_revisions(id,goal_id,user_id,revision_number,status,source_kind)
   VALUES(ra,ga,a,1,'candidate','athlete_authored'),
         (rb,gb,b,1,'candidate','athlete_authored');
+ INSERT INTO public.v2_goal_revision_behavior_targets(
+  id,user_id,goal_id,goal_revision_id,behavior_description,
+  cadence_kind,evidence_policy,user_confirmed
+ ) VALUES('99999999-9999-4999-8999-999999999999',a,ga,ra,
+  'Walk when it fits the day','qualitative_no_fixed_cadence','no_tracking',true);
  -- Derive the exact reviewed digest from canonical Goal/revision content.
  fp:=allin_private.v2_goal_snapshot_fingerprint_candidate(a,ga,ra,1);
  INSERT INTO allin_private.v2_goal_approval_reviews(
@@ -69,6 +74,18 @@ BEGIN
   RAISE EXCEPTION 'Changed Goal draft bypassed reviewed fingerprint';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  UPDATE public.v2_goals SET title='Improve consistency' WHERE id=ga;
+ UPDATE public.v2_goal_revision_behavior_targets
+   SET behavior_description='Different suggested habit'
+   WHERE user_id=a AND goal_revision_id=ra;
+ BEGIN
+  PERFORM allin_private.v2_goal_commit_reviewed_candidate(
+    a,sa,ga,ra,aa,review_a,1,fp);
+  RAISE EXCEPTION 'Changed behavior passed reviewed snapshot';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE public.v2_goal_revision_behavior_targets
+   SET behavior_description='Walk when it fits the day'
+   WHERE user_id=a AND goal_revision_id=ra;
+
  receipt:=allin_private.v2_goal_commit_reviewed_candidate(
    a,sa,ga,ra,aa,review_a,1,fp);
  IF receipt->>'version'<>'2' OR receipt->>'replayed'<>'false'
