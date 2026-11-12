@@ -244,6 +244,21 @@ jobs:
       - name: Run provider cache helper tests
         run: npm run test:provider-cache
 
+  coach-contracts:
+    name: Node-only Coach runtime and owner-context contracts (isolated)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    defaults:
+      run:
+        working-directory: apps/mobile-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Run independent Coach owner, provider, cost and restriction tests
+        run: npm run test:coach-quality
+
   subscription-contracts:
     name: Node-only subscription contracts (isolated timeout)
     runs-on: ubuntu-latest
