@@ -32,7 +32,7 @@ test('Kitchen Plan writer serializes, CAS checks and replays only identical acti
  assert.match(sql,/jsonb_array_length\(p_entries\)>150/);
  assert.match(sql,/v_id=any\(v_ids\)/);
  assert.match(sql,/v_date>=p_week_start\+7/);
- assert.match(sql,/source_kind='food'/i);
+ assert.match(sql,/v_kind='food'/i);
 });
 test('Kitchen planning has no consumption or shopping writes and is review-only',()=>{
  assert.match(sql,/REVIEW-ONLY CANDIDATE/);
