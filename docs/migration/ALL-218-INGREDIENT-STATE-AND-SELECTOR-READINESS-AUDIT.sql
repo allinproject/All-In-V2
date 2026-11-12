@@ -81,3 +81,36 @@ SELECT r.id AS recipe_id, e.ordinality AS ingredient_position,
 FROM public.allin_recipes r
 CROSS JOIN LATERAL jsonb_array_elements(r.ingredients) WITH ORDINALITY e(value, ordinality)
 ORDER BY r.id,e.ordinality;
+
+-- ALL-229 freezer-kit exception candidates: a freezer storage mode does
+-- not make a recipe a raw/dry freezer kit. Inspect explicit mode only.
+SELECT count(*) FILTER (WHERE metadata->'preparation_modes' ? 'freezer_kit') AS explicit_freezer_kit_mode_recipes,
+       count(*) FILTER (WHERE metadata->'preparation_modes' ? 'freezer') AS ordinary_freezer_mode_recipes,
+       count(*) FILTER (WHERE metadata->'preparation_modes' ? 'fridge') AS fridge_mode_recipes
+FROM public.allin_recipes;
+
+-- Heuristic triage ONLY: vocabulary mentions are not proof of edible-state
+-- correctness, raw purchase weight or an approved cooking-yield ratio.
+WITH lines AS (
+ SELECT r.id, CASE WHEN jsonb_typeof(e.value)='string'
+                   THEN trim(both '"' FROM e.value::text)
+                   ELSE coalesce(e.value->>'item','') || ' ' ||
+                        coalesce(e.value->>'amount','') || ' ' ||
+                        coalesce(e.value->>'qty','') END AS authored_text
+ FROM public.allin_recipes r
+ CROSS JOIN LATERAL jsonb_array_elements(r.ingredients) e
+)
+SELECT count(*) FILTER (WHERE authored_text ~* '\mraw\M') AS raw_mentions,
+       count(*) FILTER (WHERE authored_text ~* '\mdry\M') AS dry_mentions,
+       count(*) FILTER (WHERE authored_text ~* '\mcooked\M') AS cooked_mentions,
+       count(*) FILTER (WHERE authored_text ~* '\m(raw|dry)\M'
+                          AND authored_text ~* '\mcooked\M') AS mixed_raw_cooked_lines,
+       count(DISTINCT id) FILTER (WHERE authored_text ~* '\m(raw|dry)\M'
+                                   AND authored_text ~* '\mcooked\M') AS mixed_raw_cooked_recipes
+FROM lines;
+
+-- Explicit freezer-kit candidates for review, never automatic exemption.
+SELECT id,title,metadata->'preparation_modes'->'freezer_kit' AS source_freezer_kit_evidence
+FROM public.allin_recipes
+WHERE metadata->'preparation_modes' ? 'freezer_kit'
+ORDER BY id;
