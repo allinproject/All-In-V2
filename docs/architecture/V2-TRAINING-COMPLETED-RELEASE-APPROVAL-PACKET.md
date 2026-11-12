@@ -136,6 +136,18 @@ Acceptance for the single owner-backed integration:
 
 **Separation of gates:** Existing 18-foundation/30-candidate replay success at run 43138298262 predates these new SQL candidate changes and does **not** validate them. Only the new commit-matched CI suite can close this review check. The hosted migration, public RPC grant, worker activation, and installed client remain OFF.
 
+## 4B. Current Details source-evidence read hardening (2026-11-12, review only)
+
+The **existing** private owner-detail candidate now returns the canonical activity `ownerId` and `version` alongside `activityId`, enabling the existing mobile owner/revision isolation without guessing owner identity or revision from a device timestamp. It does **not** yet implement the full mobile DTO, user-approved unit formatter, Storage route reader or live RPC grant.
+
+Private `readyPrivateRouteCount` and `readySeriesCount` now require **both** the stored object and its same-owner linked source to have `trusted` or `partial` quality, in addition to `state='ready'`. An unverified/rejected object does not become display-ready because a Storage staging worker marked it ready. The original stored evidence remains private and available to authorized audit/export; this filter is a *read-only display-eligibility boundary*, not deletion.
+
+Structured segment and strength-set Details also include explicit `sourceQuality` resolved by same-owner/source FK. A source-free authored segment exposes `null` for its sensor quality, not guessed `trusted`; existing strength-set `quality` remains separately visible, so later source certification changes cannot be silently hidden.
+
+**Executable review fixtures added** to the existing owner-only PostgreSQL 17 test: one real trusted route still counts; synthetic ready routes/series with unverified object or parent source do not; account/activity/version identity is present; source-backed intervals retain `trusted`; the manual strength set retains `unverified` source quality. These tests are **not yet claimed passing** until a CI run at/after the corresponding commits is inspected. No generated signed URL, bucket grant or public source attestation is part of this release unit.
+
+**Remaining definitive release gate:** review exact domain owner, permitted source-quality policy and service-only adapter against ALL-243 and ALL-251. The private SQL candidate is **not** a production-ready endpoint or versioned migration; preserve all `GRANT EXECUTE` revocations until two-owner RLS, account export/deletion and installed device acceptance pass.
+
 ## 5. Next smallest executable decision
 
 Obtain the **ALL-239 Goals and ALL-244 EventHub canonical owner key/version/participation contracts**, rather than adding a new Training or event schema. Then approve the first release unit and its exact FK/ACL matrix, stage versioned migrations, and rerun the complete local release acceptance. Green candidate SQL tests are necessary but not sufficient.
