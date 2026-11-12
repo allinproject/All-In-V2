@@ -15,7 +15,7 @@ CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES 
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE SQL STABLE AS $uid$
  SELECT nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
 $uid$;
-CREATE TABLE public.v2_profiles(user_id uuid PRIMARY KEY REFERENCES auth.users(id));
+CREATE TABLE public.v2_profiles(user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE);
 \ir ../docs/architecture/sql/V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql
 \ir ../docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql
 INSERT INTO auth.users(id) VALUES
