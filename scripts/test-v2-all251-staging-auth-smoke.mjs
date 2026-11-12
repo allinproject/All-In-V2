@@ -127,7 +127,7 @@ try{
    const result=await request('/rest/v1/rpc/'+name,{
     method:'POST',body,userJwt:token,apiKey:anon,
    });
-   process.stdout.write('ALL247 HTTP '+name+' status='+result.status+'\\n');
+   process.stdout.write('ALL247 HTTP '+name+' status='+result.status+'\n');
    return result;
   };
   const day='2026-11-12', entryId=randomUUID(), actionId=randomUUID();
@@ -151,11 +151,11 @@ try{
   const added=await addition.json();
   assert.equal(added.id,entryId);
   assert.equal(added.revision,1);
-  process.stdout.write('ALL247 owner add shape passed\\n');
+  process.stdout.write('ALL247 owner add shape passed\n');
   const retry=await rpc('v2_food_log_add_manual',food,aToken);
   assert.equal(retry.status,200,'Idempotent exact add retry failed');
   assert.equal((await retry.json()).replayed,true);
-  process.stdout.write('ALL247 exact retry shape passed\\n');
+  process.stdout.write('ALL247 exact retry shape passed\n');
   const changed=await rpc('v2_food_log_add_manual',{
    ...food,p_kcal:301,
   },aToken);
@@ -171,7 +171,7 @@ try{
   assert.equal(first.entries?.length,1);
   assert.equal(first.entries[0]?.id,entryId);
   assert.equal(first.entries[0]?.user_id,a.id);
-  process.stdout.write('ALL247 own-day output passed\\n');
+  process.stdout.write('ALL247 own-day output passed\n');
   const bDay=await reader(bToken,b.id,day);
   assert.equal(bDay.status,200,'Other owner cannot read own day');
   assert.equal((await bDay.json()).entries?.length,0,'A food leaked into B day');
@@ -186,7 +186,7 @@ try{
   assert.equal(final.complete,true);
   assert.equal(final.entries?.length,0,'Deleted food was still visible');
   assert.notEqual(final.sourceRevision,first.sourceRevision,'Food Log revision not updated');
-  process.stdout.write('ALL247 delete and revision passed\\n');
+  process.stdout.write('ALL247 delete and revision passed\n');
   process.stdout.write('PASS: hosted Food Log owner add/replay/read/delete; anon and foreign owner denied\n');
  }
 
