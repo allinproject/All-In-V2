@@ -228,6 +228,58 @@ BEGIN
  RAISE NOTICE 'PASS ALL-243 typed segments: owner scope, nested order, metric/segment identity and RLS';
 END $qa$;
 
+-- Independent metric and parent-source confidence: trusted/partial
+-- mismatches must remain visible as partial, never be promoted to trusted
+-- or silently discarded as unverified.
+DO $confidence$
+DECLARE v jsonb;
+BEGIN
+ INSERT INTO public.v2_activity_metric_definitions(
+  metric_code,definition_version,display_name,canonical_unit,value_kind,
+  sport_scope,measurement_kinds,display_group,privacy_class,status)
+ VALUES('quality_probe',1,'Quality probe','W','numeric',ARRAY['cycling'],
+   ARRAY['source_measured'],'power','private','published');
+ INSERT INTO public.v2_activity_sources(
+  id,activity_id,user_id,provider,source_kind,source_record_id,quality,source_payload_hash)
+ VALUES('99999999-9999-4999-8999-999999999999',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   '11111111-1111-4111-8111-111111111111',
+   'import','sensor_summary','partial-interval','partial',repeat('e',64));
+ INSERT INTO public.v2_activity_metric_values(
+  id,activity_id,user_id,segment_id,source_id,metric_code,definition_version,
+  value_numeric,measurement_kind,quality,source_payload_hash)
+ VALUES
+ ('99999999-9999-4999-8999-999999999991',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   '11111111-1111-4111-8111-111111111111',
+   'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+   '99999999-9999-4999-8999-999999999999',
+   'quality_probe',1,100,'source_measured','trusted',repeat('e',64)),
+ ('99999999-9999-4999-8999-999999999992',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   '11111111-1111-4111-8111-111111111111',
+   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+   'quality_probe',1,105,'source_measured','partial',repeat('a',64));
+ v:=allin_private.v2_activity_segment_scalar_projection_candidate(
+  '11111111-1111-4111-8111-111111111111',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+ IF NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(v->'metrics') x
+   WHERE x->>'metricCode'='quality_probe' AND x->>'quality'='partial'
+    AND x->>'measurementQuality'='trusted' AND x->>'sourceQuality'='partial')
+ THEN RAISE EXCEPTION 'Trusted metric from partial source was not partial: %',v; END IF;
+ v:=allin_private.v2_activity_segment_scalar_projection_candidate(
+  '11111111-1111-4111-8111-111111111111',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+ IF NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(v->'metrics') x
+   WHERE x->>'metricCode'='quality_probe' AND x->>'quality'='partial'
+    AND x->>'measurementQuality'='partial' AND x->>'sourceQuality'='trusted')
+ THEN RAISE EXCEPTION 'Partial metric from trusted source was not partial: %',v; END IF;
+ RAISE NOTICE 'PASS ALL-243: metric and source quality combined conservatively';
+END $confidence$;
+
 -- Published metric revisions with one semantic code are not interchangeable
 -- even when the sensor reports identical watts. Each segment must expose a
 -- single reconciled definition or an explicit unresolved_versions reason.

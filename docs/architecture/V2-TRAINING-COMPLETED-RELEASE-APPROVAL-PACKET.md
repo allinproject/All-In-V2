@@ -148,6 +148,27 @@ Structured segment and strength-set Details also include explicit `sourceQuality
 
 **Remaining definitive release gate:** review exact domain owner, permitted source-quality policy and service-only adapter against ALL-243 and ALL-251. The private SQL candidate is **not** a production-ready endpoint or versioned migration; preserve all `GRANT EXECUTE` revocations until two-owner RLS, account export/deletion and installed device acceptance pass.
 
+## 4C. Independent measurement and source confidence reconciliation — 2026-11-12
+
+The existing private **global** and **per-segment** scalar projections now combine two independent owner-authorized facts: the metric measurement's quality and its linked source's quality. A metric/source pair is usable only when **both** are `trusted` or `partial`. The result is `partial` whenever **either** is partial, and `trusted` only when **both** are trusted. If either quality is unverified, low-quality or rejected, the metric is withheld and reported as unresolved instead of being promoted or fabricated. This preserves recorded zero and measurement provenance without pretending a partially trusted source is fully certified.
+
+The previous SQL predicate incorrectly classified `trusted` measurement + `partial` source and `partial` measurement + `trusted` source as `unverified`. Its replacement is in the **existing** `V2-COMPLETED-ACTIVITY-SCALAR-READ-CANDIDATE.sql` and `V2-COMPLETED-ACTIVITY-SEGMENT-SCALAR-READ-CANDIDATE.sql`; each of the two evidence CTEs per projection follows the same rule. The existing PostgreSQL 17 fixtures now exercise both mixed-confidence directions, and the current workflow explicitly watches all four changed files.
+
+**Acceptance boundary:** This is review-only source and executable test content, not a released provider-quality policy or live query. A new commit-matched green PostgreSQL workflow run is needed before this change can be described as validated. The caller still must enforce live Auth/owner access; confidence reconciliation grants neither athlete nor worker authorization.
+
+**Unresolved writer/adapter decision:** the existing review-only `v2_activity_append_scalar_candidate` and `v2_activity_append_segment_scalar_candidate` still set `v_quality := v_source.quality` for each appended fact. That guarantees a conservative source-quality baseline but **does not preserve lower per-sample or per-metric quality** from a certified device adapter. The two SQL reader fixtures exercise independently persisted qualities to lock the correct reconciliation behavior; they are not evidence that the current production-intended writers can ingest those combinations. ALL-243 must approve an authenticated, immutable **metric-specific quality** write contract, bounded by the parent source's certification, before calling source-quality ingestion complete. Never silently upgrade poor sensor data because another sample from the same device is trusted. This must extend the existing canonical writer, not create a second ingest ledger.
+
+## 4D. Published scalar response retains independent confidence — 2026-11-12
+
+The existing private activity-global and per-segment scalar projection candidates now return three different, non-redundant quality fields **on source-backed, unambiguous emitted metric facts**:
+- `measurementQuality`: conservative aggregation of the metric-specific sample qualities (`partial` if any sample is partial, otherwise `trusted`);
+- `sourceQuality`: conservative aggregation of the involved parent source qualities (same rule);
+- `quality`: conservative effective quality across **both**, usable only if neither side is `unverified`, `low_quality` or `rejected`.
+
+The existing SQL tests include the two asymmetric real-evidence cases (`trusted` metric + `partial` source, and `partial` metric + `trusted` source), measured zero, conflicts, owner access and mixed published metric-version exclusion. They now also assert the exact quality field values, so the later canonical mobile owner adapter must not collapse independent confidence into a generic source label. No raw provider record IDs, GPS file paths or Storage payloads were introduced.
+
+**Not yet validated:** the changed candidate SQL/fixtures require the next successful PostgreSQL workflow run. The trusted ingest writer still derives metric quality from the parent source by default; retaining truly independent sample-quality data remains an explicit ALL-243 owner decision, not a claim that ingestion is complete. The **authenticated owner Detail RPC-to-mobile adapter remains unimplemented** and cannot simply deserialize SQL's `activityMetrics` object into the existing canonical `CompletedActivityScreenInput`: explicit source identity resolution, versioned units/formatter, published registry definitions and safe structured descriptor conversion are required before app integration.
+
 ## 5. Next smallest executable decision
 
 Obtain the **ALL-239 Goals and ALL-244 EventHub canonical owner key/version/participation contracts**, rather than adding a new Training or event schema. Then approve the first release unit and its exact FK/ACL matrix, stage versioned migrations, and rerun the complete local release acceptance. Green candidate SQL tests are necessary but not sufficient.

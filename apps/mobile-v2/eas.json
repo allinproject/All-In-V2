@@ -1,0 +1,21 @@
+{
+  "cli": {
+    "appVersionSource": "local"
+  },
+  "build": {
+    "founder-ios-device": {
+      "distribution": "internal",
+      "credentialsSource": "remote",
+      "ios": {
+        "simulator": false
+      }
+    },
+    "founder-ios-testflight": {
+      "distribution": "store",
+      "credentialsSource": "remote",
+      "ios": {
+        "simulator": false
+      }
+    }
+  }
+}

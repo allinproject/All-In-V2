@@ -30,6 +30,29 @@ SELECT jsonb_build_object(
    'primary_hero_approved',r.metadata->'image'->'primary_hero_approved',
    'source_provenance',r.metadata->'image'->>'provenance'
  ),
+ 'source_freezer_kit_review_only',
+ CASE WHEN r.metadata->'preparation_modes' ? 'freezer_kit' THEN
+   jsonb_build_object(
+     'kind',r.metadata->'preparation_modes'->'freezer_kit'->'kind',
+     'quantity_basis',r.metadata->'preparation_modes'->'freezer_kit'->'quantity_basis',
+     'ingredient_state',r.metadata->'preparation_modes'->'freezer_kit'->'ingredient_state',
+     'servings',r.metadata->'preparation_modes'->'freezer_kit'->'servings',
+     'freezer_ingredients',r.metadata->'preparation_modes'->'freezer_kit'->'freezer_ingredients',
+     'cook_day_ingredients',r.metadata->'preparation_modes'->'freezer_kit'->'cook_day_ingredients',
+     'cook_day_instructions',r.metadata->'preparation_modes'->'freezer_kit'->'cook_day_instructions',
+     'freeze_separate',r.metadata->'preparation_modes'->'freezer_kit'->'freeze_separate',
+     'freeze_together',r.metadata->'preparation_modes'->'freezer_kit'->'freeze_together',
+     'keep_separate',r.metadata->'preparation_modes'->'freezer_kit'->'keep_separate',
+     'assembly',r.metadata->'preparation_modes'->'freezer_kit'->'assembly',
+     'thaw',r.metadata->'preparation_modes'->'freezer_kit'->'thaw',
+     'reheat',r.metadata->'preparation_modes'->'freezer_kit'->'reheat',
+     'safe_endpoint',r.metadata->'preparation_modes'->'freezer_kit'->'safe_endpoint',
+     'storage',r.metadata->'preparation_modes'->'freezer_kit'->'storage',
+     'cook',r.metadata->'preparation_modes'->'freezer_kit'->'cook',
+     'ingredients',r.metadata->'preparation_modes'->'freezer_kit'->'ingredients',
+     'instructions',r.metadata->'preparation_modes'->'freezer_kit'->'instructions'
+   )
+ ELSE NULL END,
  'source_updated_at',r.updated_at,
  'source_variants_review_only',
  coalesce((
