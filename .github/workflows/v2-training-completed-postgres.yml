@@ -35,6 +35,11 @@ on:
       - 'supabase/functions/_shared/certifiedDeviceIngestServer.ts'
       - 'supabase/functions/_shared/certifiedDeviceIngestCanonical.test.mjs'
       - 'supabase/functions/_shared/certifiedDeviceIngestServer.test.mjs'
+      - 'supabase/functions/_shared/certifiedDevicePostgresAdapter.ts'
+      - 'supabase/functions/v2-device-ingest/**'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-DEVICE-REGISTRATION-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-DEVICE-OPERATOR-CANDIDATE.sql'
+      - 'scripts/test-v2-device-ingest-operator-postgres.psql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql'
       - 'scripts/test-v2-completed-scalar-metrics-postgres.psql'
@@ -235,6 +240,40 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/test-v2-device-ingest-invalidation-race.sh
+
+  device-ingest-operator-postgres:
+    name: ALL-243 trusted operator, live Auth rows, device registry (PG17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: device_ingest_operator
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d device_ingest_operator"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute trusted operator Auth and canonical PostgreSQL acceptance
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec "$PG_CONTAINER" mkdir -p /tmp/allin/scripts /tmp/allin/docs/architecture/sql
+          for f in V2-TRAINING-COMPLETED-IDENTITY-OWNER-CANDIDATE.sql V2-COMPLETED-ACTIVITY-SCALAR-METRICS-CANDIDATE.sql V2-COMPLETED-ACTIVITY-METRIC-DEFINITION-GUARD-CANDIDATE.sql V2-COMPLETED-ACTIVITY-PRIVATE-INGEST-GATEWAY-CANDIDATE.sql V2-COMPLETED-ACTIVITY-DEVICE-REGISTRATION-CANDIDATE.sql V2-COMPLETED-ACTIVITY-DEVICE-OPERATOR-CANDIDATE.sql; do
+            docker cp "docs/architecture/sql/$f" "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/$f"
+          done
+          for f in test-v2-completed-scalar-metrics-postgres.psql test-v2-device-ingest-two-owner-postgres.psql test-v2-device-ingest-operator-postgres.psql; do
+            docker cp "scripts/$f" "$PG_CONTAINER:/tmp/allin/scripts/$f"
+          done
+          docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-device-ingest-two-owner-postgres.psql
+          docker exec "$PG_CONTAINER" psql -X -U postgres -d device_ingest_operator -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-device-ingest-operator-postgres.psql
 
   authenticated-device-ingest-contract:
     name: ALL-243 authenticated device ingest transaction contracts (Node)
