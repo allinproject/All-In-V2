@@ -1,0 +1,68 @@
+\set ON_ERROR_STOP on
+-- Test runs AFTER trusted pairing candidate, in disposable PG17 only.
+DO $privileges$
+BEGIN
+ IF has_table_privilege('authenticated',
+  'allin_private.v2_apple_attested_companion_keys_candidate','INSERT')
+ OR has_table_privilege('allin_v2_ingest_operator',
+  'allin_private.v2_apple_attested_companion_keys_candidate','INSERT')
+ OR has_table_privilege('allin_v2_device_registrar',
+  'allin_private.v2_apple_attested_companion_keys_candidate','INSERT')
+ OR has_column_privilege('allin_v2_device_registrar',
+  'allin_private.v2_apple_attested_companion_keys_candidate',
+  'apple_attestation_verified_at','UPDATE')
+ OR has_column_privilege('allin_v2_device_registrar',
+  'allin_private.v2_apple_attested_companion_keys_candidate',
+  'public_key_spki_base64url','UPDATE') THEN
+  RAISE EXCEPTION 'Client or pairing registrar can mint Apple App Attest trust';
+ END IF;
+ RAISE NOTICE 'PASS ALL-243 private Apple attestation anchor cannot be self-certified';
+END $privileges$;
+-- Authorized attestation enrollment is represented only by a privileged
+-- disposable fixture. The actual Apple CA/nonce attestation verifier remains
+-- a separate launch gate; this fixture is NOT a production proof of Apple CA.
+INSERT INTO allin_private.v2_apple_attested_companion_keys_candidate(
+ key_id,owner_id,apple_app_id,public_key_spki_base64url,
+ apple_attestation_verified_at)
+VALUES('fixture-previously-apple-attested-key-1',
+'11111111-1111-4111-8111-111111111111',
+'ABCDE12345.com.allin365.app',
+'cHVibGljLWtleS1mdXJ0aGVyLXZlcmlmaWVkLWJ5LWFwcGxlLXNlcnZlcg',
+now()-interval '1 day');
+SET ROLE allin_v2_device_registrar;
+SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';
+DO $counter$
+BEGIN
+ BEGIN
+  INSERT INTO allin_private.v2_apple_attested_companion_keys_candidate(
+   key_id,owner_id,apple_app_id,public_key_spki_base64url,
+   apple_attestation_verified_at)
+  VALUES('forged-app-attest-enrollment',
+   '11111111-1111-4111-8111-111111111111',
+   'ABCDE12345.com.allin365.app','Zm9yZ2VkLWtleQ',now());
+  RAISE EXCEPTION 'Registrar minted an Apple-attested key';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  UPDATE allin_private.v2_apple_attested_companion_keys_candidate
+  SET apple_app_id='OTHER00000.com.attacker'
+  WHERE key_id='fixture-previously-apple-attested-key-1';
+  RAISE EXCEPTION 'Registrar changed verified Apple app ID';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $counter$;
+UPDATE allin_private.v2_apple_attested_companion_keys_candidate
+ SET assertion_sign_count=1
+ WHERE key_id='fixture-previously-apple-attested-key-1'
+ AND owner_id='11111111-1111-4111-8111-111111111111'
+ AND assertion_sign_count=0 RETURNING key_id;
+DO $replay$
+BEGIN
+ IF EXISTS(
+  UPDATE allin_private.v2_apple_attested_companion_keys_candidate
+   SET assertion_sign_count=1
+   WHERE key_id='fixture-previously-apple-attested-key-1'
+    AND assertion_sign_count=0
+   RETURNING key_id
+ ) THEN RAISE EXCEPTION 'Stale phone assertion counter succeeded'; END IF;
+END $replay$;
+RESET ROLE;
+\echo 'PASS ALL-243 Apple App Attest trust policy and monotone counter CAS'
