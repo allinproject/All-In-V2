@@ -81,11 +81,12 @@ on:
       - 'docs/architecture/sql/V2-INDOOR-WEEKLY-COMPETITION-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INDOOR-WEEKLY-SCORE-V1-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COMPLETED-ACTIVITY-EVIDENCE-OBJECTS-CANDIDATE.sql'
-      - 'docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql'
-      - 'docs/architecture/sql/V2-COACH-PERSISTENCE-SECURITY-CHECKS.sql'
-      - 'docs/architecture/sql/V2-COACH-PERSISTENCE-TWO-OWNER-LOCAL.psql'
+      - 'docs/architecture/sql/V2-COACH-OWNER-MIGRATION-CANDIDATE.sql'
+      - 'supabase/tests/v2_coach_owner_atomic_exchange_rollback.sql'
+      - 'scripts/test-v2-coach-sql-postgres.psql'
+      - 'scripts/test-v2-coach-race-setup.psql'
+      - 'scripts/test-v2-coach-race-postgres.sh'
       - 'scripts/check-v2-coach-sql-candidate.mjs'
-      - 'scripts/test-v2-coach-persistence-race-local.sh'
       - 'scripts/test-v2-coach-account-export-local.psql'
       - 'scripts/test-v2-account-export-all-domain-pages-local.psql'
       - 'scripts/test-all251-community-post-export-projection-local.psql'
@@ -348,32 +349,28 @@ jobs:
           docker cp scripts/test-v2-community-privacy-local-postgres.psql "$db_container:/tmp/v2-community-privacy-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-community-privacy.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-community-privacy-qa.psql
-      - name: Validate Coach SQL source before local database replay
+      - name: Validate canonical Coach owner SQL and privacy lifecycle contracts
         run: |
           node scripts/check-v2-coach-sql-candidate.mjs --self-test
           node scripts/check-v2-coach-sql-candidate.mjs
-      - name: Validate Coach conversation persistence and cross-owner isolation in disposable DB
+      - name: Apply canonical Coach owner candidate to disposable local Supabase
         run: |
           set -euo pipefail
-          # Review-only SQL: run ONLY against the Supabase CLI's local Docker
-          # PostgreSQL container. No remote credentials or hosted migrations.
-          test "${CI}" = "1"
+          test "$CI" = "true"
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
-          for file in \
-            docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql \
-            docs/architecture/sql/V2-COACH-PERSISTENCE-SECURITY-CHECKS.sql \
-            docs/architecture/sql/V2-COACH-PERSISTENCE-TWO-OWNER-LOCAL.psql; do
-            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
-            docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
-          done
-      - name: Prove Coach first-open and message replay under real concurrent sessions
+          docker cp docs/architecture/sql/V2-COACH-OWNER-MIGRATION-CANDIDATE.sql "$db_container:/tmp/v2-coach-owner.sql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-coach-owner.sql
+      - name: Prove canonical Coach concurrent first-open and request claims
         run: |
           set -euo pipefail
-          test "${CI}" = "1"
+          test "$CI" = "true"
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
-          bash scripts/test-v2-coach-persistence-race-local.sh "$db_container"
+          docker exec "$db_container" createdb -U postgres allin_coach_race_test
+          docker cp scripts/test-v2-coach-race-setup.psql "$db_container:/tmp/v2-coach-race-setup.psql"
+          docker exec "$db_container" psql -X -U postgres -d allin_coach_race_test -v ON_ERROR_STOP=1 -f /tmp/v2-coach-race-setup.psql
+          POSTGRES_CONTAINER_ID="$db_container" PGUSER=postgres bash scripts/test-v2-coach-race-postgres.sh
       - name: Check foundation-to-canonical schema compatibility in disposable DB
         run: |
           set -euo pipefail
@@ -451,7 +448,7 @@ jobs:
             END IF;
             IF to_regclass('public.v2_coach_threads') IS NULL
                OR to_regclass('public.v2_coach_messages') IS NULL
-               OR to_regclass('allin_private.v2_coach_message_actions') IS NULL
+               OR to_regclass('allin_private.v2_coach_turn_claims') IS NULL
             THEN RAISE EXCEPTION 'Coach owner tables missing from canonical candidate graph'; END IF;
             IF EXISTS(
               SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace

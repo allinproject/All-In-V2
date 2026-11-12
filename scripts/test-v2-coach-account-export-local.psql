@@ -10,26 +10,38 @@ INSERT INTO public.v2_coach_threads(id,user_id) VALUES
  ('a1111111-6111-4111-8111-611111111111','61111111-6111-4111-8111-611111111111'),
  ('a2222222-6222-4222-8222-622222222222','62222222-6222-4222-8222-622222222222');
 INSERT INTO public.v2_coach_messages
- (id,user_id,thread_id,role,content,client_action_id)
+ (id,user_id,thread_id,client_request_id,role,content)
 VALUES
  ('b1111111-6111-4111-8111-611111111111',
   '61111111-6111-4111-8111-611111111111',
-  'a1111111-6111-4111-8111-611111111111','user','Athlete A private question',
-  'c1111111-6111-4111-8111-611111111111'),
+  'a1111111-6111-4111-8111-611111111111',
+  'c1111111-6111-4111-8111-611111111111','user','Athlete A private question'),
+ ('b1121111-6111-4111-8111-611111111112',
+  '61111111-6111-4111-8111-611111111111',
+  'a1111111-6111-4111-8111-611111111111',
+  'c1111111-6111-4111-8111-611111111111','assistant','Athlete A private Coach answer'),
  ('b2222222-6222-4222-8222-622222222222',
   '62222222-6222-4222-8222-622222222222',
-  'a2222222-6222-4222-8222-622222222222','user','Athlete B private question',
-  'c2222222-6222-4222-8222-622222222222');
-INSERT INTO allin_private.v2_coach_message_actions
- (user_id,thread_id,message_id,client_action_id) VALUES
+  'a2222222-6222-4222-8222-622222222222',
+  'c2222222-6222-4222-8222-622222222222','user','Athlete B private question'),
+ ('b2232222-6222-4222-8222-622222222223',
+  '62222222-6222-4222-8222-622222222222',
+  'a2222222-6222-4222-8222-622222222222',
+  'c2222222-6222-4222-8222-622222222222','assistant','Athlete B private Coach answer');
+INSERT INTO allin_private.v2_coach_turn_claims
+ (user_id,client_request_id,thread_id,user_message_id,assistant_message_id,
+  request_fingerprint,lease_expires_at)
+VALUES
  ('61111111-6111-4111-8111-611111111111',
+  'c1111111-6111-4111-8111-611111111111',
   'a1111111-6111-4111-8111-611111111111',
   'b1111111-6111-4111-8111-611111111111',
-  'c1111111-6111-4111-8111-611111111111'),
+  'b1121111-6111-4111-8111-611111111112',repeat('a',64),now()+interval '10 minutes'),
  ('62222222-6222-4222-8222-622222222222',
+  'c2222222-6222-4222-8222-622222222222',
   'a2222222-6222-4222-8222-622222222222',
   'b2222222-6222-4222-8222-622222222222',
-  'c2222222-6222-4222-8222-622222222222');
+  'b2232222-6222-4222-8222-622222222223',repeat('b',64),now()+interval '10 minutes');
 
 
 -- Populate ALL nine previously uncovered owner tables, not merely their allowlist.
@@ -147,11 +159,13 @@ BEGIN
     OR v_data::text LIKE '%Owner B cycling cadence%'
  THEN RAISE EXCEPTION 'Owner A cross-domain export missing records or leaked B'; END IF;
  v_part := v_data->'coach_conversation';
- IF v_part IS NULL OR v_part->>'schema_version' <> 'v2-coach-account-fragment-candidate-v1'
+ IF v_part IS NULL OR v_part->>'schema_version' <> 'v2-coach-account-fragment-candidate-v2'
     OR jsonb_array_length(v_part->'threads')<>1
-    OR jsonb_array_length(v_part->'messages')<>1
-    OR jsonb_array_length(v_part->'message_actions')<>1
-    OR v_part->'messages'->0->>'content' <> 'Athlete A private question'
+    OR jsonb_array_length(v_part->'messages')<>2
+    OR v_part ? 'message_actions'
+    OR v_part::text LIKE '%request_fingerprint%'
+    OR v_part::text NOT LIKE '%Athlete A private question%'
+    OR v_part::text NOT LIKE '%Athlete A private Coach answer%'
     OR v_part::text LIKE '%Athlete B private question%'
  THEN RAISE EXCEPTION 'Owner A Coach export incomplete or leaked owner B'; END IF;
  BEGIN
@@ -188,8 +202,11 @@ BEGIN
     OR v_data::text LIKE '%Owner A running cadence%'
  THEN RAISE EXCEPTION 'Owner B cross-domain export missing records or leaked A'; END IF;
  IF v_part IS NULL THEN RAISE EXCEPTION 'Owner B missing Coach export'; END IF;
- IF jsonb_array_length(v_part->'messages')<>1
-    OR v_part->'messages'->0->>'content'<>'Athlete B private question'
+ IF jsonb_array_length(v_part->'messages')<>2
+    OR v_part ? 'message_actions'
+    OR v_part::text LIKE '%request_fingerprint%'
+    OR v_part::text NOT LIKE '%Athlete B private question%'
+    OR v_part::text NOT LIKE '%Athlete B private Coach answer%'
     OR v_part::text LIKE '%Athlete A private question%'
  THEN RAISE EXCEPTION 'Owner B Coach export incomplete or leaked owner A'; END IF;
 END $coach_export$;
@@ -216,12 +233,20 @@ DROP TABLE allin_private.v2_community_unreviewed_pair_probe;
 -- A large accumulated Coach history must NEVER be silently truncated by
 -- the inline JSON snapshot. Keep the existing 5 MB fail-closed boundary until
 -- the separately approved streaming, encrypted downloadable export is ready.
+WITH request_ids AS (
+  SELECT gen_random_uuid() AS request_id FROM generate_series(1,160)
+)
 INSERT INTO public.v2_coach_messages
- (user_id,thread_id,role,content,client_action_id)
-SELECT '61111111-6111-4111-8111-611111111111'::uuid,
-       'a1111111-6111-4111-8111-611111111111'::uuid,
-       'user',repeat('L',30000),gen_random_uuid()
-FROM generate_series(1,180);
+ (id,user_id,thread_id,client_request_id,role,content)
+SELECT gen_random_uuid(),'61111111-6111-4111-8111-611111111111'::uuid,
+       'a1111111-6111-4111-8111-611111111111'::uuid,request_id,
+       'user',repeat('U',12000)
+FROM request_ids
+UNION ALL
+SELECT gen_random_uuid(),'61111111-6111-4111-8111-611111111111'::uuid,
+       'a1111111-6111-4111-8111-611111111111'::uuid,request_id,
+       'assistant',repeat('A',20000)
+FROM request_ids;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','61111111-6111-4111-8111-611111111111',true);
 DO $large_export$
@@ -236,7 +261,7 @@ END $large_export$;
 RESET ROLE;
 DELETE FROM public.v2_coach_messages
  WHERE user_id='61111111-6111-4111-8111-611111111111'
-   AND octet_length(content)=30000;
+   AND content IN (repeat('U',12000),repeat('A',20000));
 
 -- Owner A deletion must remove ALL Coach rows and leave B intact.
 DELETE FROM auth.users WHERE id='61111111-6111-4111-8111-611111111111';
@@ -244,10 +269,10 @@ DO $coach_delete$
 BEGIN
  IF EXISTS(SELECT 1 FROM public.v2_coach_threads WHERE user_id='61111111-6111-4111-8111-611111111111')
  OR EXISTS(SELECT 1 FROM public.v2_coach_messages WHERE user_id='61111111-6111-4111-8111-611111111111')
- OR EXISTS(SELECT 1 FROM allin_private.v2_coach_message_actions WHERE user_id='61111111-6111-4111-8111-611111111111')
+ OR EXISTS(SELECT 1 FROM allin_private.v2_coach_turn_claims WHERE user_id='61111111-6111-4111-8111-611111111111')
  OR NOT EXISTS(SELECT 1 FROM public.v2_coach_threads WHERE user_id='62222222-6222-4222-8222-622222222222')
  THEN RAISE EXCEPTION 'Coach deletion cascade failed or damaged other owner'; END IF;
- RAISE NOTICE 'PASS ALL-222/251: existing export includes only own Coach history and receipts; owner deletion cascades';
+ RAISE NOTICE 'PASS ALL-217/251: export includes only own Coach transcript; private claims cascade-delete';
 END $coach_delete$;
 
 DO $all_domains_delete$

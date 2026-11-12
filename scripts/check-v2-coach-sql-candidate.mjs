@@ -1,11 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { strict as assert } from 'node:assert';
 
-// Static gate only. Real PostgreSQL/RLS/owner tests run in disposable Supabase CI.
 const root = 'docs/architecture/sql/';
-const names = ['V2-COACH-PERSISTENCE-CANDIDATE.sql',
-  'V2-COACH-PERSISTENCE-SECURITY-CHECKS.sql',
-  'V2-COACH-PERSISTENCE-TWO-OWNER-LOCAL.psql'];
+const candidate = 'V2-COACH-OWNER-MIGRATION-CANDIDATE.sql';
+const exportFile = 'V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql';
+const paginatedFile = 'V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql';
 
 function checkDollarQuotes(source, name) {
   const stripped = source.split('\n').map(line => /^\s*--/.test(line) ? '' : line).join('\n');
@@ -15,67 +14,68 @@ function checkDollarQuotes(source, name) {
     if (open === null) open = token;
     else if (open === token) open = null;
   }
-  assert.equal(open, null, `${name}: unclosed PostgreSQL dollar literal`);
+  assert.equal(open, null, name + ': unclosed PostgreSQL dollar literal');
 }
 
-function validate(files) {
-  const [ddl, security, replay] = files;
-  for (let i = 0; i < files.length; i++) {
-    checkDollarQuotes(files[i], names[i]);
-    assert(!/\bEND\s+\$;/.test(files[i]), `${names[i]}: invalid END $; delimiter`);
+function validateOwnerCandidate(ddl) {
+  checkDollarQuotes(ddl, candidate);
+  for (const table of [
+    'public.v2_coach_threads','public.v2_coach_messages',
+    'allin_private.v2_coach_turn_claims'
+  ]) {
+    assert(ddl.includes('create table ' + table), 'missing canonical Coach table: ' + table);
+    assert(ddl.includes('alter table ' + table + ' enable row level security'), 'RLS missing: ' + table);
   }
-  assert(ddl.includes('BEGIN;') && ddl.includes('COMMIT;'), 'non-atomic DDL candidate');
-  for (const name of ['v2_coach_threads','v2_coach_messages','v2_coach_message_actions']) {
-    const schema = name === 'v2_coach_message_actions' ? 'allin_private' : 'public';
-    assert(ddl.includes(`CREATE TABLE ${schema}.${name}`), `table missing: ${name}`);
-    assert(ddl.includes(`ALTER TABLE ${schema}.${name} ENABLE ROW LEVEL SECURITY`), `RLS missing: ${name}`);
-    assert(security.includes(name), `security check missing: ${name}`);
-  }
-  for (const operation of ['v2_coach_get_or_create_thread','v2_coach_append_user_message',
-    'v2_coach_read_messages','v2_coach_record_assistant_reply']) {
-    assert(ddl.includes(`FUNCTION public.${operation}`), `writer/reader missing: ${operation}`);
-    assert(security.includes(operation), `security check missing: ${operation}`);
-  }
-  assert(/GRANT EXECUTE ON FUNCTION public\.v2_coach_record_assistant_reply\([^)]+\) TO service_role;/.test(ddl),
-    'assistant writer must be granted to service_role');
-  assert(!/GRANT EXECUTE ON FUNCTION public\.v2_coach_record_assistant_reply\([^)]+\) TO authenticated;/.test(ddl),
-    'assistant writer must not be granted to authenticated');
-  for (const token of ['ROLLBACK;', 'SET LOCAL ROLE authenticated;', 'SET LOCAL ROLE service_role;',
-    'SET LOCAL ROLE anon;', 'Coach equal-timestamp pagination', 'deleted account retained Coach data']) {
-    assert(replay.includes(token), `local replay missing: ${token}`);
-  }
-  assert(replay.includes('\\set ON_ERROR_STOP on'), 'replay must fail on SQL errors');
+  assert(ddl.includes('constraint v2_coach_threads_one_per_owner unique (user_id)'),
+    'one persistent thread per owner must be database-enforced');
+  assert(ddl.includes('v2-coach-owner-thread:'),
+    'first-open creation must serialize by owner, not by caller-generated thread UUID');
+  assert(ddl.includes('auth.uid()') && ddl.includes('p_expected_user_id is distinct from v_user'),
+    'thread creation must bind the authenticated owner');
+  for (const operation of [
+    'v2_coach_create_thread','v2_coach_read_messages','v2_coach_read_exchange',
+    'v2_coach_claim_turn','v2_coach_append_exchange','v2_coach_finish_turn'
+  ]) assert(ddl.includes('create function public.' + operation), 'missing Coach RPC: ' + operation);
+  assert(ddl.includes('execution_version') && ddl.includes('request_fingerprint') &&
+    ddl.includes('lease_expires_at'), 'durable request fencing fields missing');
+  assert(ddl.includes('on delete cascade'), 'owner deletion cascade is not declared');
+  assert(!ddl.includes('v2_coach_message_actions'),
+    'retired duplicate Coach action-receipt store must not return');
+  assert(ddl.includes('default false'), 'Coach request admission must remain default-OFF');
 }
 
-function validateCanonicalExportBridge(source) {
+function validateExport(source, paginated) {
   assert(source.includes('create or replace function public.v2_export_my_account_snapshot'),
-    'Coach export must extend the canonical owner RPC');
-  for (const key of ["'training_activity'", "'coach_conversation'", "'threads'", "'messages'",
-    "'message_actions'", "'v2_coach_threads'", "'v2_coach_messages'",
-    "'v2_coach_message_actions'"]) {
-    assert(source.includes(key), `Missing canonical Coach export contract: ${key}`);
-  }
-  const ownerFilters = (source.match(/where\s+[tma]\.user_id=v_user/g) ?? []).length;
-  assert(ownerFilters >= 3, 'Coach export arrays must each bind the authenticated owner');
-  assert(source.includes('p_expected_user_id is distinct from v_user'),
-    'Owner assertion must survive the export extension');
-  assert(source.includes('Account export needs Storage coverage'),
-    'Fail-closed Storage guard must survive');
-  assert(source.includes('New personal data tables require export coverage'),
-    'Fail-closed unknown owner-table guard must survive');
-  assert(source.includes('5000000'), 'Five megabyte inline cap must survive');
-  assert(!/grant execute on function public\.v2_export_my_account_snapshot\(uuid\) to anon;/i.test(source),
-    'Anonymous account export must stay denied');
+    'Coach export must extend the canonical owner export');
+  for (const token of [
+    'v2-coach-account-fragment-candidate-v2',
+    "'coach_conversation'", "'threads'", "'messages'",
+    'v2_coach_turn_claims','Private pre-provider claims'
+  ]) assert(source.includes(token), 'missing canonical Coach export contract: ' + token);
+  assert(!source.includes('v2_coach_message_actions') && !source.includes('message_actions'),
+    'retired Coach action-receipt table must not be exported');
+  assert(source.includes('where t.user_id=v_user') && source.includes('5000000'),
+    'owner binding or inline export cap missing');
+  assert(paginated.includes("('allin_private','v2_coach_turn_claims')"),
+    'operational Coach claims must remain in the complete owner-table inventory');
+  assert(paginated.includes("'internalOperationalTables'") &&
+    paginated.includes("'allin_private.v2_coach_turn_claims'"),
+    'operational Coach claims must be classified separately from portable collections');
+  assert(!/v2_coach_message_actions|message_actions/.test(paginated),
+    'retired Coach message-action schema still appears in paginated export');
+  assert(source.includes('New personal data tables require export coverage') &&
+    source.includes('Account export needs Storage coverage'),
+    'existing fail-closed export guards must survive');
 }
 
 if (process.argv.includes('--self-test')) {
-  assert.throws(() => checkDollarQuotes('DO $$ BEGIN; END $;', 'bad'), /unclosed/);
-  assert.throws(() => validate(['BEGIN; COMMIT;', 'x', 'ROLLBACK;']), /missing/);
-  assert.throws(() => validateCanonicalExportBridge(''), /canonical owner RPC/);
-  console.log('PASS: Coach SQL static guard negative self-tests');
+  assert.throws(() => validateOwnerCandidate('begin; commit;'), /missing canonical Coach table/);
+  assert.throws(() => validateExport('', ''), /canonical owner export/);
+  assert.throws(() => checkDollarQuotes('do $$ begin; end $;', 'bad'), /unclosed/);
+  console.log('PASS: canonical Coach owner static guard negative self-tests');
 } else {
-  validate(names.map(name => readFileSync(root + name, 'utf8')));
-  validateCanonicalExportBridge(readFileSync(root + 'V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql', 'utf8'));
-
-  console.log('PASS: Coach SQL source checks (not PostgreSQL execution)');
+  validateOwnerCandidate(readFileSync(root + candidate, 'utf8'));
+  validateExport(readFileSync(root + exportFile, 'utf8'),
+    readFileSync(root + paginatedFile, 'utf8'));
+  console.log('PASS: canonical Coach owner, one-thread, export and operational-claims source checks');
 }

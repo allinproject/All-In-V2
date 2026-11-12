@@ -68,7 +68,7 @@ BEGIN
     ('public','v2_indoor_weekly_achievements'),
     ('allin_private','v2_training_action_receipts'),
     ('allin_private','v2_training_completion_outbox'),
-    ('allin_private','v2_coach_message_actions'),
+    ('allin_private','v2_coach_turn_claims'),
     ('allin_private','v2_training_plan_accept_receipts'),
     ('allin_private','v2_account_export_requests_candidate')
     -- ALL-247 Food Log/Hydration candidate projections exist below, but
@@ -180,7 +180,9 @@ BEGIN
   'ownerId',p_owner,'requestId',p_request,'snapshotId',v_snapshot,
   'collections',(SELECT pg_catalog.jsonb_agg(value ORDER BY value)
     FROM (
-      SELECT pg_catalog.unnest(v_expected) AS value
+      SELECT owner_collection AS value
+        FROM pg_catalog.unnest(v_expected) AS reviewed(owner_collection)
+       WHERE owner_collection <> 'allin_private.v2_coach_turn_claims'
       UNION ALL SELECT 'auth.users'
       UNION ALL SELECT 'community.outgoing_follows'
       UNION ALL SELECT 'community.incoming_follow_requests'
@@ -191,6 +193,8 @@ BEGIN
       UNION ALL SELECT 'billing.verified_events'
     ) AS ordered),
   'ownerTableCount',pg_catalog.cardinality(v_expected),
+  'internalOperationalTables',pg_catalog.jsonb_build_array(
+    'allin_private.v2_coach_turn_claims'),
   'snapshotIsRepeatableRead',true,
   'paginationReady',true,
   'privacyPending','community_pair_revisions_and_storage_media',

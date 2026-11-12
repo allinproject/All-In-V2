@@ -55,7 +55,7 @@ begin
        ]))
        or (n.nspname='allin_private' and c.relname=any(array[
          'v2_training_action_receipts','v2_training_completion_outbox',
-         'v2_coach_message_actions',
+         'v2_coach_turn_claims',
          'v2_training_plan_accept_receipts','v2_account_export_requests_candidate'
        ]))
      )
@@ -296,16 +296,15 @@ begin
    'community',v_community,
    'billing',v_billing,
    'training_activity',allin_private.v2_training_account_export_fragment_candidate(v_user),
-   -- Coach identity/contents/receipts remain part of the SAME owner export.
-   -- Never include another user's messages, even if a thread UUID is known.
+   -- Export the one persistent conversation and its messages.
+   -- Private pre-provider claims contain execution/fencing internals, not
+   -- portable conversation content; they remain server-only and cascade-delete.
    'coach_conversation',pg_catalog.jsonb_build_object(
-     'schema_version','v2-coach-account-fragment-candidate-v1',
+     'schema_version','v2-coach-account-fragment-candidate-v2',
      'threads',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(t) order by t.created_at,t.id)
        from public.v2_coach_threads t where t.user_id=v_user),'[]'::jsonb),
      'messages',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(m) order by m.created_at,m.id)
-       from public.v2_coach_messages m where m.user_id=v_user),'[]'::jsonb),
-     'message_actions',coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(a) order by a.created_at,a.client_action_id)
-       from allin_private.v2_coach_message_actions a where a.user_id=v_user),'[]'::jsonb)
+       from public.v2_coach_messages m where m.user_id=v_user),'[]'::jsonb)
    )
  ) into v_export;
  if pg_catalog.octet_length(v_export::text) > 5000000 then
