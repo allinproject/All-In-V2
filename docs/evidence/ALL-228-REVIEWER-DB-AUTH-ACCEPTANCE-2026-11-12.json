@@ -1,0 +1,100 @@
+{
+  "ownerIssues": [
+    "ALL-222",
+    "ALL-228",
+    "ALL-251"
+  ],
+  "date": "2026-11-12",
+  "scope": "Existing canonical ingredient reviewer authentication and private SQL writer; isolated test execution only",
+  "status": "isolated_postgres_passed_live_auth_and_native_concurrency_pending",
+  "repository": "allinproject/All-In-V2",
+  "branch": "integration/v2-foundation",
+  "canonicalFiles": [
+    {
+      "path": "docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql",
+      "blobSha": "bbc2ef48999fd27c1039dfe2dbefbc401deb3a97"
+    },
+    {
+      "path": "docs/architecture/sql/V2-INGREDIENT-USDA-ENERGY-ATTESTATION-CANDIDATE.sql",
+      "blobSha": "05ac7a734ad6b7e88246475825c164a1331a8e1a"
+    },
+    {
+      "path": "scripts/test-v2-ingredient-review-writer-isolated.cjs",
+      "blobSha": "03cfd410ff95c94c3b831c242d99beb4276e2a55"
+    },
+    {
+      "path": "scripts/check-v2-ingredient-writer-candidate.test.cjs",
+      "blobSha": "967798df40b24695d6047946b67d7c690ec37ddb"
+    }
+  ],
+  "isolatedRuntime": {
+    "engine": "PGlite PostgreSQL runtime via @electric-sql/pglite 0.5.16",
+    "packageIntegritySha512Base64": "Nj8KcIsJL748W408U2N8q4+9IlONdpRIU8MJypIAAINMJ5nqKyqpX7Mgg/5XKkXiAib3AoZGR6hnJFlrlLBrcg==",
+    "nodeVersion": "v26.12.1",
+    "source": "npm registry HTTPS package; integrity digest checked before extraction",
+    "executedAgainstLiveSupabase": false
+  },
+  "testResults": {
+    "canonicalStaticContract": {
+      "cases": 9,
+      "passed": 9,
+      "failed": 0
+    },
+    "isolatedPostgresql": {
+      "cases": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "total": {
+      "cases": 10,
+      "passed": 10,
+      "failed": 0
+    }
+  },
+  "verifiedCases": [
+    "athlete/anon/service roles cannot call reviewer function or change catalog records",
+    "dedicated PostgreSQL login session_user, reviewer role membership and privately enabled enrollment required",
+    "issuer/subject verification metadata, vault reference and credential expiry/revocation constraints present",
+    "different request with reused action key rejected; matching replay returns existing audited event",
+    "profile row/source digest locks and expected-revision CAS checked in execution tests",
+    "immutable private audit events and reviewer enrollment changes checked",
+    "review-only transitions recorded atomically; calculation_ready intentionally denied",
+    "missing launch core, source mismatches, wrong preparation state and unauthorized aliases fail closed",
+    "reviewer revoked_at and disabled state prevent reactivation and further reviewer command",
+    "both privileged canonical writer and energy functions use pg_catalog/pg_temp trusted search path"
+  ],
+  "targetedChanges": [
+    {
+      "file": "docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql",
+      "change": "remove public and allin_private from SECURITY DEFINER search_path",
+      "commit": "360ade607d4ee2351a99a8a4258c03db7fbd3536"
+    },
+    {
+      "file": "docs/architecture/sql/V2-INGREDIENT-USDA-ENERGY-ATTESTATION-CANDIDATE.sql",
+      "change": "remove public and allin_private from SECURITY DEFINER search_path",
+      "commit": "e7be208a79fbc74b950910fbf827b1891f671c0"
+    },
+    {
+      "file": "scripts/test-v2-ingredient-review-writer-isolated.cjs",
+      "change": "test revoked_at alongside disabled and forbid re-enable",
+      "commit": "55477b9084ea594c6517f60900b51cf4fead803c"
+    },
+    {
+      "file": "scripts/check-v2-ingredient-writer-candidate.test.cjs",
+      "change": "assert trusted SECURITY DEFINER search paths",
+      "commit": "c14c6b7499975b6035c5e0a75f922ffc7255b77f"
+    }
+  ],
+  "concurrencyAndLiveGates": {
+    "nativeTwoConnectionPostgresRun": "not run in this test environment; separate native test exists",
+    "externalIdentityProviderValidation": "not run; real credential issuer/vault onboarding requires ALL-251 owner approval",
+    "liveReviewerEnrollment": "not performed",
+    "reviewerRoleMembershipProvisioning": "not performed",
+    "realSupabaseRls": "not run",
+    "catalogMigration": "not applied",
+    "publication": "disabled",
+    "productionDeployment": "not done"
+  },
+  "cleanup": "Removed duplicate private reviewer writer/Auth gateway files created during concurrent work; retained existing canonical SQL, schema and test architecture. No extra reviewer source of truth.",
+  "notes": "PGlite is a real embedded PostgreSQL runtime, but not a substitute for native concurrent database sessions, production issuer verification, Supabase permission/deployment acceptance, or real-device integration."
+}
