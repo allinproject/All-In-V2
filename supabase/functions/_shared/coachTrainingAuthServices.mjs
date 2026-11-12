@@ -53,8 +53,8 @@ export function createCoachTrainingAuthServices({userClient,bearerToken}={}){
   },
   readCompletedHistory:async({ownerId,fromDate,throughDate}={})=>{
    if(!uuid(ownerId)||(await verifySession()).id!==ownerId||
-      !/^\\d{4}-\\d{2}-\\d{2}$/.test(fromDate??"")||
-      !/^\\d{4}-\\d{2}-\\d{2}$/.test(throughDate??""))fail();
+      !/^\d{4}-\d{2}-\d{2}$/.test(fromDate??"")||
+      !/^\d{4}-\d{2}-\d{2}$/.test(throughDate??""))fail();
    const {data,error}=await userClient.rpc("v2_completed_activity_coach_recent_candidate",{
     p_expected_user_id:ownerId,p_from_date:fromDate,
     p_through_date:throughDate
