@@ -154,8 +154,8 @@ try{
  assert.deepEqual(objectPaths.sort(),[p1,p2].sort());
  const refs={
   ownerId:owner,requestId,
-  series:[{user_id:owner,object_path:p1,checksum_sha256:sha(series)}],
-  routes:[{user_id:owner,object_path:p2,checksum_sha256:sha(route)}],
+  series:[{user_id:owner,object_path:p1,checksum_sha256:sha(series),state:'ready'}],
+  routes:[{user_id:owner,object_path:p2,checksum_sha256:sha(route),state:'ready',privacy_state:'private'}],
  };
  const downloadPrivateObject=async({ownerId,path,kind})=>{
   if(ownerId!==owner||!original.has(path)
