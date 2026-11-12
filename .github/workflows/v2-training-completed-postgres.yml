@@ -552,6 +552,11 @@ jobs:
           # the shared Training fixture or any hosted Supabase project.
           docker cp docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_bridge -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql
+          # Export also requires the canonical owner-bound Billing ledger graph.
+          # Install it only in the disposable clone; never stub these tables or
+          # weaken the fail-closed production export contract.
+          docker cp docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_bridge -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_bridge -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-training-integration-postgres.psql
       - name: Verify private Training Activity owner export fragment in disposable PostgreSQL
         env:
