@@ -210,7 +210,7 @@ try{
    p_expected_user_id:a.id,p_action_id:randomUUID(),p_entry_id:entryId,
    p_expected_revision:1,p_operation:'delete',
   },aToken);
-  assert([400,409,422].includes(stale.status),'Stale revision deleted newer entry');
+  assert.equal(stale.status,409,'Stale revision must fail promptly with HTTP 409');
 
   acceptanceStep='ALL247 cross-account deletion denial';
   const foreignDelete=await rpc('v2_food_log_mutate_manual',{
