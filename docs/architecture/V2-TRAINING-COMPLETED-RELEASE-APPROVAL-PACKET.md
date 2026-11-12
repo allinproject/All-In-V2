@@ -184,3 +184,39 @@ Obtain the **ALL-239 Goals and ALL-244 EventHub canonical owner key/version/part
 - `apps/mobile-v2/native/apple-watch/IPhoneAppAttestEnrollment.swift` is staged native code using `DCAppAttestService.generateKey` and `attestKey` with the server's challenge hash. It is not compiled into an iOS/watchOS target and does not provision an Apple trust record.
 
 **Hard release gates (still open):** implement and independently review Apple's signed PKCS#7/CMS receipt trust chain, Apple App ID/public key and five-minute creation-time validation, Apple sandbox/production environment separation, Apple's 2026 validation category and bundle-version extension handling, secure verifier-only key enrolment and revocation, production Team ID/bundle ID/entitlement agreement, hosted authenticated staging and a genuine Apple-issued attestation test on physical iPhone. The native watch proof remains separate: App Attest validates the companion **iPhone app instance**, not an Apple-signed hardware serial or generic Watch attestation. Rate limits, challenges/receipts retention, account export/delete, key loss/reinstall and owner switching must also pass. Explicit production migration and endpoint enablement are not approved.
+
+## 6. ALL-222 release unit 1 — exact owner/security sign-off checklist (2026-11-12)
+
+**Decision state: REVIEW REQUIRED, not permission to merge, create hosted DDL, grant runtime access or activate an app.** Extend the existing Training/Completed candidate SQL and tests, not a second activity or calendar system. This section converts the existing §2 ordering and §4 acceptance gates into a reviewable first unit.
+
+### A. Identity and referential invariants
+
+- [ ] Confirm one immutable `training_session_instance_id` per physical Training execution, one stable `completed_activity_id` per finished activity, and an optional same-owner exact accepted `plan_revision_session_id`. A manual/unplanned activity is valid without a plan FK; a session can be unfinished without an activity.
+- [ ] Confirm composite `(id,user_id)` owner keys on Training plan/revision/calendar/session and Completed Activity/source/metric/segment entities, and every cross-aggregate FK includes the *same owner*. Test foreign-owner IDs as well as missing IDs.
+- [ ] Confirm immutable accepted plan revision and complete selected-date-through-target-date calendar, including explicit rest, recovery and unavailable days. No silently rewritten accepted plan or duplicated completed workout.
+- [ ] Race-linked activation stays separate until ALL-239 Goal revision, ALL-244 Event/participation revision and ALL-234 course versions are approved and owner/version bound. Undated general goals remain valid; two same-day events remain distinct.
+
+### B. Least-privilege execution boundary
+
+| Actor | Training plan/session | Completed Activity and measurements | Private action/ingest ledgers |
+| --- | --- | --- | --- |
+| `anon` | No owner read or write | No owner read or write | No access |
+| `authenticated` | Own bounded approved reader only; no direct INSERT/UPDATE/DELETE | Own bounded approved reader only; no direct canonical writes | No access |
+| Coach | Reads authorized context; proposes, never directly applies plan edits | Reads authorized history, never rewrites measurements | No access |
+| Verified athlete action gateway | Same-owner live-session proof, approved-preview ID, expected revision and replay guard; narrow canonical writer only | Explicit manual-report writer only when authorized; cannot claim verified device provenance | Transactional helper only |
+| Trusted device worker | No direct plan revision; exact approved session link only | Narrow existing source/metric writer with device, session, nonce, source evidence, idempotency and source-specific quality | Narrow transactional helper only |
+| Controlled migrations/operator | Audited schema/registry changes under explicit release process | Audited metric-definition seed/revision changes | No blanket client grants |
+
+- [ ] Check actual schema/table/column/sequence/function grants and RLS using PostgreSQL roles, not source-code inspection. For SECURITY DEFINER functions, explicitly audit owner, `search_path`, parameter validation, caller/owner session checks and revocations from PUBLIC/anon/authenticated.
+- [ ] The ALL-243 proposed `allin_v2_device_ingest` NOLOGIN role and gateway are **not yet operational**. Resolve its source/session-proof path, `auth.uid()` spoofable-GUC risk, `SELECT FOR UPDATE` vs UPDATE/RLS requirements, and replay/nonce lifetime *without* granting direct client metric-table writes.
+- [ ] Test two concurrent owners, session expiry/revocation, owner switching, wrong session/plan revision, duplicate and changed-payload retries, race conditions, denial of cross-owner source/nonce, and transaction rollback under real roles.
+
+### C. Evidence and application handoff
+
+- [ ] Approve the metric-specific measurement-quality input to the existing scalar writer. Preserve both measurement and parent-source quality; a partial or rejected sample never inherits trusted status from its device.
+- [ ] Approve exact versioned registry definitions, canonical units, allowed sports and source classes. Recorded zero stays zero; absent data stays absent. Conflict across versions is unresolved, never first-wins.
+- [ ] Implement and test one authenticated Completed Activity detail adapter matching the existing mobile DTO, with safe formatted units, no raw provider IDs or private Storage paths, and explicit route/series eligibility.
+- [ ] Connect the *existing* ALL-251 export/delete path (metadata **and actual private Storage bytes**) and verify owner-switch and deletion lifecycle before any hosted migration.
+- [ ] Rerun clean disposable Supabase migration/replay and commit-matched CI **after** exact reviewed SQL and grant changes; then device-backed iOS/Android start/finish/detail tests. Prior green candidate runs are not proof of these later changes.
+
+**Smallest safe next implementation:** reconcile the current ALL-243 real PostgreSQL two-owner/NOLOGIN gateway fixture and its `FOR UPDATE` permission boundary first. Keep any changes in review-only candidates and the existing CI workflow. Then request owner approval of the precise unit-1 SQL/FK/grant diff before versioned migration work. No automatic production approval is implied.
