@@ -200,6 +200,43 @@ BEGIN
  (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
  VALUES('31313131-3131-4131-8131-313131313131',
         rev,p,u,'2026-11-18','America/Chicago','rest',1);
+ -- Reject a missing LAST day of the reviewed inclusive window.
+ DELETE FROM public.v2_training_revision_days
+ WHERE plan_revision_id=rev AND athlete_local_date='2026-11-19';
+ BEGIN
+  PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+   u,p,rev,'35353535-3535-4535-8535-353535353535',1);
+  RAISE EXCEPTION 'Approved end boundary omitted but accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ IF (SELECT version FROM public.v2_training_plans WHERE id=p)<>1
+ OR (SELECT status FROM public.v2_training_plan_revisions WHERE id=rev)<>'candidate'
+ THEN RAISE EXCEPTION 'Missing end day mutated plan'; END IF;
+ INSERT INTO public.v2_training_revision_days
+ (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
+ VALUES('29292929-2929-4929-8929-292929292929',
+        rev,p,u,'2026-11-19','America/Chicago','recovery',2);
+ -- An extra day outside the reviewed dates must fail, not be silently ignored.
+ INSERT INTO public.v2_training_revision_days
+ (id,plan_revision_id,plan_id,user_id,athlete_local_date,timezone,day_state,sort_order)
+ VALUES('36363636-3636-4636-8636-363636363636',
+        rev,p,u,'2026-11-20','America/Chicago','rest',3);
+ BEGIN
+  PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+   u,p,rev,'37373737-3737-4737-8737-373737373737',1);
+  RAISE EXCEPTION 'Out-of-window calendar day accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ DELETE FROM public.v2_training_revision_days
+ WHERE plan_revision_id=rev AND athlete_local_date='2026-11-20';
+ -- Also reject a day-specific timezone mismatch on a day without a workout.
+ UPDATE public.v2_training_revision_days SET timezone='America/New_York'
+ WHERE plan_revision_id=rev AND athlete_local_date='2026-11-18';
+ BEGIN
+  PERFORM allin_private.v2_training_accept_plan_revision_candidate(
+   u,p,rev,'38383838-3838-4838-8838-383838383838',1);
+  RAISE EXCEPTION 'Day timezone drift accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ UPDATE public.v2_training_revision_days SET timezone='America/Chicago'
+ WHERE plan_revision_id=rev AND athlete_local_date='2026-11-18';
  -- Matching but nonexistent timezone strings must NOT become accepted
  -- simply because revision, day and scheduled session agree with each other.
  UPDATE public.v2_training_plan_revisions SET calendar_timezone='Mars/Phobos'
