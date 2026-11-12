@@ -74,6 +74,94 @@
     "publishedCatalog": false,
     "calculationReadyActivated": false,
     "liveSupabaseTouched": false,
+    "temporaryStagingTouchedThenFullyCleaned": true,
     "workModeUsed": false
+  },
+  "expandedAcceptance": {
+    "date": "2026-11-12",
+    "canonicalNativeHarness": {
+      "path": "scripts/test-v2-ingredient-native-concurrency.py",
+      "sourceBlobSha": "ad2aa89149ef15e716493660c58e9cecfe30efdc",
+      "execution": "native isolated local PostgreSQL 15.19 on Debian 12 inside disposable hosted test environment",
+      "connections": "two independent TCP database sessions with password-authenticated NOINHERIT test logins and explicit SET ROLE",
+      "pass": true,
+      "output": {
+        "auditEvents": 2,
+        "calculationReady": 0,
+        "competingCAS": "one-success-one-stale",
+        "concurrentCredentialRevocation": "waited_and_denied",
+        "database": "ephemeral localhost native PostgreSQL 15",
+        "energyAttestations": 8,
+        "expiredAndRevokedCredentials": "denied",
+        "externalSupabaseTouched": false,
+        "fixtureFoods": 8,
+        "generalOnlyEnergy": "rejected",
+        "idempotentReplay": "passed",
+        "independentConnections": 2,
+        "sourceDigests": "verified_official_archive_per_food",
+        "sourceMutationRace": "blocked-until-commit-and-rejected"
+      },
+      "cleanupVerified": {
+        "remainingDatabases": 0,
+        "remainingTestLogins": 0,
+        "auxiliaryLocalRolesRemoved": true,
+        "localPostgresServiceStopped": true
+      }
+    },
+    "canonicalEightFoodEnergySuite": {
+      "path": "scripts/test-v2-ingredient-energy-attestation-isolated.cjs",
+      "sourceBlobSha": "d30ac8d504f56f5887f5e175d2fdb98fe72c81ad",
+      "isolatedPostgreSqlCompatibleResults": {
+        "passed": 4,
+        "failed": 0
+      },
+      "cases": [
+        "all eight selected energy method attestations without publication",
+        "stale source and changed normalized kcal denied",
+        "mismatched USDA archive SHA denied",
+        "future-dated IdP verification denied"
+      ]
+    },
+    "temporarySupabaseStaging": {
+      "projectRef": "fbtgknlxjyeqrxemskbl",
+      "scope": "approved pre-existing temporary staging project, not live V2 project",
+      "version": "PostgreSQL 17.11",
+      "populatedRecords": {
+        "ingredients": 8,
+        "profiles": 8,
+        "nutrientFacts": 40,
+        "energyMethodRows": 14,
+        "calculationReady": 0
+      },
+      "dataProvenance": "reviewed USDA source summary values and approved names/states; test-only synthetic per-food payload SHA markers, not published source records",
+      "authenticatedRead": {
+        "identities": 8,
+        "exactAliases": 8,
+        "unapprovedProfiles": 0,
+        "unapprovedSourceRecords": 0,
+        "directProfileUpdatePrivilege": false
+      },
+      "credentialChecks": {
+        "anonExecute": false,
+        "authenticatedExecute": false,
+        "serviceRoleExecute": false,
+        "testLoginAutomaticExecute": false,
+        "reason": "NOINHERIT requires SET ROLE; connected SQL account cannot switch SESSION AUTHORIZATION to test login"
+      },
+      "databaseConcurrencyProbe": "not independently confirmed in Supabase SQL connector: two backend PIDs but advisory-lock contender obtained lock (requests may serialize); native PostgreSQL harness independently verified real races",
+      "cleanupVerified": {
+        "remainingSchemas": 0,
+        "remainingRoles": 0,
+        "remainingObjects": 0
+      }
+    },
+    "remainingGates": [
+      "actual approved human IdP/MFA and verified issuer/subject",
+      "real vault-issued unique DB credential and key custody; no live credential created",
+      "independent owner approval of operator governance/retention and full production DDL",
+      "deployment/migration review with live Supabase Auth/Data API/connection behavior",
+      "publication hard block requires independent approval; no calculation_ready transition enabled",
+      "installed mobile app acceptance and GitHub Actions on latest revision"
+    ]
   }
 }
