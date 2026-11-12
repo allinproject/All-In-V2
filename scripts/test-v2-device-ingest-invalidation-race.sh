@@ -25,7 +25,7 @@ for case in activity source; do
   docker exec -i "$PG_CONTAINER" psql -XAt -U postgres -d "$db" -v ON_ERROR_STOP=1 >"$a" 2>&1 <<SQL &
 BEGIN;
 $mutation
-\\echo MUTATION_HELD
+\echo MUTATION_HELD
 SELECT pg_sleep(3);
 COMMIT;
 SQL
