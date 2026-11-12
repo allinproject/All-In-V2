@@ -29,11 +29,15 @@ begin
      and not (
        (n.nspname='public' and c.relname=any(array[
          'v2_profiles','v2_profile_settings','v2_onboarding_progress','v2_legal_acceptances',
-         'v2_coach_threads','v2_coach_messages'
+         'v2_coach_threads','v2_coach_messages',
+         'v2_goals','v2_goal_revisions','v2_goal_revision_behavior_targets',
+         'v2_event_group_memberships','v2_event_participations'
        ]))
        or (n.nspname='allin_private' and c.relname=any(array[
          'v2_health_considerations','v2_profile_settings_actions','v2_onboarding_actions',
-         'v2_account_deletion_requests','v2_account_deletion_execution_audit'
+         'v2_account_deletion_requests','v2_account_deletion_execution_audit',
+         'v2_community_visibility','v2_goal_acceptance_actions',
+         'v2_goal_approval_reviews','v2_event_group_actions'
        ]))
        or (n.nspname='public' and c.relname=any(array[
          'v2_training_session_instances','v2_completed_activities','v2_activity_sources',
@@ -72,6 +76,32 @@ begin
      from allin_private.v2_onboarding_actions a where a.user_id=v_user),'[]'::jsonb),
    'deletion_request',(select to_jsonb(d) from allin_private.v2_account_deletion_requests d where d.user_id=v_user),
    'deletion_execution',(select to_jsonb(d) from allin_private.v2_account_deletion_execution_audit d where d.user_id=v_user),
+   -- ALL-239/244: review-only Goal and EventHub owner data. These are
+   -- exported in the existing canonical snapshot, never by a second endpoint.
+   'goals',jsonb_build_object(
+     'goals',coalesce((select jsonb_agg(to_jsonb(g) order by g.id)
+       from public.v2_goals g where g.user_id=v_user),'[]'::jsonb),
+     'revisions',coalesce((select jsonb_agg(to_jsonb(r) order by r.id)
+       from public.v2_goal_revisions r where r.user_id=v_user),'[]'::jsonb),
+     'behavior_targets',coalesce((select jsonb_agg(to_jsonb(t) order by t.id)
+       from public.v2_goal_revision_behavior_targets t where t.user_id=v_user),'[]'::jsonb),
+     'acceptance_actions',coalesce((select jsonb_agg(to_jsonb(a) order by a.action_id)
+       from allin_private.v2_goal_acceptance_actions a where a.user_id=v_user),'[]'::jsonb),
+     'approval_reviews',coalesce((select jsonb_agg(to_jsonb(r) order by r.id)
+       from allin_private.v2_goal_approval_reviews r where r.user_id=v_user),'[]'::jsonb)
+   ),
+   'eventhub',jsonb_build_object(
+     'group_memberships',coalesce((select jsonb_agg(to_jsonb(m) order by m.group_id)
+       from public.v2_event_group_memberships m where m.user_id=v_user),'[]'::jsonb),
+     'participations',coalesce((select jsonb_agg(to_jsonb(p) order by p.event_id)
+       from public.v2_event_participations p where p.user_id=v_user),'[]'::jsonb),
+     'group_actions',coalesce((select jsonb_agg(to_jsonb(a) order by a.action_id)
+       from allin_private.v2_event_group_actions a where a.user_id=v_user),'[]'::jsonb)
+   ),
+   'community',jsonb_build_object(
+     'visibility',(select to_jsonb(v) from allin_private.v2_community_visibility v
+       where v.user_id=v_user)
+   ),
    'training_activity',allin_private.v2_training_account_export_fragment_candidate(v_user),
    -- Coach identity/contents/receipts remain part of the SAME owner export.
    -- Never include another user's messages, even if a thread UUID is known.
