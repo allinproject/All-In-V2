@@ -54,3 +54,42 @@ test('rejects malformed JSON and incomplete input sets',async()=>{
     assert(result.errors.some(e=>e.includes('missing dataset')));
   } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
+
+test('rejects duplicate scoped selector and option keys, even with unique row IDs',()=>{
+  const records={recipes:[recipe()],selectors:[
+    {source_selector_id:2,source_recipe_id:'r1',selector_key:'wrapper',source_active:false},
+    {source_selector_id:4,source_recipe_id:'r1',selector_key:'wrapper',source_active:false}
+  ],options:[
+    {source_option_id:3,source_selector_id:2,option_key:'bread'},
+    {source_option_id:5,source_selector_id:2,option_key:'bread'}
+  ],mappings:[]};
+  const errors=[];checkReferences(records,errors);
+  assert(errors.some(e=>e.includes('duplicate recipe/selector key')));
+  assert(errors.some(e=>e.includes('duplicate selector/option key')));
+});
+test('rejects active selectors without a matching default, but preserves inactive false positives',()=>{
+  const records={recipes:[recipe()],selectors:[
+    {source_selector_id:2,source_recipe_id:'r1',selector_key:'wrapper',default_option_key:'bread',source_active:true}
+  ],options:[{source_option_id:3,source_selector_id:2,option_key:'rice'}],mappings:[]};
+  const errors=[];checkReferences(records,errors);
+  assert(errors.some(e=>e.includes('active selector missing default option')));
+  records.selectors[0].source_active=false;
+  const inactiveErrors=[];checkReferences(records,inactiveErrors);
+  assert(!inactiveErrors.some(e=>e.includes('missing default option')));
+});
+test('rejects duplicate scoped component identity',()=>{
+  const records={recipes:[recipe()],selectors:[{source_selector_id:2,source_recipe_id:'r1',selector_key:'wrapper',source_active:false}],
+    options:[{source_option_id:3,source_selector_id:2,option_key:'bread'}],
+    mappings:[{source_mapping_id:4,source_recipe_id:'r1',selector_key:'wrapper',option_key:'bread',source_profile_key:'x'},
+              {source_mapping_id:5,source_recipe_id:'r1',selector_key:'wrapper',option_key:'bread',source_profile_key:'x'}]};
+  const errors=[];checkReferences(records,errors);
+  assert(errors.some(e=>e.includes('duplicate recipe/selector/option/profile key')));
+});
+test('avoids composite-key collisions when keys contain delimiters',()=>{
+  const records={recipes:[recipe()],selectors:[
+    {source_selector_id:2,source_recipe_id:'r1',selector_key:'a|b',source_active:false},
+    {source_selector_id:4,source_recipe_id:'r1',selector_key:'a',source_active:false}
+  ],options:[{source_option_id:3,source_selector_id:2,option_key:'c'}],
+    mappings:[{source_mapping_id:5,source_recipe_id:'r1',selector_key:'a|b',option_key:'c',source_profile_key:'x'}]};
+  const errors=[];checkReferences(records,errors);assert.deepEqual(errors,[]);
+});
