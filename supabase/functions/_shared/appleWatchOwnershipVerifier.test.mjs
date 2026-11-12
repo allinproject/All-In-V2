@@ -79,7 +79,7 @@ async function fixture(){
   const clientHash=await sha(phonePayload);
   const signature=new Uint8Array(await crypto.subtle.sign({
    name:'ECDSA',hash:'SHA-256'},phone.privateKey,
-   Uint8Array.from([...authData,...clientHash])));
+   await sha(Uint8Array.from([...authData,...clientHash]))));
   return {challengeId,watchPublicKeySpkiB64url:b64(watchSpki),
    watchSignatureB64url:b64(signedWatch),
    phoneAppAttestKeyId:'apple-attested-phone-key-1',
