@@ -10,6 +10,7 @@ on:
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'scripts/test-v2-billing-local-foundation.psql'
       - 'scripts/test-v2-billing-preupgrade-seed.psql'
+      - 'scripts/test-v2-billing-schema-rollback-local.psql'
       - 'docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql'
       - 'scripts/test-v2-training-local-populated-owner-deletion.psql'
@@ -267,6 +268,20 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-billing-preupgrade-seed.psql "$db_container:/tmp/v2-billing-preupgrade-seed.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-preupgrade-seed.psql
+      - name: Prove populated billing DDL and service grants can rollback atomically
+        run: |
+          set -euo pipefail
+          # Review-only rollback rehearsal, inside disposable local Supabase.
+          # No migration files or remote connection are involved.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql \
+            docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+          done
+          docker cp scripts/test-v2-billing-schema-rollback-local.psql "$db_container:/tmp/v2-billing-schema-rollback.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-schema-rollback.psql
       - name: Verify billing candidate against real local foundation Auth and two accounts
         run: |
           set -euo pipefail
