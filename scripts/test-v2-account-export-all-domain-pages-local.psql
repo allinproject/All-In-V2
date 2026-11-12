@@ -424,6 +424,14 @@ BEGIN
    '92222222-9222-4222-8222-922222222222',
    '94444444-9444-4444-8444-944444444444',
    '96666666-9666-4666-8666-966666666666',
+   'community.incoming_follow_requests',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>0 THEN
+   RAISE EXCEPTION 'Blocked pair follow request exposed private relationship decision';
+ END IF;
+ v_page:=public.v2_account_export_page_review_candidate(
+   '92222222-9222-4222-8222-922222222222',
+   '94444444-9444-4444-8444-944444444444',
+   '96666666-9666-4666-8666-966666666666',
    'community.my_action_receipts',NULL,25);
  IF pg_catalog.jsonb_array_length(v_page->'rows')<>1
     OR v_page#>>'{rows,0,actor_id}'<>'92222222-9222-4222-8222-922222222222'
