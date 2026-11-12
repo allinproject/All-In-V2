@@ -268,3 +268,52 @@ test('store finish that succeeded during account switch is not acknowledged twic
   /native_transaction_not_found/);
  assert.equal(calls,1);
 });
+
+test('synchronous queued receipt replay removes listener and does not launch a second purchase',async()=>{
+ let successRemoves=0,launches=0,errorsInstalled=0;
+ const api={
+  initConnection:async()=>true,
+  fetchProducts:async()=>[{id:productId}],
+  purchaseUpdatedListener:callback=>{
+   callback({store:'apple',productId,purchaseToken:signed});
+   return {remove:()=>{successRemoves++}};
+  },
+  purchaseErrorListener:()=>{errorsInstalled++;return {remove(){}}},
+  requestPurchase:async()=>{launches++},
+  getAvailablePurchases:async()=>[],
+  finishTransaction:async()=>{},
+ };
+ const store=createOpenIapStoreAdapter({
+  platform:'ios',productId,api,getOwner:()=>owner,
+  getAccountContext:async()=>({ownerId:owner,ios:{productId,appAccountToken:owner}}),
+ });
+ assert.deepEqual(await store.purchase(productId),
+  {platform:'ios',productId,signedTransaction:signed});
+ assert.equal(successRemoves,1);
+ assert.equal(errorsInstalled,0);
+ assert.equal(launches,0);
+});
+
+test('synchronous native error replay removes both listener handles without launching',async()=>{
+ let successRemoves=0,errorRemoves=0,launches=0;
+ const api={
+  initConnection:async()=>true,
+  fetchProducts:async()=>[{id:productId}],
+  purchaseUpdatedListener:()=>({remove:()=>{successRemoves++}}),
+  purchaseErrorListener:callback=>{
+   callback({code:'E_USER_CANCELLED'});
+   return {remove:()=>{errorRemoves++}};
+  },
+  requestPurchase:async()=>{launches++},
+  getAvailablePurchases:async()=>[],
+  finishTransaction:async()=>{},
+ };
+ const store=createOpenIapStoreAdapter({
+  platform:'ios',productId,api,getOwner:()=>owner,
+  getAccountContext:async()=>({ownerId:owner,ios:{productId,appAccountToken:owner}}),
+ });
+ assert.equal(await store.purchase(productId),null);
+ assert.equal(successRemoves>=1,true);
+ assert.equal(errorRemoves,1);
+ assert.equal(launches,0);
+});
