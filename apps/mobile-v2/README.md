@@ -69,6 +69,7 @@ From a networked clone of **this repository** (Node 22.16 or later):
 cd apps/mobile-v2
 node ../../scripts/check-v2-dependency-manifest.mjs --require-lockfile
 npm ci --no-audit --no-fund
+npm run lint
 npm run test:auth
 npm run test:calculator
 npm run test:training-logic
@@ -77,6 +78,8 @@ npx --no-install expo config --type public
 npx --no-install expo export --platform ios --output-dir /tmp/allin365-v2-export-ios
 npx --no-install expo export --platform android --output-dir /tmp/allin365-v2-export-android
 ```
+
+The `npm run lint` command uses the already-locked TypeScript parser, with no new dependency or lockfile regeneration, to scan V2 client app/source TypeScript and TSX for debugger statements, direct dynamic-code evaluation and privileged `EXPO_PUBLIC_` environment variables. `scripts/lint-v2-source.test.mjs` verifies the rejection cases. This is a targeted AST safety lint, **not** a full ESLint formatting/style or accessibility audit. `npm run typecheck` remains a separate compiler gate.
 
 The canonical `apps/mobile-v2/package-lock.json` is already committed. Use `npm ci` with no `--force` or `--legacy-peer-deps`; do not regenerate or replace the lockfile unless an intentional, reviewed dependency change requires it. No production credentials are needed for this isolated source-validation sequence; Expo exports may require the deliberately nonfunctional environment placeholders used in `.github/workflows/v2-engineering.yml`. Do not use the placeholder credentials for live authentication testing.
 
