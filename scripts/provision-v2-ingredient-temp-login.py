@@ -73,7 +73,8 @@ def provision():
     print("Saving protected GitHub environment secret (never displayed)...")
     subprocess.run(["gh", "secret", "set", SECRET_NAME,
                     "--env", ENVIRONMENT, "--repo", REPO],
-                   input=pgpass, text=True, check=True, stdout=subprocess.DEVNULL)
+                   input=pgpass, text=True, check=True, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL)
     # SQL is fed via stdin, not CLI arguments, shell history or temporary files.
     # A failed transaction does not leave partial operator activation.
     sql = (
@@ -101,7 +102,8 @@ def provision():
     try:
         print("psql will prompt for this TEMP project admin database password.")
         subprocess.run(command, input=sql, text=True, env=env,
-                       check=True, stdout=subprocess.DEVNULL)
+                       check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
     except Exception:
         # Do not leave a future hosted workflow with a stale usable secret.
         subprocess.run(["gh", "secret", "delete", SECRET_NAME, "--env", ENVIRONMENT,
