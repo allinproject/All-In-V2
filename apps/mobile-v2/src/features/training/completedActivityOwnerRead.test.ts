@@ -62,6 +62,28 @@ test('source and source-level sport applicability validated before display',()=>
  assert.throws(()=>canonicalActivityToScreenInput({...a,definitions:[a.definitions[0],a.definitions[0]]},'owner-A','activity-1'),/Duplicate metric/);
 });
 
+test('pool and indoor machine activities reject impossible GPS route sections',()=>{
+ const section={key:'route',kind:'route' as const,title:'GPS route',sourceId:'watch-record',count:12};
+ for(const [sport,sportSubtype] of [
+  ['swimming','pool'],['cycling','trainer'],['elliptical','machine'],['stair','stepper']
+ ] as const){
+  const raw={...base(),sport,sportSubtype,metrics:[],sections:[section]};
+  assert.throws(()=>canonicalActivityToScreenInput(raw,'owner-A','activity-1'),
+   /Route evidence is incompatible/,sport+' '+sportSubtype);
+ }
+});
+
+test('authentic outdoor route evidence remains allowed where the sport supports routes',()=>{
+ const section={key:'route',kind:'route' as const,title:'GPS route',sourceId:'watch-record',count:12};
+ for(const [sport,sportSubtype] of [
+  ['running','trail'],['cycling','outdoor'],['swimming','open_water']
+ ] as const){
+  const raw={...base(),sport,sportSubtype,metrics:[],sections:[section]};
+  const read=canonicalActivityToScreenInput(raw,'owner-A','activity-1');
+  assert.equal(read.sections?.[0].kind,'route');
+ }
+});
+
 test('untrusted runtime enums and ambiguous numeric placeholders fail closed',()=>{
  const a=base();
  assert.throws(()=>canonicalActivityToScreenInput({...a,sources:[{...a.sources[0],quality:'invented' as 'trusted'}]},'owner-A','activity-1'),/Invalid or duplicate canonical source/);
