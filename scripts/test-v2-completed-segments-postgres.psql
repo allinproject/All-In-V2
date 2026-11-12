@@ -266,14 +266,16 @@ BEGIN
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'dddddddd-dddd-4ddd-8ddd-dddddddddddd');
  IF NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(v->'metrics') x
-   WHERE x->>'metricCode'='quality_probe' AND x->>'quality'='partial')
+   WHERE x->>'metricCode'='quality_probe' AND x->>'quality'='partial'
+    AND x->>'measurementQuality'='trusted' AND x->>'sourceQuality'='partial')
  THEN RAISE EXCEPTION 'Trusted metric from partial source was not partial: %',v; END IF;
  v:=allin_private.v2_activity_segment_scalar_projection_candidate(
   '11111111-1111-4111-8111-111111111111',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
  IF NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(v->'metrics') x
-   WHERE x->>'metricCode'='quality_probe' AND x->>'quality'='partial')
+   WHERE x->>'metricCode'='quality_probe' AND x->>'quality'='partial'
+    AND x->>'measurementQuality'='partial' AND x->>'sourceQuality'='trusted')
  THEN RAISE EXCEPTION 'Partial metric from trusted source was not partial: %',v; END IF;
  RAISE NOTICE 'PASS ALL-243: metric and source quality combined conservatively';
 END $confidence$;
