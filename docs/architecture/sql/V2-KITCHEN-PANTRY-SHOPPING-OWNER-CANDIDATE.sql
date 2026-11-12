@@ -64,6 +64,7 @@ create table public.v2_kitchen_purchase_receipt_lines (
  foreign key(user_id,receipt_id) references public.v2_kitchen_purchase_receipts(user_id,id)
    on delete cascade,
  foreign key(user_id,pantry_lot_id) references public.v2_kitchen_pantry_lots(user_id,id)
+   on delete set null (pantry_lot_id)
 );
 
 alter table public.v2_kitchen_pantry_lots enable row level security;
