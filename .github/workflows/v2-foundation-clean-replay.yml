@@ -88,6 +88,7 @@ on:
       - 'scripts/test-v2-coach-account-export-local.psql'
       - 'scripts/test-v2-account-export-all-domain-pages-local.psql'
       - 'scripts/test-all251-community-post-export-projection-local.psql'
+      - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
       - 'scripts/test-all251-food-log-export-projection-local.psql'
       - 'scripts/test-v2-account-export-pinned-snapshot-race-local.sh'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
@@ -564,6 +565,7 @@ jobs:
           # Exercise the ACTUAL SQL post projection with A/B synthetic users.
           # Its test-only inventory override lives inside BEGIN/ROLLBACK.
           docker cp docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql "$db_container:/tmp/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql"
+          docker cp docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql "$db_container:/tmp/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql"
           docker cp scripts/test-all251-community-post-export-projection-local.psql "$db_container:/tmp/test-all251-community-post-export-projection-local.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-all251-community-post-export-projection-local.psql
           # Isolated ALL-247 reviewed schema and owner-export projection, no persistent writes.
