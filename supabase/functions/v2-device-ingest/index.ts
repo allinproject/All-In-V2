@@ -18,7 +18,7 @@ const reply=(status:number,code:string)=>
   'x-content-type-options':'nosniff','referrer-policy':'no-referrer',
  }});
 const uuid=(s:unknown)=>typeof s==='string'&&
- /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+ /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 function verifiedClaims(token:string){
  // Only invoked AFTER Supabase Auth.getUser verified this exact bearer.
  // Decoding alone never verifies the identity or signature.
