@@ -352,3 +352,25 @@ BEGIN
  THEN RAISE EXCEPTION 'Multisport descendant lost its leg-specific power metric: %',v; END IF;
  RAISE NOTICE 'PASS ALL-243: multisport leg metric inherits exact owner-scoped sport';
 END $multisport_leg$;
+
+-- A completed activity invalidation must also quarantine segment evidence.
+-- Keep the underlying metric row for authorized audit/export.
+DO $invalidated_segment$
+DECLARE
+ u uuid:='11111111-1111-4111-8111-111111111111';
+ activity uuid:='abababab-abab-4bab-8bab-abababababab';
+ leg uuid:='cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd';
+ interval_id uuid:='dededede-dede-4ede-8ede-dededededede';
+ v jsonb;
+BEGIN
+ UPDATE public.v2_completed_activities SET status='invalidated' WHERE id=activity;
+ v:=allin_private.v2_activity_segment_scalar_projection_candidate(u,activity,interval_id);
+ IF v->>'coverage'<>'invalidated_activity'
+ OR pg_catalog.jsonb_array_length(v->'metrics')<>0
+ OR pg_catalog.jsonb_array_length(v->'unresolvedMetrics')<>0
+ OR NOT EXISTS(SELECT 1 FROM public.v2_activity_metric_values
+    WHERE activity_id=activity AND segment_id=interval_id) THEN
+  RAISE EXCEPTION 'Invalidated segment evidence was exposed or deleted: %',v;
+ END IF;
+ RAISE NOTICE 'PASS ALL-243 invalidated segment metrics hidden, historical evidence retained';
+END $invalidated_segment$;
