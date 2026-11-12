@@ -121,7 +121,7 @@ CREATE TABLE public.v2_ingredient_measure_conversions (
  id uuid PRIMARY KEY,
  ingredient_id uuid NOT NULL REFERENCES public.v2_ingredients(id),
  profile_id uuid REFERENCES public.v2_ingredient_nutrition_profiles(id),
- preparation_state text CHECK(preparation_state IN
+ preparation_state text NOT NULL CHECK(preparation_state IN
   ('raw','cooked','cooked_drained','dry','as_sold','prepared')),
  from_quantity numeric NOT NULL CHECK(from_quantity>0),
  from_unit text NOT NULL CHECK(length(trim(from_unit))>0),
@@ -167,7 +167,7 @@ CREATE POLICY v2_ingredient_read_active
 CREATE POLICY v2_ingredient_alias_read_exact
  ON public.v2_ingredient_aliases FOR SELECT TO authenticated
  USING(status='active' AND resolution_scope='exact' AND
-  EXISTS(SELECT 1 FROM public.v2_ingredients i
+  preparation_state IS NOT NULL AND EXISTS(SELECT 1 FROM public.v2_ingredients i
          WHERE i.id=ingredient_id AND i.status='active'));
 
 CREATE POLICY v2_ingredient_profile_read_ready
@@ -182,11 +182,14 @@ CREATE POLICY v2_nutrient_definition_read_published
 CREATE POLICY v2_profile_nutrient_read_ready
  ON public.v2_ingredient_profile_nutrients FOR SELECT TO authenticated
  USING(EXISTS(SELECT 1 FROM public.v2_ingredient_nutrition_profiles p
-  WHERE p.id=profile_id AND p.review_status='calculation_ready'));
+  WHERE p.id=profile_id AND p.review_status='calculation_ready')
+  AND EXISTS(SELECT 1 FROM public.v2_nutrient_definitions d
+   WHERE d.code=nutrient_code AND d.is_published));
 
 CREATE POLICY v2_profile_source_read_ready
  ON public.v2_ingredient_profile_sources FOR SELECT TO authenticated
- USING(EXISTS(SELECT 1 FROM public.v2_ingredient_nutrition_profiles p
+ USING(evidence_role<>'superseded' AND
+  EXISTS(SELECT 1 FROM public.v2_ingredient_nutrition_profiles p
   WHERE p.id=profile_id AND p.review_status='calculation_ready'));
 
 CREATE POLICY v2_source_record_read_ready
@@ -195,6 +198,7 @@ CREATE POLICY v2_source_record_read_ready
   EXISTS(SELECT 1 FROM public.v2_ingredient_profile_sources ps
     JOIN public.v2_ingredient_nutrition_profiles p ON p.id=ps.profile_id
     WHERE ps.source_record_id=v2_ingredient_source_records.id
+      AND ps.evidence_role<>'superseded'
       AND p.ingredient_id=v2_ingredient_source_records.ingredient_id
       AND p.review_status='calculation_ready'));
 
@@ -202,7 +206,13 @@ CREATE POLICY v2_conversion_read_reviewed
  ON public.v2_ingredient_measure_conversions FOR SELECT TO authenticated
  USING(review_status='reviewed' AND
   EXISTS(SELECT 1 FROM public.v2_ingredients i
-         WHERE i.id=ingredient_id AND i.status='active'));
+         WHERE i.id=ingredient_id AND i.status='active')
+  AND (profile_id IS NULL OR EXISTS(
+    SELECT 1 FROM public.v2_ingredient_nutrition_profiles p
+    WHERE p.id=v2_ingredient_measure_conversions.profile_id
+      AND p.ingredient_id=v2_ingredient_measure_conversions.ingredient_id
+      AND p.preparation_state=v2_ingredient_measure_conversions.preparation_state
+      AND p.review_status='calculation_ready')));
 
 -- No permissive INSERT/UPDATE/DELETE policies. No authenticated mutation RPC.
 -- Publication still blocked in the separate review-only writer candidate.
