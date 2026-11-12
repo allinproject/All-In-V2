@@ -81,6 +81,14 @@ The locked [V1 sport-specific decision](https://github.com/allinproject/ALL-IN/b
 
 **Non-negotiable privacy:** Cross-source sensor metadata, location/route, user physiology, medical context and private trainer challenge baselines cannot leak through the Community share subset. Present manually corrected values as corrected facts with origin preserved, never as untouched sensor readings.
 
+## Canonical registry-to-screen boundary — 2026-11-11
+
+The completed activity backend uses the **canonical** sport codes (`running`, `cycling`, `swimming`, `strength`, etc.), never presentation labels (`outdoor_run`, `pool_swim`, `hybrid`) or an unrestricted `all` scope. Registry `sport_scope` entries must match the exact canonical SQL sport vocabulary; a genuinely cross-sport definition explicitly enumerates its supported sports. Every published metric definition has a stable version and a real, bounded canonical unit; a missing unit is not an invitation to fabricate one in the UI.
+
+The owner reader must preserve *both* the measurement's quality and its source's quality when rendering Overview/Details or passing evidence to Coach. `partial` remains distinguishable from `trusted`; `unverified`/rejected source facts cannot be promoted to validated measurements. Recorded measured zero remains distinct from absent/unknown. The read model preserves provenance and confidence; final on-screen partial-confidence labels still require installed UI acceptance.
+
+Source-backed sport scope, unit, source identity and confidence are **not mutable display preferences**. The athlete may customize ordering, pinning and optional visibility, but never change a metric's declared sport, provenance, unit or trust status.
+
 ## Implementation gates
 
 1. ALL-243 canonical schema/metric registry/source merge and least-privilege user reads approved and deployed.
