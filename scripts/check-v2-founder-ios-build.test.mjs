@@ -9,7 +9,7 @@ const env={
  ALLIN_V2_IOS_BUNDLE_ID:'com.example.allin365v2',
  ALLIN_V2_EAS_PROJECT_ID:'11111111-1111-4111-8111-111111111111',
  EXPO_PUBLIC_SUPABASE_URL:'https://xarhuczrtzuiljmtdaeu.supabase.co',
- EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_real_example_placeholder_for_test'.replace('placeholder','nonsecret'),
+ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_valid_nonsecret_synthetic_fixture_1234567',
 };
 const check=(changes={})=>verifyFounderIosBuild({config,appConfig,env:{...env,...changes}});
 test('checked-in profiles are non-submitting, signed iPhone and TestFlight variants',()=>{
