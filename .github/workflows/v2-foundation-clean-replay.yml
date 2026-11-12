@@ -41,6 +41,7 @@ on:
       - 'scripts/test-all12-multidomain-logical-restore-local.sh'
       - 'scripts/test-all12-auth-recovery-boundaries-local.psql'
       - 'scripts/test-all12-auth-identity-restore-local.psql'
+      - 'scripts/test-all12-foundation-populated-restore-local.sh'
       - 'supabase/functions/v2-account-export-download/index.ts'
       - 'scripts/verify-v2-billing-postdeploy-readonly.psql'
       - 'scripts/test-v2-billing-preupgrade-seed.psql'
@@ -595,6 +596,13 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-all12-auth-identity-restore-local.psql "$db_container:/tmp/all12-auth-identity-restore.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/all12-auth-identity-restore.psql
+      - name: ALL-12 populated foundation owner data backup and restore
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          bash scripts/test-all12-foundation-populated-restore-local.sh "$db_container"
       - name: ALL-12 multi-domain local pg_dump and pg_restore acceptance
         run: |
           set -euo pipefail
