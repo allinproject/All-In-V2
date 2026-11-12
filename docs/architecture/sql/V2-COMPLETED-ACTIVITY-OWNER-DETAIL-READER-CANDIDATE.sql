@@ -77,11 +77,22 @@ BEGIN
  WHERE activity_id=p_activity_id AND user_id=v_user;
  -- Storage references stay private; this count is not proof of a usable
  -- map or permission to download GPS points/series.
- SELECT count(*) INTO v_routes FROM public.v2_activity_route_objects
- WHERE activity_id=p_activity_id AND user_id=v_user AND state='ready'
-   AND privacy_state IN ('private','redacted');
- SELECT count(*) INTO v_series FROM public.v2_activity_series
- WHERE activity_id=p_activity_id AND user_id=v_user AND state='ready';
+ SELECT count(*) INTO v_routes
+ FROM public.v2_activity_route_objects r
+ JOIN public.v2_activity_sources src
+   ON src.id=r.source_id AND src.activity_id=r.activity_id AND src.user_id=r.user_id
+ WHERE r.activity_id=p_activity_id AND r.user_id=v_user AND r.state='ready'
+   AND r.privacy_state IN ('private','redacted')
+   AND r.quality IN ('trusted','partial')
+   AND src.quality IN ('trusted','partial');
+ SELECT count(*) INTO v_series
+ FROM public.v2_activity_series series
+ JOIN public.v2_activity_sources src
+   ON src.id=series.source_id AND src.activity_id=series.activity_id
+      AND src.user_id=series.user_id
+ WHERE series.activity_id=p_activity_id AND series.user_id=v_user
+   AND series.state='ready' AND series.quality IN ('trusted','partial')
+   AND src.quality IN ('trusted','partial');
  RETURN pg_catalog.jsonb_build_object(
    'activityId',v_activity.id,'sport',v_activity.sport,
    'sportSubtype',v_activity.sport_subtype,
