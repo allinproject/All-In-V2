@@ -156,6 +156,34 @@ try{
   assert(parts.length>0&&parts.length===parts[0].parts);
   assert.deepEqual(Buffer.concat(parts.map(p=>Buffer.from(p.dataBase64,'base64'))),bytes);
  }
+ // Simulate restore of one already-encrypted archived page in the
+ // DISPOSABLE local Storage bucket. This is object recovery, NOT a hosted
+ // PITR/database restore or an approved operational recovery runbook.
+ const pageEntry=uploaded.find(([bucket,name])=>bucket===archiveBucket&&name.includes('/pages/'));
+ assert(pageEntry,'Missing encrypted archive page to exercise recovery');
+ const [,recoveryPath]=pageEntry;
+ const backedUpResponse=await api('GET','/object/authenticated/'+archiveBucket+'/'+encPath(recoveryPath));
+ const encryptedBackup=Buffer.from(await backedUpResponse.arrayBuffer());
+ assert(encryptedBackup.length>100);
+ await api('DELETE','/object/'+archiveBucket+'/'+encPath(recoveryPath));
+ const missing=await api('GET','/object/authenticated/'+archiveBucket+'/'+encPath(recoveryPath),{ok:false});
+ assert.equal(missing.ok,false,'Removed private archive page remained downloadable');
+ await assert.rejects(async()=>{
+  const broken=await createLargeAccountDownloadResponse({requestId,collections,services});
+  await verifyAccountExportDownload({
+   stream:broken.body,expectedOwnerId:owner,expectedCollections:collections,
+  });
+ },/Storage|denied|not found|archive|fetch|HTTP/i);
+ await api('POST','/object/'+archiveBucket+'/'+encPath(recoveryPath),{
+  body:encryptedBackup,contentType:'application/octet-stream',
+ });
+ const restored=await createLargeAccountDownloadResponse({requestId,collections,services});
+ const recovered=await verifyAccountExportDownload({
+  stream:restored.body,expectedOwnerId:owner,expectedCollections:collections,
+ });
+ assert.equal(recovered.verified,true);
+ assert.equal(recovered.recordCount,verified.recordCount);
+ console.log('PASS ALL-251: real local Storage archive page removal is detected and exact encrypted object restore re-verifies');
  console.log('PASS ALL-251: real disposable Supabase private Storage upload, anon deny, encrypted media archive readback and byte-for-byte recovery');
 }finally{
  await removeAll();
