@@ -53,6 +53,10 @@ test('ambiguous quantities are review-only, not invented purchases',()=>{
  assert.deepEqual(result.unresolved,[{occurrenceId:'bar',sourceId:'unresolved',
  foodId:null,reason:'unknown_identity'}]);
 });
+test('missing ingredient or food portion lines cannot silently become zero shopping demand',()=>{
+ const incomplete=food('unresolved-bar','2026-11-16','unreviewed-bar');
+ assert.throws(()=>projectFoodPlanShopping({occurrences:[{...incomplete,requirements:[]}],pantry:[]}),/incomplete/);
+});
 test('invalid plan, stock, coverage and quantities fail closed',()=>{
  const one=food('a','2026-11-16','banana');
  assert.throws(()=>projectFoodPlanShopping({occurrences:[one,one],pantry:[]}),/duplicate/);
