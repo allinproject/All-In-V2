@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {auditPrivateMediaExportCoverage} from './trainingExportMediaCoverage.mjs';
+import {auditPrivateMediaExportCoverage,createSupabaseTrainingMediaAuditAdapters} from './trainingExportMediaCoverage.mjs';
 
 const owner='11111111-1111-4111-8111-111111111111';
 const other='22222222-2222-4222-8222-222222222222';
@@ -85,4 +85,60 @@ test('missing Storage reference creates no false complete export result',async()
  const result=await auditPrivateMediaExportCoverage(f.services);
  assert.equal(result.completeUserExport,false);
  assert.equal(result.verifiedObjects,0);
+});
+
+test('composes existing Training evidence adapter with nested private Storage listings',async()=>{
+ const traversed=[];
+ const supabase={storage:{
+  listBuckets:async()=>({data:[{id:bucket,public:false},{id:'v2-private-account-exports',public:false}],error:null}),
+  from:()=>({list:async(prefix,opts)=>{
+   traversed.push({prefix,offset:opts.offset});
+   if(prefix===owner)return {data:[{name:'activities',id:null}],error:null};
+   if(prefix===owner+'/activities')return {data:[{name:'private',id:null}],error:null};
+   if(prefix===owner+'/activities/private')
+    return {data:[{name:'series.verified',id:'file-id',metadata:{size:bytes.byteLength}}],error:null};
+   throw Error('Unexpected owner Storage prefix');
+  }}),
+ }};
+ const evidenceAdapter={
+  listEvidence:async()=>({ownerId:owner,series:[record],routes:[]}),
+  downloadPrivateObject:async params=>{
+   assert.equal(params.ownerId,owner);
+   assert.equal(params.path,path);
+   return bytes;
+  },
+ };
+ const adapters=createSupabaseTrainingMediaAuditAdapters({supabase,evidenceAdapter});
+ const result=await auditPrivateMediaExportCoverage({ownerId:owner,requestId,...adapters});
+ assert.equal(result.exactPathCoverage,true);
+ assert.equal(result.verifiedObjects,1);
+ assert.equal(result.completeUserExport,false);
+ assert(traversed.some(x=>x.prefix===owner+'/activities/private'));
+});
+test('recursive owner listing refuses unknown extra private files',async()=>{
+ const supabase={storage:{
+  listBuckets:async()=>({data:[{id:bucket,public:false}],error:null}),
+  from:()=>({list:async prefix=>{
+   if(prefix===owner)return {data:[{name:'private',id:null}],error:null};
+   return {data:[{name:'unknown.jpg',id:'id',metadata:{size:12}}],error:null};
+  }}),
+ }};
+ const adapters=createSupabaseTrainingMediaAuditAdapters({supabase,evidenceAdapter:{
+  listEvidence:async()=>({ownerId:owner,series:[],routes:[]}),
+  downloadPrivateObject:async()=>{throw Error('must not read unreviewed media');},
+ }});
+ await assert.rejects(auditPrivateMediaExportCoverage({ownerId:owner,requestId,...adapters}),/do not match/);
+});
+test('truncated or untrusted nested owner listing is never complete',async()=>{
+ const supabase={storage:{
+  listBuckets:async()=>({data:[{id:bucket,public:false}],error:null}),
+  from:()=>({list:async()=>({data:Array.from({length:101},(_,i)=>({
+   name:'unreviewed-'+i,id:'file',metadata:{size:1}
+  })),error:null})}),
+ }};
+ const adapters=createSupabaseTrainingMediaAuditAdapters({supabase,evidenceAdapter:{
+  listEvidence:async()=>({ownerId:owner,series:[],routes:[]}),
+  downloadPrivateObject:async()=>{throw Error('must not read');},
+ }});
+ await assert.rejects(auditPrivateMediaExportCoverage({ownerId:owner,requestId,...adapters}),/Unbounded/);
 });
