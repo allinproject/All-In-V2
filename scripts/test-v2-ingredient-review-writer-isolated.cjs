@@ -58,6 +58,10 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   await denied(db,call(1,'needs_review',k1),'42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  // Authorized to call only the private checked review function, not to query
+  // its audit ledger or mutate canonical rows directly.
+  await denied(db,"SELECT * FROM allin_private.v2_ingredient_review_events",'42501');
+  await denied(db,"UPDATE public.v2_ingredient_nutrition_profiles SET review_status='calculation_ready'",'42501');
   const first=(await db.query(call(1,'needs_review',k1))).rows[0].outcome;
   assert.equal(first.status,'reviewed');assert.equal(first.profile_revision,2);
   const replay=(await db.query(call(1,'needs_review',k1))).rows[0].outcome;
