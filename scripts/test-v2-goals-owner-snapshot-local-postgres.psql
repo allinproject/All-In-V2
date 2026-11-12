@@ -1,0 +1,79 @@
+\set ON_ERROR_STOP on
+-- ALL-239: disposable real Supabase Auth/session + canonical Goals read.
+BEGIN;
+DO $owner_snapshot$
+DECLARE
+  a uuid:='11111111-1111-4111-8111-111111111111';
+  b uuid:='22222222-2222-4222-8222-222222222222';
+  sid uuid:='33333333-3333-4333-8333-333333333333';
+  gid uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  qid uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  rev uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  result jsonb;
+BEGIN
+  INSERT INTO auth.users(id) VALUES(a),(b);
+  INSERT INTO public.v2_profiles(user_id) VALUES(a),(b);
+  INSERT INTO auth.sessions(id,user_id) VALUES(sid,a);
+  INSERT INTO public.v2_goals(id,user_id,goal_kind,title,status)
+    VALUES(gid,a,'race_event','Race goal','active'),
+          (qid,a,'general_wellbeing','Feel healthier','active'),
+          ('dddddddd-dddd-4ddd-8ddd-dddddddddddd',b,
+           'strength_performance','Other owner private goal','active');
+  INSERT INTO public.v2_goal_revisions(
+    id,goal_id,user_id,revision_number,status,source_kind,priority_role,
+    accepted_at,target_date
+  ) VALUES(rev,gid,a,1,'accepted','athlete_authored','primary',now(),
+    DATE '2027-04-10');
+  UPDATE public.v2_goals SET active_revision_id=rev WHERE id=gid;
+  PERFORM pg_catalog.set_config('request.jwt.claim.sub',a::text,true);
+  PERFORM pg_catalog.set_config('request.jwt.claim.session_id',sid::text,true);
+  result:=allin_private.v2_goal_owner_snapshot_candidate(a);
+  IF result->>'ownerId'<>a::text OR result->>'complete'<>'true'
+    OR result->>'snapshotVersion' IS NULL
+    OR pg_catalog.jsonb_array_length(result->'records')<>2
+    OR EXISTS(
+      SELECT 1 FROM pg_catalog.jsonb_array_elements(result->'records') row
+      WHERE row->>'title'='Other owner private goal'
+    )
+  THEN RAISE EXCEPTION 'Goal snapshot leaked foreign owner or lost own goals'; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM pg_catalog.jsonb_array_elements(result->'records') row
+    WHERE row->>'goalId'=gid::text
+      AND row->>'activeRevisionId'=rev::text
+      AND row->>'priorityRole'='primary'
+  ) THEN RAISE EXCEPTION 'Accepted Goal revision missing'; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM pg_catalog.jsonb_array_elements(result->'records') row
+    WHERE row->>'goalId'=qid::text
+      AND row->>'startDate' IS NULL AND row->>'targetDate' IS NULL
+  ) THEN RAISE EXCEPTION 'Qualitative Goal incorrectly given a deadline'; END IF;
+  BEGIN
+    PERFORM allin_private.v2_goal_owner_snapshot_candidate(b);
+    RAISE EXCEPTION 'Foreign owner read permitted';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN
+    PERFORM allin_private.v2_goal_owner_snapshot_candidate(a,1);
+    RAISE EXCEPTION 'Truncated Goal result returned as complete';
+  EXCEPTION WHEN program_limit_exceeded THEN NULL; END;
+  PERFORM pg_catalog.set_config('request.jwt.claim.session_id',
+     '44444444-4444-4444-8444-444444444444',true);
+  BEGIN
+    PERFORM allin_private.v2_goal_owner_snapshot_candidate(a);
+    RAISE EXCEPTION 'Unrecognized Auth session allowed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  PERFORM pg_catalog.set_config('request.jwt.claim.session_id',sid::text,true);
+  DELETE FROM auth.sessions WHERE id=sid;
+  BEGIN
+    PERFORM allin_private.v2_goal_owner_snapshot_candidate(a);
+    RAISE EXCEPTION 'Revoked Auth session allowed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  IF pg_catalog.to_regprocedure(
+      'public.v2_goal_owner_snapshot_candidate(uuid,integer)') IS NOT NULL
+    OR pg_catalog.has_function_privilege('anon',
+      'allin_private.v2_goal_owner_snapshot_candidate(uuid,integer)','EXECUTE')
+    OR pg_catalog.has_function_privilege('authenticated',
+      'allin_private.v2_goal_owner_snapshot_candidate(uuid,integer)','EXECUTE')
+  THEN RAISE EXCEPTION 'Private Goal snapshot reader became public'; END IF;
+  RAISE NOTICE 'PASS: owner-only accepted Goal snapshot, session revoke, no truncation';
+END $owner_snapshot$;
+ROLLBACK;
