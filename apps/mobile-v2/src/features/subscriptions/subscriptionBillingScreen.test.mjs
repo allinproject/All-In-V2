@@ -62,3 +62,14 @@ test('native billing launch runbook retains signed-device and owner security gat
   'rollback','refund','releaseReady=false',
  ]) assert.ok(runbook.includes(requirement),`Missing billing acceptance evidence: ${requirement}`);
 });
+
+test('native action buttons fence same-render double taps and owner changes',()=>{
+ const actions=readFileSync(new URL('./NativeBillingActions.tsx',import.meta.url),'utf8');
+ assert.match(actions,/const actionInFlightRef=useRef\(false\)/);
+ assert.match(actions,/actionInFlightRef\.current\|\|busy/);
+ assert.match(actions,/actionInFlightRef\.current=true/);
+ assert.match(actions,/actionInFlightRef\.current=false/);
+ assert.match(actions,/if\(ownerRef\.current===startingOwner\)\{/);
+ assert.match(actions,/setBusy\(null\)/);
+ assert.match(actions,/ownerRef\.current=null/);
+});
