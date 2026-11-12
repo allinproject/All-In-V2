@@ -1,0 +1,5279 @@
+{
+  "scope": "ALL-228 RESEARCH ONLY - no automatic identity or nutrient approval",
+  "sourceArchiveSha256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579",
+  "method": "source descriptions against V1 profile labels and source aliases; deterministic lexical hints; top five candidates; no ingredient approvals",
+  "scriptBlobSha": "2604290889fa7666fd54f9d2cf24e2f18e210e1d",
+  "sourceFoodCount": 424,
+  "v1ProfileCount": 408,
+  "counts": {
+    "no_lexical_candidate": 228,
+    "lexical_candidates_review_only": 192,
+    "exact_name_review_only": 4
+  },
+  "sourceProfilesWithAnyCandidate": 140,
+  "sourceProfilesWithoutCandidate": 268,
+  "approvalGranted": false,
+  "importAuthorized": false,
+  "rows": [
+    {
+      "id": 321358,
+      "name": "Hummus, commercial",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 321360,
+      "name": "Tomatoes, grape, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "tomato_red_raw_generic",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "tomatoes_diced_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 321611,
+      "name": "Beans, snap, green, canned, regular pack, drained solids",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_green_raw",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 323121,
+      "name": "Frankfurter, beef, unheated",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 323294,
+      "name": "Nuts, almonds, dry roasted, with salt added",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 323505,
+      "name": "Kale, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 323604,
+      "name": "Egg, whole, raw, frozen, pasteurized",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "egg_whole_raw_fresh",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 323697,
+      "name": "Egg, white, raw, frozen, pasteurized",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "egg_white_raw",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "egg_whole_raw_fresh",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 323793,
+      "name": "Egg, white, dried",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "egg_white_raw",
+          "score": 1,
+          "stateConflict": true
+        },
+        {
+          "key": "egg_whole_raw_fresh",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 324317,
+      "name": "Onion rings, breaded, par fried, frozen, prepared, heated in oven",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 324653,
+      "name": "Pickles, cucumber, dill or kosher dill",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "pickles_dill_slices",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 325036,
+      "name": "Cheese, parmesan, grated",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "parmesan_cheese_generic",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "cheese_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 325198,
+      "name": "Cheese, pasteurized process, American, vitamin D fortified",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 325287,
+      "name": "Grapefruit juice, white, canned or bottled, unsweetened",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 325430,
+      "name": "Peaches, yellow, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 325524,
+      "name": "Seeds, sunflower seed kernels, dry roasted, with salt added",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 326196,
+      "name": "Kale, frozen, cooked, boiled, drained, without salt",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 326698,
+      "name": "Mustard, prepared, yellow",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mustard_yellow_prepared",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "mustard_prepared_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 327046,
+      "name": "Kiwifruit, green, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 327357,
+      "name": "Nectarines, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 328637,
+      "name": "Cheese, cheddar",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cheddar_regular",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "cheddar_reduced_fat",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "cheese_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 328841,
+      "name": "Cheese, cottage, lowfat, 2% milkfat",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "milk_cottage_2pct",
+          "score": 0.8,
+          "stateConflict": false
+        },
+        {
+          "key": "cottage_cheese_generic",
+          "score": 0.67,
+          "stateConflict": false
+        },
+        {
+          "key": "cottage_cheese_nonfat",
+          "score": 0.668,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 329370,
+      "name": "Cheese, mozzarella, low moisture, part-skim",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mozzarella_part_skim",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 329490,
+      "name": "Egg, whole, dried",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "egg_whole_raw_fresh",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "egg_white_raw",
+          "score": 0.725,
+          "stateConflict": true
+        },
+        {
+          "key": "egg_yolk",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "egg_roll_wrapper_generic",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 329596,
+      "name": "Egg, yolk, raw, frozen, pasteurized",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "egg_yolk",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "egg_whole_raw_fresh",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 329716,
+      "name": "Egg, yolk, dried",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "egg_yolk",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "egg_whole_raw_fresh",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 330137,
+      "name": "Yogurt, Greek, plain, nonfat",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "yogurt_greek_nonfat",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 330415,
+      "name": "Yogurt, Greek, strawberry, nonfat",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "yogurt_greek_nonfat",
+          "score": 0.863,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 330458,
+      "name": "Oil, coconut",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "coconut_oil_generic",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "cooking_oil_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 331897,
+      "name": "Chicken, broilers or fryers, drumstick, meat only, cooked, braised",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 331960,
+      "name": "Chicken, broiler or fryers, breast, skinless, boneless, meat only, cooked, braised",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "chicken_breast_raw_skinless_boneless",
+          "score": 0.725,
+          "stateConflict": true
+        },
+        {
+          "key": "turkey_breast_raw_meat_only",
+          "score": 0.635,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 332282,
+      "name": "Sauce, pasta, spaghetti/marinara, ready-to-serve",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 332397,
+      "name": "Ham, sliced, pre-packaged, deli meat (96%fat free, water added)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 332791,
+      "name": "Olives, green, Manzanilla, stuffed with pimiento",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 333008,
+      "name": "Cookies, oatmeal, soft, with raisins",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 333281,
+      "name": "Tomatoes, canned, red, ripe, diced",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "tomato_red_raw_generic",
+          "score": 0.863,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 333374,
+      "name": "Fish, haddock, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 333476,
+      "name": "Fish, pollock, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 334194,
+      "name": "Fish, tuna, light, canned in water, drained solids",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "tuna_canned_water_drained",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 334536,
+      "name": "Restaurant, Chinese, fried rice, without meat",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 334628,
+      "name": "Restaurant, Latino, tamale, pork",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 334720,
+      "name": "Restaurant, Latino, pupusas con frijoles (pupusas, bean)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746758,
+      "name": "Beef, loin, tenderloin roast, separable lean only, boneless, trimmed to 0\" fat, select, cooked, roasted",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746759,
+      "name": "Beef, loin, top loin steak, boneless, lip-on, separable lean only, trimmed to 1/8\" fat, choice, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746760,
+      "name": "Beef, round, eye of round roast, boneless, separable lean only, trimmed to 0\" fat, select, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746761,
+      "name": "Beef, round, top round roast, boneless, separable lean only, trimmed to 0\" fat, select, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746762,
+      "name": "Beef, short loin, porterhouse steak, separable lean only, trimmed to 1/8\" fat, select, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746763,
+      "name": "Beef, short loin, t-bone steak, bone-in, separable lean only, trimmed to 1/8\" fat, choice, cooked, grilled",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746764,
+      "name": "Carrots, frozen, unprepared",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "carrot_raw_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 746765,
+      "name": "Cheese, dry white, queso seco",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746766,
+      "name": "Cheese, ricotta, whole milk",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cheese_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        },
+        {
+          "key": "milk_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        },
+        {
+          "key": "whole_milk",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 746767,
+      "name": "Cheese, swiss",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "swiss_cheese",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "cheese_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 746768,
+      "name": "Figs, dried, uncooked",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746769,
+      "name": "Lettuce, cos or romaine, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "romaine_lettuce_raw",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "lettuce_raw_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 746770,
+      "name": "Melons, cantaloupe, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746771,
+      "name": "Oranges, raw, navels",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746772,
+      "name": "Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746773,
+      "name": "Pears, raw, bartlett",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746774,
+      "name": "Restaurant, Chinese, sweet and sour pork",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746775,
+      "name": "Salt, table, iodized",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "table_salt",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 746776,
+      "name": "Milk, nonfat, fluid, with added vitamin A and vitamin D (fat free or skim)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746777,
+      "name": "Sauce, salsa, ready-to-serve",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746778,
+      "name": "Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746779,
+      "name": "Sausage, breakfast sausage, beef, pre-cooked, unprepared",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746780,
+      "name": "Sausage, Italian, pork, mild, cooked, pan-fried",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746781,
+      "name": "Sausage, pork, chorizo, link or ground, cooked, pan-fried",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746782,
+      "name": "Milk, whole, 3.25% milkfat, with added vitamin D",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 746783,
+      "name": "Sausage, turkey, breakfast links, mild, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "turkey_breakfast_sausage_cooked",
+          "score": 0.78,
+          "stateConflict": true
+        },
+        {
+          "key": "turkey_sausage_breakfast_cooked_crumble",
+          "score": 0.668,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 746784,
+      "name": "Sugars, granulated",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "sugar",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 746785,
+      "name": "Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "ground_turkey_93_raw",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "turkey_93_cooked",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "ground_turkey_raw_unspecified_fat",
+          "score": 0.656,
+          "stateConflict": false
+        },
+        {
+          "key": "beef_93_cooked",
+          "score": 0.635,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 746952,
+      "name": "Ham, sliced, restaurant",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747429,
+      "name": "Cheese, American, restaurant",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cheese_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 747430,
+      "name": "Beans, Dry, Medium Red (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747431,
+      "name": "Beans, Dry, Red (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747432,
+      "name": "Beans, Dry, Flor de Mayo (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747433,
+      "name": "Beans, Dry, Brown (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747434,
+      "name": "Beans, Dry, Tan (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747435,
+      "name": "Beans, Dry, Light Tan (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747436,
+      "name": "Beans, Dry, Carioca (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747437,
+      "name": "Beans, Dry, Cranberry (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747438,
+      "name": "Beans, Dry, Light Red Kidney (0% moisture)",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_kidney_canned_drained",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 747439,
+      "name": "Beans, Dry, Pink (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747440,
+      "name": "Beans, Dry, Dark Red Kidney (0% moisture)",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_kidney_canned_drained",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 747441,
+      "name": "Beans, Dry, Navy (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747442,
+      "name": "Beans, Dry, Small White (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747443,
+      "name": "Beans, Dry, Small Red (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747444,
+      "name": "Beans, Dry, Black (0% moisture)",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "black_beans_canned_drained",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "canned_black_beans_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 747445,
+      "name": "Beans, Dry, Pinto (0% moisture)",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_pinto_cooked",
+          "score": 0.725,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 747446,
+      "name": "Beans, Dry, Great Northern (0% moisture)",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 747447,
+      "name": "Broccoli, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "broccoli_raw_florets",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 747693,
+      "name": "Ketchup, restaurant",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "ketchup_plain",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 747997,
+      "name": "Eggs, Grade A, Large, egg white",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "egg_white_raw",
+          "score": 0.67,
+          "stateConflict": false
+        },
+        {
+          "key": "egg_whole_raw_fresh",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 748236,
+      "name": "Eggs, Grade A, Large, egg yolk",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "egg_whole_raw_fresh",
+          "score": 0.67,
+          "stateConflict": false
+        },
+        {
+          "key": "egg_yolk",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 748278,
+      "name": "Oil, canola",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cooking_oil_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 748323,
+      "name": "Oil, corn",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "canned_corn_drained",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "cooking_oil_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "corn_frozen_plain",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "corn_generic_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 748366,
+      "name": "Oil, soybean",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cooking_oil_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 748608,
+      "name": "Oil, olive, extra virgin",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "olive_oil_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 748967,
+      "name": "Eggs, Grade A, Large, egg whole",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "egg_whole_raw_fresh",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 749420,
+      "name": "Pork, cured, bacon, cooked, restaurant",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 789828,
+      "name": "Butter, stick, unsalted",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "butter_unsalted_usda",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "butter_salted_generic",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 789890,
+      "name": "Flour, wheat, all-purpose, enriched, bleached",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_average",
+          "score": 0.833,
+          "stateConflict": false
+        },
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.833,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 789951,
+      "name": "Flour, wheat, all-purpose, enriched, unbleached",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "flour_all_purpose_enriched_average",
+          "score": 0.833,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 790018,
+      "name": "Flour, wheat, all-purpose, unenriched, unbleached",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.833,
+          "stateConflict": false
+        },
+        {
+          "key": "flour_all_purpose_enriched_average",
+          "score": 0.667,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 790085,
+      "name": "Flour, whole wheat, unenriched",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 790146,
+      "name": "Flour, bread, white, enriched, unbleached",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 790214,
+      "name": "Flour, rice, white, unenriched",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "rice_white_cooked",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "rice_white_long_grain_raw_dry",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 790276,
+      "name": "Flour, corn, yellow, fine meal, enriched",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 790508,
+      "name": "Butter, stick, salted",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "butter_salted_generic",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 790577,
+      "name": "Onions, red, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "red_onion_raw",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "onion_raw_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 790646,
+      "name": "Onions, yellow, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "onion_raw_generic",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1104647,
+      "name": "Garlic, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "garlic_fresh_raw",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "garlic_powder_generic",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "chili_garlic_sauce_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1104705,
+      "name": "Flour, soy, defatted",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1104766,
+      "name": "Flour, soy, full-fat",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 1104812,
+      "name": "Flour, rice, brown",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "rice_brown_dry",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "cooked_rice_generic_unspecified",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "rice_basmati_brown_unspecified",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1104867,
+      "name": "Flour, rice, glutinous",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cooked_rice_generic_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        },
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1104913,
+      "name": "Flour, pastry, unenriched, unbleached",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 1104962,
+      "name": "Onions, white, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "onion_raw_generic",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1105073,
+      "name": "Bananas, overripe, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "banana_raw_edible",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1105314,
+      "name": "Bananas, ripe and slightly ripe, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "banana_raw_edible",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1750339,
+      "name": "Apples, red delicious, with skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "apple_raw_with_skin",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1750340,
+      "name": "Apples, fuji, with skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "apple_raw_with_skin",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1750341,
+      "name": "Apples, gala, with skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "apple_raw_with_skin",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1750342,
+      "name": "Apples, granny smith, with skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "apple_raw_with_skin",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1750343,
+      "name": "Apples, honeycrisp, with skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "apple_raw_with_skin",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1750348,
+      "name": "Oil, peanut",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cooking_oil_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "nuts_peanuts_roasted",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1750349,
+      "name": "Oil, sunflower",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cooking_oil_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1750350,
+      "name": "Oil, safflower",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cooking_oil_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1750351,
+      "name": "Oil, olive, extra light",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "olive_oil_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1999626,
+      "name": "Mushroom, lion's mane",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 1999627,
+      "name": "Mushroom, oyster",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1999628,
+      "name": "Mushrooms, shiitake",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1999629,
+      "name": "Mushrooms, white button",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1999630,
+      "name": "Soy milk, unsweetened, plain, shelf stable",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "milk_unsweetened_unspecified",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1999631,
+      "name": "Almond milk, unsweetened, plain, shelf stable",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "almond_milk_unsweet",
+          "score": 0.78,
+          "stateConflict": false
+        },
+        {
+          "key": "milk_unsweetened_unspecified",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1999632,
+      "name": "Spinach, baby",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "spinach_raw",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "spinach_unspecified_form",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1999633,
+      "name": "Spinach, mature",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "spinach_raw",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "spinach_unspecified_form",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 1999634,
+      "name": "Tomato, roma",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "tomato_red_raw_generic",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "tomatoes_diced_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003586,
+      "name": "Flour, 00",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003587,
+      "name": "Flour, spelt, whole grain",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003588,
+      "name": "Flour, semolina, coarse and semi-coarse",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2003589,
+      "name": "Flour, semolina, fine",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003590,
+      "name": "Apple juice, with added vitamin C, from concentrate, shelf stable",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2003591,
+      "name": "Orange juice, no pulp, not fortified, from concentrate, refrigerated",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2003592,
+      "name": "Grape juice, purple, with added vitamin C, from concentrate, shelf stable",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2003593,
+      "name": "Grape juice, white, with added vitamin C, from concentrate, shelf stable",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2003594,
+      "name": "Cranberry juice, not fortified, from concentrate, shelf stable",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2003595,
+      "name": "Grapefruit juice, red, not fortified, not from concentrate, refrigerated",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2003596,
+      "name": "Tomato juice, with added ingredients, from concentrate, shelf stable",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2003597,
+      "name": "Orange juice, no pulp, not fortified, not from concentrate, refrigerated",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2003598,
+      "name": "Mushroom, portabella",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003599,
+      "name": "Mushroom, king oyster",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003600,
+      "name": "Mushroom, enoki",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003601,
+      "name": "Mushroom, crimini",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003602,
+      "name": "Mushroom, maitake",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003603,
+      "name": "Mushroom, beech",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2003604,
+      "name": "Mushroom, pioppini",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "mushroom_white_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2257044,
+      "name": "Soy milk, sweetened, plain, refrigerated",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2257045,
+      "name": "Almond milk, unsweetened, plain, refrigerated",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "almond_milk_unsweet",
+          "score": 0.863,
+          "stateConflict": false
+        },
+        {
+          "key": "milk_unsweetened_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2257046,
+      "name": "Oat milk, unsweetened, plain, refrigerated",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "milk_unsweetened_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2258586,
+      "name": "Carrots, mature, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "carrot_raw_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2258587,
+      "name": "Carrots, baby, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "carrot_raw_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2258588,
+      "name": "Peppers, bell, green, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "bell_pepper_green_raw",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_raw_unspecified_color",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_red_raw",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_yellow_raw",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "pepper_red_roasted_unspecified",
+          "score": 0.667,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2258589,
+      "name": "Peppers, bell, yellow, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "bell_pepper_yellow_raw",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_raw_unspecified_color",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_green_raw",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_red_raw",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "pepper_red_roasted_unspecified",
+          "score": 0.667,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2258590,
+      "name": "Peppers, bell, red, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "bell_pepper_red_raw",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "pepper_red_roasted_unspecified",
+          "score": 1,
+          "stateConflict": true
+        },
+        {
+          "key": "bell_pepper_raw_unspecified_color",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_green_raw",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_yellow_raw",
+          "score": 0.667,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2258591,
+      "name": "Peppers, bell, orange, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "bell_pepper_raw_unspecified_color",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_green_raw",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_red_raw",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "bell_pepper_yellow_raw",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "pepper_red_roasted_unspecified",
+          "score": 0.667,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2259792,
+      "name": "Buttermilk, low fat",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "yogurt_plain_lowfat",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "buttermilk_plain",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2259793,
+      "name": "Yogurt, plain, whole milk",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "milk_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "whole_milk",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2259794,
+      "name": "Yogurt, Greek, plain, whole milk",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "yogurt_greek_nonfat",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "milk_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        },
+        {
+          "key": "whole_milk",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2259795,
+      "name": "Cheese, parmesan, grated, refrigerated",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "parmesan_cheese_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2259796,
+      "name": "Cheese, feta, whole milk, crumbled",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "feta_cheese_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2261420,
+      "name": "Flour, almond",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2261421,
+      "name": "Flour, oat, whole grain",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "oat_flour_generic",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2261422,
+      "name": "Flour, potato",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "potato_cooked",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "potatoes_form_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2262072,
+      "name": "Peanut butter, creamy",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "peanut_butter",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "peanut_butter_cups",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "powdered_peanut_butter",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "butter_salted_generic",
+          "score": 0.633,
+          "stateConflict": false
+        },
+        {
+          "key": "nuts_peanuts_roasted",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2262073,
+      "name": "Sesame butter, creamy",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "peanut_butter",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "butter_salted_generic",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2262074,
+      "name": "Almond butter, creamy",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "peanut_butter",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "butter_salted_generic",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2262075,
+      "name": "Flaxseed, ground",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "ground_flaxseed",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346384,
+      "name": "Cottage cheese, full fat, large or small curd",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346385,
+      "name": "Cream cheese, full fat, block",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cream_cheese",
+          "score": 0.67,
+          "stateConflict": false
+        },
+        {
+          "key": "cream_cheese_reduced_fat_pending",
+          "score": 0.668,
+          "stateConflict": false
+        },
+        {
+          "key": "cream_sour_regular",
+          "score": 0.668,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346386,
+      "name": "Cream, heavy",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "heavy_cream",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346387,
+      "name": "Cream, sour, full fat",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cream_sour_regular",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346388,
+      "name": "Lettuce, iceberg, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "lettuce_raw_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346389,
+      "name": "Lettuce, romaine, green, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "romaine_lettuce_raw",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "lettuce_raw_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346390,
+      "name": "Lettuce, leaf, red, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "lettuce_raw_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346391,
+      "name": "Lettuce, leaf, green, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "lettuce_raw_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346392,
+      "name": "Nuts, pine nuts, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346393,
+      "name": "Nuts, almonds, whole, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346394,
+      "name": "Nuts, walnuts, English, halves, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346395,
+      "name": "Nuts, pecans, halves, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346396,
+      "name": "Oats, whole grain, rolled, old fashioned",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "oats_rolled_dry",
+          "score": 0.89,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346397,
+      "name": "Oats, whole grain, steel cut",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346398,
+      "name": "Pineapple, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "pineapple_frozen_chunks",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "pineapple_chunks_canned_drained",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346399,
+      "name": "Cherries, sweet, dark red, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346400,
+      "name": "Beans, snap, green, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_green_raw",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346401,
+      "name": "Potatoes, russet, without skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "potato_russet_raw",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "potato_white_raw_skin_on",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "potato_cooked",
+          "score": 0.633,
+          "stateConflict": true
+        },
+        {
+          "key": "potatoes_form_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346402,
+      "name": "Potatoes, red, without skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "potato_white_raw_skin_on",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "potato_cooked",
+          "score": 0.633,
+          "stateConflict": true
+        },
+        {
+          "key": "potatoes_form_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346403,
+      "name": "Potatoes, gold, without skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "potato_white_raw_skin_on",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "potato_yukon_gold_raw",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "potato_cooked",
+          "score": 0.633,
+          "stateConflict": true
+        },
+        {
+          "key": "potatoes_form_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346404,
+      "name": "Sweet potatoes, orange flesh, without skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "potato_sweet_raw",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346405,
+      "name": "Celery, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "celery_raw_generic",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346406,
+      "name": "Cucumber, with peel, raw",
+      "status": "exact_name_review_only",
+      "exact": [
+        "cucumber_raw_with_peel"
+      ],
+      "suggestions": [
+        {
+          "key": "cucumber_raw_unspecified",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346407,
+      "name": "Cabbage, green, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cabbage_green_raw",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346408,
+      "name": "Cabbage, red, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346409,
+      "name": "Strawberries, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "strawberries",
+          "score": 1,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2346410,
+      "name": "Raspberries, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346411,
+      "name": "Blueberries, raw",
+      "status": "exact_name_review_only",
+      "exact": [
+        "blueberry_raw"
+      ],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346412,
+      "name": "Grapes, red, seedless, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346413,
+      "name": "Grapes, green, seedless, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2346414,
+      "name": "Applesauce, unsweetened, with added vitamin C",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "applesauce_unsweetened",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2512371,
+      "name": "Flour, amaranth",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2512372,
+      "name": "Flour, quinoa",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2512373,
+      "name": "Flour, sorghum",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2512374,
+      "name": "Flour, buckwheat",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2512375,
+      "name": "Flour, rye",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2512376,
+      "name": "Flour, barley",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2512377,
+      "name": "Flour, cassava",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2512378,
+      "name": "Buckwheat, whole grain",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2512379,
+      "name": "Millet, whole grain",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2512380,
+      "name": "Rice, brown, long grain, unenriched, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "rice_white_long_grain_raw_dry",
+          "score": 0.8,
+          "stateConflict": true
+        },
+        {
+          "key": "rice_brown_dry",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2512381,
+      "name": "Rice, white, long grain, unenriched, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "rice_white_long_grain_raw_dry",
+          "score": 1,
+          "stateConflict": true
+        },
+        {
+          "key": "rice_white_cooked",
+          "score": 0.67,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2514743,
+      "name": "Beef, ground, 90% lean meat / 10% fat, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beef_ground_raw_lean_unspecified",
+          "score": 0.686,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2514744,
+      "name": "Beef, ground, 80% lean meat / 20% fat, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beef_ground_raw_lean_unspecified",
+          "score": 0.686,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2514745,
+      "name": "Pork, ground, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "ground_pork_lean_cooked",
+          "score": 0.817,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2514746,
+      "name": "Chicken, ground, with additives, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "ground_chicken_93_cooked",
+          "score": 0.667,
+          "stateConflict": true
+        },
+        {
+          "key": "chicken_cooked_unspecified_cut",
+          "score": 0.633,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2514747,
+      "name": "Turkey, ground, 93% lean/ 7% fat, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "ground_turkey_93_raw",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "turkey_93_cooked",
+          "score": 0.817,
+          "stateConflict": true
+        },
+        {
+          "key": "beef_93_cooked",
+          "score": 0.727,
+          "stateConflict": true
+        },
+        {
+          "key": "ground_turkey_raw_unspecified_fat",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2515373,
+      "name": "Nuts, brazilnuts, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2515374,
+      "name": "Nuts, cashew nuts, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2515375,
+      "name": "Nuts, hazelnuts or filberts, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2515376,
+      "name": "Peanuts, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "nuts_peanuts_roasted",
+          "score": 1,
+          "stateConflict": true
+        },
+        {
+          "key": "peanut_butter",
+          "score": 0.725,
+          "stateConflict": false
+        },
+        {
+          "key": "peanut_butter_cups",
+          "score": 0.633,
+          "stateConflict": false
+        },
+        {
+          "key": "powdered_peanut_butter",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2515377,
+      "name": "Flour, chestnut",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2515378,
+      "name": "Nuts, macadamia nuts, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2515379,
+      "name": "Nuts, pistachio nuts, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2515380,
+      "name": "Seeds, pumpkin seeds (pepitas), raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2515381,
+      "name": "Seeds, sunflower seed, kernel, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2515382,
+      "name": "Flour, coconut",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "flour_all_purpose_enriched_unbleached",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644281,
+      "name": "Beans, cannellini, dry",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cannellini_canned_drained",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644282,
+      "name": "Chickpeas, (garbanzo beans, bengal gram), dry",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2644283,
+      "name": "Lentils, dry",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "lentils_dry_generic",
+          "score": 1,
+          "stateConflict": true
+        },
+        {
+          "key": "lentils_brown_raw_dry",
+          "score": 0.725,
+          "stateConflict": true
+        },
+        {
+          "key": "plain_water",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644284,
+      "name": "Blackeye pea, dry",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2644285,
+      "name": "Beans, black, canned, sodium added, drained and rinsed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "black_beans_canned_drained",
+          "score": 0.89,
+          "stateConflict": false
+        },
+        {
+          "key": "canned_black_beans_generic",
+          "score": 0.67,
+          "stateConflict": false
+        },
+        {
+          "key": "cannellini_canned_drained",
+          "score": 0.668,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644286,
+      "name": "Beans, navy, canned, sodium added, drained and rinsed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "black_beans_canned_drained",
+          "score": 0.668,
+          "stateConflict": false
+        },
+        {
+          "key": "cannellini_canned_drained",
+          "score": 0.668,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644287,
+      "name": "Beans, cannellini, canned, sodium added, drained and rinsed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cannellini_canned_drained",
+          "score": 0.89,
+          "stateConflict": false
+        },
+        {
+          "key": "black_beans_canned_drained",
+          "score": 0.668,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644288,
+      "name": "Chickpeas (garbanzo beans, bengal gram), canned, sodium added, drained and rinsed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "chickpeas_canned_drained_rinsed",
+          "score": 0.656,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644289,
+      "name": "Beans, kidney, dark red, canned, sodium added, sugar added, drained and rinsed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_kidney_canned_drained",
+          "score": 0.656,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644290,
+      "name": "Beans, kidney, light red, canned, sodium added, sugar added, drained and rinsed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_kidney_canned_drained",
+          "score": 0.656,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644291,
+      "name": "Peas, green, sweet, canned, sodium added, sugar added, drained and rinsed",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2644292,
+      "name": "Beans, pinto, canned, sodium added, drained and rinsed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_pinto_cooked",
+          "score": 0.67,
+          "stateConflict": false
+        },
+        {
+          "key": "black_beans_canned_drained",
+          "score": 0.668,
+          "stateConflict": false
+        },
+        {
+          "key": "cannellini_canned_drained",
+          "score": 0.668,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2644293,
+      "name": "Blackeye pea, canned, sodium added, drained and rinsed",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2644294,
+      "name": "Beans, great northern, canned, sodium added, drained and rinsed",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2646168,
+      "name": "Pork, loin, boneless, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "pork_loin_roast_boneless_raw",
+          "score": 0.863,
+          "stateConflict": false
+        },
+        {
+          "key": "pork_loin_raw_lean",
+          "score": 0.667,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2646169,
+      "name": "Pork, loin, tenderloin, boneless, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "pork_loin_roast_boneless_raw",
+          "score": 0.75,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2646170,
+      "name": "Chicken, breast, boneless, skinless, raw",
+      "status": "exact_name_review_only",
+      "exact": [
+        "chicken_breast_raw_skinless_boneless"
+      ],
+      "suggestions": [
+        {
+          "key": "chicken_thigh_raw_boneless_skinless",
+          "score": 0.75,
+          "stateConflict": false
+        },
+        {
+          "key": "turkey_breast_raw_meat_only",
+          "score": 0.75,
+          "stateConflict": false
+        },
+        {
+          "key": "chicken_breast_cooked",
+          "score": 0.725,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2646171,
+      "name": "Chicken, thigh, boneless, skinless, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "chicken_thigh_raw_boneless_skinless",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "chicken_breast_raw_skinless_boneless",
+          "score": 0.75,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2646172,
+      "name": "Beef, ribeye, steak, boneless, choice, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2646173,
+      "name": "Beef, round, top round, boneless, choice, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2646174,
+      "name": "Beef, chuck, roast, boneless, choice, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beef_chuck_raw_boneless",
+          "score": 0.89,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2646175,
+      "name": "Beef, flank, steak, boneless, choice, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2647437,
+      "name": "Yogurt, plain, nonfat",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "yogurt_greek_nonfat",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2647438,
+      "name": "Cheese, monterey jack, solid",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2647439,
+      "name": "Cheese, pasteurized process cheese food or product, American, singles",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2647440,
+      "name": "Cheese, provolone, sliced",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "provolone",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "cheese_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2647441,
+      "name": "Cheese, oaxaca, solid",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cheese_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2647442,
+      "name": "Cheese, queso fresco, solid",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2647443,
+      "name": "Cheese, cotija, solid",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cheese_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2684440,
+      "name": "Fish, salmon, sockeye, wild caught, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2684441,
+      "name": "Fish, salmon, Atlantic, farm raised, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2684442,
+      "name": "Fish, tilapia, farm raised, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2684443,
+      "name": "Crustaceans, shrimp, farm raised, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2684444,
+      "name": "Fish, cod, Atlantic, wild caught, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2684445,
+      "name": "Fish, catfish, farm raised, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2684446,
+      "name": "Crustaceans, crab, blue swimming, lump, pasteurized, refrigerated",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685568,
+      "name": "Squash, summer, green, zucchini, includes skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "zucchini_raw_with_skin",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2685569,
+      "name": "Squash, summer, yellow, includes skin, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685570,
+      "name": "Squash, winter, butternut, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685571,
+      "name": "Squash, winter, acorn, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685572,
+      "name": "Cabbage, bok choy, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685573,
+      "name": "Cauliflower, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cauliflower_rice",
+          "score": 0.725,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2685574,
+      "name": "Collards, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685575,
+      "name": "Brussels sprouts, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685576,
+      "name": "Beets, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685577,
+      "name": "Eggplant, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685578,
+      "name": "Tomatoes, whole, canned, solids and liquids, with salt added",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2685579,
+      "name": "Tomato, sauce, canned, with salt added",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "tomato_sauce_canned_generic",
+          "score": 0.863,
+          "stateConflict": false
+        },
+        {
+          "key": "tomatoes_crushed_canned",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "tomatoes_diced_unspecified",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "tomato_red_raw_generic",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2685580,
+      "name": "Tomato, paste, canned, without salt added",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "tomato_paste_canned_unsalted",
+          "score": 0.863,
+          "stateConflict": false
+        },
+        {
+          "key": "tomatoes_crushed_canned",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "tomatoes_diced_unspecified",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "tomato_red_raw_generic",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2685581,
+      "name": "Tomatoes, crushed, canned",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "tomatoes_crushed_canned",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "tomatoes_diced_unspecified",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "tomato_red_raw_generic",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2685582,
+      "name": "Tomato, puree, canned",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "tomatoes_crushed_canned",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "tomatoes_diced_unspecified",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "tomato_red_raw_generic",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2710815,
+      "name": "Apricot, with skin, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710816,
+      "name": "Melons, honeydew, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710817,
+      "name": "Plantains, ripe, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710818,
+      "name": "Plantains, underripe, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710819,
+      "name": "Chia seeds, dry, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "chia_seeds_dry",
+          "score": 1,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2710820,
+      "name": "Bulgur, dry, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "bulgur_cooked",
+          "score": 1,
+          "stateConflict": true
+        },
+        {
+          "key": "dry_bulgur_fine",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2710821,
+      "name": "Wild rice, dry, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cooked_rice_generic_unspecified",
+          "score": 0.725,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2710822,
+      "name": "Arugula, baby, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710823,
+      "name": "Asparagus, green, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "asparagus_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2710824,
+      "name": "Avocado, Hass, peeled, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710825,
+      "name": "Rice, black, unenriched, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cooked_rice_generic_unspecified",
+          "score": 0.633,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2710826,
+      "name": "Corn, sweet, yellow and white kernels,  fresh, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "corn_frozen_plain",
+          "score": 0.67,
+          "stateConflict": false
+        },
+        {
+          "key": "fresh_corn_kernels",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2710827,
+      "name": "Einkorn, grain, dry, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710828,
+      "name": "Farro, pearled, dry, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710829,
+      "name": "Fonio, grain, dry, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710830,
+      "name": "Khorasan, grain, dry, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710831,
+      "name": "Kiwifruit (kiwi), green, peeled, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710832,
+      "name": "Mandarin, seedless, peeled, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710833,
+      "name": "Mango, Tommy Atkins, peeled, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710834,
+      "name": "Mango, Ataulfo, peeled, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710835,
+      "name": "Corn flour, masa harina, white or yellow, dry, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710836,
+      "name": "Pear, Anjou, green, with skin, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710837,
+      "name": "Plum, black, with skin, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710838,
+      "name": "Rice, red, unenriched, dry, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "cooked_rice_generic_unspecified",
+          "score": 0.633,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2710839,
+      "name": "Sorghum bran, white, unenriched, dry, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710840,
+      "name": "Sorghum flour, white, pearled, unenriched, dry, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710841,
+      "name": "Sorghum grain, white, pearled, unenriched, dry, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710842,
+      "name": "Sorghum, whole grain, white, dry, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2710843,
+      "name": "Plantains, overripe, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727566,
+      "name": "Chicken, drumstick, meat and skin, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727567,
+      "name": "Chicken, thigh, meat and skin, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727568,
+      "name": "Chicken, wing, meat and skin, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727569,
+      "name": "Chicken, breast, meat and skin, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "chicken_breast_cooked",
+          "score": 0.725,
+          "stateConflict": true
+        },
+        {
+          "key": "chicken_breast_raw_skinless_boneless",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2727570,
+      "name": "Lamb, ground, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727571,
+      "name": "Bison, ground, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727572,
+      "name": "Beef, short loin (NY strip steak), raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727573,
+      "name": "Beef, tenderloin steak, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727574,
+      "name": "Beef, top sirloin steak, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727575,
+      "name": "Pork, chop, center cut, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "bacon_center_cut_cooked",
+          "score": 0.668,
+          "stateConflict": true
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2727576,
+      "name": "Pork, belly, with skin, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727577,
+      "name": "Pawpaw, peeled, seeded, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727578,
+      "name": "Squash, pie pumpkin, peeled, seeded, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727579,
+      "name": "Squash, spaghetti, peeled, seeded, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727580,
+      "name": "Rutabaga, peeled, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727581,
+      "name": "Blackberries, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727582,
+      "name": "Tomatillos, dehusked, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727583,
+      "name": "Cabbage, napa, leaf, destemmed, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727584,
+      "name": "Leeks, bulb and greens, root removed, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727585,
+      "name": "Green onion, (scallion), bulb and greens, root removed, raw",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "scallion_green_onion_raw",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2727586,
+      "name": "Shallots, bulb, peeled, root removed, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727587,
+      "name": "Juice, prune, shelf-stable",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727588,
+      "name": "Juice, pomegranate, from concentrate, shelf-stable",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2727589,
+      "name": "Juice, tart cherry, from concentrate, shelf-stable",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747652,
+      "name": "Anchovies, canned in olive oil, with salt, drained",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "olive_oil_generic",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2747653,
+      "name": "Beet greens, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747654,
+      "name": "Cod, Pacific or Alaskan, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747655,
+      "name": "Fennel, bulb, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747656,
+      "name": "Halibut, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747657,
+      "name": "Lobster, tail only, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747658,
+      "name": "Mahi mahi, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747659,
+      "name": "Parsnips, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747660,
+      "name": "Peppers, banana or Hungarian wax, seeded, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747661,
+      "name": "Peppers, jalapeno, seeded, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747662,
+      "name": "Peppers, poblano, seeded, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747663,
+      "name": "Peppers, serrano, seeded, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747664,
+      "name": "Radicchio, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747665,
+      "name": "Radishes, red, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747666,
+      "name": "Scallops, bay, Patagonian, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747667,
+      "name": "Scallops, sea, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747668,
+      "name": "Sea bass, Chilean, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747669,
+      "name": "Snapper, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747670,
+      "name": "Snow crab, legs only, frozen  ",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747671,
+      "name": "Squid (calamari), frozen, tubes only",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747672,
+      "name": "Swordfish, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747673,
+      "name": "Tuna, ahi or yellowfin, frozen, wild caught",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747674,
+      "name": "Turnips, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747675,
+      "name": "Watermelon, seedless, flesh only, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2747676,
+      "name": "Watermelon, seedless, rind only, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758975,
+      "name": "Rhubarb, stalk, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758976,
+      "name": "Cranberries, dried, sweetened",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758977,
+      "name": "Grapefruit, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758978,
+      "name": "Plums, dried (prunes), uncooked",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758979,
+      "name": "Raisins, golden, seedless",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "raisins_dried",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758980,
+      "name": "Raisins, dark, seedless",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "raisins_dried",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758981,
+      "name": "Edamame, frozen, prepared",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758982,
+      "name": "Baked beans, Original, canned, with pork",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758983,
+      "name": "Beans, baked, canned, vegetarian",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_kidney_canned_drained",
+          "score": 0.667,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758984,
+      "name": "Refried beans, canned (pinto)",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "beans_pinto_cooked",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758985,
+      "name": "Refried beans, canned, vegetarian",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758986,
+      "name": "Mayonnaise, Regular",
+      "status": "exact_name_review_only",
+      "exact": [
+        "mayonnaise_regular"
+      ],
+      "suggestions": [
+        {
+          "key": "mayonnaise_light",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758987,
+      "name": "Salad dressing, Italian dressing, commercial, regular",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758988,
+      "name": "Dressing, Ranch",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "salad_dressing_ranch_light",
+          "score": 0.817,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758989,
+      "name": "Peanut butter, Creamy",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "peanut_butter",
+          "score": 1,
+          "stateConflict": false
+        },
+        {
+          "key": "peanut_butter_cups",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "powdered_peanut_butter",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "butter_salted_generic",
+          "score": 0.633,
+          "stateConflict": false
+        },
+        {
+          "key": "nuts_peanuts_roasted",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758990,
+      "name": "Sweetened condensed milk",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "milk_unspecified",
+          "score": 0.633,
+          "stateConflict": false
+        },
+        {
+          "key": "whole_milk",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758991,
+      "name": "Bologna, beef",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758992,
+      "name": "Bologna, classic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758993,
+      "name": "Bread, white, commercial",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758994,
+      "name": "Bread, 100% whole wheat, commercial",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758995,
+      "name": "Bread, mulitgrain, commercial",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2758996,
+      "name": "Tortilla, wheat flour, shelf stable",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "tortilla_flour_standard",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758997,
+      "name": "Tortilla, corn, shelf stable",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "corn_tortilla",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2758998,
+      "name": "Pasta, dry, enriched, spaghetti",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "pasta_cooked",
+          "score": 0.633,
+          "stateConflict": true
+        },
+        {
+          "key": "pasta_dry_standard",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2759000,
+      "name": "Pasta, dry, whole grain, spaghetti ",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "pasta_cooked",
+          "score": 0.633,
+          "stateConflict": true
+        },
+        {
+          "key": "pasta_dry_standard",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2759001,
+      "name": "Lunchmeat, turkey, oven roasted, sliced",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2759002,
+      "name": "Lunchmeat, ham, black forest, sliced",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2759003,
+      "name": "Lunchmeat, roast beef, sliced, prepackaged",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2759004,
+      "name": "Lunchmeat, chicken breast, sliced",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "chicken_breast_cooked",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "chicken_breast_raw_skinless_boneless",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "chicken_cooked_unspecified_cut",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2759005,
+      "name": "Salami, hard, sliced",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2759006,
+      "name": "Pepperoni, beef and pork, sliced",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "pepperoni_regular",
+          "score": 0.633,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2768188,
+      "name": "Alaska Pollock, raw",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779240,
+      "name": "Sorghum, puffed, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779241,
+      "name": "Quinoa, puffed, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779242,
+      "name": "Mushroom corn, puffed, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779243,
+      "name": "Millet, puffed, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779244,
+      "name": "Khorasan, puffed, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779245,
+      "name": "Kamut, puffed, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779246,
+      "name": "Winter wheat, hard red, puffed, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779247,
+      "name": "Buckwheat, puffed, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779248,
+      "name": "Brown rice, puffed, organic",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "rice_brown_dry",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2779249,
+      "name": "Amaranth, puffed, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779250,
+      "name": "Rice, white, puffed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "rice_white_cooked",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "rice_white_long_grain_raw_dry",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "cooked_rice_generic_unspecified",
+          "score": 0.667,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2779251,
+      "name": "Sorghum, puffed",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779252,
+      "name": "Quinoa, puffed",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779253,
+      "name": "Oats, puffed",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779254,
+      "name": "Wheat, durum, puffed",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779255,
+      "name": "Chickpeas, puffed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "chickpeas_form_unspecified",
+          "score": 0.725,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2779256,
+      "name": "Brown rice, puffed",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "rice_brown_dry",
+          "score": 0.817,
+          "stateConflict": false
+        },
+        {
+          "key": "cooked_rice_generic_unspecified",
+          "score": 0.667,
+          "stateConflict": false
+        },
+        {
+          "key": "rice_basmati_brown_unspecified",
+          "score": 0.667,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2779257,
+      "name": "Millet, puffed",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779258,
+      "name": "Sorghum, flour, pre-gelatinized, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779259,
+      "name": "Quinoa flour, pre-gelatinized, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779260,
+      "name": "Millet, flour, pre-gelatinized, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779261,
+      "name": "Brown rice, flour, coarse ground, pre-gelatinized, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779262,
+      "name": "Amaranth, flour, pre-gelatinized, organic",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779263,
+      "name": "White rice, flour, pre-gelatinized",
+      "status": "lexical_candidates_review_only",
+      "exact": [],
+      "suggestions": [
+        {
+          "key": "rice_white_cooked",
+          "score": 0.67,
+          "stateConflict": false
+        },
+        {
+          "key": "rice_white_long_grain_raw_dry",
+          "score": 0.67,
+          "stateConflict": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": 2779264,
+      "name": "Sorghum, flour, pre-gelatinized",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779265,
+      "name": "Millet, flour, pre-gelatinized",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779266,
+      "name": "Corn, flour, pre-gelatinized",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779267,
+      "name": "Chickpea flour, pre-gelatinized",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    },
+    {
+      "id": 2779268,
+      "name": "Kernza flour, pre-gelatinized",
+      "status": "no_lexical_candidate",
+      "exact": [],
+      "suggestions": [],
+      "approved": false
+    }
+  ]
+}
