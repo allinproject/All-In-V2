@@ -90,6 +90,93 @@ export async function readOwnedKitchenStock(
   return snapshot?{status:'ready',snapshot}:{status:'unavailable'};
  }catch{return {status:'unavailable'};}
 }
+export const V2_KITCHEN_MANUAL_SHOPPING_WRITE_ENABLED =
+ process.env.EXPO_PUBLIC_V2_KITCHEN_MANUAL_SHOPPING_WRITE_ENABLED === 'true';
+export const V2_KITCHEN_PURCHASE_CONFIRM_ENABLED =
+ process.env.EXPO_PUBLIC_V2_KITCHEN_PURCHASE_CONFIRM_ENABLED === 'true';
+export type ManualShoppingWrite={
+ lineId:string;expectedVersion:number;actionId:string;
+ description:string;foodId:string|null;
+ preparationState:string|null;unit:string|null;quantity:number|null;
+ state:'needed'|'in_cart'|'archived';
+};
+export type PurchaseConfirmationLine={
+ lineId:string;lotId:string;foodId:string;preparationState:string;unit:string;
+ stockLocation:'pantry'|'fridge'|'freezer'|'spices';
+ quantity:number;expectedLotVersion:number;expiryDate:string|null;
+};
+export type KitchenStockWriteResult=
+ |{status:'saved';version?:number;receiptId?:string}
+ |{status:'disabled'|'invalid'|'unavailable'|'conflict'|'unauthorized'};
+const allowedStockLocation=(v:unknown)=>['pantry','fridge','freezer','spices'].includes(String(v));
+const resultStatus=(error:{code?:string}|null,code?:number):KitchenStockWriteResult=>{
+ if(code===409||error?.code==='40001')return {status:'conflict'};
+ if(error?.code==='42501')return {status:'unauthorized'};
+ return {status:'unavailable'};
+};
+export async function writeOwnedManualShopping(
+ services:KitchenStockReadServices,owner:string,entry:ManualShoppingWrite,
+ current:()=>boolean=()=>true,enabled=V2_KITCHEN_MANUAL_SHOPPING_WRITE_ENABLED,
+):Promise<KitchenStockWriteResult>{
+ if(!enabled)return {status:'disabled'};
+ if(!uid(owner)||!entry||!uid(entry.lineId)||!uid(entry.actionId)
+  ||!Number.isSafeInteger(entry.expectedVersion)||entry.expectedVersion<0
+  ||!text(entry.description)||!['needed','in_cart','archived'].includes(entry.state)
+  ||(entry.foodId===null&&(entry.preparationState!==null||entry.unit!==null))
+  ||(entry.foodId!==null&&(!text(entry.foodId)||!text(entry.preparationState)||!text(entry.unit)))
+  ||(entry.quantity!==null&&(!amount(entry.quantity)||entry.quantity===0)))
+  return {status:'invalid'};
+ if(!current())return {status:'unavailable'};
+ try{
+  await services.authenticateOwner();
+  if(!current())return {status:'unavailable'};
+  const res=await services.rpc('v2_kitchen_write_manual_shopping',{
+   p_expected_user_id:owner,p_line_id:entry.lineId,
+   p_expected_version:entry.expectedVersion,p_action_id:entry.actionId,
+   p_description:entry.description,p_food_source_id:entry.foodId,
+   p_preparation_state:entry.preparationState,p_unit:entry.unit,
+   p_quantity:entry.quantity,p_state:entry.state,
+  });
+  if(res.error)return resultStatus(res.error);
+  await services.authenticateOwner();
+  if(!current()||!Number.isSafeInteger(res.data)||(res.data as number)<1)
+   return {status:'unavailable'};
+  return {status:'saved',version:res.data as number};
+ }catch{return {status:'unavailable'};}
+}
+export async function confirmOwnedKitchenPurchase(
+ services:KitchenStockReadServices,owner:string,receiptId:string,
+ actionId:string,lines:readonly PurchaseConfirmationLine[],
+ current:()=>boolean=()=>true,enabled=V2_KITCHEN_PURCHASE_CONFIRM_ENABLED,
+):Promise<KitchenStockWriteResult>{
+ if(!enabled)return {status:'disabled'};
+ if(!uid(owner)||!uid(receiptId)||!uid(actionId)||!Array.isArray(lines)
+  ||lines.length<1||lines.length>100)return {status:'invalid'};
+ const lotIds=new Set<string>(),lineIds=new Set<string>();
+ for(const line of lines){
+  if(!line||!uid(line.lineId)||lineIds.has(line.lineId)
+   ||!uid(line.lotId)||lotIds.has(line.lotId)
+   ||!text(line.foodId)||!text(line.preparationState)||!text(line.unit)
+   ||!allowedStockLocation(line.stockLocation)
+   ||!amount(line.quantity)||line.quantity===0
+   ||!Number.isSafeInteger(line.expectedLotVersion)||line.expectedLotVersion<0
+   ||(line.expiryDate!==null&&!date(line.expiryDate)))return {status:'invalid'};
+  lotIds.add(line.lotId);lineIds.add(line.lineId);
+ }
+ if(!current())return {status:'unavailable'};
+ try{
+  await services.authenticateOwner();
+  if(!current())return {status:'unavailable'};
+  const res=await services.rpc('v2_kitchen_confirm_purchase',{
+   p_expected_user_id:owner,p_receipt_id:receiptId,
+   p_action_id:actionId,p_lines:lines,
+  });
+  if(res.error)return resultStatus(res.error);
+  await services.authenticateOwner();
+  if(!current()||res.data!==receiptId)return {status:'unavailable'};
+  return {status:'saved',receiptId};
+ }catch{return {status:'unavailable'};}
+}
 export function ownedKitchenStockServices(
  client:SupabaseClient<Database>,ownerId:string,
 ):KitchenStockReadServices{
