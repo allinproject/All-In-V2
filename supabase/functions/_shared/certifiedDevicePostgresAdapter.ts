@@ -17,7 +17,7 @@ export type QueryClient={unsafe:(sql:string,params?:readonly unknown[])=>
 export type TransactionalSql={begin:<T>(fn:(tx:QueryClient)=>Promise<T>)=>Promise<T>};
 type AuthVerifier={getUser:(token:string)=>Promise<{id:string}|null>};
 const uuid=(v:unknown):v is string=>typeof v==='string'&&
- /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+ /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 const safe=(s:unknown):s is string=>typeof s==='string'&&s.length>0&&s.length<=500;
 const validNow=(n:number)=>Number.isSafeInteger(n)&&n>0;
 const first=(rows:readonly Row[])=>rows[0]??null;
