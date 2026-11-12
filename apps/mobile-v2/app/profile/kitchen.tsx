@@ -48,7 +48,7 @@ function OwnedKitchen() {
   const [notice,setNotice] = useState<string | null>(null);
   const [reload,setReload] = useState(0);
   const guard = useRef(false);
-  const scrollRef=useRef<ScrollView>(null);
+  const scrollRef=useRef<React.ElementRef<typeof ScrollView>>(null);
   const anchors=useRef<Partial<Record<KitchenGuideTarget,number>>>({});
   const activeTarget=useRef<KitchenGuideTarget|null>(null);
   const [highlight,setHighlight]=useState<KitchenGuideTarget|null>(null);
