@@ -1,0 +1,4223 @@
+{
+  "status": "review_only",
+  "source": "V1 public.allin_ingredient_profiles; read-only",
+  "profileCount": 408,
+  "macroFactsIncluded": false,
+  "nutritionApproved": false,
+  "profiles": [
+    {
+      "source_profile_key": "adobo_sauce_generic",
+      "source_label": "Adobo sauce, prepared",
+      "source_aliases": [
+        "Adobo sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "allulose_granulated",
+      "source_label": "Allulose, granulated",
+      "source_aliases": [
+        "Granulated allulose"
+      ],
+      "source_review_status": "source_formula_conditional_pure_allulose",
+      "source_fdc_id": null,
+      "source_url": "https://www.fda.gov/regulatory-information/search-fda-guidance-documents/guidance-industry-declaration-allulose-and-calories-allulose-nutrition-and-supplement-facts-labels"
+    },
+    {
+      "source_profile_key": "almond_milk_unsweet",
+      "source_label": "Unsweetened Almond Milk",
+      "source_aliases": [
+        "Unsweetened almond milk only if needed",
+        "Unsweetened almond milk, for dumplings",
+        "Unsweetened almond milk, for gravy",
+        "Unsweetened plain almond milk"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "almonds_ground_dry",
+      "source_label": "Almonds, ground dry",
+      "source_aliases": [
+        "Ground almonds"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170567/nutrients"
+    },
+    {
+      "source_profile_key": "apple_cider_vinegar",
+      "source_label": "Apple cider vinegar, liquid",
+      "source_aliases": [
+        "Apple cider vinegar"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://aifoodcoach.app/foods/apple-cider-vinegar"
+    },
+    {
+      "source_profile_key": "apple_pie_filling_unspecified",
+      "source_label": "Apple pie filling, prepared unspecified",
+      "source_aliases": [
+        "apple pie filling"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "apple_raw_with_skin",
+      "source_label": "Apple, raw with skin edible portion",
+      "source_aliases": [
+        "Apple, raw with skin",
+        "Raw apple with skin",
+        "firm apples, chunked"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171688/nutrients"
+    },
+    {
+      "source_profile_key": "applesauce_unsweetened",
+      "source_label": "Applesauce, unsweetened",
+      "source_aliases": [
+        "Unsweetened applesauce"
+      ],
+      "source_review_status": "source_record_transcribed_form_limited",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171695/nutrients"
+    },
+    {
+      "source_profile_key": "arugula_raw",
+      "source_label": "Arugula (rocket), raw leaves",
+      "source_aliases": [
+        "arugula/rocket"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169387/nutrients"
+    },
+    {
+      "source_profile_key": "asparagus_raw",
+      "source_label": "Asparagus, raw, edible spears",
+      "source_aliases": [
+        "Asparagus, chopped",
+        "Asparagus",
+        "asparagus, trimmed"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/168389-asparagus"
+    },
+    {
+      "source_profile_key": "avocado_oil_generic",
+      "source_label": "Avocado Oil",
+      "source_aliases": [
+        "Avocado oil",
+        "Avocado oil, divided"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/173573/nutrients"
+    },
+    {
+      "source_profile_key": "baby_potatoes_raw",
+      "source_label": "Baby potatoes, raw variety unspecified",
+      "source_aliases": [
+        "baby potatoes"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170026/nutrients"
+    },
+    {
+      "source_profile_key": "bacon_center_cut_cooked",
+      "source_label": "Center-cut pork bacon, cooked crisp",
+      "source_aliases": [
+        "Center-cut bacon, cooked crisp"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bacon_cooked_generic",
+      "source_label": "Bacon, cooked",
+      "source_aliases": [
+        "Cooked bacon"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/167914/nutrients"
+    },
+    {
+      "source_profile_key": "bacon_type_unspecified",
+      "source_label": "Bacon, type and preparation unspecified",
+      "source_aliases": [
+        "bacon"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "baguette_plain_unspecified",
+      "source_label": "Baguette bread, plain unspecified",
+      "source_aliases": [
+        "baguette"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "baking_powder_generic",
+      "source_label": "Baking powder, commercial",
+      "source_aliases": [
+        "Baking powder"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172803/nutrients"
+    },
+    {
+      "source_profile_key": "baking_soda_sodium_bicarbonate",
+      "source_label": "Baking soda, sodium bicarbonate",
+      "source_aliases": [
+        "Baking soda"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://getfoodfacts.com/food/leavening-agents-baking-soda-175040"
+    },
+    {
+      "source_profile_key": "balsamic_glaze_unspecified",
+      "source_label": "Balsamic glaze, prepared unspecified",
+      "source_aliases": [
+        "balsamic glaze"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "balsamic_vinegar",
+      "source_label": "Balsamic vinegar, liquid",
+      "source_aliases": [
+        "Balsamic vinegar"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172241/nutrients"
+    },
+    {
+      "source_profile_key": "banana_raw_edible",
+      "source_label": "Banana, raw peeled edible fruit",
+      "source_aliases": [
+        "Banana",
+        "banana, peeled",
+        "Bananas, ripe",
+        "Ripe banana, mashed"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/173944"
+    },
+    {
+      "source_profile_key": "basil_pesto_prepared_unspecified",
+      "source_label": "Basil pesto, prepared unspecified",
+      "source_aliases": [
+        "Basil pesto"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "basmati_rice_cooked",
+      "source_label": "Basmati rice, cooked",
+      "source_aliases": [
+        "Cooked basmati rice"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169757/nutrients"
+    },
+    {
+      "source_profile_key": "basmati_rice_raw_dry",
+      "source_label": "Basmati rice, dry uncooked",
+      "source_aliases": [
+        "Basmati rice, dry"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bay_leaf_dried_whole",
+      "source_label": "Bay leaf, whole dried",
+      "source_aliases": [
+        "Bay leaf"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170917/nutrients"
+    },
+    {
+      "source_profile_key": "bbq_sauce_generic",
+      "source_label": "BBQ sauce, prepared",
+      "source_aliases": [
+        "BBQ sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/174523/nutrients"
+    },
+    {
+      "source_profile_key": "bean_sprouts_raw",
+      "source_label": "Bean sprouts, raw unspecified bean",
+      "source_aliases": [
+        "Bean sprouts"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169957/nutrients"
+    },
+    {
+      "source_profile_key": "beans_cooked",
+      "source_label": "Beans / Legumes, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "beans_green_raw",
+      "source_label": "Green beans, raw edible",
+      "source_aliases": [
+        "Green beans",
+        "Green beans, trimmed"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169961/nutrients"
+    },
+    {
+      "source_profile_key": "beans_kidney_canned_drained",
+      "source_label": "Kidney beans, canned drained",
+      "source_aliases": [
+        "Kidney beans, drained",
+        "Kidney beans, drained and rinsed"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/2644289/nutrients"
+    },
+    {
+      "source_profile_key": "beans_pinto_cooked",
+      "source_label": "Pinto beans, cooked",
+      "source_aliases": [
+        "Pinto beans",
+        "Pinto beans, cooked"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/175200/nutrients"
+    },
+    {
+      "source_profile_key": "beef_93_cooked",
+      "source_label": "93% Lean Ground Beef, cooked",
+      "source_aliases": [
+        "Cooked 93/7 lean ground beef"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "beef_broth_reduced_sodium",
+      "source_label": "Beef broth, reduced-sodium",
+      "source_aliases": [
+        "Reduced-sodium beef broth"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "beef_broth_standard",
+      "source_label": "Beef broth, standard sodium",
+      "source_aliases": [
+        "beef broth"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171538/nutrients"
+    },
+    {
+      "source_profile_key": "beef_chuck_raw_boneless",
+      "source_label": "Beef chuck roast, boneless raw",
+      "source_aliases": [
+        "Boneless beef chuck roast"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "beef_ground_93_raw",
+      "source_label": "93% lean ground beef, raw",
+      "source_aliases": [
+        "93% lean ground beef, raw",
+        "Raw 93% lean ground beef"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/173110/nutrients"
+    },
+    {
+      "source_profile_key": "beef_ground_95_raw",
+      "source_label": "95 percent lean ground beef, raw",
+      "source_aliases": [
+        "Raw 5% lean ground beef"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171790/nutrients"
+    },
+    {
+      "source_profile_key": "beef_ground_96_raw",
+      "source_label": "96% lean ground beef, raw",
+      "source_aliases": [],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "beef_ground_raw_lean_unspecified",
+      "source_label": "Lean ground beef, raw unspecified fat percent",
+      "source_aliases": [
+        "Raw lean ground beef"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bell_pepper_green_raw",
+      "source_label": "Green bell pepper, raw, edible portion",
+      "source_aliases": [
+        "Green bell pepper, diced",
+        "Green bell pepper, sliced"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://nutrientgraph.com/foods/peppers-bell-green-raw-fdc-2258588/"
+    },
+    {
+      "source_profile_key": "bell_pepper_raw_unspecified_color",
+      "source_label": "Bell pepper, raw edible portion",
+      "source_aliases": [
+        "Bell pepper, diced",
+        "Bell pepper, sliced",
+        "Bell peppers, sliced",
+        "bell peppers, diced",
+        "Bell pepper, chopped",
+        "Bell pepper, finely diced",
+        "Bell pepper, cut into chunks",
+        "Bell pepper, cut into small chunks",
+        "bell pepper, thinly sliced",
+        "bell peppers, chopped",
+        "bell peppers, small dice"
+      ],
+      "source_review_status": "source_record_transcribed_group_average",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bell_pepper_red_raw",
+      "source_label": "Red bell pepper, raw edible portion",
+      "source_aliases": [
+        "Red bell pepper, diced",
+        "Red bell pepper, sliced",
+        "Red bell pepper, chopped"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170108-red-sweet-peppers"
+    },
+    {
+      "source_profile_key": "bell_pepper_yellow_raw",
+      "source_label": "Yellow bell pepper, raw edible portion",
+      "source_aliases": [
+        "yellow bell pepper, sliced"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169383/nutrients"
+    },
+    {
+      "source_profile_key": "black_beans_canned_drained",
+      "source_label": "Black beans, canned drained rinsed",
+      "source_aliases": [
+        "Black beans, drained",
+        "Black beans, drained and rinsed",
+        "Canned black beans, drained and rinsed",
+        "Black beans, canned, drained and rinsed"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/2644285/nutrients"
+    },
+    {
+      "source_profile_key": "black_pepper_ground",
+      "source_label": "Black Pepper",
+      "source_aliases": [
+        "black pepper for sauce"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170931/nutrients"
+    },
+    {
+      "source_profile_key": "blueberry_raw",
+      "source_label": "Blueberries, raw",
+      "source_aliases": [
+        "Blueberries",
+        "Frozen blueberries"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171711/nutrients"
+    },
+    {
+      "source_profile_key": "bread_high_protein_slice",
+      "source_label": "Bread, higher-protein slice",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bread_light_unspecified",
+      "source_label": "Light bread, unspecified brand",
+      "source_aliases": [
+        "Light bread"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bread_lower_cal_slice",
+      "source_label": "Bread, lower-calorie slice",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bread_sandwich_light_unspecified",
+      "source_label": "Light sandwich bread, unspecified brand",
+      "source_aliases": [
+        "light sandwich bread, cubed"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bread_standard_slice",
+      "source_label": "Bread, standard slice",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bread_tortilla_burrito_large",
+      "source_label": "Flour tortilla, large burrito size",
+      "source_aliases": [
+        "Large burrito-size flour tortilla",
+        "Large flour tortilla",
+        "Large tortilla",
+        "large flour tortillas"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bread_tortilla_corn_small",
+      "source_label": "Corn tortilla, small",
+      "source_aliases": [
+        "Small corn tortillas"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bread_whole_grain_slice",
+      "source_label": "Bread, whole-grain slice",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bread_wrap_unspecified",
+      "source_label": "Wrap bread, type unspecified",
+      "source_aliases": [
+        "Wrap"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "breadcrumbs_plain_dry_unspecified",
+      "source_label": "Plain breadcrumbs, dry unspecified type",
+      "source_aliases": [
+        "breadcrumbs"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "broccoli_raw_florets",
+      "source_label": "Broccoli, raw, edible florets",
+      "source_aliases": [
+        "Broccoli",
+        "Broccoli florets",
+        "Broccoli florets, raw",
+        "Broccoli florets, small"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170379-broccoli"
+    },
+    {
+      "source_profile_key": "broth_low_sodium_unspecified",
+      "source_label": "Broth, low sodium unspecified base",
+      "source_aliases": [
+        "Low-sodium broth"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "broth_unspecified",
+      "source_label": "Broth, unspecified type",
+      "source_aliases": [
+        "Broth"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "brown_sugar",
+      "source_label": "Brown Sugar",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "buffalo_sauce_generic",
+      "source_label": "Buffalo wing sauce, prepared",
+      "source_aliases": [
+        "Buffalo sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bulgur_cooked",
+      "source_label": "Bulgur, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bun_high_protein",
+      "source_label": "Bun, higher-protein",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bun_lower_cal",
+      "source_label": "Bun, lower-calorie",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bun_standard",
+      "source_label": "Bun, standard",
+      "source_aliases": [
+        "Burger bun"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "bun_whole_grain",
+      "source_label": "Bun, whole-grain",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "butter_light_spread",
+      "source_label": "Light butter or reduced-fat spread",
+      "source_aliases": [
+        "Light butter"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "butter_salted_generic",
+      "source_label": "Butter, salted",
+      "source_aliases": [
+        "Butter"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/173410/nutrients"
+    },
+    {
+      "source_profile_key": "butter_unsalted_usda",
+      "source_label": "Butter, unsalted",
+      "source_aliases": [
+        "Unsalted butter",
+        "unsalted butter, softened"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/173430"
+    },
+    {
+      "source_profile_key": "buttermilk_plain",
+      "source_label": "Buttermilk, cultured plain",
+      "source_aliases": [
+        "Buttermilk"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170874/nutrients"
+    },
+    {
+      "source_profile_key": "cabbage_green_raw",
+      "source_label": "Green cabbage, raw chopped",
+      "source_aliases": [
+        "Green cabbage, chopped",
+        "shredded green cabbage"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/2346407/nutrients"
+    },
+    {
+      "source_profile_key": "cabbage_shredded_raw",
+      "source_label": "Cabbage, shredded raw unspecified variety",
+      "source_aliases": [
+        "Shredded cabbage"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169975/nutrients"
+    },
+    {
+      "source_profile_key": "cajun_seasoning_blend",
+      "source_label": "Cajun seasoning blend",
+      "source_aliases": [
+        "Cajun seasoning"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cane_vinegar",
+      "source_label": "Cane vinegar, liquid",
+      "source_aliases": [
+        "Cane vinegar"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "canned_black_beans_generic",
+      "source_label": "Black beans, unspecified prep",
+      "source_aliases": [
+        "Black beans"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "canned_corn_drained",
+      "source_label": "Corn kernels, canned drained",
+      "source_aliases": [
+        "Corn kernels, drained if canned",
+        "Corn, drained"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169214/nutrients"
+    },
+    {
+      "source_profile_key": "cannellini_canned_drained",
+      "source_label": "Cannellini beans, canned drained rinsed",
+      "source_aliases": [
+        "Cannellini beans, drained and rinsed"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "capers_prepared_unspecified",
+      "source_label": "Capers, preserved unspecified packing liquid",
+      "source_aliases": [
+        "Capers"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172238/nutrients"
+    },
+    {
+      "source_profile_key": "caramel_sauce",
+      "source_label": "Caramel Sauce",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "carrot_raw_generic",
+      "source_label": "Carrot, raw, edible portion",
+      "source_aliases": [
+        "Carrot, diced",
+        "Carrot, shredded",
+        "Carrot, thinly sliced",
+        "Carrots, chunked",
+        "Shredded carrots",
+        "Carrots, sliced",
+        "Carrots, julienned",
+        "Carrots, shredded",
+        "Carrots, diced",
+        "carrots, thinly sliced"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170393-carrots"
+    },
+    {
+      "source_profile_key": "cauliflower_rice",
+      "source_label": "Cauliflower Rice, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cayenne_pepper_ground",
+      "source_label": "Cayenne red pepper, ground",
+      "source_aliases": [
+        "Cayenne",
+        "Cayenne pepper",
+        "Ground red pepper"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170932/nutrients"
+    },
+    {
+      "source_profile_key": "cayenne_pepper_sauce",
+      "source_label": "Cayenne pepper hot sauce, prepared",
+      "source_aliases": [
+        "cayenne pepper sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "celery_raw_generic",
+      "source_label": "Celery, raw, edible stalk",
+      "source_aliases": [
+        "Celery, diced",
+        "celery, sliced"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/169988-celery"
+    },
+    {
+      "source_profile_key": "cheddar_reduced_fat",
+      "source_label": "Cheddar cheese, reduced-fat",
+      "source_aliases": [
+        "Reduced-fat cheddar",
+        "Reduced-fat cheddar, shredded"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171292/nutrients"
+    },
+    {
+      "source_profile_key": "cheddar_regular",
+      "source_label": "Cheddar",
+      "source_aliases": [
+        "Sharp cheddar, shredded",
+        "Shredded cheddar",
+        "cheddar cheese",
+        "Grated cheddar"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cheese_mexican_blend_reduced_fat",
+      "source_label": "Reduced-fat Mexican-style cheese blend, unspecified",
+      "source_aliases": [
+        "reduced-fat Mexican-blend cheese"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cheese_mozzarella_light",
+      "source_label": "Mozzarella cheese, light/reduced-fat",
+      "source_aliases": [
+        "Light mozzarella",
+        "Reduced-fat mozzarella"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cheese_pepper_jack_reduced_fat",
+      "source_label": "Pepper jack cheese, reduced-fat",
+      "source_aliases": [
+        "Reduced-fat pepper jack"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cheese_reduced_fat",
+      "source_label": "Reduced-Fat Cheese",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cheese_shredded_unspecified",
+      "source_label": "Shredded cheese, variety unspecified",
+      "source_aliases": [
+        "Shredded cheese"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cheese_unspecified",
+      "source_label": "Cheese, unspecified variety",
+      "source_aliases": [
+        "Cheese"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cherries_pitted_raw",
+      "source_label": "Cherries, raw pitted",
+      "source_aliases": [
+        "pitted cherries, chopped"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171719/nutrients"
+    },
+    {
+      "source_profile_key": "cherry_tomatoes_raw",
+      "source_label": "Cherry tomatoes, raw",
+      "source_aliases": [
+        "Cherry tomatoes, halved",
+        "Cherry tomatoes"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170457/nutrients"
+    },
+    {
+      "source_profile_key": "chia_seeds_dry",
+      "source_label": "Chia seeds, dry",
+      "source_aliases": [
+        "Chia seeds",
+        "Ground chia"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170554/nutrients"
+    },
+    {
+      "source_profile_key": "chicken_breast_cooked",
+      "source_label": "Chicken Breast, cooked",
+      "source_aliases": [
+        "Cooked chicken breast",
+        "Cooked chicken breast, chopped",
+        "Cooked chicken breast, diced or shredded",
+        "Cooked chicken breast, shredded",
+        "Cooked shredded chicken breast",
+        "Cooked chicken breast, chopped or shredded",
+        "Cooked chicken breast, chopped or sliced",
+        "Cooked chicken breast, diced",
+        "Cooked chicken breast, sliced or chopped"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chicken_breast_raw_skinless_boneless",
+      "source_label": "Chicken breast, boneless skinless raw",
+      "source_aliases": [
+        "Boneless skinless chicken breast",
+        "Boneless skinless chicken breast, raw",
+        "Chicken breast, raw",
+        "Raw chicken breast",
+        "Raw chicken breast, diced",
+        "Raw chicken breast, sliced",
+        "Raw chicken breast, thinly sliced",
+        "Raw boneless skinless chicken breast, thinly sliced",
+        "Raw boneless skinless chicken breast, diced",
+        "Raw boneless skinless chicken breast",
+        "Boneless skinless chicken breast, raw, cut into chunks",
+        "Boneless skinless chicken breast, raw, diced",
+        "Boneless skinless chicken breast, raw, bite-size pieces",
+        "Boneless skinless chicken breast, raw, cut into 1 1/2-inch pieces",
+        "Boneless skinless chicken breast, raw, cut into bite-size pieces",
+        "Boneless skinless chicken breast, raw, cut into large chunks",
+        "Boneless skinless chicken breast, raw, sliced into strips",
+        "Boneless skinless chicken breast, raw, thinly sliced",
+        "raw boneless skinless chicken breast, cubed",
+        "raw boneless skinless chicken breast, cut into large chunks"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/171077-chicken-breast-skinless-boneless"
+    },
+    {
+      "source_profile_key": "chicken_broth_generic",
+      "source_label": "Chicken broth, standard sodium",
+      "source_aliases": [
+        "Chicken broth"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/174536/nutrients"
+    },
+    {
+      "source_profile_key": "chicken_broth_reduced_sodium",
+      "source_label": "Chicken broth, reduced sodium",
+      "source_aliases": [
+        "Reduced-sodium chicken broth",
+        "Low-sodium chicken broth"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172888/nutrients"
+    },
+    {
+      "source_profile_key": "chicken_cooked_unspecified_cut",
+      "source_label": "Chicken, cooked unspecified cut",
+      "source_aliases": [
+        "Cooked chicken",
+        "Cooked shredded chicken"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chicken_ground_93_raw",
+      "source_label": "93% lean ground chicken, raw",
+      "source_aliases": [],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chicken_sausage_cooked",
+      "source_label": "Chicken Sausage, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chicken_stock_generic",
+      "source_label": "Chicken stock, prepared",
+      "source_aliases": [
+        "Chicken stock"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chicken_stock_reduced_sodium",
+      "source_label": "Chicken stock, reduced sodium",
+      "source_aliases": [
+        "Reduced-sodium chicken stock"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chicken_thigh_raw_boneless_skinless",
+      "source_label": "Chicken thigh, raw boneless skinless",
+      "source_aliases": [
+        "Raw boneless skinless chicken thighs, trimmed"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/173627/nutrients"
+    },
+    {
+      "source_profile_key": "chickpeas_canned_drained_rinsed",
+      "source_label": "Chickpeas, canned drained rinsed",
+      "source_aliases": [
+        "Canned chickpeas, drained and rinsed",
+        "chickpeas, drained and rinsed"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/2644288/nutrients"
+    },
+    {
+      "source_profile_key": "chickpeas_form_unspecified",
+      "source_label": "Chickpeas, preparation unspecified",
+      "source_aliases": [
+        "chickpeas"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chili_flakes_dried",
+      "source_label": "Red chili pepper flakes, dried",
+      "source_aliases": [
+        "Chili flakes",
+        "Crushed red pepper",
+        "Red pepper flakes"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170932/nutrients"
+    },
+    {
+      "source_profile_key": "chili_garlic_sauce_unspecified",
+      "source_label": "Chili-garlic sauce, prepared unspecified",
+      "source_aliases": [
+        "chili-garlic sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chili_powder_blend",
+      "source_label": "Chili powder, mixed seasoning",
+      "source_aliases": [
+        "Chili powder"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171319/nutrients"
+    },
+    {
+      "source_profile_key": "chipotle_adobo_canned",
+      "source_label": "Chipotle peppers in adobo sauce, canned",
+      "source_aliases": [
+        "chipotle peppers in adobo, minced"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chipotle_chili_powder",
+      "source_label": "Chipotle chile powder, dry",
+      "source_aliases": [
+        "Chipotle chili powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chives_dried",
+      "source_label": "Chives, dried",
+      "source_aliases": [
+        "Dried chives"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170075/nutrients"
+    },
+    {
+      "source_profile_key": "chives_fresh_raw",
+      "source_label": "Chives, fresh raw",
+      "source_aliases": [
+        "chives"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169994/nutrients"
+    },
+    {
+      "source_profile_key": "chocolate_chip_mini",
+      "source_label": "Mini chocolate chips, unspecified cocoa content",
+      "source_aliases": [
+        "Mini chocolate chips"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chocolate_chip_reduced_sugar",
+      "source_label": "Reduced-sugar chocolate chips, brand unspecified",
+      "source_aliases": [
+        "Reduced-sugar chocolate chips"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chocolate_chip_semisweet",
+      "source_label": "Semisweet chocolate chips",
+      "source_aliases": [
+        "Semisweet chocolate chips"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chocolate_chip_semisweet_mini",
+      "source_label": "Mini semisweet chocolate chips, unspecified brand",
+      "source_aliases": [
+        "semi-sweet mini chocolate chips"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chocolate_chips_dark_unspecified",
+      "source_label": "Dark chocolate chips, cocoa percentage unspecified",
+      "source_aliases": [
+        "dark chocolate chips"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chocolate_chopped_unspecified",
+      "source_label": "Chopped chocolate, unspecified cacao percent",
+      "source_aliases": [
+        "Chopped chocolate"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "chocolate_protein_powder",
+      "source_label": "Chocolate flavored protein powder, unspecified",
+      "source_aliases": [
+        "Chocolate protein powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cilantro_fresh_leaves",
+      "source_label": "Cilantro, fresh leaf and tender stem",
+      "source_aliases": [
+        "Cilantro",
+        "Cilantro, chopped",
+        "Fresh cilantro",
+        "Fresh cilantro, chopped",
+        "Fresh cilantro, finely chopped",
+        "Chopped cilantro"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169997/nutrients"
+    },
+    {
+      "source_profile_key": "cinnamon_cookie",
+      "source_label": "Cinnamon Cookie",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cinnamon_ground_usda",
+      "source_label": "Ground cinnamon, pure",
+      "source_aliases": [
+        "Cinnamon",
+        "Ground cinnamon",
+        "cinnamon powder"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/171320-ground-cinnamon"
+    },
+    {
+      "source_profile_key": "cinnamon_stick_whole_dry",
+      "source_label": "Cinnamon stick, whole dried",
+      "source_aliases": [
+        "Cinnamon stick"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cocoa_powder",
+      "source_label": "Unsweetened Cocoa Powder",
+      "source_aliases": [
+        "cocoa powder"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "coconut_milk_light_canned",
+      "source_label": "Coconut milk, light canned",
+      "source_aliases": [
+        "Light coconut milk"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "coconut_oil_generic",
+      "source_label": "Coconut oil, pure",
+      "source_aliases": [
+        "Coconut oil"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171412/nutrients"
+    },
+    {
+      "source_profile_key": "coffee_brewed_strong_chilled",
+      "source_label": "Strong brewed coffee, chilled",
+      "source_aliases": [
+        "chilled strong coffee"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171890/nutrients"
+    },
+    {
+      "source_profile_key": "coffee_cold_brew",
+      "source_label": "Cold brew black coffee, unsweetened",
+      "source_aliases": [
+        "Cold brew coffee"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171890/nutrients"
+    },
+    {
+      "source_profile_key": "coffee_creamer_powder_unspecified",
+      "source_label": "Powdered coffee creamer, plain or vanilla",
+      "source_aliases": [
+        "Plain or vanilla powdered coffee creamer"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cooked_rice_generic_unspecified",
+      "source_label": "Rice, cooked unspecified variety",
+      "source_aliases": [
+        "Cooked rice",
+        "Cooked cold rice",
+        "Cooked white or brown rice"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cooking_oil_unspecified",
+      "source_label": "Cooking oil, type unspecified",
+      "source_aliases": [
+        "oil"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "corn_frozen_plain",
+      "source_label": "Corn kernels, frozen plain",
+      "source_aliases": [
+        "Frozen corn"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/168398/nutrients"
+    },
+    {
+      "source_profile_key": "corn_generic_unspecified",
+      "source_label": "Corn, unspecified form",
+      "source_aliases": [
+        "Corn"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "corn_tortilla",
+      "source_label": "Corn Tortilla",
+      "source_aliases": [
+        "Corn tortillas"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cornflakes_crushed",
+      "source_label": "Cornflakes cereal, crushed dry",
+      "source_aliases": [
+        "Crushed cornflakes"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cornstarch_dry_usda",
+      "source_label": "Cornstarch, dry",
+      "source_aliases": [
+        "Corn starch",
+        "Cornstarch"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://nutrientgraph.com/foods/cornstarch-fdc-169698/"
+    },
+    {
+      "source_profile_key": "cottage_cheese_generic",
+      "source_label": "Cottage cheese, fat percentage unspecified",
+      "source_aliases": [
+        "Cottage cheese"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cottage_cheese_lowfat_unspecified",
+      "source_label": "Cottage cheese, low-fat unspecified percentage",
+      "source_aliases": [
+        "low-fat cottage cheese"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cottage_cheese_nonfat",
+      "source_label": "Cottage cheese, 0% milkfat",
+      "source_aliases": [
+        "0% cottage cheese"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172181/nutrients"
+    },
+    {
+      "source_profile_key": "cream_cheese",
+      "source_label": "Cream Cheese",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cream_cheese_reduced_fat_pending",
+      "source_label": "Cream cheese, reduced-fat unspecified brand",
+      "source_aliases": [
+        "Reduced-fat cream cheese"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cream_light_or_halfhalf",
+      "source_label": "Light cream or half-and-half, unspecified",
+      "source_aliases": [
+        "Light cream or half-and-half"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cream_sour_regular",
+      "source_label": "Sour cream, full fat",
+      "source_aliases": [
+        "Sour cream"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171257/nutrients"
+    },
+    {
+      "source_profile_key": "crisp_rice_cereal_generic",
+      "source_label": "Crisp rice breakfast cereal, plain",
+      "source_aliases": [
+        "Crisp rice cereal"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "cucumber_raw_unspecified",
+      "source_label": "Cucumber, raw unspecified peel",
+      "source_aliases": [
+        "Cucumber, diced",
+        "Cucumber, sliced",
+        "Cucumber"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/168409/nutrients"
+    },
+    {
+      "source_profile_key": "cucumber_raw_with_peel",
+      "source_label": "Cucumber, raw with peel",
+      "source_aliases": [
+        "Cucumber, with peel, raw"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/168409/nutrients"
+    },
+    {
+      "source_profile_key": "cumin_ground_usda",
+      "source_label": "Ground cumin seed, pure",
+      "source_aliases": [
+        "Cumin",
+        "Cumin powder",
+        "Ground cumin"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170923-cumin-seed"
+    },
+    {
+      "source_profile_key": "curry_powder_blend",
+      "source_label": "Curry powder, dry spice blend",
+      "source_aliases": [
+        "Curry powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "dark_chocolate",
+      "source_label": "Dark Chocolate",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "dijon_mustard",
+      "source_label": "Dijon mustard, prepared",
+      "source_aliases": [
+        "Dijon mustard"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "dill_dried",
+      "source_label": "Dill weed, dried",
+      "source_aliases": [
+        "Dried dill"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171322/nutrients"
+    },
+    {
+      "source_profile_key": "dried_basil",
+      "source_label": "Basil, dried",
+      "source_aliases": [
+        "Dried basil"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171317/nutrients"
+    },
+    {
+      "source_profile_key": "dried_parsley_leaf",
+      "source_label": "Parsley flakes, dried",
+      "source_aliases": [
+        "Dried parsley"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170930/nutrients"
+    },
+    {
+      "source_profile_key": "dried_rosemary",
+      "source_label": "Rosemary, dried",
+      "source_aliases": [
+        "Dried rosemary"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171333/nutrients"
+    },
+    {
+      "source_profile_key": "dried_thyme",
+      "source_label": "Thyme leaves, dried",
+      "source_aliases": [
+        "Dried thyme"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170938-dried-thyme"
+    },
+    {
+      "source_profile_key": "dry_bulgur_fine",
+      "source_label": "Bulgur wheat, fine, dry",
+      "source_aliases": [
+        "Fine bulgur"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://nutrientgraph.com/foods/bulgur-dry-raw-fdc-2710820/"
+    },
+    {
+      "source_profile_key": "egg_roll_wrapper_generic",
+      "source_label": "Egg-roll wrapper, prepared dough",
+      "source_aliases": [
+        "Egg-roll wrapper"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "egg_white_raw",
+      "source_label": "Egg white, raw fresh",
+      "source_aliases": [
+        "Egg white, for pancake batter",
+        "Egg whites",
+        "Egg whites, softly scrambled",
+        "Liquid egg whites",
+        "Egg white"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172183/nutrients"
+    },
+    {
+      "source_profile_key": "egg_whole_raw_fresh",
+      "source_label": "Chicken egg, whole raw fresh (without shell)",
+      "source_aliases": [
+        "Beaten egg",
+        "Beaten egg for glazing",
+        "Beaten large egg",
+        "Egg",
+        "Egg, whole",
+        "Eggs",
+        "Large egg",
+        "Large egg, softly scrambled",
+        "large eggs",
+        "Large eggs",
+        "Raw beaten large egg",
+        "beaten whole egg"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/171287-whole-egg"
+    },
+    {
+      "source_profile_key": "egg_yolk",
+      "source_label": "Egg Yolk",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "enchilada_sauce_red",
+      "source_label": "Red enchilada sauce, prepared",
+      "source_aliases": [
+        "Red enchilada sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "enchilada_sauce_type_unspecified",
+      "source_label": "Enchilada sauce, type unspecified",
+      "source_aliases": [
+        "enchilada sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "fajita_seasoning",
+      "source_label": "Fajita seasoning blend",
+      "source_aliases": [
+        "Fajita seasoning"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "feta_cheese_generic",
+      "source_label": "Feta cheese, generic",
+      "source_aliases": [
+        "Feta cheese",
+        "Feta, crumbled"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/173420/nutrients"
+    },
+    {
+      "source_profile_key": "fish_sauce_generic",
+      "source_label": "Fish sauce, prepared",
+      "source_aliases": [
+        "Fish sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "flour_all_purpose_enriched_average",
+      "source_label": "Wheat flour, white, all-purpose, enriched",
+      "source_aliases": [],
+      "source_review_status": "source_record_transcribed_group_average",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "flour_all_purpose_enriched_unbleached",
+      "source_label": "All-purpose wheat flour, enriched unbleached, dry",
+      "source_aliases": [
+        "All-purpose flour",
+        "All-purpose flour, for flat dumplings",
+        "All-purpose flour, for thickening",
+        "Plain flour"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/168936-enriched-unbleached-all-purpose-white-wheat-flour"
+    },
+    {
+      "source_profile_key": "fresh_basil_raw",
+      "source_label": "Basil, fresh raw leaves",
+      "source_aliases": [
+        "Fresh basil"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172232/nutrients"
+    },
+    {
+      "source_profile_key": "fresh_corn_kernels",
+      "source_label": "Corn kernels, fresh or frozen",
+      "source_aliases": [
+        "Corn kernels"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169998/nutrients"
+    },
+    {
+      "source_profile_key": "fructose_powder_dry",
+      "source_label": "Fructose powder, dry",
+      "source_aliases": [
+        "fructose powder"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169896/nutrients"
+    },
+    {
+      "source_profile_key": "garam_masala_blend",
+      "source_label": "Garam masala, dry spice blend",
+      "source_aliases": [
+        "Garam masala"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "garlic_fresh_raw",
+      "source_label": "Garlic clove, fresh raw",
+      "source_aliases": [
+        "Garlic",
+        "garlic, finely grated",
+        "Garlic, finely minced",
+        "garlic, minced",
+        "Garlic, minced",
+        "fresh garlic, minced"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/169230-garlic"
+    },
+    {
+      "source_profile_key": "garlic_powder_generic",
+      "source_label": "Garlic Powder",
+      "source_aliases": [],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171325/nutrients"
+    },
+    {
+      "source_profile_key": "gelatin_unflavored_dry",
+      "source_label": "Gelatin, unflavored, dry",
+      "source_aliases": [
+        "Unflavored gelatin"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/169599-unsweetened-gelatin-powder"
+    },
+    {
+      "source_profile_key": "ginger_fresh_root",
+      "source_label": "Ginger root, fresh raw",
+      "source_aliases": [
+        "Fresh ginger, grated",
+        "Fresh ginger, minced",
+        "Grated ginger",
+        "Grated fresh ginger",
+        "Fresh ginger, peeled"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/169231"
+    },
+    {
+      "source_profile_key": "ginger_ground_usda",
+      "source_label": "Ginger, ground dry",
+      "source_aliases": [
+        "ground ginger",
+        "ginger powder"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170926"
+    },
+    {
+      "source_profile_key": "gochugaru_dried",
+      "source_label": "Gochugaru Korean chili flakes, dried",
+      "source_aliases": [
+        "gochugaru"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "gochujang_paste_generic",
+      "source_label": "Gochujang Korean chili paste",
+      "source_aliases": [
+        "Gochujang",
+        "Gochujang paste"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "graham_cracker",
+      "source_label": "Graham Cracker",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "graham_cracker_crumbs_unspecified",
+      "source_label": "Graham cracker crumbs, prepared",
+      "source_aliases": [
+        "graham cracker crumbs"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "ground_allspice",
+      "source_label": "Allspice, ground dry",
+      "source_aliases": [
+        "Ground allspice"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171315/nutrients"
+    },
+    {
+      "source_profile_key": "ground_beef_stew_raw",
+      "source_label": "Beef stew meat, raw cut unspecified",
+      "source_aliases": [
+        "Raw beef stew meat"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "ground_black_pepper_coarse",
+      "source_label": "Black pepper, coarsely ground",
+      "source_aliases": [
+        "Coarsely ground black pepper"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170931/nutrients"
+    },
+    {
+      "source_profile_key": "ground_chicken_93_cooked",
+      "source_label": "Lean Ground Chicken, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "ground_coriander_seed",
+      "source_label": "Coriander seed, ground",
+      "source_aliases": [
+        "Ground coriander"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170922/nutrients"
+    },
+    {
+      "source_profile_key": "ground_flaxseed",
+      "source_label": "Flaxseed, ground dry",
+      "source_aliases": [
+        "Ground flaxseed"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://nutrientgraph.com/foods/flaxseed-ground-fdc-2262075/"
+    },
+    {
+      "source_profile_key": "ground_mustard_powder",
+      "source_label": "Mustard seed, ground dry",
+      "source_aliases": [
+        "Ground mustard"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170929/nutrients"
+    },
+    {
+      "source_profile_key": "ground_pork_lean_cooked",
+      "source_label": "Lean Ground Pork, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "ground_turkey_93_raw",
+      "source_label": "Ground turkey, 93 percent lean raw",
+      "source_aliases": [
+        "93% lean ground turkey, raw",
+        "raw 93% lean ground turkey"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172850/nutrients"
+    },
+    {
+      "source_profile_key": "ground_turkey_raw_unspecified_fat",
+      "source_label": "Ground turkey, raw unspecified fat percentage",
+      "source_aliases": [
+        "Lean ground turkey, raw"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "ground_turmeric",
+      "source_label": "Turmeric, ground dry",
+      "source_aliases": [
+        "Ground turmeric"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172231/nutrients"
+    },
+    {
+      "source_profile_key": "guacamole_generic",
+      "source_label": "Guacamole, prepared",
+      "source_aliases": [
+        "Guacamole"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "half_and_half",
+      "source_label": "Half-and-Half",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "ham_lean_cooked",
+      "source_label": "Ham, lean cooked",
+      "source_aliases": [
+        "Lean ham, diced"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "heavy_cream",
+      "source_label": "Heavy Cream",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "hoisin_sauce_unspecified",
+      "source_label": "Hoisin sauce, prepared unspecified",
+      "source_aliases": [
+        "hoisin sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "honey_generic_usda",
+      "source_label": "Honey, pure",
+      "source_aliases": [
+        "Honey",
+        "honey"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/169640"
+    },
+    {
+      "source_profile_key": "hot_sauce_generic",
+      "source_label": "Hot sauce, prepared",
+      "source_aliases": [
+        "Hot sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "hydrolyzed_whey_generic",
+      "source_label": "Hydrolyzed Whey Protein",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "ice_plain",
+      "source_label": "Ice, plain frozen water",
+      "source_aliases": [
+        "Ice"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "instant_coffee_powder_generic",
+      "source_label": "Instant coffee powder, unflavored",
+      "source_aliases": [
+        "Instant espresso or finely powdered instant coffee"
+      ],
+      "source_review_status": "source_record_transcribed_form_limited",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171893/nutrients"
+    },
+    {
+      "source_profile_key": "instant_espresso",
+      "source_label": "Instant Espresso Powder",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "italian_seasoning_blend",
+      "source_label": "Italian seasoning, mixed dried herbs",
+      "source_aliases": [
+        "Italian seasoning"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "jalapeno_pickled_sliced",
+      "source_label": "Pickled jalapeño slices, drained state unspecified",
+      "source_aliases": [
+        "Pickled jalapeño slices"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "jalapeno_raw",
+      "source_label": "Jalapeño pepper, raw",
+      "source_aliases": [
+        "Fresh jalapeño",
+        "Jalapeño",
+        "Jalapeños",
+        "Sliced jalapeño"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/168576"
+    },
+    {
+      "source_profile_key": "kecap_manis_generic",
+      "source_label": "Kecap manis, sweet soy sauce",
+      "source_aliases": [
+        "Kecap manis"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "ketchup_plain",
+      "source_label": "Ketchup, tomato-based",
+      "source_aliases": [
+        "Ketchup"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/168556/nutrients"
+    },
+    {
+      "source_profile_key": "lasagna_noodles_dry",
+      "source_label": "Lasagna noodles, dry uncooked",
+      "source_aliases": [
+        "Dry lasagna noodles"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169736/nutrients"
+    },
+    {
+      "source_profile_key": "lean_beef_whole_cooked",
+      "source_label": "Lean Beef, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "leavening_baking_powder_sodium",
+      "source_label": "Baking powder, double-acting formulation unspecified",
+      "source_aliases": [
+        "Double-acting baking powder"
+      ],
+      "source_review_status": "duplicate_candidate_do_not_use",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "leavening_yeast_active_dry",
+      "source_label": "Yeast, active dry",
+      "source_aliases": [
+        "Active dry yeast",
+        "Dry active yeast"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/175043/nutrients"
+    },
+    {
+      "source_profile_key": "lemon_juice_raw",
+      "source_label": "Fresh lemon juice, raw",
+      "source_aliases": [
+        "Fresh lemon juice",
+        "Lemon juice",
+        "Lemon juice, fresh"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/167747-lemon-juice"
+    },
+    {
+      "source_profile_key": "lemon_whole_raw",
+      "source_label": "Lemon, whole fresh",
+      "source_aliases": [
+        "Lemon",
+        "Lemons"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "lemon_zest_fresh",
+      "source_label": "Lemon zest, fresh yellow rind",
+      "source_aliases": [
+        "Lemon zest"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/167749/nutrients"
+    },
+    {
+      "source_profile_key": "lentils_brown_raw_dry",
+      "source_label": "Brown lentils, dry raw",
+      "source_aliases": [
+        "Brown lentils, dry, rinsed"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172420/nutrients"
+    },
+    {
+      "source_profile_key": "lentils_dry_generic",
+      "source_label": "Lentils, raw dry",
+      "source_aliases": [
+        "Brown or green lentils, dry",
+        "Dry lentils",
+        "Brown or green lentils, dry, rinsed"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172420/nutrients"
+    },
+    {
+      "source_profile_key": "lettuce_raw_unspecified",
+      "source_label": "Lettuce, raw unspecified variety",
+      "source_aliases": [
+        "Lettuce",
+        "Shredded lettuce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "light_cream_cheese",
+      "source_label": "Light Cream Cheese",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "lime_juice_raw",
+      "source_label": "Lime juice, fresh raw",
+      "source_aliases": [
+        "Lime juice",
+        "Fresh lime juice"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/168156"
+    },
+    {
+      "source_profile_key": "lime_whole_raw",
+      "source_label": "Lime, whole fresh",
+      "source_aliases": [
+        "Lime",
+        "Limes",
+        "Lime wedge"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "maltodextrin_dry",
+      "source_label": "Maltodextrin powder, food-grade",
+      "source_aliases": [
+        "Maltodextrin powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mango_frozen_chunks",
+      "source_label": "Mango chunks, frozen without added sugar",
+      "source_aliases": [
+        "Frozen mango chunks"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169910/nutrients"
+    },
+    {
+      "source_profile_key": "maple_sugar_dry",
+      "source_label": "Maple sugar, dry",
+      "source_aliases": [
+        "Maple sugar"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169658/nutrients"
+    },
+    {
+      "source_profile_key": "maple_syrup_pure",
+      "source_label": "Maple syrup, pure",
+      "source_aliases": [
+        "Maple syrup"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169661/nutrients"
+    },
+    {
+      "source_profile_key": "marinara_sauce_generic",
+      "source_label": "Marinara sauce, prepared",
+      "source_aliases": [
+        "Marinara sauce",
+        "Marinara"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "marshmallow_mini",
+      "source_label": "Mini marshmallows, prepared",
+      "source_aliases": [
+        "Mini marshmallows"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mayonnaise_light",
+      "source_label": "Mayonnaise, light / reduced-fat",
+      "source_aliases": [
+        "Light mayonnaise"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mayonnaise_regular",
+      "source_label": "Mayonnaise, regular",
+      "source_aliases": [
+        "Mayonnaise"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171009/nutrients"
+    },
+    {
+      "source_profile_key": "milk_2pct",
+      "source_label": "2% Milk",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "milk_cottage_2pct",
+      "source_label": "Cottage cheese, 2 percent milkfat",
+      "source_aliases": [
+        "2% Cottage cheese"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/328841/nutrients"
+    },
+    {
+      "source_profile_key": "milk_type_unspecified",
+      "source_label": "Milk, type and fat level unspecified",
+      "source_aliases": [
+        "milk of choice"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "milk_unspecified",
+      "source_label": "Milk, fat percentage unspecified",
+      "source_aliases": [
+        "Milk"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "milk_unsweetened_unspecified",
+      "source_label": "Unsweetened milk, type unspecified",
+      "source_aliases": [
+        "unsweetened milk"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mini_marshmallow",
+      "source_label": "Mini Marshmallow",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mint_fresh",
+      "source_label": "Mint leaves, fresh raw",
+      "source_aliases": [
+        "mint, chopped"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/173475/nutrients"
+    },
+    {
+      "source_profile_key": "mirin_sauce",
+      "source_label": "Mirin cooking wine, liquid",
+      "source_aliases": [
+        "Mirin"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mixed_vegetables_frozen",
+      "source_label": "Mixed vegetables, frozen",
+      "source_aliases": [
+        "Frozen mixed vegetables"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170471/nutrients"
+    },
+    {
+      "source_profile_key": "mozzarella_part_skim",
+      "source_label": "Part-Skim Mozzarella",
+      "source_aliases": [
+        "Part-skim mozzarella",
+        "Part-skim mozzarella cheese",
+        "Part-skim mozzarella, shredded"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mozzarella_unspecified",
+      "source_label": "Mozzarella, whole or part-skim unspecified",
+      "source_aliases": [
+        "Grated mozzarella",
+        "Mozzarella",
+        "Shredded mozzarella"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mung_bean_flour_dry",
+      "source_label": "Mung bean flour, dry",
+      "source_aliases": [
+        "mung bean flour"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mushroom_white_raw",
+      "source_label": "White button mushroom, raw",
+      "source_aliases": [
+        "Mushrooms, sliced"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/169251-white-mushrooms"
+    },
+    {
+      "source_profile_key": "mustard_prepared_unspecified",
+      "source_label": "Mustard prepared, type unspecified",
+      "source_aliases": [
+        "Mustard"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "mustard_yellow_prepared",
+      "source_label": "Yellow mustard, prepared",
+      "source_aliases": [
+        "Yellow mustard"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172234/nutrients"
+    },
+    {
+      "source_profile_key": "nonfat_dry_milk",
+      "source_label": "Nonfat Dry Milk",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "nonstick_cooking_spray_generic",
+      "source_label": "Nonstick cooking spray, unidentified oil",
+      "source_aliases": [
+        "Nonstick cooking spray",
+        "Cooking spray"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "noodles_dry_type_unspecified",
+      "source_label": "Noodles, dry type unspecified",
+      "source_aliases": [
+        "dry noodles"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "noodles_rice_dry",
+      "source_label": "Rice noodles, dry",
+      "source_aliases": [
+        "Dry rice noodles",
+        "Rice noodles"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169742/nutrients"
+    },
+    {
+      "source_profile_key": "nutmeg_ground_usda",
+      "source_label": "Nutmeg, ground dry",
+      "source_aliases": [
+        "Ground nutmeg",
+        "Nutmeg"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171326/nutrients"
+    },
+    {
+      "source_profile_key": "nuts_peanuts_roasted",
+      "source_label": "Peanuts, dry roasted",
+      "source_aliases": [
+        "Roasted peanuts, finely chopped"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/173806/nutrients"
+    },
+    {
+      "source_profile_key": "oat_flour_generic",
+      "source_label": "Oat flour, dry",
+      "source_aliases": [
+        "Oat flour"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169741/nutrients"
+    },
+    {
+      "source_profile_key": "oats_quick_dry",
+      "source_label": "Quick-cooking rolled oats, dry",
+      "source_aliases": [
+        "Quick oats"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169705/nutrients"
+    },
+    {
+      "source_profile_key": "oats_rolled_dry",
+      "source_label": "Rolled oats, dry",
+      "source_aliases": [
+        "Old-fashioned rolled oats",
+        "Rolled oats",
+        "old-fashioned oats"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://trysoma.app/nutrition/oats-whole-grain-rolled-old-fashioned-usda-2346396/"
+    },
+    {
+      "source_profile_key": "oil_neutral_unspecified",
+      "source_label": "Neutral cooking oil, unspecified",
+      "source_aliases": [
+        "Neutral oil"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "olive_oil_generic",
+      "source_label": "Olive Oil",
+      "source_aliases": [
+        "Olive oil"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171413/nutrients"
+    },
+    {
+      "source_profile_key": "onion_powder_usda",
+      "source_label": "Onion powder, pure",
+      "source_aliases": [
+        "Onion powder",
+        "onion powder"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/171327"
+    },
+    {
+      "source_profile_key": "onion_raw_generic",
+      "source_label": "Onion, raw",
+      "source_aliases": [
+        "Onion",
+        "Onion, diced",
+        "Onion, sliced",
+        "Yellow onion, chopped",
+        "Yellow onion, diced",
+        "Yellow onion, finely diced",
+        "Yellow onion, sliced",
+        "Yellow onion, thinly sliced",
+        "Yellow onion, wedged",
+        "Onion, chopped",
+        "Onion, finely diced",
+        "Onion, thinly sliced",
+        "Yellow onion",
+        "white onion",
+        "white onion, finely diced",
+        "Yellow onion, finely chopped",
+        "Yellow onion, roughly chopped"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170000/nutrients"
+    },
+    {
+      "source_profile_key": "orange_zest_fresh",
+      "source_label": "Orange zest, freshly grated peel",
+      "source_aliases": [
+        "Orange zest"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169103/nutrients"
+    },
+    {
+      "source_profile_key": "oregano_dried_usda",
+      "source_label": "Oregano, dried",
+      "source_aliases": [
+        "dried oregano",
+        "Dried oregano",
+        "Oregano"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/171328"
+    },
+    {
+      "source_profile_key": "oregano_mexican_dried",
+      "source_label": "Mexican oregano, dried leaves",
+      "source_aliases": [
+        "Dried Mexican oregano"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "oyster_sauce_prepared",
+      "source_label": "Oyster sauce, prepared",
+      "source_aliases": [
+        "Oyster sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "panko_breadcrumbs",
+      "source_label": "Panko breadcrumbs, dry",
+      "source_aliases": [
+        "Panko breadcrumbs"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "paprika_ground_usda",
+      "source_label": "Paprika powder, plain",
+      "source_aliases": [
+        "Paprika",
+        "paprika powder"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/171329"
+    },
+    {
+      "source_profile_key": "parmesan_cheese_generic",
+      "source_label": "Parmesan cheese, generic",
+      "source_aliases": [
+        "Parmesan",
+        "Grated Parmesan",
+        "Finely grated Parmesan",
+        "Parmesan cheese",
+        "Parmesan, finely grated"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170848/nutrients"
+    },
+    {
+      "source_profile_key": "parsley_fresh",
+      "source_label": "Parsley, fresh raw edible leaves",
+      "source_aliases": [
+        "Fresh parsley, finely chopped",
+        "Parsley, chopped",
+        "Fresh parsley, chopped"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170416-parsley"
+    },
+    {
+      "source_profile_key": "parsley_unspecified_form",
+      "source_label": "Parsley, fresh or dried unspecified",
+      "source_aliases": [
+        "Parsley"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "passata_tomato_plain",
+      "source_label": "Tomato passata, plain strained tomatoes",
+      "source_aliases": [
+        "Passata"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pasta_cooked",
+      "source_label": "Pasta, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pasta_dry_standard",
+      "source_label": "Wheat pasta, dry, regular",
+      "source_aliases": [
+        "Dry orzo",
+        "Dry pasta",
+        "Elbow pasta, dry",
+        "Short pasta, dry"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169736/nutrients"
+    },
+    {
+      "source_profile_key": "pasta_rotini_dry",
+      "source_label": "Rotini pasta, dry uncooked",
+      "source_aliases": [
+        "Dry rotini pasta"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169736/nutrients"
+    },
+    {
+      "source_profile_key": "peach_raw_diced",
+      "source_label": "Peach, raw edible flesh diced",
+      "source_aliases": [
+        "peach, finely diced"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169928/nutrients"
+    },
+    {
+      "source_profile_key": "peanut_butter",
+      "source_label": "Creamy Peanut Butter",
+      "source_aliases": [
+        "Peanut butter",
+        "Smooth peanut butter"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "peanut_butter_cups",
+      "source_label": "Peanut Butter Cups",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "peas_carrots_frozen_mix",
+      "source_label": "Peas and carrots, frozen mixture",
+      "source_aliases": [
+        "Frozen peas and carrots"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170425/nutrients"
+    },
+    {
+      "source_profile_key": "peas_frozen",
+      "source_label": "Peas, frozen",
+      "source_aliases": [
+        "Frozen peas",
+        "Peas",
+        "frozen peas, thawed"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170016/nutrients"
+    },
+    {
+      "source_profile_key": "pepper_jack",
+      "source_label": "Pepper Jack",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pepper_red_roasted_unspecified",
+      "source_label": "Red bell pepper, roasted",
+      "source_aliases": [
+        "roasted red pepper"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pepperoni_regular",
+      "source_label": "Pepperoni",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "peri_peri_sauce_unspecified",
+      "source_label": "Peri-peri sauce, prepared brand unspecified",
+      "source_aliases": [
+        "Peri-peri sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "peri_peri_seasoning",
+      "source_label": "Peri-peri seasoning blend, dry",
+      "source_aliases": [
+        "Peri-peri seasoning"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pickles_dill_slices",
+      "source_label": "Dill pickles, drained",
+      "source_aliases": [
+        "Dill pickles"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pico_de_gallo_fresh",
+      "source_label": "Pico de gallo, fresh prepared",
+      "source_aliases": [
+        "Pico de gallo"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pie_dough_refrigerated",
+      "source_label": "Pie crust dough, refrigerated raw",
+      "source_aliases": [
+        "Refrigerated pie dough"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pineapple_chunks_canned_drained",
+      "source_label": "Pineapple chunks, canned in juice drained",
+      "source_aliases": [
+        "Pineapple chunks in juice, drained"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/167767/nutrients"
+    },
+    {
+      "source_profile_key": "pineapple_frozen_chunks",
+      "source_label": "Pineapple chunks, frozen",
+      "source_aliases": [
+        "Frozen pineapple chunks"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169124/nutrients"
+    },
+    {
+      "source_profile_key": "pita_high_protein",
+      "source_label": "Pita, higher-protein",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pita_lower_cal",
+      "source_label": "Pita, lower-calorie",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pita_small_unspecified",
+      "source_label": "Small pita bread, unspecified type",
+      "source_aliases": [
+        "Small pita"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pita_standard",
+      "source_label": "Pita, standard",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pita_whole_grain",
+      "source_label": "Pita, whole-grain",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pizza_sauce_generic",
+      "source_label": "Pizza sauce, prepared",
+      "source_aliases": [
+        "Pizza sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pizza_sauce_thick",
+      "source_label": "Pizza sauce, thick prepared",
+      "source_aliases": [
+        "Thick pizza sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172880/nutrients"
+    },
+    {
+      "source_profile_key": "plain_water",
+      "source_label": "Water",
+      "source_aliases": [
+        "Cold water",
+        "Ice water",
+        "Reserved pasta water",
+        "Warm water",
+        "Water for sealing",
+        "Water, cold",
+        "hot water",
+        "boiling water",
+        "Water for cooking lentils"
+      ],
+      "source_review_status": "known_ingredient_identity",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "popcorn_kernels_raw_dry",
+      "source_label": "Popcorn kernels, dry unpopped",
+      "source_aliases": [
+        "popcorn kernels"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://www.foodsel.com/food/view/snacks-popcorn-unpopped-kernels/details/"
+    },
+    {
+      "source_profile_key": "pork_breakfast_sausage_cooked",
+      "source_label": "Pork Breakfast Sausage, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pork_loin_raw_lean",
+      "source_label": "Pork loin, raw lean",
+      "source_aliases": [
+        "Raw lean pork loin, thinly sliced"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/168230/nutrients"
+    },
+    {
+      "source_profile_key": "pork_loin_roast_boneless_raw",
+      "source_label": "Boneless pork loin roast, raw",
+      "source_aliases": [
+        "boneless pork loin roast"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "pork_tenderloin_cooked",
+      "source_label": "Lean Pork Tenderloin, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "potato_cooked",
+      "source_label": "Potatoes, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "potato_russet_raw",
+      "source_label": "Russet potato, raw",
+      "source_aliases": [
+        "Russet potato, diced",
+        "Russet potatoes, diced",
+        "Russet potatoes, scrubbed",
+        "Russet potato",
+        "russet potatoes, cubed"
+      ],
+      "source_review_status": "source_record_transcribed_form_limited",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170027/nutrients"
+    },
+    {
+      "source_profile_key": "potato_sweet_raw",
+      "source_label": "Sweet potato, raw",
+      "source_aliases": [
+        "Sweet potato",
+        "Sweet potatoes"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/168482/nutrients"
+    },
+    {
+      "source_profile_key": "potato_white_raw_skin_on",
+      "source_label": "White potato, raw with skin",
+      "source_aliases": [],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170028-white-potatoes"
+    },
+    {
+      "source_profile_key": "potato_yukon_gold_raw",
+      "source_label": "Yukon Gold potatoes, raw",
+      "source_aliases": [
+        "Yukon Gold potatoes, chunked"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170026/nutrients"
+    },
+    {
+      "source_profile_key": "potatoes_form_unspecified",
+      "source_label": "Potatoes, variety and state unspecified",
+      "source_aliases": [
+        "Potatoes, small dice",
+        "Potatoes, diced"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "powdered_peanut_butter",
+      "source_label": "Powdered Peanut Butter",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "protein_milk_ff",
+      "source_label": "Ultra-Filtered Fat-Free Protein Milk",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "protein_powder_unspecified",
+      "source_label": "Protein powder, unspecified type",
+      "source_aliases": [
+        "Protein powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "provolone",
+      "source_label": "Provolone",
+      "source_aliases": [
+        "Provolone cheese"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170850/nutrients"
+    },
+    {
+      "source_profile_key": "radish_raw",
+      "source_label": "Radishes, raw edible root",
+      "source_aliases": [
+        "radish, sliced"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169276/nutrients"
+    },
+    {
+      "source_profile_key": "raisins_dried",
+      "source_label": "Raisins, dried",
+      "source_aliases": [
+        "Raisins"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/168165/nutrients"
+    },
+    {
+      "source_profile_key": "ranch_seasoning_mix",
+      "source_label": "Ranch seasoning, dry",
+      "source_aliases": [
+        "Ranch seasoning"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "red_bean_paste_sweet",
+      "source_label": "Sweet red bean paste, prepared",
+      "source_aliases": [
+        "sweet red bean paste"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "red_onion_raw",
+      "source_label": "Red onion, raw edible portion",
+      "source_aliases": [
+        "Red onion",
+        "Red onion, diced",
+        "Red onion, thinly sliced"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/790577/nutrients"
+    },
+    {
+      "source_profile_key": "red_wine_vinegar_plain",
+      "source_label": "Red wine vinegar, plain",
+      "source_aliases": [
+        "Red wine vinegar"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://nutritionfactlabel.com/nutrition-database/red-wine-vinegar/"
+    },
+    {
+      "source_profile_key": "rice_basmati_brown_unspecified",
+      "source_label": "Brown basmati rice, preparation unspecified",
+      "source_aliases": [
+        "Brown basmati rice"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "rice_brown_dry",
+      "source_label": "Brown rice, dry uncooked",
+      "source_aliases": [
+        "Dry brown rice"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169703/nutrients"
+    },
+    {
+      "source_profile_key": "rice_jasmine_cooked",
+      "source_label": "Jasmine rice, cooked",
+      "source_aliases": [
+        "Cooked jasmine rice"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169757/nutrients"
+    },
+    {
+      "source_profile_key": "rice_vinegar_plain",
+      "source_label": "Rice vinegar, unseasoned",
+      "source_aliases": [
+        "Rice vinegar"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "rice_white_cooked",
+      "source_label": "White Rice, cooked",
+      "source_aliases": [
+        "Cooked white rice",
+        "Cooked white rice, chilled",
+        "cold cooked white rice",
+        "cooked chilled white rice"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "rice_white_long_grain_raw_dry",
+      "source_label": "White rice, long grain, dry unenriched",
+      "source_aliases": [
+        "Dry white rice",
+        "long-grain white rice, dry"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/169756-unenriched-raw-long-grain-white-rice"
+    },
+    {
+      "source_profile_key": "ricotta_part_skim",
+      "source_label": "Ricotta cheese, part-skim",
+      "source_aliases": [
+        "Part-skim ricotta"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171248/nutrients"
+    },
+    {
+      "source_profile_key": "romaine_lettuce_raw",
+      "source_label": "Romaine lettuce, raw",
+      "source_aliases": [
+        "Romaine lettuce",
+        "Romaine lettuce, shredded"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/169247-romaine-lettuce"
+    },
+    {
+      "source_profile_key": "salad_dressing_ranch_light",
+      "source_label": "Ranch dressing, prepared light",
+      "source_aliases": [
+        "Prepared light ranch dressing"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "salsa_generic",
+      "source_label": "Salsa, prepared unspecified",
+      "source_aliases": [
+        "Salsa"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "salsa_verde_unspecified",
+      "source_label": "Salsa verde, prepared unspecified",
+      "source_aliases": [
+        "salsa verde"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "salt_sea_flaky",
+      "source_label": "Flaky sea salt, dry",
+      "source_aliases": [
+        "flaky sea salt"
+      ],
+      "source_review_status": "source_record_transcribed_generic_consensus",
+      "source_fdc_id": null,
+      "source_url": "https://www.myfoodanalysis.com/food/maldon-sea-salt-flakes-492336"
+    },
+    {
+      "source_profile_key": "sandwich_cookie",
+      "source_label": "Chocolate Sandwich Cookie",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sausage_italian_raw_unspecified",
+      "source_label": "Italian sausage, raw unspecified casing",
+      "source_aliases": [
+        "raw Italian sausage, casings removed",
+        "raw Italian sausage links"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "scallion_green_onion_raw",
+      "source_label": "Green onion/scallion, raw",
+      "source_aliases": [
+        "Green onion, sliced",
+        "Green onions",
+        "Green onions, sliced",
+        "Scallions",
+        "Scallions, sliced",
+        "Scallions, thinly sliced",
+        "Green onion, optional",
+        "Green onions, optional"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170005/nutrients"
+    },
+    {
+      "source_profile_key": "seasoned_salt_blend",
+      "source_label": "Seasoned salt, blend",
+      "source_aliases": [
+        "Seasoned salt"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sesame_oil_toasted",
+      "source_label": "Sesame oil, toasted",
+      "source_aliases": [
+        "Sesame oil",
+        "Toasted sesame oil"
+      ],
+      "source_review_status": "reference_proxy_conditional_unverified_toasted_form",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171016/nutrients"
+    },
+    {
+      "source_profile_key": "sesame_seeds_generic",
+      "source_label": "Sesame seeds, whole dry",
+      "source_aliases": [
+        "Sesame seeds"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170150-dried-sesame-seeds"
+    },
+    {
+      "source_profile_key": "shrimp_raw_peeled_deveined",
+      "source_label": "Shrimp, raw peeled deveined",
+      "source_aliases": [
+        "raw peeled deveined shrimp"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/175179/nutrients"
+    },
+    {
+      "source_profile_key": "skim_milk",
+      "source_label": "Skim Milk",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "smoke_liquid_unspecified",
+      "source_label": "Liquid smoke flavoring, unspecified",
+      "source_aliases": [
+        "liquid smoke"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "smoked_paprika_generic",
+      "source_label": "Smoked paprika, dry ground",
+      "source_aliases": [
+        "Smoked paprika"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171329/nutrients"
+    },
+    {
+      "source_profile_key": "sodium_citrate_food",
+      "source_label": "Sodium citrate, food-grade",
+      "source_aliases": [
+        "Sodium citrate"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "soy_sauce_reduced_sodium",
+      "source_label": "Reduced-sodium soy sauce",
+      "source_aliases": [
+        "Low-sodium soy sauce",
+        "Reduced-sodium soy sauce"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172473/nutrients"
+    },
+    {
+      "source_profile_key": "soy_sauce_regular_generic",
+      "source_label": "Soy sauce, regular sodium",
+      "source_aliases": [
+        "Soy sauce"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/174277/nutrients"
+    },
+    {
+      "source_profile_key": "spinach_raw",
+      "source_label": "Spinach, raw leaves",
+      "source_aliases": [
+        "Baby spinach",
+        "Fresh spinach",
+        "baby spinach, chopped"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/168462-spinach"
+    },
+    {
+      "source_profile_key": "spinach_unspecified_form",
+      "source_label": "Spinach, fresh or frozen unspecified",
+      "source_aliases": [
+        "Spinach"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sprinkles_rainbow_unspecified",
+      "source_label": "Rainbow confectionery sprinkles, brand unspecified",
+      "source_aliases": [
+        "rainbow sprinkles"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "strawberries",
+      "source_label": "Strawberries",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sugar",
+      "source_label": "Granulated Sugar",
+      "source_aliases": [
+        "Sugar"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sugarfree_pudding_cheesecake",
+      "source_label": "Sugar-free cheesecake pudding mix, dry",
+      "source_aliases": [
+        "Sugar-free cheesecake pudding mix"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sumac_ground_dry",
+      "source_label": "Sumac spice, ground dry",
+      "source_aliases": [
+        "sumac"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sweet_chili_sauce",
+      "source_label": "Sweet chili sauce, prepared",
+      "source_aliases": [
+        "Sweet chili sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sweetener_generic_unspecified",
+      "source_label": "Sweetener, unspecified",
+      "source_aliases": [
+        "Sweetener"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sweetener_powdered_unspecified",
+      "source_label": "Powdered sweetener, product unspecified",
+      "source_aliases": [
+        "powdered sweetener"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "sweetener_zero_powdered",
+      "source_label": "Powdered zero-calorie labeled sweetener, unspecified",
+      "source_aliases": [
+        "powdered zero-calorie sweetener"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "swiss_cheese",
+      "source_label": "Swiss-style cheese",
+      "source_aliases": [
+        "Swiss cheese"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171251/nutrients"
+    },
+    {
+      "source_profile_key": "table_salt",
+      "source_label": "Salt",
+      "source_aliases": [
+        "fine salt",
+        "Fine sea salt",
+        "Kosher salt",
+        "salt, for chicken and gravy",
+        "salt, for dumplings",
+        "salt for sauce",
+        "salt, for sauce"
+      ],
+      "source_review_status": "known_ingredient_identity",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "taco_seasoning_blend",
+      "source_label": "Taco seasoning, spice blend",
+      "source_aliases": [
+        "Taco seasoning"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tahini_sesame_paste",
+      "source_label": "Tahini, sesame seed paste",
+      "source_aliases": [
+        "Tahini"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170189/nutrients"
+    },
+    {
+      "source_profile_key": "tofu_extra_firm_drained",
+      "source_label": "Tofu, extra firm, drained",
+      "source_aliases": [
+        "Extra-firm tofu, drained and cubed"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tomato_paste_canned_unsalted",
+      "source_label": "Tomato paste, canned unsalted",
+      "source_aliases": [
+        "Tomato paste"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/2685580/nutrients"
+    },
+    {
+      "source_profile_key": "tomato_red_raw_generic",
+      "source_label": "Tomato, red ripe raw",
+      "source_aliases": [
+        "fresh ripe tomato",
+        "Tomato",
+        "Tomato, chopped",
+        "Tomato, diced",
+        "Tomatoes",
+        "diced tomato",
+        "ripe tomatoes"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/170457"
+    },
+    {
+      "source_profile_key": "tomato_sauce_canned_generic",
+      "source_label": "Tomato sauce, canned unseasoned",
+      "source_aliases": [
+        "Tomato sauce"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/169074/nutrients"
+    },
+    {
+      "source_profile_key": "tomatoes_crushed_canned",
+      "source_label": "Crushed tomatoes, canned",
+      "source_aliases": [
+        "Crushed tomatoes",
+        "Canned crushed tomatoes"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/2685581/nutrients"
+    },
+    {
+      "source_profile_key": "tomatoes_diced_unspecified",
+      "source_label": "Diced tomatoes, fresh or canned unspecified",
+      "source_aliases": [
+        "Chopped tomatoes",
+        "Diced tomatoes",
+        "Diced tomatoes, drained"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tortilla_flour_10in_generic_estimate",
+      "source_label": "Flour tortilla, representative 10-inch (estimate)",
+      "source_aliases": [
+        "10-inch flour tortilla",
+        "Large flour tortilla (about 10-inch)"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tortilla_flour_standard",
+      "source_label": "Flour Tortilla, standard",
+      "source_aliases": [
+        "Flour tortilla",
+        "Medium flour tortilla"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tortilla_flour_ten_inch",
+      "source_label": "Flour tortilla, ten-inch, unverified brand",
+      "source_aliases": [],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tortilla_high_protein",
+      "source_label": "Higher-Protein Tortilla",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tortilla_lower_cal",
+      "source_label": "Lower-Calorie Tortilla",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tortilla_type_unspecified",
+      "source_label": "Tortilla, wheat or corn unspecified",
+      "source_aliases": [
+        "tortilla"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tortilla_whole_grain",
+      "source_label": "Whole-Grain Tortilla",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tuna_canned_water_drained",
+      "source_label": "Tuna, canned in water drained",
+      "source_aliases": [
+        "Tuna in water, drained"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/173709/nutrients"
+    },
+    {
+      "source_profile_key": "turkey_93_cooked",
+      "source_label": "93% Lean Ground Turkey, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "turkey_bacon_cooked",
+      "source_label": "Turkey bacon, cooked crisp",
+      "source_aliases": [
+        "Turkey bacon, cooked crisp and chopped",
+        "Fully cooked turkey bacon"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "turkey_breakfast_sausage_cooked",
+      "source_label": "Turkey Breakfast Sausage, cooked",
+      "source_aliases": [
+        "Fully cooked turkey breakfast sausage"
+      ],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "turkey_breast_cooked",
+      "source_label": "Turkey Breast, cooked",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "turkey_breast_raw_meat_only",
+      "source_label": "Turkey breast, raw boneless skinless meat",
+      "source_aliases": [
+        "Boneless skinless turkey breast, raw"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/171098-turkey-whole-breast-meat-only"
+    },
+    {
+      "source_profile_key": "turkey_deli_sliced_unspecified",
+      "source_label": "Deli turkey meat, prepared unspecified",
+      "source_aliases": [
+        "deli turkey"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "turkey_pepperoni",
+      "source_label": "Turkey Pepperoni",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "turkey_sausage_breakfast_cooked_crumble",
+      "source_label": "Turkey breakfast sausage, cooked crumbled",
+      "source_aliases": [
+        "Cooked turkey breakfast sausage, crumbled"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "turkey_smoked_sausage_cooked",
+      "source_label": "Turkey smoked sausage, fully cooked",
+      "source_aliases": [
+        "Fully cooked turkey smoked sausage",
+        "Fully cooked turkey smoked sausage, sliced"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "turmeric_unspecified",
+      "source_label": "Turmeric, raw or ground unspecified",
+      "source_aliases": [
+        "Turmeric"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "tzatziki_light_prepared",
+      "source_label": "Light tzatziki-style sauce, unspecified",
+      "source_aliases": [
+        "light tzatziki-style sauce"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "vanilla_extract_pure",
+      "source_label": "Vanilla extract, pure",
+      "source_aliases": [
+        "Vanilla extract"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/173471"
+    },
+    {
+      "source_profile_key": "vanilla_flavor_oil_based",
+      "source_label": "Oil-based vanilla flavoring",
+      "source_aliases": [
+        "oil-based vanilla flavoring"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "vanilla_powder",
+      "source_label": "Vanilla bean powder, unspecified type",
+      "source_aliases": [
+        "Vanilla powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "vanilla_protein_powder_unspecified",
+      "source_label": "Vanilla flavored protein powder, unspecified",
+      "source_aliases": [
+        "Vanilla protein powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "vanilla_unspecified_form",
+      "source_label": "Vanilla, unspecified form",
+      "source_aliases": [
+        "Vanilla"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "vegetable_broth_generic",
+      "source_label": "Vegetable broth, prepared",
+      "source_aliases": [
+        "Vegetable broth",
+        "Vegetable stock"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "vegetable_oil_generic",
+      "source_label": "Vegetable oil, blend unspecified",
+      "source_aliases": [
+        "Vegetable oil"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "vegetable_shortening",
+      "source_label": "Vegetable shortening",
+      "source_aliases": [
+        "Vegetable shortening"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/173584/nutrients"
+    },
+    {
+      "source_profile_key": "vinegar_type_unspecified",
+      "source_label": "Vinegar, type unspecified",
+      "source_aliases": [
+        "Vinegar"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "walnuts_unspecified_form",
+      "source_label": "Walnuts, edible nut meat unspecified preparation",
+      "source_aliases": [
+        "walnuts"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170187/nutrients"
+    },
+    {
+      "source_profile_key": "wheat_biscuit_weetabix_unspecified",
+      "source_label": "Weetabix cereal biscuit, package unspecified",
+      "source_aliases": [
+        "Weetabix"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "whey_protein_hydrolyzed",
+      "source_label": "Hydrolyzed whey protein powder, unspecified",
+      "source_aliases": [
+        "Hydrolyzed whey protein powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "whey_protein_hydrolyzed_vanilla",
+      "source_label": "Vanilla hydrolyzed whey protein powder, brand unspecified",
+      "source_aliases": [
+        "Vanilla hydrolyzed whey protein powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "whey_protein_vanilla_generic",
+      "source_label": "Vanilla whey protein powder, brand unspecified",
+      "source_aliases": [
+        "vanilla whey protein powder"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "white_chocolate_reduced_sugar",
+      "source_label": "White chocolate, reduced sugar",
+      "source_aliases": [
+        "reduced-sugar white chocolate"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "white_pepper_ground",
+      "source_label": "White pepper, ground",
+      "source_aliases": [
+        "White pepper"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170933/nutrients"
+    },
+    {
+      "source_profile_key": "white_vinegar_distilled",
+      "source_label": "Distilled white vinegar",
+      "source_aliases": [
+        "White vinegar",
+        "white distilled vinegar"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/172237/nutrients"
+    },
+    {
+      "source_profile_key": "whole_milk",
+      "source_label": "Whole Milk",
+      "source_aliases": [],
+      "source_review_status": null,
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "wonton_sheets_baked",
+      "source_label": "Wonton wrappers, baked",
+      "source_aliases": [
+        "baked wonton sheets"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "wonton_strips_crisp",
+      "source_label": "Wonton strips, crispy prepared",
+      "source_aliases": [
+        "crisp wonton strips"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "worcestershire_sauce",
+      "source_label": "Worcestershire sauce, generic",
+      "source_aliases": [
+        "Worcestershire sauce"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/171610/nutrients"
+    },
+    {
+      "source_profile_key": "xanthan_gum_food",
+      "source_label": "Xanthan gum, food-grade",
+      "source_aliases": [
+        "Xanthan gum"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "yeast_instant_dry",
+      "source_label": "Instant yeast, dry",
+      "source_aliases": [
+        "Instant yeast"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/175043/nutrients"
+    },
+    {
+      "source_profile_key": "yeast_nutritional_dry",
+      "source_label": "Nutritional yeast flakes",
+      "source_aliases": [
+        "Nutritional yeast"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "yogurt_greek_nonfat",
+      "source_label": "Greek yogurt, plain nonfat",
+      "source_aliases": [
+        "0% Greek yogurt",
+        "Nonfat Greek yogurt",
+        "Fat-free Greek yogurt",
+        "Plain nonfat Greek yogurt"
+      ],
+      "source_review_status": "source_record_transcribed_form_limited",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170894/nutrients"
+    },
+    {
+      "source_profile_key": "yogurt_plain_lowfat",
+      "source_label": "Yogurt, plain low-fat",
+      "source_aliases": [
+        "Plain low-fat yogurt"
+      ],
+      "source_review_status": "provisional_source_reference_not_final_verified",
+      "source_fdc_id": null,
+      "source_url": "https://fdc.nal.usda.gov/food-details/170886/nutrients"
+    },
+    {
+      "source_profile_key": "zero_cal_granular_sweetener",
+      "source_label": "Granulated sweetener, zero-calorie label",
+      "source_aliases": [
+        "Granulated zero-calorie sweetener"
+      ],
+      "source_review_status": "identity_only_not_calculation_ready",
+      "source_fdc_id": null,
+      "source_url": null
+    },
+    {
+      "source_profile_key": "zucchini_raw_with_skin",
+      "source_label": "Zucchini, raw with skin",
+      "source_aliases": [
+        "Zucchini, chopped",
+        "Zucchini, diced",
+        "Zucchini, sliced into half-moons"
+      ],
+      "source_review_status": "source_record_transcribed",
+      "source_fdc_id": null,
+      "source_url": "https://whatyoueat.io/foods/169291-zucchini-squash"
+    }
+  ]
+}
