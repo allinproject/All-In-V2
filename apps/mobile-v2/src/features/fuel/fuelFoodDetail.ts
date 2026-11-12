@@ -1,6 +1,7 @@
 import {foodDayForToday,type CanonicalFuelFoodDay,type FuelOwnerFoodRow} from './fuelOwnerFoodRead.ts';
 import type {ManualFoodReplacement} from './fuelOwnerFoodWrite.ts';
 import {validAthleteLocalDate} from '../training/manualActivityDraft.ts';
+import {secureFoodEntropy} from './fuelSecureEntropy.ts';
 
 /** Extended canonical read model for writing complete replacements.
  * V2 never edits from the four-field Today preview.
@@ -91,7 +92,7 @@ export function prepareFoodReplacement(input:FoodFormInput):ManualFoodReplacemen
  * Fail closed if device entropy is unavailable; Math.random is never used.
  */
 export function newFoodActionId(
- entropy:Pick<Crypto,'getRandomValues'>|null=globalThis.crypto??null,
+ entropy:Pick<Crypto,'getRandomValues'>|null=secureFoodEntropy(),
 ):string|null{
  const crypt=entropy;
  if(!crypt||typeof crypt.getRandomValues!=='function')return null;
