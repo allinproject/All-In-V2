@@ -17,7 +17,7 @@ CREATE TABLE public.v2_coach_threads (
 
 CREATE TABLE public.v2_coach_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   thread_id uuid NOT NULL,
   role text NOT NULL CHECK (role IN ('user', 'assistant')),
   content text NOT NULL CHECK (
