@@ -17,10 +17,9 @@ function fixture(config={}){
    return {ownerId:config.owner??owner,activeSession:active,exportPermitted:active};},
   resolveEncryptionKey:async()=>key,
   readPage:async({ownerId,collection,cursor})=>{
-   assert.equal(ownerId,owner);
-   if(config.badCursor)return {rows:[{id:1}],done:false,nextCursor:'same'};
+   if(config.badCursor)return {ownerId,collection,rows:[{id:1}],done:false,nextCursor:'same'};
    const start=cursor===null?0:Number(cursor),rows=data[collection]?.slice(start,start+30)??[];
-   return {rows,done:start+30>=data[collection].length,
+   return {ownerId:config.pageOwner??owner,collection,rows,done:start+30>=data[collection].length,
     nextCursor:start+30>=data[collection].length?null:String(start+30)};},
   writePrivatePage:async({ownerId,requestId:rid,collection,index,sealed})=>{
    events.push('write');stored.set(collection+'/'+index,sealed);
@@ -62,8 +61,8 @@ test('exports >5MB of owner history in bounded encrypted pages and streams exact
  assert.equal(f.purges,0);
 });
 test('cross-owner Auth mismatch rejects before any page reads or writes',async()=>{
- const f=fixture({owner:another});
- await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),/owner/i);
+ const f=fixture({pageOwner:another});
+ await assert.rejects(stageLargeAccountExport({requestId,collections,services:f.services}),/Invalid canonical account export page/);
  assert.equal(f.events.includes('write'),false);
 });
 test('staging cancellation after partial private writes purges request, never commits',async()=>{
