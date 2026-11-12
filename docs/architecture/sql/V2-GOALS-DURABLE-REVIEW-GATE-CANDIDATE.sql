@@ -65,7 +65,7 @@ DECLARE
 BEGIN
  SELECT pg_catalog.jsonb_build_object(
    'goalId',g.id,'ownerId',g.user_id,'goalKind',g.goal_kind,
-   'title',g.title,'description',g.description,'goalVersion',g.version,
+   'title',g.title,'description',g.description,'goalStatus',g.status,'goalVersion',g.version,
    'revisionId',r.id,'revisionNumber',r.revision_number,
    'sourceKind',r.source_kind,'priorityRole',r.priority_role,
    'priorityOrder',r.priority_order,'startDate',r.start_date,
