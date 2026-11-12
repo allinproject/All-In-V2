@@ -69,6 +69,16 @@ BEGIN
    RAISE EXCEPTION 'Accepted calendar requires explicit start/end/timezone'
      USING ERRCODE='22023';
  END IF;
+ -- A matching arbitrary string is not a usable timezone. Accept only
+ -- database-recognized named zones; do not silently normalize a typo or
+ -- reinterpret an existing athlete-local day using the server timezone.
+ IF NOT EXISTS(
+   SELECT 1 FROM pg_catalog.pg_timezone_names tz
+   WHERE tz.name=v_revision.calendar_timezone
+ ) THEN
+   RAISE EXCEPTION 'Calendar timezone is not a recognized named zone'
+     USING ERRCODE='22023';
+ END IF;
  -- A calendar revision may consist of explicitly planned rest/unavailable days,
  -- but it cannot be an empty AI-generated shell.
  IF NOT EXISTS(SELECT 1 FROM public.v2_training_revision_days
