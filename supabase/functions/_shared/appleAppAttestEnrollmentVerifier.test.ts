@@ -1,6 +1,6 @@
 // ALL-243 certificate inspection negative cases. No synthetic root can pass:
  // an Apple-signed chain is mandatory and no receipt trust writer exists.
-import {inspectAppleAppAttestation,appAttestChallengeData,APPLE_ROOT_SHA256,inspectAppAttestCredentialPayload}
+import {inspectAppleAppAttestation,appAttestChallengeData,APPLE_ROOT_SHA256,inspectAppAttestCredentialPayload,matchesAppleAppAttestEnvironmentGuid}
  from './appleAppAttestEnrollmentVerifier.ts';
 import {encode} from 'npm:cbor-x@1.6.0';
 import assert from 'node:assert/strict';
@@ -88,4 +88,20 @@ Deno.test('App Attest COSE credential and iOS 27 launch metadata are independent
  }
  assert.throws(()=>inspectAppAttestCredentialPayload(raw(modern,encode(1)),point),
   /CBOR/);
+});
+
+Deno.test('App Attest AAGUID never crosses Apple sandbox/production boundary',()=>{
+ const sandboxMarkers=['appattestsandbox','appattestdevelop'].map(
+  text=>Buffer.from(text));
+ const production=Buffer.concat([Buffer.from('appattest'),Buffer.alloc(7)]);
+ for(const marker of sandboxMarkers){
+  assert.equal(matchesAppleAppAttestEnvironmentGuid(marker,'sandbox'),true);
+  assert.equal(matchesAppleAppAttestEnvironmentGuid(marker,'production'),false);
+ }
+ assert.equal(matchesAppleAppAttestEnvironmentGuid(production,'production'),true);
+ assert.equal(matchesAppleAppAttestEnvironmentGuid(production,'sandbox'),false);
+ for(const invalid of [Buffer.alloc(16),Buffer.from('appattest'),Buffer.alloc(17)]){
+  assert.equal(matchesAppleAppAttestEnvironmentGuid(invalid,'production'),false);
+  assert.equal(matchesAppleAppAttestEnvironmentGuid(invalid,'sandbox'),false);
+ }
 });
