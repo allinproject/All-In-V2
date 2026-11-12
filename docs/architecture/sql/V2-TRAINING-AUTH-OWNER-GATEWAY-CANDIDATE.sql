@@ -35,7 +35,8 @@ BEGIN
    RAISE EXCEPTION 'Invalid authenticated session identifier' USING ERRCODE='42501';
  END;
  IF NOT EXISTS (SELECT 1 FROM auth.sessions s
-    WHERE s.id=v_session_id AND s.user_id=v_uid) THEN
+    WHERE s.id=v_session_id AND s.user_id=v_uid
+      AND (s.not_after IS NULL OR s.not_after>pg_catalog.clock_timestamp())) THEN
    RAISE EXCEPTION 'Authenticated session expired or revoked' USING ERRCODE='42501';
  END IF;
  IF p_expected_version IS NULL OR p_expected_version<0 THEN
