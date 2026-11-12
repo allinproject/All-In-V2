@@ -171,6 +171,13 @@ def main():
             replay = client(winner, cmd(1, "needs_review", winner_key, winner))
             require(replay.returncode == 0 and "replayed" in replay.stdout,
                     "same actor/key replay did not work")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                same_key_calls = [pool.submit(client,winner,cmd(1,"needs_review",winner_key,winner))
+                                  for _ in range(2)]
+                duplicate_attempts=[f.result(timeout=15) for f in same_key_calls]
+            require(all(r.returncode==0 and "replayed" in r.stdout
+                        for r in duplicate_attempts),
+                    "independent same-key sessions did not replay exactly")
 
             # Source-lock race: hold a source row locked while reviewer is about
             # to check its digest, then commit a new digest before review resumes.
@@ -212,16 +219,79 @@ def main():
                         "energy attestation failed for "+str(food["fdcId"])+": "+result.stderr[:300])
                 attested += 1
             require(attested == 8, "not all source energy records attested")
+            selected = admin("SELECT selected_fdc_nutrient_id||':'||count(*) FROM "
+                             "allin_private.v2_ingredient_energy_attestations "
+                             "GROUP BY selected_fdc_nutrient_id ORDER BY selected_fdc_nutrient_id").stdout.strip().splitlines()
+            require(selected==["1008:2","2048:6"],
+                    "USDA legacy/specific selection changed: "+repr(selected))
             require(admin("SELECT count(*) FROM allin_private.v2_ingredient_energy_attestations").stdout.strip() == "8",
                     "expected eight immutable attestations")
             require(admin("SELECT count(*) FROM public.v2_ingredient_nutrition_profiles WHERE review_status='calculation_ready'").stdout.strip()=="0",
                     "attestation incorrectly published profile")
+            # Explicit 2047-only source evidence cannot be used as a kcal
+            # fallback even if the normalized profile contains numerical kcal.
+            extra_identity, extra_profile, extra_source = uuid(1, 9),uuid(2, 9),uuid(3, 9)
+            extra_digest='e'*64
+            admin("INSERT INTO public.v2_ingredients(id,canonical_key,canonical_name,normalized_name,identity_kind,status) "
+                  f"VALUES({lit(extra_identity)},'general_only_test','General-only staging','general only staging','generic_food','active')")
+            admin("INSERT INTO public.v2_ingredient_nutrition_profiles("
+                  "id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,"
+                  "coverage_status,review_status,source_quality,profile_revision,required_nutrient_set_version,is_default)"
+                  f" VALUES({lit(extra_profile)},{lit(extra_identity)},'raw','g',100,'100 g',"
+                  "'launch_core_complete','reviewed','foundation',3,'cookbook-launch-macros-v1',false)")
+            admin("INSERT INTO public.v2_ingredient_source_records(id,ingredient_id,provider,source_data_type,"
+                  "external_record_id,source_description,source_quality,source_license,mapping_status,payload_sha256)"
+                  f" VALUES({lit(extra_source)},{lit(extra_identity)},'usda_fdc','Foundation','999999',"
+                  f"'isolated general-only fixture','foundation','CC0','mapped',{lit(extra_digest)})")
+            admin("INSERT INTO public.v2_ingredient_profile_sources(profile_id,source_record_id,evidence_role)"
+                  f" VALUES({lit(extra_profile)},{lit(extra_source)},'primary')")
+            for nutrient_code,amount in [("energy_kcal",200),("protein_g",10),("carbohydrate_g",30),("total_fat_g",4)]:
+                admin("INSERT INTO public.v2_ingredient_profile_nutrients(profile_id,nutrient_code,amount)"
+                      f" VALUES({lit(extra_profile)},{lit(nutrient_code)},{amount})")
+            admin("INSERT INTO allin_private.v2_ingredient_source_energy_evidence("
+                  "source_record_id,source_payload_sha256,archive_sha256,fdc_nutrient_id,"
+                  "energy_kcal,source_review_reference) VALUES("
+                  f"{lit(extra_source)},{lit(extra_digest)},{lit(SOURCE_SHA)},2047,200,"
+                  "'ALL-225 staging general-only negative')")
+            forbidden_energy = client(actors[0],
+                   "SELECT allin_private.v2_attest_ingredient_energy("
+                   f"{lit(extra_profile)},3,{lit(extra_digest)},"
+                   "'No eligible specific or legacy source energy')")
+            require(forbidden_energy.returncode!=0 and
+                    "2047 alone is insufficient" in forbidden_energy.stderr,
+                    "general-only energy was accepted")
+            # Reviewer expiration is checked at transaction entry and
+            # disabling a credential immediately blocks subsequent requests.
+            admin("UPDATE allin_private.v2_ingredient_review_operators "
+                  "SET credential_expires_at=now()-interval '1 second' "
+                  f"WHERE login_role={lit(actors[0])}")
+            expired=client(actors[0],
+               "SELECT allin_private.v2_attest_ingredient_energy("
+               f"{lit(rows[0][0])},3,{lit(rows[0][2])},"
+               "'Credential expiry should deny this request')")
+            require(expired.returncode!=0 and "unauthorized" in expired.stderr,
+                    "expired credential was permitted")
+            admin("UPDATE allin_private.v2_ingredient_review_operators "
+                  "SET credential_expires_at=now()+interval '1 day' "
+                  f"WHERE login_role={lit(actors[0])}")
+            admin("UPDATE allin_private.v2_ingredient_review_operators "
+                  "SET enabled=false,revoked_at=clock_timestamp() "
+                  f"WHERE login_role={lit(actors[0])}")
+            revoked=client(actors[0],
+               "SELECT allin_private.v2_attest_ingredient_energy("
+               f"{lit(rows[0][0])},3,{lit(rows[0][2])},"
+               "'Revoked credentials should deny this request')")
+            require(revoked.returncode!=0 and "unauthorized" in revoked.stderr,
+                    "revoked credential was permitted")
+            require(int(admin("SELECT count(*) FROM allin_private.v2_ingredient_operator_credential_events").stdout.strip())>=4,
+                    "credential lifecycle changes were not audited")
             print(json.dumps({"database":"ephemeral localhost native PostgreSQL 15",
                               "fixtureFoods":len(rows),"independentConnections":2,
                               "competingCAS":"one-success-one-stale",
                               "sourceMutationRace":"blocked-until-commit-and-rejected",
-                              "idempotentReplay":"passed","audits":2,
-                              "energyAttestations":attested,"calculationReady":0,
+                              "idempotentReplay":"passed","auditEvents":2,
+                              "energyAttestations":attested,"generalOnlyEnergy":"rejected",
+                              "expiredAndRevokedCredentials":"denied","calculationReady":0,
                               "externalSupabaseTouched":False},sort_keys=True))
         except Exception:
             raise
