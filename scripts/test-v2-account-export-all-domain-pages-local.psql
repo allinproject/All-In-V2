@@ -50,6 +50,29 @@ SELECT pg_catalog.gen_random_uuid(),
  'running','manual_entry','2026-11-12','America/Chicago','manual_only','completed'
 FROM pg_catalog.generate_series(1,31);
 
+-- owner_id Billing + join-only provider events are personal history.
+INSERT INTO allin_private.v2_subscription_checkout_attempts
+ (attempt_id,owner_id,provider,environment,provider_checkout_id,provider_subscription_id,offer_kind,state,verified_at)
+VALUES
+ ('d9111111-9111-4111-8111-911111111111','91111111-9111-4111-8111-911111111111',
+ 'app_store','sandbox','private-checkout-A','private-subscription-A','trial','server_confirmed',now()),
+ ('d9222222-9222-4222-8222-922222222222','92222222-9222-4222-8222-922222222222',
+ 'google_play','sandbox','private-checkout-B','private-subscription-B','trial','server_confirmed',now());
+INSERT INTO allin_private.v2_subscription_purchases
+ (id,owner_id,checkout_attempt_id,provider,environment,provider_subscription_id,revision,phase,access_until)
+VALUES
+ ('e9111111-9111-4111-8111-911111111111','91111111-9111-4111-8111-911111111111',
+ 'd9111111-9111-4111-8111-911111111111','app_store','sandbox','private-subscription-A',
+ 1,'trial',now()+interval '7 days'),
+ ('e9222222-9222-4222-8222-922222222222','92222222-9222-4222-8222-922222222222',
+ 'd9222222-9222-4222-8222-922222222222','google_play','sandbox','private-subscription-B',
+ 1,'trial',now()+interval '7 days');
+INSERT INTO allin_private.v2_subscription_verified_events
+ (purchase_id,provider,environment,provider_event_id,revision)
+VALUES
+ ('e9111111-9111-4111-8111-911111111111','app_store','sandbox','private-event-A',1),
+ ('e9222222-9222-4222-8222-922222222222','google_play','sandbox','private-event-B',1);
+
 INSERT INTO public.v2_events(id,name,sport,event_kind)
  VALUES ('c9111111-9111-4111-8111-911111111111','Representative race','running','race');
 INSERT INTO public.v2_event_participations
@@ -85,7 +108,7 @@ BEGIN
  v:=public.v2_account_export_inventory_review_candidate(v_owner,v_session,v_request);
  v_list:=v->'collections';
  IF v->>'ownerTableCount'<>'42'
-   OR pg_catalog.jsonb_array_length(v_list)<>47
+   OR pg_catalog.jsonb_array_length(v_list)<>50
    OR v->>'paginationReady'<>'true'
    OR v->>'complete'<>'false'
  THEN RAISE EXCEPTION 'Owner inventory contract incomplete or prematurely marked complete: %',v; END IF;
@@ -129,7 +152,7 @@ BEGIN
   THEN RAISE EXCEPTION 'Foreign Community action row'; END IF;
   v_count:=v_count+1;
  END LOOP;
- IF v_count<>47 THEN RAISE EXCEPTION 'Not all 47 owner collections were probed'; END IF;
+ IF v_count<>50 THEN RAISE EXCEPTION 'Not all 50 owner collections were probed'; END IF;
  LOOP
   v_page:=public.v2_account_export_page_review_candidate(
     v_owner,v_session,v_request,'public.v2_coach_messages',v_token,25);
@@ -158,6 +181,23 @@ BEGIN
  IF v_count<>32 THEN
   RAISE EXCEPTION 'Completed Activity pagination lost or duplicated owner records: %',v_count;
  END IF;
+ -- All three owner Billing projections exist; internal provider identifiers
+ -- and the OTHER account's billing history must not cross into export.
+ FOREACH v_collection IN ARRAY ARRAY[
+  'billing.checkout_attempts','billing.purchases','billing.verified_events'
+ ] LOOP
+  v_page:=public.v2_account_export_page_review_candidate(
+   v_owner,v_session,v_request,v_collection,NULL,25);
+  IF pg_catalog.jsonb_array_length(v_page->'rows')<>1
+    OR v_page->>'snapshotId'<>v_snap
+    OR v_page::text LIKE '%private-checkout-A%'
+    OR v_page::text LIKE '%private-subscription-A%'
+    OR v_page::text LIKE '%private-event-A%'
+    OR v_page::text LIKE '%private-checkout-B%'
+    OR v_page::text LIKE '%private-subscription-B%'
+    OR v_page::text LIKE '%private-event-B%'
+  THEN RAISE EXCEPTION 'Billing owner or redaction mismatch: %',v_collection; END IF;
+ END LOOP;
  -- Representative populated Training, Activity and EventHub pages belong to A.
  v_page:=public.v2_account_export_page_review_candidate(
   v_owner,v_session,v_request,'public.v2_training_plans',NULL,25);
@@ -204,7 +244,7 @@ BEGIN
    v_owner,v_session,v_request,'public.v2_coach_messages',NULL,100);
   RAISE EXCEPTION 'Unbounded page unexpectedly accepted';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
- RAISE NOTICE 'PASS ALL-251: 42 reviewed owner tables + 5 explicit sources, 53 Coach records over 3 owner pages, no complete claim, privacy and Auth rejection';
+ RAISE NOTICE 'PASS ALL-251: 42 reviewed owner tables + 8 explicit sources, 53 Coach records over 3 owner pages, no complete claim, privacy and Auth rejection';
 END $all_domain$;
 RESET ROLE;
 -- An authenticated mobile client must not be granted the service reader,
