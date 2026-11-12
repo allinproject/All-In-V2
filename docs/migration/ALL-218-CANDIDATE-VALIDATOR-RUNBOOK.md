@@ -38,3 +38,9 @@ Before making a selectable option visible in V2, require ownership, source statu
 The validator now checks **scoped uniqueness** as well as row IDs: `(recipe,selector_key)`, `(selector,option_key)`, and `(recipe,selector_key,option_key,profile_key)`. It rejects an *active* selector with no real matching default option while preserving inactive false-positive records as source history. Composite keys use tuple serialization rather than concatenating fields with a delimiter. Malformed/null JSONL records fail as validation errors without crashing relationship checking.
 
 These changes are covered by five additional committed regressions (14 total in the repository test file). Equivalent local Node tests for the original nine cases, scoped key scenarios and malformed/null inputs passed; the current GitHub revision has **not** been independently executed in CI. Do not claim full V1 candidate acceptance until an actual four-dataset export is validated and reconciled to the recorded source manifest.
+
+## Export drift guard — additional slice
+
+The review-only validator now has **explicit allowlists for every top-level field** in all four SQL candidate projections. An unexpected field—even one using an unfamiliar name for a macro or source metadata—is a validation error and requires review of both the SQL projection and the downstream contract. Nested legacy `nutrition` and `nutrition_delta` keys remain forbidden recursively. Two additional negative tests cover unexpected recipe and selector fields (16 total committed tests).
+
+This staging projection is an audit format, **not** the final canonical V2 schema. Field-list changes should never be auto-accepted: first update source provenance documentation, review the change against the no-authored-macros rule, then adjust the allowlist and tests. Equivalent local Node checks exercised the added rejection path; CI on the exact committed code remains unconfirmed.
