@@ -99,7 +99,7 @@ function checkReferences(records, errors) {
     else if (!optionsByKey.has(JSON.stringify([selector.source_selector_id,m.option_key]))) errors.push('mapping/'+m.source_mapping_id+': missing option key');
   }
 }
-async function validate(paths) {
+async function validate(paths, expectedCounts = null) {
   const errors = [], seen = Object.fromEntries(DATASETS.map(d=>[d,new Set()]));
   const records = Object.fromEntries(DATASETS.map(d=>[d,[]]));
   for (const dataset of DATASETS) {
@@ -121,14 +121,27 @@ async function validate(paths) {
       errors.push(dataset+': empty dataset is not a valid complete-catalog candidate');
     checkReferences(records,errors);
   }
-  return {ok:errors.length===0,publicationApproved:false,counts:Object.fromEntries(DATASETS.map(d=>[d,records[d].length])),errorCount:errors.length,errors:errors.slice(0,100)};
+  const counts = Object.fromEntries(DATASETS.map(d=>[d,records[d].length]));
+  if (expectedCounts !== null) {
+    if (!object(expectedCounts) || DATASETS.some(d=>!Number.isSafeInteger(expectedCounts[d]) || expectedCounts[d]<1))
+      errors.push('expected-counts manifest must specify positive integer counts for every dataset');
+    else for (const dataset of DATASETS)
+      if (counts[dataset] !== expectedCounts[dataset])
+        errors.push(dataset+': expected '+expectedCounts[dataset]+' records, got '+counts[dataset]);
+  }
+  return {ok:errors.length===0,publicationApproved:false,counts,errorCount:errors.length,errors:errors.slice(0,100)};
 }
 if (require.main === module) {
   const entries = process.argv.slice(2).map(arg=>{const at=arg.indexOf('=');return [arg.slice(0,at),arg.slice(at+1)];});
   const paths = Object.fromEntries(entries);
-  if (!entries.length || entries.some(([k,v])=>!DATASETS.includes(k)||!v)) {
-    console.error('Usage: node validate-cookbook-candidates.cjs recipes=recipes.ndjson selectors=selectors.ndjson options=options.ndjson mappings=mappings.ndjson');
+  if (!entries.length || entries.some(([k,v])=>!(DATASETS.includes(k)||k==='counts')||!v)) {
+    console.error('Usage: node validate-cookbook-candidates.cjs recipes=recipes.ndjson selectors=selectors.ndjson options=options.ndjson mappings=mappings.ndjson [counts=expected-counts.json]');
     process.exitCode = 2;
-  } else validate(paths).then(out=>{console.log(JSON.stringify(out,null,2));if(!out.ok)process.exitCode=1;}).catch(e=>{console.error(e.message);process.exitCode=2;});
+  } else {
+    try {
+      const expected = paths.counts ? JSON.parse(fs.readFileSync(paths.counts,'utf8')) : null;
+      validate(paths,expected).then(out=>{console.log(JSON.stringify(out,null,2));if(!out.ok)process.exitCode=1;}).catch(e=>{console.error(e.message);process.exitCode=2;});
+    } catch(e) {console.error('Invalid expected-counts manifest: '+e.message);process.exitCode=2;}
+  }
 }
 module.exports = {inspect,checkReferences,validate};
