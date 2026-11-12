@@ -63,6 +63,15 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   await denied(db,call(1,'reviewed',k1),'23505');
   await denied(db,call(1,'reviewed',k2),'40001');
   await denied(db,call(2,'reviewed',k2,'f'.repeat(64)),'40001');
+  // Simulate a source refresh between reviewer decisions. A stale source hash
+  // must not permit approval even when the profile revision is still current.
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  await db.exec("UPDATE public.v2_ingredient_source_records SET payload_sha256=repeat('b',64) WHERE external_record_id='2644285'");
+  await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
+  await denied(db,call(2,'reviewed',k2),'40001');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  await db.exec("UPDATE public.v2_ingredient_source_records SET payload_sha256=repeat('a',64) WHERE external_record_id='2644285'");
+  await db.exec('SET SESSION AUTHORIZATION ingredient_reviewer_a');
   await denied(db,call(2,'calculation_ready',k2),'23514');
   const second=(await db.query(call(2,'reviewed',k2))).rows[0].outcome;
   assert.equal(second.profile_revision,3);assert.equal(second.review_status,'reviewed');
@@ -86,5 +95,25 @@ test('reviewer role, enrollment, idempotency, source digest, status guards and a
   assert(events.every(e=>e.actor_db_login==='ingredient_reviewer_a'&&e.source_payload_sha256===sourceHash&&e.required_nutrient_set_version==='cookbook-launch-macros-v1'));
   await denied(db,'DELETE FROM allin_private.v2_ingredient_review_events','42501');
   await denied(db,"UPDATE allin_private.v2_ingredient_review_events SET decision_reason='tampered'",'42501');
+  // Search-only synonyms are not exact resolver aliases, even for a published
+  // test-only fixture. This is NOT an approved source publication.
+  await db.exec("INSERT INTO public.v2_ingredient_aliases(id,ingredient_id,normalized_alias,locale,preparation_state,alias_kind,resolution_scope,status) VALUES('88888888-8888-4888-8888-888888888888','11111111-1111-4111-8111-111111111111','black beans','en','cooked_drained','common_name','search_only','active')");
+  await db.exec('SET SESSION AUTHORIZATION authenticated');
+  const beforeReady=(await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_nutrition_profiles')).rows[0];
+  assert.equal(beforeReady.n,0);
+  const exactAliases=(await db.query('SELECT normalized_alias FROM public.v2_ingredient_aliases ORDER BY normalized_alias')).rows;
+  assert.equal(exactAliases.length,1);
+  assert.equal(exactAliases[0].normalized_alias,'black beans canned sodium added drained and rinsed');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  // Simulate a separately approved future release only for RLS select testing.
+  // The actual controlled SQL writer has already rejected this transition.
+  await db.exec("UPDATE public.v2_ingredient_nutrition_profiles SET review_status='calculation_ready' WHERE id='"+actorProfile+"'");
+  await db.exec('SET SESSION AUTHORIZATION authenticated');
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_nutrition_profiles')).rows[0].n,1);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_profile_nutrients')).rows[0].n,5);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_source_records')).rows[0].n,1);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_profile_sources')).rows[0].n,1);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredient_aliases')).rows[0].n,1);
+  await db.exec('SET SESSION AUTHORIZATION postgres');
  }finally{await db.close()}
 });
