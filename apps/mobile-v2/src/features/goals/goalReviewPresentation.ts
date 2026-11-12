@@ -14,8 +14,6 @@ export type GoalApprovalPreview = Readonly<{
   authSessionGeneration: number;
   complete: true;
   nextCursor: null;
-  reviewId: string;
-  actionId: string;
   goalId: string;
   goalRevisionId: string;
   expectedVersion: number;
@@ -47,6 +45,7 @@ function validDate(value: string | null): boolean {
 /** Only a certified, complete snapshot may be displayed as an approval review.
  * Rerun this when account/session generation, screen focus or preview changes.
  * Real acceptance must independently reverify the same preview on the server.
+ * A review/action ID is minted ONLY after explicit approval, never in this preview.
  */
 export function goalReviewPresentation(
   preview: GoalApprovalPreview | null,
@@ -66,7 +65,7 @@ export function goalReviewPresentation(
       preview.complete !== true || preview.nextCursor !== null) {
     return unavailable('Goal evidence belongs to another session or is incomplete. Refresh the review.');
   }
-  if (![preview.goalId, preview.goalRevisionId, preview.reviewId, preview.actionId].every(
+  if (![preview.goalId, preview.goalRevisionId].every(
     value => typeof value === 'string' && UUID.test(value))) {
     return unavailable('Goal review identity could not be verified.');
   }
