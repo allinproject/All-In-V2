@@ -43,6 +43,12 @@ const kinds=new Set(['source_measured','provider_derived','user_reported','allin
 const structuredKinds=new Set(['route','splits','laps','intervals','heart_rate_series','power_series',
  'cadence_series','elevation_series','speed_series','strength_sets','swim_sets','machine_series',
  'sport_legs','transitions','other']);
+// V1 locked sport-specific screens prohibit an outdoor route on these
+// machine/pool-only identities. This is a display integrity guard, not GPS
+// ingest validation: a separate real outdoor source requires an appropriately
+// classified canonical activity before its route can be presented.
+const routeIneligibleSports=new Set(['pool_swim','indoor_trainer','elliptical','stairs']);
+
 
 function assertCurrent(isCurrent:()=>boolean){
  if(!isCurrent())throw new Error('Completed Activity view is no longer active.');
@@ -117,6 +123,8 @@ export function canonicalActivityToScreenInput(raw:CanonicalCompletedActivityRea
   if(!source||source.quality!=='trusted'||!code(section.key)||!text(section.title,120)||
    !Number.isSafeInteger(section.count)||section.count<1||!structuredKinds.has(section.kind))
    throw new Error('Structured activity evidence is not verifiable.');
+  if(section.kind==='route'&&routeIneligibleSports.has(display.sport))
+   throw new Error('Route evidence is incompatible with the canonical activity sport.');
   sections.push({key:section.key,kind:section.kind,title:section.title,source:source.provider,count:section.count});
  }
  return {id:raw.id,sport:display.sport,terrain:display.terrain,title:raw.title,completedAt:raw.completedAt,
