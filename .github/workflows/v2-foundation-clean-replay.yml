@@ -603,10 +603,12 @@ jobs:
           trap 'rm -rf "$work"' EXIT
           docker cp scripts/test-v2-account-export-populated-db-pages.psql "$db_container:/tmp/all251-representative.psql"
           docker exec "$db_container" psql -X -q -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/all251-representative.psql
-          docker cp "$db_container:/tmp/all251-a-page-1.jsonl" "$work/a1.jsonl"
-          docker cp "$db_container:/tmp/all251-a-page-2.jsonl" "$work/a2.jsonl"
+          for n in 1 2 3 4; do
+            docker cp "$db_container:/tmp/all251-a-page-$n.jsonl" "$work/a$n.jsonl"
+          done
           docker cp "$db_container:/tmp/all251-b-page.jsonl" "$work/b.jsonl"
-          node scripts/test-v2-account-export-populated-db-pages.mjs "$work/a1.jsonl" "$work/a2.jsonl" "$work/b.jsonl"
+          node scripts/test-v2-account-export-populated-db-pages.mjs \
+            "$work/a1.jsonl" "$work/a2.jsonl" "$work/a3.jsonl" "$work/a4.jsonl" "$work/b.jsonl"
       - name: Verify real Supabase API-role security on the complete candidate catalog
         run: |
           set -euo pipefail
