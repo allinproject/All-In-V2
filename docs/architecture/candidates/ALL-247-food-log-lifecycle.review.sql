@@ -13,6 +13,9 @@ create index v2_food_log_entries_active_day_idx
 
 -- All edit/move/delete operations are complete, versioned replacements or tombstones.
 -- Operation-specific replay remains in the existing private action ledger.
+-- Business-level stale revisions MUST use PT409 (HTTP 409). SQLSTATE 40001
+-- is a real serialization failure and PostgREST retries it, potentially for
+-- the entire HTTP timeout; it must not be used for deterministic CAS rejection.
 create function public.v2_food_log_mutate_manual(
  p_expected_user_id uuid,
  p_action_id uuid,
@@ -89,7 +92,7 @@ begin
    raise exception 'Food event does not exist for this account' using errcode='P0002';
  end if;
  if v_current.deleted_at is not null or v_current.revision <> p_expected_revision then
-   raise exception 'Food event revision is stale or deleted; reload' using errcode='40001';
+   raise exception 'Food event revision is stale or deleted; reload' using errcode='PT409';
  end if;
  if p_operation = 'move' and (
   p_label is distinct from v_current.label or p_quantity is distinct from v_current.quantity or
@@ -112,7 +115,7 @@ begin
    returning revision into v_next;
  end if;
  if v_next is null then
-   raise exception 'Food event changed; reload before retry' using errcode='40001';
+   raise exception 'Food event changed; reload before retry' using errcode='PT409';
  end if;
  insert into allin_private.v2_food_log_write_actions(user_id,action_id,request_fingerprint,result_id,result_revision)
  values (v_actor,p_action_id,v_hash,p_entry_id,v_next);
