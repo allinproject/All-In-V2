@@ -12,6 +12,10 @@ as $function$
 declare
  v_user uuid:=auth.uid();
  v_export jsonb;
+ v_goals jsonb;
+ v_eventhub jsonb;
+ v_community jsonb;
+ v_relation record;
 begin
  if v_user is null or p_expected_user_id is distinct from v_user
    or not exists(select 1 from auth.users where id=v_user) then
@@ -58,6 +62,82 @@ begin
    raise exception 'New personal data tables require export coverage' using errcode='42501';
  end if;
 
+ -- Only include this domain when its FULL reviewed candidate graph exists.
+ -- Missing half a domain is not an empty export: reject it.
+ if exists(select 1 from (values
+   ('public.v2_goals'),
+   ('public.v2_goal_revisions'),
+   ('public.v2_goal_revision_behavior_targets'),
+   ('allin_private.v2_goal_acceptance_actions'),
+   ('allin_private.v2_goal_approval_reviews')
+ ) as expected(relation_name)
+ where pg_catalog.to_regclass(expected.relation_name) is not null) then
+   if exists(select 1 from (values
+     ('public.v2_goals'),
+     ('public.v2_goal_revisions'),
+     ('public.v2_goal_revision_behavior_targets'),
+     ('allin_private.v2_goal_acceptance_actions'),
+     ('allin_private.v2_goal_approval_reviews')
+   ) as expected(relation_name)
+   where pg_catalog.to_regclass(expected.relation_name) is null) then
+     raise exception 'Partial goals export domain schema' using errcode='42501';
+   end if;
+   select jsonb_build_object(
+     'goals',coalesce((select jsonb_agg(to_jsonb(g) order by g.id)
+       from public.v2_goals g where g.user_id=v_user),'[]'::jsonb),
+     'revisions',coalesce((select jsonb_agg(to_jsonb(r) order by r.id)
+       from public.v2_goal_revisions r where r.user_id=v_user),'[]'::jsonb),
+     'behavior_targets',coalesce((select jsonb_agg(to_jsonb(t) order by t.id)
+       from public.v2_goal_revision_behavior_targets t where t.user_id=v_user),'[]'::jsonb),
+     'acceptance_actions',coalesce((select jsonb_agg(to_jsonb(a) order by a.action_id)
+       from allin_private.v2_goal_acceptance_actions a where a.user_id=v_user),'[]'::jsonb),
+     'approval_reviews',coalesce((select jsonb_agg(to_jsonb(r) order by r.id)
+       from allin_private.v2_goal_approval_reviews r where r.user_id=v_user),'[]'::jsonb)
+   ) into v_goals;
+ end if;
+ -- Only include this domain when its FULL reviewed candidate graph exists.
+ -- Missing half a domain is not an empty export: reject it.
+ if exists(select 1 from (values
+   ('public.v2_event_group_memberships'),
+   ('public.v2_event_participations'),
+   ('allin_private.v2_event_group_actions')
+ ) as expected(relation_name)
+ where pg_catalog.to_regclass(expected.relation_name) is not null) then
+   if exists(select 1 from (values
+     ('public.v2_event_group_memberships'),
+     ('public.v2_event_participations'),
+     ('allin_private.v2_event_group_actions')
+   ) as expected(relation_name)
+   where pg_catalog.to_regclass(expected.relation_name) is null) then
+     raise exception 'Partial eventhub export domain schema' using errcode='42501';
+   end if;
+   select jsonb_build_object(
+     'group_memberships',coalesce((select jsonb_agg(to_jsonb(m) order by m.group_id)
+       from public.v2_event_group_memberships m where m.user_id=v_user),'[]'::jsonb),
+     'participations',coalesce((select jsonb_agg(to_jsonb(p) order by p.event_id)
+       from public.v2_event_participations p where p.user_id=v_user),'[]'::jsonb),
+     'group_actions',coalesce((select jsonb_agg(to_jsonb(a) order by a.action_id)
+       from allin_private.v2_event_group_actions a where a.user_id=v_user),'[]'::jsonb)
+   ) into v_eventhub;
+ end if;
+ -- Only include this domain when its FULL reviewed candidate graph exists.
+ -- Missing half a domain is not an empty export: reject it.
+ if exists(select 1 from (values
+   ('allin_private.v2_community_visibility')
+ ) as expected(relation_name)
+ where pg_catalog.to_regclass(expected.relation_name) is not null) then
+   if exists(select 1 from (values
+     ('allin_private.v2_community_visibility')
+   ) as expected(relation_name)
+   where pg_catalog.to_regclass(expected.relation_name) is null) then
+     raise exception 'Partial community export domain schema' using errcode='42501';
+   end if;
+   select jsonb_build_object(
+     'visibility',(select to_jsonb(v) from allin_private.v2_community_visibility v
+       where v.user_id=v_user)
+   ) into v_community;
+ end if;
+
  select jsonb_build_object(
    'schema_version','v2-account-export-snapshot-v2',
    'exported_at',now(),
@@ -76,32 +156,9 @@ begin
      from allin_private.v2_onboarding_actions a where a.user_id=v_user),'[]'::jsonb),
    'deletion_request',(select to_jsonb(d) from allin_private.v2_account_deletion_requests d where d.user_id=v_user),
    'deletion_execution',(select to_jsonb(d) from allin_private.v2_account_deletion_execution_audit d where d.user_id=v_user),
-   -- ALL-239/244: review-only Goal and EventHub owner data. These are
-   -- exported in the existing canonical snapshot, never by a second endpoint.
-   'goals',jsonb_build_object(
-     'goals',coalesce((select jsonb_agg(to_jsonb(g) order by g.id)
-       from public.v2_goals g where g.user_id=v_user),'[]'::jsonb),
-     'revisions',coalesce((select jsonb_agg(to_jsonb(r) order by r.id)
-       from public.v2_goal_revisions r where r.user_id=v_user),'[]'::jsonb),
-     'behavior_targets',coalesce((select jsonb_agg(to_jsonb(t) order by t.id)
-       from public.v2_goal_revision_behavior_targets t where t.user_id=v_user),'[]'::jsonb),
-     'acceptance_actions',coalesce((select jsonb_agg(to_jsonb(a) order by a.action_id)
-       from allin_private.v2_goal_acceptance_actions a where a.user_id=v_user),'[]'::jsonb),
-     'approval_reviews',coalesce((select jsonb_agg(to_jsonb(r) order by r.id)
-       from allin_private.v2_goal_approval_reviews r where r.user_id=v_user),'[]'::jsonb)
-   ),
-   'eventhub',jsonb_build_object(
-     'group_memberships',coalesce((select jsonb_agg(to_jsonb(m) order by m.group_id)
-       from public.v2_event_group_memberships m where m.user_id=v_user),'[]'::jsonb),
-     'participations',coalesce((select jsonb_agg(to_jsonb(p) order by p.event_id)
-       from public.v2_event_participations p where p.user_id=v_user),'[]'::jsonb),
-     'group_actions',coalesce((select jsonb_agg(to_jsonb(a) order by a.action_id)
-       from allin_private.v2_event_group_actions a where a.user_id=v_user),'[]'::jsonb)
-   ),
-   'community',jsonb_build_object(
-     'visibility',(select to_jsonb(v) from allin_private.v2_community_visibility v
-       where v.user_id=v_user)
-   ),
+   'goals',v_goals,
+   'eventhub',v_eventhub,
+   'community',v_community,
    'training_activity',allin_private.v2_training_account_export_fragment_candidate(v_user),
    -- Coach identity/contents/receipts remain part of the SAME owner export.
    -- Never include another user's messages, even if a thread UUID is known.
