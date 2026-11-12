@@ -37,7 +37,8 @@ test('exact reviewed approval uses server fingerprint and verified owner, not cl
   ownerId:owner,sessionId:session,goalId:goal,revisionId:revision,
   actionId:action,reviewId:review,expectedVersion:2});
  assert.deepEqual(f.calls[1].args,{
-  p_user_id:owner,p_session_id:session,p_goal_id:goal,p_candidate_id:revision,
+  p_user_id:owner,p_session_id:session,p_review_id:review,
+  p_goal_id:goal,p_candidate_id:revision,
   p_action_id:action,p_expected_version:2,p_payload_sha256:sha});
  assert.equal(f.calls[1].args.p_session_id,session);
 });
