@@ -223,3 +223,31 @@ test('ALL-251 gated Food Log projection exports deleted owner history, not priva
  assert(!inventory.includes("('public','v2_food_log_entries')"),'Food export cannot be enabled until domain accepted');
  assert(inventory.includes("'complete',false"),'Full export must remain off');
 });
+
+test('ALL-251 gated Hydration and Fuel action projections retain owner privacy without enabling complete export',()=>{
+ const hydration=reader.indexOf("ELSIF p_collection='public.v2_hydration_events' THEN");
+ const actions=reader.indexOf("ELSIF p_collection IN ('allin_private.v2_food_log_write_actions',",hydration);
+ const community=reader.indexOf("ELSIF p_collection='community.my_posts' THEN",actions);
+ assert(hydration>0&&actions>hydration&&community>actions,
+   'Current canonical Fuel projection branches missing or reordered');
+ const hydr=reader.slice(hydration,actions),receipts=reader.slice(actions,community);
+ for(const field of ["'id'","'user_id'","'event_kind'","'volume_ml'",
+  "'original_volume'","'original_unit'","'deleted_at'","'revision'"])
+   assert(hydr.includes(field),'Hydration owner history missing '+field);
+ assert(hydr.includes("WHERE h.user_id=$1"),'Hydration source must be owner-scoped');
+ assert(hydr.includes("ORDER BY h.occurred_at,h.id LIMIT $2 OFFSET $3"),
+   'Hydration must be deterministic and bounded');
+ assert(!hydr.includes("h.deleted_at IS NULL"),'Deleted hydration events remain owner-portable');
+ for(const key of ["'user_id'","'action_id'","'result_id'","'result_revision'","'created_at'"])
+   assert(receipts.includes(key),'Portable action receipt missing '+key);
+ assert(receipts.includes("WHERE a.user_id=$1"),'Private action receipt must be owner-scoped');
+ for(const secret of ["'request_fingerprint'","'payload_sha256'","'client_secret'","to_jsonb(a)"])
+   assert(!receipts.includes(secret),'Internal Fuel replay material exposed');
+ const inv=reader.slice(0,reader.indexOf('$inventory$;'));
+ for(const collection of ["('public','v2_food_log_entries')",
+   "('allin_private','v2_food_log_write_actions')",
+   "('public','v2_hydration_events')",
+   "('allin_private','v2_hydration_actions')"])
+    assert(!inv.includes(collection),'Unapproved Fuel table was prematurely registered: '+collection);
+ assert(inv.includes("'complete',false"));
+});
