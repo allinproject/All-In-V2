@@ -73,3 +73,15 @@ Only after all required review fields are complete should a controlled V2-only p
 **Backups and processors:** Connected Supabase organization identifies a Pro plan, but a verified V2 project backup schedule/restore and service-specific retention evidence remain outstanding. Deployed AI/data processor inventory and support mailbox delivery/reply workflow require verification. Retain proposed conditional wording; do not invent assured backup frequency, retention or deletion turnaround.
 
 **Next permissible work:** prepare narrowly scoped factual candidate revisions for counsel/founder review, inventory current V2 processing and links, and complete non-destructive tests. No legal rows, signup opening, production deployment, paid billing or deletion execution may follow merely from the five policy-principle approvals.
+
+
+## 2026-11-12 — candidate factual correction after policy-principle approval
+
+The earlier 2026-11-11 deletion paragraphs and their descriptions above are **historical**. After confirming current native and deployed V2 request-intake functionality and the disabled deletion executor, we made a **minimal factual revision to the unapproved candidate paragraphs only**:
+
+- [Terms candidate](./terms-of-use-v2-candidate.md): describes currently implemented signed-in request, status and pending-cancellation interface, distinguishes receipt from completed erasure, and explicitly says secure deletion processing is not enabled. This supersedes the earlier “may be added” statement; other Terms sections are unchanged.
+- [Privacy candidate](./privacy-policy-v2-candidate.md): likewise describes existing request intake but explicitly disclaims immediate or validated permanent deletion. This supersedes the earlier email-only/future-workflow description; other Privacy sections are unchanged.
+- The existing designated privacy contact remains an **unverified operational support route** until mailbox intake, identity verification and handling are demonstrated. Do not treat new wording as proof of a supported deletion SLA or as a substitute for ALL-251 processing implementation.
+- **Status of both revisions:** proposed factual candidates only; no legal/privacy reviewer signature, no founder approval of the exact document text, no effective date/hash assignment, no Supabase legal publication, no signup opening and no production deployment. The verbatim V1 review copies remain untouched. Preserve the five founder-approved *principles* separately from final-document approval.
+
+**Release review note:** The current native request-intake feature is not itself full Apple account-deletion compliance without a tested user-accessible deletion outcome and applicable store/reviewer requirements. Before any legal publish, revalidate factual wording against the installed, deployed version rather than treating today's in-development snapshot as automatically launch-ready.
