@@ -12,8 +12,9 @@ function assertConfig(env) {
   if(env.ALL228_ALLOW_HOSTED_INGEST_SMOKE!=='1'||
      env.ALL228_TEMP_STAGING_PROJECT_REF!==PROJECT)
     throw Error('Temporary staging opt-in and exact project ref required');
-  if(env.PGHOST!=='db.'+PROJECT+'.supabase.co'||env.PGPORT!=='5432'||
-     env.PGDATABASE!=='postgres'||env.PGUSER!==LOGIN)
+  if(!/^[a-z0-9-]+\\.pooler\\.supabase\\.com$/.test(env.PGHOST||'')||
+     env.PGPORT!=='5432'||env.PGDATABASE!=='postgres'||
+     env.PGUSER!==LOGIN+'.'+PROJECT)
     throw Error('Refusing host/role outside designated temporary project');
   if(env.PGSSLMODE!=='verify-full'||!env.PGSSLROOTCERT||
      !existsSync(env.PGSSLROOTCERT))
