@@ -124,7 +124,16 @@ BEGIN
   RAISE EXCEPTION 'cross owner service reply incorrectly accepted';
  EXCEPTION WHEN insufficient_privilege THEN NULL;
  END;
-END $$;
+ BEGIN
+  PERFORM public.v2_coach_record_assistant_reply(
+   'a1111111-1111-4111-8111-111111111111',
+   (SELECT thread_id FROM _coach_a_thread),
+   (SELECT id FROM _coach_a_message),
+   'a1111111-2222-4222-8222-111111111111', 'Conflicting reply payload');
+  RAISE EXCEPTION 'changed assistant retry unexpectedly accepted';
+ EXCEPTION WHEN unique_violation THEN NULL;
+ END;
+END $;
 RESET ROLE;
 
 -- An unauthenticated client cannot create a thread, read history or append.
