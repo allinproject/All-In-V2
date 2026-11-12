@@ -51,6 +51,8 @@ export function projectFoodPlanShopping(input:{
    ||(occurrence.kind==='food'&&covered!==0))throw Error('Invalid prepared coverage.');
   const remaining=occurrence.servings-covered;
   if(remaining===0)continue;
+  // A planned food without a reviewed portion is UNKNOWN, never zero Shopping demand.
+  if(occurrence.requirements.length===0)throw Error('Planned food requirements are incomplete.');
   for(const need of occurrence.requirements){
    if(!need||typeof need!=='object')throw Error('Invalid requirement.');
    if('reason' in need){
