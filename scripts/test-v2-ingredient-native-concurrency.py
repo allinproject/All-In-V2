@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SQL = ROOT / "docs/architecture/sql"
 EVIDENCE = ROOT / "docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json"
 POLICY = ROOT / "docs/evidence/ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json"
+DIGEST_EVIDENCE = ROOT / "docs/evidence/ALL-225-USDA-EIGHT-PER-FOOD-ENERGY-DIGESTS-2026-11-12.json"
 SOURCE_SHA = "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579"
 def require(ok, message):
     if not ok:
@@ -95,11 +96,20 @@ def main():
                 "fixture/source archive drift")
         policy = json.loads(POLICY.read_text())
         states = {r["source_profile_key"]: r["preparation_state"] for r in policy["records"]}
+        source_digests = json.loads(DIGEST_EVIDENCE.read_text())
+        require(source_digests["archiveSha256"] == SOURCE_SHA and len(source_digests["records"]) == 8,
+                "verified per-food evidence unavailable")
+        pinned = {r["fdcId"]: r for r in source_digests["records"]}
         rows = []
         for i, food in enumerate(bundle["records"], 1):
             key, form = food["profile"], states[food["profile"]]
             identity, profile, source = uuid(1, i), uuid(2, i), uuid(3, i)
-            digest = str(i) * 64  # synthetic per-record fixture SHA, not real archive member hash
+            source_proof = pinned[food["fdcId"]]
+            digest = source_proof["sourcePayloadSha256"]
+            require(len(digest) == 64 and
+                    source_proof["selectedFdcNutrientId"] == int(food["energy"]["code"]) and
+                    source_proof["selectedEnergyKcal"] == food["energy"]["kcal"],
+                    "source profile SHA or selected energy evidence changed")
             admin("INSERT INTO public.v2_ingredients"
                   "(id,canonical_key,canonical_name,normalized_name,identity_kind,status) VALUES("
                   + ",".join(map(lit, [identity, key, food["v1"], key, "generic_food", "active"])) + ")")
@@ -291,7 +301,9 @@ def main():
                               "sourceMutationRace":"blocked-until-commit-and-rejected",
                               "idempotentReplay":"passed","auditEvents":2,
                               "energyAttestations":attested,"generalOnlyEnergy":"rejected",
-                              "expiredAndRevokedCredentials":"denied","calculationReady":0,
+                              "expiredAndRevokedCredentials":"denied",
+                              "sourceDigests":"verified_official_archive_per_food",
+                              "calculationReady":0,
                               "externalSupabaseTouched":False},sort_keys=True))
         except Exception:
             raise
