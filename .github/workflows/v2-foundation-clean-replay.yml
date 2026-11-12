@@ -9,6 +9,7 @@ on:
       - 'scripts/test-v2-goals-owner-local-postgres.psql'
       - 'scripts/test-v2-applied-foundation-local-postgres.psql'
       - 'scripts/test-v2-billing-local-foundation.psql'
+      - 'scripts/test-v2-billing-preupgrade-seed.psql'
       - 'docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-SUBSCRIPTION-SERVICE-GRANTS-CANDIDATE.sql'
       - 'scripts/test-v2-training-local-populated-owner-deletion.psql'
@@ -257,6 +258,15 @@ jobs:
           test -n "$db_container"
           docker cp scripts/test-v2-training-local-populated-owner-deletion.psql "$db_container:/tmp/v2-owner-deletion.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-owner-deletion.psql
+      - name: Seed populated V2 owner accounts before billing candidate upgrade
+        run: |
+          set -euo pipefail
+          # Seed committed owner rows AFTER foundation migrations but BEFORE
+          # installing the review-only billing candidate in disposable local PG.
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp scripts/test-v2-billing-preupgrade-seed.psql "$db_container:/tmp/v2-billing-preupgrade-seed.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-billing-preupgrade-seed.psql
       - name: Verify billing candidate against real local foundation Auth and two accounts
         run: |
           set -euo pipefail
