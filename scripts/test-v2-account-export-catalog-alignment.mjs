@@ -203,3 +203,23 @@ test('ALL-251 owner-only Community post projection stays gated and excludes thir
  assert(reader.includes("NOT (v_inventory->'collections' ? p_collection)"),
   'Candidate page reader must refuse any collection not approved in inventory');
 });
+
+test('ALL-251 gated Food Log projection exports deleted owner history, not private action fingerprints',()=>{
+ const marker="ELSIF p_collection='food.my_entries' THEN";
+ const begin=reader.indexOf(marker),end=reader.indexOf(" ELSIF p_collection='community.my_posts' THEN",begin);
+ assert(begin>0&&end>begin,'Gated ALL-247 food projection missing');
+ const projection=reader.slice(begin,end);
+ for(const field of ["'id'","'user_id'","'consumed_at'","'local_date'",
+  "'timezone_name'","'meal_slot'","'label'","'quantity'","'unit'",
+  "'kcal'","'nutrition_source'","'revision'","'created_at'",
+  "'updated_at'","'deleted_at'"])
+   assert(projection.includes(field),'Food history field absent: '+field);
+ assert(projection.includes("WHERE e.user_id=$1"),'Food events must be owner-filtered at source');
+ assert(projection.includes("ORDER BY e.consumed_at,e.id LIMIT $2 OFFSET $3"));
+ assert(!projection.includes("e.deleted_at IS NULL"),'Deleted events must remain portable history');
+ for(const secret of ['request_fingerprint','result_revision','v2_food_log_write_actions','to_jsonb(e)'])
+   assert(!projection.includes(secret),'Food export leaked action internals: '+secret);
+ const inventory=reader.slice(0,reader.indexOf('$inventory$;'));
+ assert(!inventory.includes("'food.my_entries'"),'Food export cannot be enabled until domain accepted');
+ assert(inventory.includes("'complete',false"),'Full export must remain off');
+});
