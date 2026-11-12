@@ -179,7 +179,12 @@
 - The onboarding/watch help tutorial should explain physical Action button configuration and segment use only if supported, and how to access the on-screen fallback. Accidental presses need auditable correction without losing GPS/HR samples. Preserve system-privileged controls and avoid conflicting hardware button assignments.
 - This is a founder-approved behavior/design requirement for existing Watch and Training owners, not a completed implementation or physical device acceptance.
 
-## 24. Scope and implementation safeguards
+## 24. Watch Completed Activity summary — elevation replaces segment count (founder decision 2026-11-12)
+- On the post-finish **Watch** summary for outdoor run/hike/ride and other eligible sports, **show source-backed Elevation Gain instead of a Manual Segments count**. Keep an easy-to-scan summary: sport, recorded distance and moving time as primary information; four supporting tiles such as **Average Pace, Average Heart Rate, Elevation Gain, Elapsed Time**. Avoid duplicate elevation tiles. Omit unavailable metrics or substitute another truthful sport-relevant statistic when no trustworthy elevation source exists; stair-machine floors are not equivalent to outdoor ascent.
+- Manual Action-button segments, automatic mile/km splits and named workout stages remain available in **phone Completed Activity detail** and canonical data; removing the Watch segment tile must not discard them.
+- Source quality, units, recorded-versus-estimated provenance, local-saved-versus-server-synced state and per-sport summary metrics remain governed by ALL-243/ALL-245. This is approved visual design, not evidence of Watch app/device implementation.
+
+## 25. Scope and implementation safeguards
 - These are **founder-approved product directions**. V1 Route Builder has substantial actual code; full V2 mapping/route builder is **not yet confirmed integrated**. Calendar and other partial V2 screens may be mounted but must be checked against the corrected UX.
 - Keep one canonical Training/active-session/completed-activity/event/route owner. All Coach changes are proposals and require athlete acceptance where material. Preserve source-quality/missing≠zero, privacy, export/deletion, RLS and idempotent writes.
 - **No production migration, grants, app deployment, opening signup, automatic EventHub publication or sharing are authorized by this document.**
