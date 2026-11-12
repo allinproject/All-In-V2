@@ -137,3 +137,26 @@ test("invalid configuration cannot bypass budget or provider checks",()=>{
   assert.throws(()=>x.generate(),/not_configured/);
  }
 });
+
+test("trusted model preflight happens before budget reservation",async()=>{
+ const x=setup(),order=[];
+ x.options.invokeModel.preflight=()=>{
+  order.push("preflight");
+  return {worstCostUsd:0.006};
+ };
+ x.options.reserveBudget=async()=>{order.push("reserve");throw Error("must not reserve")};
+ await assert.rejects(()=>x.generate()(turn),/preflight_budget_denied/);
+ assert.deepEqual(order,["preflight"]);
+});
+test("successful trusted model preflight preserves the reserve and settlement path",async()=>{
+ const x=setup(),order=[];
+ x.options.invokeModel.preflight=()=>{
+  order.push("preflight");return {worstCostUsd:0.002};
+ };
+ const reserve=x.options.reserveBudget;
+ x.options.reserveBudget=async a=>{order.push("reserve");return reserve(a)};
+ const output=await x.generate()(turn);
+ assert.match(output.message,/saved workout details/);
+ assert.deepEqual(order,["preflight","reserve"]);
+ assert.equal(x.calls.settle,1);
+});
