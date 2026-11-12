@@ -238,7 +238,80 @@ function reviewAliasAndPreparationAcceptance(aliasDocument, bindingsDocument) {
     writeAuthorized:false,requiresDomainOwnerAcceptance:true};
 }
 
-module.exports={normalize,review,reviewSourceBindings,reviewAliasAndPreparationAcceptance};
+// ALL-228 automatic candidate preflight reuses BOTH existing identity and
+// USDA nutrition validators. It is intentionally read-only and never grants
+// canonical identity, writer permission, or publication authority.
+function assessAutomaticSourceEvidence(candidates,documents) {
+  if(!Array.isArray(candidates)||!Array.isArray(documents))
+    throw Error('identity candidates and exact source documents required');
+  const {createHash}=require('node:crypto');
+  const {validateFdcNutrients}=require('./check-v2-usda-nutrient-policy.cjs');
+  const identity=review(candidates);
+  const byKey=new Map(),duplicateKeys=new Set();
+  for(const document of documents) {
+    const key=document?.source_profile_key;
+    if(typeof key!=='string'||!key.trim()) {duplicateKeys.add(null);continue;}
+    if(byKey.has(key))duplicateKeys.add(key);
+    else byKey.set(key,document);
+  }
+  const results=candidates.map(candidate=>{
+    const key=candidate?.source_profile_key??null;
+    const issues=[];
+    const add=code=>{if(!issues.includes(code))issues.push(code)};
+    for(const issue of identity.issues)
+      if(issue.source_profile_key===key||issue.source_profile_key===null)add('identity:'+issue.code);
+    for(const conflict of identity.ambiguities)
+      if(conflict.sourceProfiles.includes(key))add('identity:'+conflict.kind);
+    if(typeof key!=='string'||!key.trim())add('invalid_source_profile_key');
+    const reference=candidate?.sources;
+    if(!Array.isArray(reference)||reference.length!==1||
+       reference[0]?.provider!=='usda_fdc'||reference[0]?.source_data_type!=='Foundation'||
+       !/^[1-9][0-9]*$/.test(String(reference[0]?.external_record_id||'')))
+      add('requires_single_foundation_source_reference');
+    if(duplicateKeys.has(key))add('duplicate_source_document');
+    const document=byKey.get(key);
+    if(!document) add('missing_source_document');
+    else if(typeof document.payload_utf8!=='string'||
+            typeof document.payload_sha256!=='string'||
+            !/^[a-f0-9]{64}$/i.test(document.payload_sha256))add('invalid_source_payload_evidence');
+    else {
+      const digest=createHash('sha256').update(document.payload_utf8,'utf8').digest('hex');
+      if(digest!==document.payload_sha256.toLowerCase())add('source_payload_sha256_mismatch');
+      let parsed=null;
+      try{parsed=JSON.parse(document.payload_utf8)}catch{add('unparseable_source_payload')}
+      if(parsed!==null){
+        if(reference?.length===1 &&
+           (parsed?.provider!==reference[0].provider ||
+            parsed?.dataType!==reference[0].source_data_type ||
+            String(parsed?.fdcId)!==reference[0].external_record_id))
+          add('source_reference_payload_mismatch');
+        const nutrition=validateFdcNutrients(parsed);
+        for(const issue of nutrition.issues)add('nutrition:'+issue);
+      }
+    }
+    issues.sort();
+    return {source_profile_key:key,automatedChecksPassed:issues.length===0,
+      exceptionQueueRequired:issues.length>0,issues,
+      canonicalIdentityApproved:false,calculationReady:false,
+      publicationApproved:false,authorizedToWrite:false};
+  });
+  for(const key of byKey.keys())
+    if(!candidates.some(candidate=>candidate?.source_profile_key===key))
+      results.push({source_profile_key:key,automatedChecksPassed:false,
+        exceptionQueueRequired:true,issues:['orphan_source_document'],
+        canonicalIdentityApproved:false,calculationReady:false,
+        publicationApproved:false,authorizedToWrite:false});
+  if(duplicateKeys.has(null))results.push({source_profile_key:null,
+    automatedChecksPassed:false,exceptionQueueRequired:true,
+    issues:['invalid_source_document_key'],canonicalIdentityApproved:false,
+    calculationReady:false,publicationApproved:false,authorizedToWrite:false});
+  results.sort((a,b)=>String(a.source_profile_key).localeCompare(String(b.source_profile_key)));
+  return {candidateCount:candidates.length,documentCount:documents.length,
+    automaticPreflightPassed:results.length===candidates.length&&results.every(r=>r.automatedChecksPassed),
+    results,calculationReady:false,publicationApproved:false,authorizedToWrite:false};
+}
+
+module.exports={normalize,review,reviewSourceBindings,reviewAliasAndPreparationAcceptance,assessAutomaticSourceEvidence};
 if(require.main===module) {
   const fs=require('node:fs'),file=process.argv[2];
   if(!file) {console.error('Usage: node scripts/review-v2-ingredient-identities.cjs candidates.json');process.exitCode=2;}
