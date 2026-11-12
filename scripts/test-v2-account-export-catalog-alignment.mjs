@@ -42,3 +42,26 @@ test('reader has no direct anonymous or authenticated execute permissions',()=>{
  assert(reader.includes('TO service_role'));
  assert(!/TO authenticated;/i.test(reader));
 });
+
+test('new Nutrition, food, Progress, equipment, race and alternate-owner schemas require classification',()=>{
+ for(const prefix of [
+  'v2_nutrition_%','v2_progress_%','v2_food_%','v2_recipe_%',
+  'v2_cookbook_%','v2_gear_%','v2_shoe_%','v2_meal_%','v2_pantry_%',
+  'v2_macro_%','v2_body_%','v2_equipment_%','v2_race_%',
+  'v2_personal_record_%','v2_achievement_%',
+ ]) assert(reader.includes("'"+prefix+"'"),'Missing future-domain guard: '+prefix);
+ for(const column of [
+  'owner_id','athlete_id','actor_id','created_by_user_id',
+  'account_id','profile_id','athlete_user_id',
+ ]) assert(reader.includes("'"+column+"'"),'Missing alternate owner guard: '+column);
+ assert(reader.includes('New domain requires explicit account export classification'));
+ assert(reader.includes('Unreviewed alternate-key owner table requires export coverage'));
+});
+test('canonical snapshot and private paginated reader both redact blocked incoming follow requests',()=>{
+ assert(source.includes('b.blocker_id=f.follower_id and b.blocked_id=v_user'));
+ assert(source.includes('b.blocker_id=v_user and b.blocked_id=f.follower_id'));
+ assert(reader.includes('b.blocker_id=t.follower_id AND b.blocked_id=$1'));
+ assert(reader.includes('b.blocker_id=$1 AND b.blocked_id=t.follower_id'));
+ assert(!reader.includes("UNION ALL SELECT 'community.pair_revisions'"));
+ assert(!reader.includes("UNION ALL SELECT 'community.incoming_blocks'"));
+});
