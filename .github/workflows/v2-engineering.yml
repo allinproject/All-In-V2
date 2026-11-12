@@ -54,5 +54,7 @@ jobs:
         run: npm run typecheck
       - name: Expo config validation
         run: npx --no-install expo config --type public
-      - name: Expo iOS and Android JavaScript bundles
-        run: npx --no-install expo export --platform all --output-dir /tmp/allin365-v2-export
+      - name: Expo iOS JavaScript bundle
+        run: npx --no-install expo export --platform ios --output-dir /tmp/allin365-v2-export-ios
+      - name: Expo Android JavaScript bundle
+        run: npx --no-install expo export --platform android --output-dir /tmp/allin365-v2-export-android
