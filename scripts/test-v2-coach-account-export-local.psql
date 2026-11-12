@@ -1,0 +1,79 @@
+\set ON_ERROR_STOP on
+-- ALL-222/251: Synthetic owner data, disposable LOCAL Supabase ONLY.
+-- Existing canonical v2_export_my_account_snapshot is the sole public export.
+-- Prerequisite: approved REVIEW candidate Coach DDL and Training export bridge.
+BEGIN;
+INSERT INTO auth.users(id) VALUES
+ ('61111111-6111-4111-8111-611111111111'),
+ ('62222222-6222-4222-8222-622222222222');
+INSERT INTO public.v2_coach_threads(id,user_id) VALUES
+ ('a1111111-6111-4111-8111-611111111111','61111111-6111-4111-8111-611111111111'),
+ ('a2222222-6222-4222-8222-622222222222','62222222-6222-4222-8222-622222222222');
+INSERT INTO public.v2_coach_messages
+ (id,user_id,thread_id,role,content,client_action_id)
+VALUES
+ ('b1111111-6111-4111-8111-611111111111',
+  '61111111-6111-4111-8111-611111111111',
+  'a1111111-6111-4111-8111-611111111111','user','Athlete A private question',
+  'c1111111-6111-4111-8111-611111111111'),
+ ('b2222222-6222-4222-8222-622222222222',
+  '62222222-6222-4222-8222-622222222222',
+  'a2222222-6222-4222-8222-622222222222','user','Athlete B private question',
+  'c2222222-6222-4222-8222-622222222222');
+INSERT INTO allin_private.v2_coach_message_actions
+ (user_id,thread_id,message_id,client_action_id) VALUES
+ ('61111111-6111-4111-8111-611111111111',
+  'a1111111-6111-4111-8111-611111111111',
+  'b1111111-6111-4111-8111-611111111111',
+  'c1111111-6111-4111-8111-611111111111'),
+ ('62222222-6222-4222-8222-622222222222',
+  'a2222222-6222-4222-8222-622222222222',
+  'b2222222-6222-4222-8222-622222222222',
+  'c2222222-6222-4222-8222-622222222222');
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','61111111-6111-4111-8111-611111111111',true);
+DO $coach_export$
+DECLARE
+ v_data jsonb;
+ v_part jsonb;
+BEGIN
+ v_data := public.v2_export_my_account_snapshot('61111111-6111-4111-8111-611111111111');
+ v_part := v_data->'coach_conversation';
+ IF v_part IS NULL OR v_part->>'schema_version' <> 'v2-coach-account-fragment-candidate-v1'
+    OR jsonb_array_length(v_part->'threads')<>1
+    OR jsonb_array_length(v_part->'messages')<>1
+    OR jsonb_array_length(v_part->'message_actions')<>1
+    OR v_part->'messages'->0->>'content' <> 'Athlete A private question'
+    OR v_part::text LIKE '%Athlete B private question%'
+ THEN RAISE EXCEPTION 'Owner A Coach export incomplete or leaked owner B'; END IF;
+ BEGIN
+   PERFORM public.v2_export_my_account_snapshot('62222222-6222-4222-8222-622222222222');
+   RAISE EXCEPTION 'Owner A exported B data';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $coach_export$;
+SELECT set_config('request.jwt.claim.sub','62222222-6222-4222-8222-622222222222',true);
+DO $coach_export$
+DECLARE v_part jsonb;
+BEGIN
+ v_part := public.v2_export_my_account_snapshot('62222222-6222-4222-8222-622222222222')->'coach_conversation';
+ IF jsonb_array_length(v_part->'messages')<>1
+    OR v_part->'messages'->0->>'content'<>'Athlete B private question'
+    OR v_part::text LIKE '%Athlete A private question%'
+ THEN RAISE EXCEPTION 'Owner B Coach export incomplete or leaked owner A'; END IF;
+END $coach_export$;
+RESET ROLE;
+
+-- Owner A deletion must remove ALL Coach rows and leave B intact.
+DELETE FROM auth.users WHERE id='61111111-6111-4111-8111-611111111111';
+DO $coach_delete$
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.v2_coach_threads WHERE user_id='61111111-6111-4111-8111-611111111111')
+ OR EXISTS(SELECT 1 FROM public.v2_coach_messages WHERE user_id='61111111-6111-4111-8111-611111111111')
+ OR EXISTS(SELECT 1 FROM allin_private.v2_coach_message_actions WHERE user_id='61111111-6111-4111-8111-611111111111')
+ OR NOT EXISTS(SELECT 1 FROM public.v2_coach_threads WHERE user_id='62222222-6222-4222-8222-622222222222')
+ THEN RAISE EXCEPTION 'Coach deletion cascade failed or damaged other owner'; END IF;
+ RAISE NOTICE 'PASS ALL-222/251: existing export includes only own Coach history and receipts; owner deletion cascades';
+END $coach_delete$;
+ROLLBACK;
