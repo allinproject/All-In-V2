@@ -77,7 +77,10 @@ export function prepareCoachCalendarContext(input: CoachCalendarInput): CoachCal
  * authenticated, revision-certified Training phase preview.
  * This is explanatory context; never a schedule writer or source of new doses.
  */
-import type {SeasonPhasePreview} from './multiEventPhaseOwnerPreview.ts';
+import {previewGoalEventCertifiedSeasonPhases,type SeasonPhasePreview} from './multiEventPhaseOwnerPreview.ts';
+import type {CanonicalEventGoalApproval} from './canonicalEventGoalApprovalGate.ts';
+import type {EventPhaseDecision} from './multiEventPhaseReview.ts';
+import type {proposeSeasonFromVerifiedTraining} from './multiEventOwnerBridge.ts';
 export type CoachSeasonContextResult=
  | {kind:'blocked';reason:'missing_certified_preview'|'wrong_owner'|'stale_revision'|'invalid_season'}
  | {kind:'ready';scope:'train_season_read_only';planRevisionId:string;snapshotVersion:string;
@@ -112,4 +115,26 @@ export function prepareCoachSeasonContext(input:{
    ...phases.issues.map(i=>({code:i.code,eventIds:[...i.eventIds],date:i.date,message:i.message}))
   ],
   requiresAthleteApproval:true,noAutomaticPlanWrite:true,noInventedTrainingDose:true};
+}
+
+/**
+ * Preferred future server/Coach entry point. The older preview projector is
+ * a presentation helper only; this validates Goal/Event + Training owners
+ * before any season facts reach a Coach prompt. It never reads/writes data.
+ */
+export function prepareGoalEventCertifiedCoachSeasonContext(input:{
+ ownerSeason:Parameters<typeof proposeSeasonFromVerifiedTraining>[0];
+ goalEventOwners:CanonicalEventGoalApproval|null;
+ expectedPlanRevisionId:string;
+ phaseDecisions:readonly EventPhaseDecision[];
+}):CoachSeasonContextResult{
+ if(!input?.ownerSeason)return{kind:'blocked',reason:'missing_certified_preview'};
+ const preview=previewGoalEventCertifiedSeasonPhases(input);
+ return prepareCoachSeasonContext({
+  expectedOwnerId:input.ownerSeason.expectedOwnerId,
+  authenticatedOwnerId:input.ownerSeason.authenticatedOwnerId,
+  activePlanRevisionId:input.expectedPlanRevisionId,
+  accessGateReady:input.ownerSeason.accessGateReady,
+  preview
+ });
 }

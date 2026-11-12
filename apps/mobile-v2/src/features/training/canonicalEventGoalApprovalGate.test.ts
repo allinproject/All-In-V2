@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {certifySeasonAgainstGoalEventOwners} from './canonicalEventGoalApprovalGate.ts';
 import {previewGoalEventCertifiedSeasonPhases} from './multiEventPhaseOwnerPreview.ts';
+import {prepareGoalEventCertifiedCoachSeasonContext} from './coachCalendarContext.ts';
 import type {CanonicalEventGoalApproval} from './canonicalEventGoalApprovalGate.ts';
 import type {SeasonEvent} from './multiEventSeasonPlan.ts';
 const owner='athlete',generation=4,revision='rev-1',token='snapshot-1';
@@ -176,4 +177,28 @@ test('Coach phase preview cannot use stale Goal/Event certification or non-race 
  const g=fixture();g.proofs.eventSnapshot.events[0]={...g.proofs.eventSnapshot.events[0],eventVersion:99};
  assert.equal(previewGoalEventCertifiedSeasonPhases({ownerSeason:g.input,goalEventOwners:g.proofs,
   expectedPlanRevisionId:revision,phaseDecisions}).status,'unavailable');
+});
+
+test('Coach season context requires live owner-confirmed Goal, Event and Training proof',()=>{
+ const f=fixture();
+ const phaseDecisions=[
+  {eventId:'event-a',effort:'supported' as const,taperDays:3,recoveryReviewDays:4,source:'athlete_confirmed' as const,evidenceRefs:[]},
+  {eventId:'event-b',effort:'supported' as const,taperDays:2,recoveryReviewDays:null,source:'athlete_confirmed' as const,evidenceRefs:[]}
+ ];
+ const result=prepareGoalEventCertifiedCoachSeasonContext({
+  ownerSeason:f.input,goalEventOwners:f.proofs,expectedPlanRevisionId:revision,phaseDecisions
+ });
+ assert.equal(result.kind,'ready');
+ if(result.kind!=='ready')throw Error(result.reason);
+ assert.equal(result.noAutomaticPlanWrite,true);
+ assert.deepEqual(result.events.map(e=>e.priority),['A','B']);
+ const none=prepareGoalEventCertifiedCoachSeasonContext({
+  ownerSeason:f.input,goalEventOwners:null,expectedPlanRevisionId:revision,phaseDecisions
+ });
+ assert.equal(none.kind,'blocked');
+ const stale=fixture();
+ stale.proofs.goalSnapshot.goals[0]={...stale.proofs.goalSnapshot.goals[0],targetDate:'2027-04-11'};
+ assert.equal(prepareGoalEventCertifiedCoachSeasonContext({
+  ownerSeason:stale.input,goalEventOwners:stale.proofs,expectedPlanRevisionId:revision,phaseDecisions
+ }).kind,'blocked');
 });
