@@ -19,6 +19,17 @@ SELECT jsonb_build_object(
  'instructions',r.instructions,
  'notes',r.notes,
  'source_origin',r.metadata->>'recipe_origin',
+ 'source_card_completion',r.metadata->>'card_completion',
+ 'source_final_qa_status',r.metadata->>'final_qa_status',
+ 'source_hero_reference_review_only',jsonb_build_object(
+   'hosted_bucket',r.metadata->'image'->>'hosted_bucket',
+   'hosted_path',r.metadata->'image'->>'hosted_path',
+   'hosted_sha256',r.metadata->'image'->>'hosted_sha256',
+   'public_url',r.metadata->'image'->>'public_url',
+   'source_type',r.metadata->'image'->>'source_type',
+   'primary_hero_approved',r.metadata->'image'->'primary_hero_approved',
+   'source_provenance',r.metadata->'image'->>'provenance'
+ ),
  'source_updated_at',r.updated_at,
  'source_variants_review_only',
  coalesce((
