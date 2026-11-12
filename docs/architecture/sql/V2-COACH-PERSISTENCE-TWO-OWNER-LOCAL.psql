@@ -133,7 +133,7 @@ BEGIN
   RAISE EXCEPTION 'changed assistant retry unexpectedly accepted';
  EXCEPTION WHEN unique_violation THEN NULL;
  END;
-END $;
+END $$;
 RESET ROLE;
 
 -- An unauthenticated client cannot create a thread, read history or append.
