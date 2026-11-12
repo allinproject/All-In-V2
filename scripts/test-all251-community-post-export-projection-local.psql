@@ -140,11 +140,15 @@ CREATE TABLE allin_private.v2_all251_unreviewed_owner_probe (
 );
 CREATE TABLE allin_private.v2_all251_unreviewed_pair_probe (
  id uuid PRIMARY KEY,
- follower_id uuid REFERENCES auth.users(id) ON DELETE CASCADE
+ follower_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+ lower_user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+ upper_user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+ target_id uuid REFERENCES auth.users(id) ON DELETE CASCADE
 );
 INSERT INTO storage.buckets(id,name,public)
  VALUES ('all251-disposable-unknown-media','all251-disposable-unknown-media',false);
 DO $graph$
+DECLARE probe_column text;
 BEGIN
  IF EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
    WHERE schema_name='allin_private' AND table_name='v2_community_posts'
@@ -168,6 +172,17 @@ BEGIN
    WHERE table_name='v2_account_deletion_execution_audit'
      AND reason='audit_retention_policy_required')
  THEN RAISE EXCEPTION 'Persistent deletion audit retention requires explicit review'; END IF;
+ FOR probe_column IN SELECT name FROM (VALUES
+  ('follower_id'),('lower_user_id'),('upper_user_id'),('target_id')) AS t(name)
+ LOOP
+  IF NOT EXISTS (SELECT 1
+    FROM allin_private.v2_deletion_owner_graph_gaps_review()
+    WHERE table_name='v2_all251_unreviewed_pair_probe'
+      AND owner_column=probe_column
+      AND reason='relationship_or_actor_retention_policy_required')
+  THEN RAISE EXCEPTION 'Unreviewed Community relationship % escaped preflight',probe_column;
+  END IF;
+ END LOOP;
  IF has_function_privilege('authenticated',
    'allin_private.v2_deletion_owner_graph_gaps_review()','EXECUTE')
    OR has_function_privilege('anon',
