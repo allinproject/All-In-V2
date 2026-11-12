@@ -156,6 +156,22 @@ test('rowing source-backed stats use a rowing Details layout; routes require on-
  assert.equal(outdoor.sections?.[0].kind,'route');
 });
 
+test('swimming maps require explicit on-water subtype and indoor walking has no GPS route',()=>{
+ const route={key:'route',kind:'route' as const,title:'GPS',sourceId:'watch-record',count:100};
+ for(const sportSubtype of [null,'','indoor','pool']){
+  const a={...base(),sport:'swimming',sportSubtype,metrics:[],sections:[route]};
+  assert.throws(()=>canonicalActivityToScreenInput(a,'owner-A','activity-1'),
+   /Route evidence is incompatible/);
+ }
+ for(const sportSubtype of ['open_water','openwater','outdoor']){
+  const a={...base(),sport:'swimming',sportSubtype,metrics:[],sections:[route]};
+  assert.equal(canonicalActivityToScreenInput(a,'owner-A','activity-1').sections?.[0].kind,'route');
+ }
+ assert.throws(()=>canonicalActivityToScreenInput({...base(),sport:'walking',
+  sportSubtype:'indoor',metrics:[],sections:[route]},'owner-A','activity-1'),
+  /Route evidence is incompatible/);
+});
+
 test('sport-specific structured sets and transitions cannot cross activity identities',()=>{
  const invalid=[
   {sport:'running',sportSubtype:'road',kind:'swim_sets'},
