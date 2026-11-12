@@ -1,5 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+/** Yield to the event loop and fail visibly if mocked I/O never reaches its
+ * expected checkpoint; microtask-only polling can starve Node's timers. */
+async function waitForCheckpoint(ready:()=>unknown, label:string){
+ for(let attempt=0;attempt<100;attempt++){
+  if(ready())return;
+  await new Promise<void>(resolve=>setTimeout(resolve,5));
+ }
+ assert.fail('Native billing test checkpoint was never reached: '+label);
+}
+
 import {createOpenIapStoreAdapter} from './openIapStoreAdapter.ts';
 import {createNativeBillingFlow} from './nativeBillingFlow.ts';
 const owner='00000000-0000-0000-0000-000000000001';
@@ -116,7 +127,7 @@ test('owner switch while subscription catalog loads cannot open a native purchas
    ios:{productId,appAccountToken:owner}}),
  });
  const task=store.purchase(productId);
- while(!releaseProducts)await Promise.resolve();
+ await waitForCheckpoint(()=>releaseProducts,'releaseProducts');
  currentOwner='00000000-0000-0000-0000-000000000002';
  releaseProducts([{id:productId}]);
  await assert.rejects(task,/owner_changed/);
@@ -142,7 +153,7 @@ test('native purchase callback after owner switch cannot produce signed evidence
    ios:{productId,appAccountToken:owner}}),
  });
  const task=store.purchase(productId);
- while(!sendPurchase)await Promise.resolve();
+ await waitForCheckpoint(()=>sendPurchase,'sendPurchase');
  currentOwner='00000000-0000-0000-0000-000000000002';
  sendPurchase({store:'apple',productId,purchaseToken:signed});
  await assert.rejects(task,/owner_changed/);
@@ -172,7 +183,7 @@ test('restore account switch during store lookup rejects receipts before storing
   getAccountContext:async()=>({ownerId:owner,ios:{productId,appAccountToken:owner}}),
  });
  const task=store.restore();
- while(!releaseRestore)await Promise.resolve();
+ await waitForCheckpoint(()=>releaseRestore,'releaseRestore');
  currentOwner='00000000-0000-0000-0000-000000000002';
  releaseRestore([{store:'apple',productId,purchaseToken:signed}]);
  await assert.rejects(task,/owner_changed/);
