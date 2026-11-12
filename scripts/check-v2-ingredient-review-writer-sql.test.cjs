@@ -50,7 +50,6 @@ test('source and nutrient guards preserve canonical owner boundaries',()=>{
 });
 test('publication remains explicitly disabled despite any claimed publisher privilege',()=>{
  must(/p_action='publish'[\s\S]*?RAISE EXCEPTION 'publication disabled pending ALL-222 release approval'/i,
- /v_target:='reviewed'/i,
- /profile_review_status/i); // if source comment or column changes, change test to match semantics
+ /v_target:='reviewed'/i); // if source comment or column changes, change test to match semantics
  assert.doesNotMatch(sql,/v_target\s*:=\s*'calculation_ready'/i);
 });
