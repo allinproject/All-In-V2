@@ -111,3 +111,14 @@ test('revoked, expired or merely role-member operator cannot attest',async()=>{
   await denied(db,attest(),'42501');
  }finally{await db.close()}
 });
+
+test('a source digest with an unapproved USDA archive hash cannot be attested',async()=>{
+ const db=await create();
+ try{
+  await db.exec(energyInsert(2048,115,src,sourceHash,'f'.repeat(64)));
+  await db.exec('SET SESSION AUTHORIZATION ingredient_test_operator');
+  await denied(db,attest(),'23514');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations')).rows[0].n,0);
+ }finally{await db.close()}
+});
