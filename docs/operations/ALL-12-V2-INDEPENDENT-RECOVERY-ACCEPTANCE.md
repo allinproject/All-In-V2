@@ -80,3 +80,16 @@ Verified [disposable local replay run 43306483796](https://github.com/allinproje
 Additional *candidate-schema* populated restore tests were added for EventHub (six tables), Community private relationships (five tables), and indoor weekly Progress (five tables), each using synthetic rows and deterministic full-row comparisons. Their first executions **are not accepted without green CI**. The initial EventHub test failed on a shell fixture bug, then exposed its intentional canonical event deletion trigger. The revised disposable loss simulator temporarily disables only that trigger inside a PostgreSQL transaction, reenables it before commit, and checks restoration of the protection; see [commit 8ee5ac3c](https://github.com/allinproject/All-In-V2/commit/8ee5ac3c46369d8b7ab61db2ec34c882a27a038e). [Combined replay 43308846304](https://github.com/allinproject/All-In-V2/actions/runs/43308846304) requires independent outcome verification.
 
 Keep unknown or schema-pending domains (including Nutrition), full Auth/config and complete Storage coverage, current live catalog versus accepted restore coverage, and provider physical disaster recovery **open**. Do not equate success of individual local candidate data tests with full deployed V2 restoration, RPO/RTO measurement, signing secret recovery or founder release approval.
+
+
+## 2026-11-12 — EventHub, Community and indoor Progress populated restores GREEN
+
+Verified the **specific recovery test steps** succeeded in [GitHub Actions run 43309615671](https://github.com/allinproject/All-In-V2/actions/runs/43309615671) at integration SHA `82101dd883c4d2fccb8c77d1b8f36741d08b903f`:
+
+- `ALL-12 populated EventHub six-table restore`: six connected candidate tables; two synthetic owners, full-row digests, graph bindings and explicit participation state. The disposable loss simulation transactionally re-enables the canonical event deletion trigger before restore.
+- `ALL-12 populated private Community graph restore`: five private candidate tables; visibility, pair revisions, follows, blocks, action receipts, and owner relationship preservation.
+- `ALL-12 populated indoor Progress restore`: five candidate tables; synthetic challenge, verified scoring fixtures, leaderboard, achievements, and verified generation/publication/finalization configuration remains disabled.
+
+The same run's Auth, foundation, selected multi-domain, Training, private Storage, and logical catalog checks also reached passing conclusions. These step results are **local synthetic logical restoration evidence only**. Do not infer full user-domain completeness or hosted physical restore from 58/58 table *TOC inclusion*: present schema registration and populated domain restoration have different acceptance gates.
+
+Remaining acceptance: reconcile actual approved Nutrition schema and any new domain tables, full current private Storage object-byte inventory and retention, Auth signing keys/config/external provider recovery, provider physical snapshot provenance/egress-safe independent restore and measured RPO/RTO, and explicit founder release review. ALL-12 remains In Progress; no hosted changes authorized.
