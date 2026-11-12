@@ -47,7 +47,7 @@ BEGIN
  BEGIN
   INSERT INTO public.v2_event_group_memberships(
     user_id,event_id,group_id,state,joined_at)
-  VALUES(b,event_a,group_b,'joined',now());
+  VALUES(a,event_a,group_b,'joined',now());
   RAISE EXCEPTION 'Event group identity mismatch accepted';
  EXCEPTION WHEN foreign_key_violation THEN NULL; END;
  BEGIN
