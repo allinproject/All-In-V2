@@ -1,0 +1,72 @@
+\set ON_ERROR_STOP on
+DO $guard$ BEGIN
+ IF current_database()<>'allin_coach_budget_test' THEN
+  RAISE EXCEPTION 'Refusing Coach budget test outside disposable database'; END IF;
+END $guard$;
+CREATE SCHEMA auth;
+CREATE SCHEMA allin_private;
+DO $roles$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN BYPASSRLS; END IF;
+END $roles$;
+GRANT USAGE ON SCHEMA public,auth TO service_role;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+GRANT SELECT ON auth.users TO service_role;
+\ir ../docs/architecture/sql/V2-COACH-BUDGET-LEDGER-REVIEW-CANDIDATE.sql
+INSERT INTO auth.users(id) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+DO $acl$ DECLARE f record; BEGIN
+ FOR f IN SELECT oid FROM pg_proc WHERE proname IN ('v2_coach_budget_reserve','v2_coach_budget_settle') LOOP
+  IF has_function_privilege('authenticated',f.oid,'EXECUTE')
+     OR has_function_privilege('anon',f.oid,'EXECUTE')
+     OR NOT has_function_privilege('service_role',f.oid,'EXECUTE') THEN
+   RAISE EXCEPTION 'Coach budget function privilege drift'; END IF;
+ END LOOP;
+ IF NOT (SELECT bool_and(relrowsecurity) FROM pg_class WHERE oid IN
+  ('allin_private.v2_coach_budget_periods'::regclass,'allin_private.v2_coach_budget_reservations'::regclass)) THEN
+  RAISE EXCEPTION 'Coach budget missing RLS'; END IF;
+END $acl$;
+SET ROLE service_role;
+DO $test$ DECLARE
+ a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ req uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ req2 uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ j jsonb; rid uuid; held numeric; spent numeric; i int;
+BEGIN
+ j:=public.v2_coach_budget_reserve(a,req,0.005,256);
+ IF j->>'approved'<>'true' OR j->>'ownerId'<>a::text THEN RAISE EXCEPTION 'Reserve failed'; END IF;
+ rid:=(j->>'reservationId')::uuid;
+ j:=public.v2_coach_budget_reserve(a,req,0.005,256);
+ IF j->>'reason'<>'existing_request' THEN RAISE EXCEPTION 'Duplicate charged'; END IF;
+ SELECT held_usd,spent_usd INTO held,spent FROM allin_private.v2_coach_budget_periods WHERE user_id=a;
+ IF held<>0.005 OR spent<>0 THEN RAISE EXCEPTION 'Reservation accounting wrong'; END IF;
+ PERFORM public.v2_coach_budget_settle(a,req,rid,100,20,0.001);
+ PERFORM public.v2_coach_budget_settle(a,req,rid,100,20,0.001);
+ SELECT held_usd,spent_usd INTO held,spent FROM allin_private.v2_coach_budget_periods WHERE user_id=a;
+ IF held<>0 OR spent<>0.001 THEN RAISE EXCEPTION 'Settlement accounting wrong'; END IF;
+ BEGIN
+  PERFORM public.v2_coach_budget_settle(b,req,rid,100,20,0.001);
+  RAISE EXCEPTION 'Wrong-owner settlement permitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_coach_budget_settle(a,req,rid,100,20,0.002);
+  RAISE EXCEPTION 'Conflicting settlement permitted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ j:=public.v2_coach_budget_reserve(b,req2,0.005,256);
+ IF j->>'approved'<>'true' THEN RAISE EXCEPTION 'Other owner denied'; END IF;
+ FOR i IN 1..149 LOOP
+  j:=public.v2_coach_budget_reserve(a,gen_random_uuid(),0.005,256);
+  IF j->>'approved'<>'true' THEN RAISE EXCEPTION 'Premature monthly cap'; END IF;
+ END LOOP;
+ j:=public.v2_coach_budget_reserve(a,gen_random_uuid(),0.005,256);
+ IF j->>'reason'<>'monthly_cap_reached' THEN RAISE EXCEPTION 'Monthly cap not enforced'; END IF;
+END $test$;
+RESET ROLE;
+DELETE FROM auth.users WHERE id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+DO $cascade$ BEGIN
+ IF EXISTS(SELECT 1 FROM allin_private.v2_coach_budget_periods WHERE user_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+ OR EXISTS(SELECT 1 FROM allin_private.v2_coach_budget_reservations WHERE user_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+ THEN RAISE EXCEPTION 'Owner cascade incomplete'; END IF;
+END $cascade$;
+SELECT 'PASS ALL-217 DURABLE COACH BUDGET POSTGRES17' AS result;
