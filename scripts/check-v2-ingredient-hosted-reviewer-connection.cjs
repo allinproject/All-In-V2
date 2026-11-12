@@ -16,7 +16,10 @@ function assertConfig(env){
  if(env.PGPASSWORD||env.DATABASE_URL||env.PGURI)deny('Inline password/URI not accepted');
  const login=env.ALLIN_REVIEWER_EXPECTED_DB_LOGIN||'';
  if(!/^allin_ing_reviewer_[a-z0-9_]{6,35}$/.test(login))deny('Approved unique reviewer login required');
- if(env.PGUSER!==login&&env.PGUSER!==login+'.'+PROJECT)deny('PGUSER does not match reviewed operator');
+ const direct=env.PGHOST==='db.'+PROJECT+'.supabase.co';
+ const pooled=/^[a-z0-9-]+\.pooler\.supabase\.com$/.test(env.PGHOST||'');
+ if(!direct&&!pooled)deny('Refusing a database host outside approved staging');
+ if((direct&&env.PGUSER!==login)||(pooled&&env.PGUSER!==login+'.'+PROJECT))deny('PGUSER does not match approved project-specific reviewer login');
  return {login};
 }
 function acceptanceQuery(login){
