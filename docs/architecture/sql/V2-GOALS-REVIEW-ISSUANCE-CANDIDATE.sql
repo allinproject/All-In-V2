@@ -10,7 +10,7 @@ AS $issue$
 DECLARE
  digest text;
  approved allin_private.v2_goal_approval_reviews%ROWTYPE;
- current_time timestamptz:=pg_catalog.clock_timestamp();
+ v_review_clock timestamptz:=pg_catalog.clock_timestamp();
 BEGIN
  IF pg_catalog.current_setting('role',true) NOT IN
    ('service_role','postgres','none') THEN
@@ -25,7 +25,7 @@ BEGIN
    USING ERRCODE='42501'; END IF;
  PERFORM 1 FROM auth.sessions s
   WHERE s.id=p_session_id AND s.user_id=p_user_id
-    AND (s.not_after IS NULL OR s.not_after>current_time)
+    AND (s.not_after IS NULL OR s.not_after>v_review_clock)
   FOR SHARE;
  IF NOT FOUND OR NOT EXISTS(
    SELECT 1 FROM auth.users WHERE id=p_user_id
@@ -63,7 +63,7 @@ BEGIN
   expected_version,payload_sha256,athlete_confirmed,approved_at,expires_at
  ) VALUES(
   p_review_id,p_user_id,p_session_id,p_goal_id,p_revision_id,p_action_id,
-  p_expected_version,digest,true,current_time,current_time+interval '10 minutes'
+  p_expected_version,digest,true,v_review_clock,v_review_clock+interval '10 minutes'
  ) ON CONFLICT(user_id,id) DO NOTHING;
  SELECT * INTO approved FROM allin_private.v2_goal_approval_reviews
   WHERE user_id=p_user_id AND id=p_review_id FOR UPDATE;
@@ -74,7 +74,7 @@ BEGIN
  OR approved.expected_version IS DISTINCT FROM p_expected_version
  OR approved.payload_sha256 IS DISTINCT FROM digest
  OR approved.athlete_confirmed IS DISTINCT FROM true
- OR approved.expires_at<=current_time THEN
+ OR approved.expires_at<=v_review_clock THEN
   RAISE EXCEPTION 'Review action key reused or expired'
    USING ERRCODE='23505';
  END IF;
