@@ -217,3 +217,34 @@ the actual hosted account-deletion worker. Keep the current database
 `execution_enabled=false` switch and worker hard OFF. Do not apply
 a review function as a migration or silently treat no cascade gaps as
 authorization to delete an account.
+
+## 2026-11-12 — Claim/completion graph release gate review candidate
+
+A new, **non-deployed** integration SQL candidate at
+`docs/architecture/sql/V2-ACCOUNT-DELETION-CLAIM-COMPLETION-GRAPH-GATE-REVIEW.sql`
+preserves the existing service-only owner/request claim, serialized
+requested-to-processing CAS, durable audit, Auth/session absence check,
+direct-owner completion readback and current Storage-bucket fail-closed gate.
+It adds the same private, no-client-EXECUTE
+`v2_deletion_assert_approved_coverage_review()` call before either claim
+mutation or completion audit update.
+
+The review guard reads the already established owner-cascade gap scanner and
+rejects **any unapproved owner, relationship, private Storage or audit-retention
+finding** with SQLSTATE 42501. In particular, the existing durable audit
+intentionally remains after Auth deletion: until the founder approves a
+lawful retention/disposal policy, a real deletion worker must *not* be made
+eligible merely because FK cascades look complete. Only a separately
+reviewed follow-on migration could declare that audit obligation satisfied.
+
+The canonical foundation CI now sources the integration candidate only inside
+`scripts/test-all251-deletion-claim-graph-gate-local.psql`, which begins
+a database transaction, asserts both function bodies reject uncovered data
+without changing request/audit rows, temporarily toggles the local DB test
+gate, and ends with `ROLLBACK`. This is *not* the production migration,
+and the deployed worker remains hard OFF. Exact test outcome must be verified
+in CI before describing PostgreSQL integration as accepted.
+
+No SQL is authorized to delete private Storage buckets or objects directly;
+actual byte-aware owner-scoped cleanup requires the canonical Storage API,
+object ownership/retention policy and full hosted two-user acceptance first.
