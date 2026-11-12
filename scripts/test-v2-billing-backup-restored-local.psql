@@ -124,7 +124,7 @@ BEGIN
         AND provider_subscription_id='sha256:restore_backup_google_B'
         AND revision=2 AND phase='paid'
         AND access_until='2027-12-31 UTC'::timestamptz) OR
-    (SELECT count(*) FROM allin_private.v2_subscription_verified_events)<>5 THEN
+    (SELECT count(*) FROM allin_private.v2_subscription_verified_events)<>6 THEN
    RAISE EXCEPTION 'Post-restore new event damaged monotonic receipt history';
  END IF;
  BEGIN
