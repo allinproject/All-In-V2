@@ -182,9 +182,15 @@ No `service_role` EXECUTE grant is issued by this candidate.
 
 The disposable Supabase validation file
 `scripts/test-v2-goals-acceptance-local-postgres.psql` must pass before
-owner review can proceed. Live publication also requires a second-session
-concurrency race, complete metric/behavior evidence owner approvals, exact
-Goal/Event binding and independent least-privilege security acceptance.
+owner review can proceed. A deterministic two-session PostgreSQL contention test now runs via
+`scripts/test-v2-goals-acceptance-race-local.sh`: a competing stale action
+must wait for the Goal lock, fail, and leave exactly one accepted revision and
+one receipt. [Local Supabase run 43140792513](https://github.com/allinproject/All-In-V2/actions/runs/43140792513)
+passed this race and the prior owner/retry probes. This remains **candidate-only**
+and does not validate a production client session or authorize service-role
+execution. Live publication still requires complete metric/behavior evidence
+owner approvals, exact Goal/Event binding, a real authenticated server adapter,
+and independent least-privilege security acceptance.
 
 ## 3. Table-by-table proposed contract
 
