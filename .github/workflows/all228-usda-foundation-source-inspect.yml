@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Download official Foundation October 2026 archive to temporary runner
         env:
           USDA_URL: https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_json_2026-10-29.zip
@@ -40,6 +44,7 @@ jobs:
               data=z.read(json_names[0])
               if len(data)>50000000: raise RuntimeError('Excessive JSON length')
               obj=json.loads(data)
+              open('/tmp/usda-foundation.json','wb').write(data)
               print('USDA_SOURCE_BYTES',os.path.getsize(path))
               print('USDA_SOURCE_SHA256',hashlib.sha256(open(path,'rb').read()).hexdigest())
               print('USDA_JSON_MEMBER',json_names[0])
@@ -53,6 +58,10 @@ jobs:
                               print('USDA_FIRST_RECORD_FIELD_NAMES',sorted(sample))
                               print('USDA_FIRST_RECORD_NUTRIENT_FIELD_NAMES',sorted(sample.get('foodNutrients',[{}])[0]) if sample.get('foodNutrients') else [])
           PY
+      - name: Preview real USDA source candidates without writing to catalog
+        run: |
+          node --experimental-strip-types --test scripts/inspect-v2-usda-foundation-candidates.test.mjs
+          node --experimental-strip-types scripts/inspect-v2-usda-foundation-candidates.mjs /tmp/usda-foundation.json dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579
       - name: No import and no persisted archive
         run: |
           echo 'Source inspection only; no databases, repository writes or exports.'
