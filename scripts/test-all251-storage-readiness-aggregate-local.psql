@@ -120,7 +120,8 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN denied:=true;
  END;
  IF NOT denied THEN RAISE EXCEPTION 'Foreign owner could verify deletion audit'; END IF;
- UPDATE allin_private.v2_account_deletion_requests SET status='cancelled'
+ UPDATE allin_private.v2_account_deletion_requests
+ SET status='cancelled',resolved_at=now()
  WHERE request_id=req;
  denied:=false;
  BEGIN
