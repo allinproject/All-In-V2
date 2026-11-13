@@ -26,6 +26,62 @@ INSERT INTO auth.sessions(id,user_id) VALUES
  ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 INSERT INTO public.v2_profiles(user_id)
  SELECT id FROM auth.users;
+-- ALL-230 review ledger: complete evidence remains review-only and owner isolated.
+DO $source_ledger$
+DECLARE a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ j jsonb;
+BEGIN
+ IF NOT (SELECT relrowsecurity FROM pg_catalog.pg_class
+  WHERE oid='allin_private.v2_training_restriction_source_evidence'::regclass)
+ OR has_table_privilege('authenticated','allin_private.v2_training_restriction_source_evidence','SELECT')
+ OR has_function_privilege('authenticated',
+  'allin_private.v2_training_restriction_source_coverage_review(uuid,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Evidence ledger exposed'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_training_restriction_source_coverage_review(a,'one');
+  RAISE EXCEPTION 'Unreviewed missing source passed';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ INSERT INTO allin_private.v2_training_restriction_source_evidence
+  (user_id,snapshot_version,source_kind,evidence_ref,source_digest,
+   inspected_count,reconciled_count,unresolved_count,complete)
+ SELECT a,'one',kind,'reader:'||kind,repeat('a',64),0,0,0,true
+ FROM unnest(ARRAY['current_restrictions','approved_plans','historical_records',
+ 'imported_records']) kind;
+ BEGIN
+  PERFORM allin_private.v2_training_restriction_source_coverage_review(a,'one');
+  RAISE EXCEPTION 'Incomplete coverage accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  INSERT INTO allin_private.v2_training_restriction_source_evidence
+   (user_id,snapshot_version,source_kind,evidence_ref,source_digest,
+    inspected_count,reconciled_count,unresolved_count,complete)
+  VALUES(a,'one','restored_records','reader:approved_plans',repeat('a',64),0,0,0,true);
+  RAISE EXCEPTION 'Duplicate evidence accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO allin_private.v2_training_restriction_source_evidence
+   (user_id,snapshot_version,source_kind,evidence_ref,source_digest,
+    inspected_count,reconciled_count,unresolved_count,complete)
+  VALUES(a,'one','restored_records','reader:restore',repeat('b',64),1,0,1,true);
+  RAISE EXCEPTION 'Unresolved source accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ INSERT INTO allin_private.v2_training_restriction_source_evidence
+  (user_id,snapshot_version,source_kind,evidence_ref,source_digest,
+   inspected_count,reconciled_count,unresolved_count,complete)
+ VALUES(a,'one','restored_records','reader:restore',repeat('b',64),0,0,0,true);
+ j:=allin_private.v2_training_restriction_source_coverage_review(a,'one');
+ IF j->>'status'<>'review_required'
+ OR j->>'initialCertificationAuthorized'<>'false'
+ OR j->>'sourceAuthenticityEstablished'<>'false'
+ THEN RAISE EXCEPTION 'Review ledger falsely certified'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_training_restriction_source_coverage_review(b,'one');
+  RAISE EXCEPTION 'Cross-owner evidence accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_training_restriction_certifications
+  WHERE user_id=a) THEN RAISE EXCEPTION 'Evidence issued certification'; END IF;
+END $source_ledger$;
 DO $acl$ BEGIN
  IF has_function_privilege('authenticated',
   'public.v2_training_restriction_write_candidate(uuid,uuid,text,uuid,text,text,bigint)','EXECUTE')
