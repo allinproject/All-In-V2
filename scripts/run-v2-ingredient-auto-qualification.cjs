@@ -316,6 +316,171 @@ async function runRoutedHostedAutomaticQualification({
   return {status:exceptions.length?'partially_qualified':'source_qualified_not_published',
     qualified,exceptions,calculationReady:false,publicationApproved:false};
 }
+
+/**
+ * Authoritative mapping reader: the existing catalog is the sole source of
+ * identity/revision truth. This reader must be a separate TRUSTED server-side
+ * database connection configured to read private candidate catalog rows.
+ * The mobile/athlete RLS reader cannot read unqualified candidate rows, and
+ * callers must never supply profile IDs or a replacement mapping inventory.
+ * Read-only here; no SECURITY DEFINER bypass or new catalog schema.
+ */
+const CANONICAL_MAPPING_READER_SQL=`
+SELECT
+ s.provider, s.source_data_type, s.external_record_id,
+ s.source_description, s.payload_sha256, s.mapping_status,
+ s.ingredient_id AS source_ingredient_id, s.id AS source_record_id,
+ ps.evidence_role, p.id AS profile_id, p.ingredient_id AS profile_ingredient_id,
+ p.preparation_state, p.basis_unit, p.basis_quantity,
+ p.review_status, p.profile_revision,
+ i.id AS canonical_ingredient_id, i.status AS ingredient_status
+FROM public.v2_ingredient_source_records s
+LEFT JOIN public.v2_ingredient_profile_sources ps
+ ON ps.source_record_id=s.id AND ps.evidence_role='primary'
+LEFT JOIN public.v2_ingredient_nutrition_profiles p ON p.id=ps.profile_id
+LEFT JOIN public.v2_ingredients i ON i.id=s.ingredient_id
+WHERE s.provider='usda_fdc' AND s.source_data_type='Foundation'
+ AND s.external_record_id = ANY($1::text[])
+ORDER BY s.external_record_id, p.id;
+`;
+// Explicitly fail if the reader is anonymous, a mobile role, or an unscoped
+// superuser. Runtime deployment must provision its own restricted, vetted
+// catalog reader privileges; this code never creates grants or credentials.
+const CANONICAL_READER_IDENTITY_SQL=`
+SELECT session_user::text AS login,
+ current_user::text AS effective_role,
+ COALESCE((SELECT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb
+  AND NOT rolcreaterole AND NOT rolreplication AND NOT rolbypassrls
+  FROM pg_catalog.pg_roles WHERE rolname=session_user),false)
+  AS least_privileged,
+ has_table_privilege(current_user,'public.v2_ingredient_source_records','SELECT') AS source_select,
+ has_table_privilege(current_user,'public.v2_ingredient_profile_sources','SELECT') AS link_select,
+ has_table_privilege(current_user,'public.v2_ingredient_nutrition_profiles','SELECT') AS profile_select,
+ has_table_privilege(current_user,'public.v2_ingredients','SELECT') AS ingredient_select,
+ has_table_privilege(current_user,'public.v2_ingredient_source_records','UPDATE') AS source_update,
+ has_table_privilege(current_user,'public.v2_ingredient_nutrition_profiles','UPDATE') AS profile_update;
+`;
+const FDC_ID=/^[1-9][0-9]{0,11}$/;
+async function readCanonicalMappingsFromDatabase({reader,sourceFoods}) {
+ if(!reader||typeof reader.query!=='function'||!Array.isArray(sourceFoods)||
+    sourceFoods.length<1||sourceFoods.length>1000)
+   throw Error('Trusted catalog reader and bounded exact sources required');
+ const ids=[],keys=new Set(),fdcs=new Set();
+ for(const food of sourceFoods) {
+   if(typeof food?.source_profile_key!=='string'||!food.source_profile_key||
+      keys.has(food.source_profile_key)||!FDC_ID.test(String(food.fdcId))||
+      fdcs.has(String(food.fdcId))||typeof food.payload_sha256!=='string'||
+      !/^[a-f0-9]{64}$/.test(food.payload_sha256))
+     throw Error('Invalid or repeated USDA source request; no mapping read');
+   keys.add(food.source_profile_key);fdcs.add(String(food.fdcId));ids.push(String(food.fdcId));
+ }
+ const identity=await reader.query(CANONICAL_READER_IDENTITY_SQL);
+ const auth=identity?.rows?.length===1?identity.rows[0]:null;
+ if(!auth||typeof auth.login!=='string'||
+    !/^allin_ing_catalog_reader_[a-z0-9_]{4,35}$/.test(auth.login)||
+    ![auth.login,'allin_v2_ingredient_catalog_reader'].includes(auth.effective_role)||
+    ['least_privileged','source_select','link_select','profile_select','ingredient_select']
+      .some(k=>auth[k]!==true)||
+    auth.source_update!==false||auth.profile_update!==false)
+   throw Error('Canonical catalog reader identity/permission gate denied');
+ const response=await reader.query(CANONICAL_MAPPING_READER_SQL,[ids]);
+ if(!Array.isArray(response?.rows))
+   throw Error('Canonical catalog reader result unavailable');
+ const byFdc=new Map();
+ for(const row of response.rows) {
+   if(!fdcs.has(row.external_record_id))
+     throw Error('Catalog reader returned an unrequested source');
+   const list=byFdc.get(row.external_record_id)||[];
+   list.push(row);byFdc.set(row.external_record_id,list);
+ }
+ const mappings=[],exceptions=[];
+ for(const food of sourceFoods) {
+   const found=byFdc.get(String(food.fdcId))||[];
+   const reasons=[];
+   if(found.length!==1)reasons.push('canonical_source_or_primary_mapping_missing_or_ambiguous');
+   else {
+     const row=found[0];
+     if(row.provider!=='usda_fdc'||row.source_data_type!=='Foundation'||
+        row.source_description!==food.source_description||
+        row.payload_sha256!==food.payload_sha256||
+        row.mapping_status!=='mapped'||
+        row.ingredient_status!=='active'||
+        row.evidence_role!=='primary'||
+        row.source_ingredient_id!==row.profile_ingredient_id||
+        row.source_ingredient_id!==row.canonical_ingredient_id||
+        row.preparation_state!==food.proposed_preparation_state||
+        row.basis_unit!=='g'||Number(row.basis_quantity)!==100||
+        row.review_status!=='candidate'||
+        !UUID.test(row.profile_id||'')||
+        !UUID.test(row.canonical_ingredient_id||'')||
+        !Number.isSafeInteger(Number(row.profile_revision))||
+        Number(row.profile_revision)<1)
+        reasons.push('canonical_identity_source_form_revision_or_digest_mismatch');
+     else mappings.push({
+       source_profile_key:food.source_profile_key,
+       profileId:row.profile_id,
+       expectedRevision:Number(row.profile_revision),
+       sourceFdcId:String(food.fdcId),
+       sourcePayloadSha256:food.payload_sha256
+     });
+   }
+   if(reasons.length)exceptions.push({
+     source_profile_key:food.source_profile_key,route:'exception_review',reasons
+   });
+ }
+ return {canonicalMappings:mappings,exceptions};
+}
+/**
+ * The only hosted routing entrypoint that resolves canonical mapping from DB.
+ * The caller supplies verified official source projections, never UUID mappings.
+ * Existing CAS/digest locks in the canonical writer recheck the selected source.
+ */
+async function runRoutedHostedAutomaticQualificationFromDatabase({
+  reader,client,sourceFoods,sourceBindings,sourceEvidence,aliasPolicy,
+  candidates,documents,attestEnergy
+}) {
+ if(typeof attestEnergy!=='boolean')
+   throw Error('Hosted energy attestation intent must be an explicit boolean');
+ const {reviewUsdaAdmission}=require('./review-v2-usda-source-admission.cjs');
+ const routes=reviewUsdaAdmission({sourceFoods,sourceBindings,sourceEvidence,aliasPolicy});
+ if(!routes.sourceContractValidated||!routes.aliasContractValidated||
+    !Array.isArray(routes.qualificationQueue))
+   return {status:'review_required',qualified:[],exceptions:
+     (routes.qualificationQueue||[]).map(x=>({
+       source_profile_key:x.source_profile_key,route:'exception_review',
+       reasons:['global_source_or_alias_contract_failed']})),
+     calculationReady:false,publicationApproved:false};
+ const eligibleKeys=new Set(routes.qualificationQueue.filter(x=>
+   x.route==='automatic_qualification').map(x=>x.source_profile_key));
+ if(!eligibleKeys.size)
+   return {status:'exception_review_only',qualified:[],exceptions:
+     routes.qualificationQueue.map(x=>({
+       source_profile_key:x.source_profile_key,route:'exception_review',reasons:x.reasons
+     })),calculationReady:false,publicationApproved:false};
+ // Only source-passing rows are read from the catalog. The authoritative
+ // catalog row, not caller-provided IDs, chooses the profile to review.
+ const scoped=sourceFoods.filter(f=>eligibleKeys.has(f.source_profile_key));
+ const formByKey=new Map(routes.sourceRows.map(r=>[
+   r.source_profile_key,r.proposed_preparation_state
+ ]));
+ const read=await readCanonicalMappingsFromDatabase({reader,
+   sourceFoods:scoped.map(f=>({...f,
+     proposed_preparation_state:formByKey.get(f.source_profile_key)}))
+ });
+ const result=await runRoutedHostedAutomaticQualification({
+   client,sourceFoods,sourceBindings,sourceEvidence,aliasPolicy,candidates,documents,
+   canonicalMappings:read.canonicalMappings,attestEnergy
+ });
+ return {...result,
+   exceptions:[...result.exceptions.map(e=>{
+     const precise=read.exceptions.find(x=>x.source_profile_key===e.source_profile_key);
+     return precise||e;
+   })],
+   canonicalMappingsReadFromDatabase:true};
+}
 module.exports={planAutomaticQualification,runAutomaticQualification,
-  runHostedAutomaticQualification,runRoutedHostedAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,
+  runHostedAutomaticQualification,runRoutedHostedAutomaticQualification,
+  readCanonicalMappingsFromDatabase,runRoutedHostedAutomaticQualificationFromDatabase,
+  CANONICAL_MAPPING_READER_SQL,CANONICAL_READER_IDENTITY_SQL,
+  requestKey,WRITER,ENERGY_WRITER,
   HOSTED_READINESS_SQL,checkHostedIngestReadiness};
