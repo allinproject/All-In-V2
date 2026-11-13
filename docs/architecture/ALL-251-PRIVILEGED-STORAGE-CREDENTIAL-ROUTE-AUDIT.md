@@ -306,3 +306,44 @@ An isolated outbound-disabled restore target, consistent source snapshot
 cutoff, finished data/Auth/Storage restore and owner-integrity readback are
 required before a credible RPO or RTO can be reported. Do not convert CI
 job duration or simple sign-in latency into disaster-recovery RTO.
+
+
+## 2026-11-13 — Approved no-new-infrastructure signed-writer candidate
+
+The founder chose the **existing-project, no-additional-infrastructure**
+approach. This approves continuing review-only implementation, **not**
+deployment or an unsupported claim that unrestricted Supabase credentials
+cannot access provider bytes.
+
+- `docs/architecture/sql/V2-ALL251-ATTESTED-PRIVILEGED-STORAGE-WRITER-REVIEW.sql`
+  adds a distinct private HMAC signing key, durable nonce ledger, byte SHA-256
+  lease binding, and attested begin/settle RPCs. In the *same transaction*
+  it revokes the old service-role callable unsigned begin/settle grants.
+  Without a separately provisioned 32-byte writer key, it **fails closed**.
+- `trainingPrivilegedStorageWriterAttestor.mjs` signs exact owner, bucket,
+  path, action, operation, byte digest, lease ID (for settlement), timestamp
+  and unique nonce. The existing canonical writer and account-export barrier
+  reuse this authority via optional injection. The default-off Edge writer
+  requires a distinct, server-only `ALLIN_WRITER_ATTESTATION_SECRET_B64`
+  before it will use the signed RPCs.
+- The signing secret must be generated out-of-band with a CSPRNG, placed in
+  secure private database provisioning and the **dedicated writer only**.
+  It must **not** be copied to the project-wide service key, GitHub
+  environment shared test secrets, mobile apps, build artifacts, or this
+  repository. DB signing table and nonce ledger must be unreadable by
+  `service_role`; proof validation is done by a restricted SECURITY DEFINER
+  routine. Credential rotation/recovery must be designed separately.
+- Activation sequence: fully validated local rollback replay; deploy
+  compatible server writer and provision matching independent signing key
+  under an approved staging release with recovery; atomically install signed
+  begin/settle and revoke *both* old unsigned service-role RPC grants; verify
+  old and forged requests denied and fresh signed writes accepted. Verify
+  failures leave durable leases unresolved and never report deletion success.
+- **Residual exposure:** an unrestricted master service-role credential still
+  has provider-level broad privilege, and an operator with database owner
+  access may change the signer table/metadata trigger. Signed or resumable
+  URLs and direct S3/TUS protocol completion require independent acceptance.
+  Do not set `uploadBarrierEnforced=true` from attested-RPC success alone.
+
+No signer key, migration or function was applied to hosted staging or
+production as part of this implementation slice.
