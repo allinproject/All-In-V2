@@ -7,6 +7,7 @@
  * approves Routine identity, versioned persistence, SELECT policy and grants.
  */
 import {openOwnedRoutineWorkoutReview,type SavedRoutineOwnerSnapshot} from './routineWorkoutReview.ts';
+import {V2_ACTIVITY_SPORTS} from '../activityEntryContract.ts';
 
 export type SavedRoutineSummary={
   routineId:string;ownerId:string;version:number;name:string;sport:SavedRoutineOwnerSnapshot['sport'];
@@ -40,8 +41,7 @@ const token=(v:unknown):v is string=>typeof v==='string'&&v.length>0&&v.length<=
 const version=(v:unknown)=>Number.isSafeInteger(v)&&Number(v)>0;
 const generation=(v:unknown)=>Number.isSafeInteger(v)&&Number(v)>=0;
 const clone=<T>(v:T):T=>JSON.parse(JSON.stringify(v)) as T;
-const sportSet=new Set(['running','walking','cycling','swimming','strength','hiking',
-  'rucking','rowing','elliptical','stair','yoga','mobility','other']);
+const sportSet:ReadonlySet<string>=new Set(V2_ACTIVITY_SPORTS);
 
 function validSummary(s:SavedRoutineSummary,expectedOwnerId:string):boolean{
  return !!s&&id(s.routineId)&&s.ownerId===expectedOwnerId&&version(s.version)&&
