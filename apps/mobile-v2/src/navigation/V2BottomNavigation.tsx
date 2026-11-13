@@ -29,9 +29,9 @@ export function V2BottomNavigation() {
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border, paddingHorizontal: 5, paddingVertical: 7 },
-  tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
-  selected: { backgroundColor: colors.surfaceRaised },
+  bar: { flexDirection: 'row', backgroundColor: colors.background, borderTopWidth: 1, borderColor: colors.border, paddingHorizontal: 5, paddingVertical: 7 },
+  tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  selected: { borderTopWidth: 2, borderTopColor: colors.gold },
   label: { fontSize: 11, fontWeight: '700', color: colors.mutedText },
   activeLabel: { color: colors.goldSoft },
 });
