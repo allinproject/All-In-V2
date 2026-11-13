@@ -95,10 +95,23 @@ try {
  // Delete only this run's synthetic objects and bucket, never any preexisting bucket.
  if(created){
   for(const path of files.keys()) {
-   const r=await storage('DELETE','/object/'+bucket+'/'+enc(path));
-   assert.ok(r.ok||r.status===404,'Disposable object cleanup failed');
+   // The scenario intentionally removed A's files already. Storage may
+   // return HTTP 400 (rather than 404) for a second DELETE, so never use
+   // the status of a redundant DELETE as evidence that cleanup failed.
+   // Object info readback is the canonical absence check in this fixture.
+   const exists=await transport.objectExists({ownerId:path.split('/')[0],
+    requestId:R,bucketId:bucket,path});
+   if(exists) {
+    const deleted=await transport.deleteObject({ownerId:path.split('/')[0],
+     requestId:R,bucketId:bucket,path});
+    assert.ok(deleted.deleted||deleted.alreadyAbsent,
+     'Disposable object cleanup was not acknowledged');
+   }
+   assert.equal(await transport.objectExists({ownerId:path.split('/')[0],
+    requestId:R,bucketId:bucket,path}),false,
+    'Disposable object still present after cleanup');
   }
   const r=await storage('DELETE','/bucket/'+bucket);
-  assert.ok(r.ok,'Disposable bucket cleanup failed');
+  assert.ok(r.ok,'Disposable bucket cleanup failed: HTTP '+r.status);
  }
 }
