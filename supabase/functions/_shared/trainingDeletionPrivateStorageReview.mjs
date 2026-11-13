@@ -38,14 +38,15 @@ function validateInventory(inventory,ownerId,bucketId) {
 export async function reviewPrivateStorageCleanup({
  ownerId,requestId,approvedBucketIds,listBucketCatalog,listOwnerStorageObjects,
  deleteObject,objectExists,recordCheckpoint,readCheckpoint,persistAndLoadObjectPlan,
- assertOwnerWritesQuiesced,
+ assertOwnerWritesQuiesced,verifyBucketCheckpoints,
 }) {
  if(!UUID.test(ownerId??'')||!UUID.test(requestId??'') ||
     !Array.isArray(approvedBucketIds) || !approvedBucketIds.length ||
     new Set(approvedBucketIds).size!==approvedBucketIds.length ||
     approvedBucketIds.some(id=>typeof id!=='string'||!/^[a-z0-9][a-z0-9-]{1,80}$/.test(id)) ||
     [listBucketCatalog,listOwnerStorageObjects,deleteObject,objectExists,recordCheckpoint,
-     readCheckpoint,persistAndLoadObjectPlan,assertOwnerWritesQuiesced]
+     readCheckpoint,persistAndLoadObjectPlan,assertOwnerWritesQuiesced,
+     verifyBucketCheckpoints]
       .some(fn=>typeof fn!=='function'))
    throw Error('Approved server-only cleanup dependencies required');
  // Only an authoritative server-side writer barrier can establish this.
@@ -106,6 +107,9 @@ export async function reviewPrivateStorageCleanup({
    }
    if(await assertOwnerWritesQuiesced({ownerId,requestId})!==true)
      throw Error('Owner Storage write barrier expired');
+   if(await verifyBucketCheckpoints({ownerId,requestId,bucketId,
+     plannedCount:paths.length})!==true)
+     throw Error('Storage bucket checkpoint coverage incomplete');
    const finalInventory=await listOwnerStorageObjects({ownerId,requestId,bucketId});
    if(validateInventory(finalInventory,ownerId,bucketId).length!==0)
      throw Error('Storage owner inventory not empty after cleanup');
