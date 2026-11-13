@@ -2,29 +2,14 @@ import { Link } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/tokens';
 
-export type VerifiedTrainingPlanSummary = {
-  ownerId: string;
-  revisionId: string;
-  title: string;
-  goal: string;
-  phase: string | null;
-  dateRange: string;
-  weekStructure: readonly { id: string; day: string; sport: string; purpose: string }[];
-};
-export type TrainingPlanEvidence =
-  | { status: 'unavailable' | 'loading' | 'error' }
-  | { status: 'ready'; ownerId: string; plans: readonly VerifiedTrainingPlanSummary[] };
+import type { TrainingPlanProjection } from './trainingPlanOwnerProjection';
 
-/** Training is the accepted plan's owner. No inferred no-plan state from a missing reader. */
-export function TrainingPlanContent({ ownerId, evidence }: {
-  ownerId: string;
-  evidence: TrainingPlanEvidence;
+/** Training owns accepted plan state. A missing reader is not proof of no plan. */
+export function TrainingPlanContent({ evidence }: {
+  evidence: TrainingPlanProjection;
 }) {
-  const verified = evidence.status === 'ready' && evidence.ownerId === ownerId && Boolean(ownerId);
-  const plans = verified && evidence.status === 'ready'
-    ? evidence.plans.filter(p => p.ownerId === ownerId && !!p.revisionId && !!p.title)
-    : [];
-  const safe = verified && evidence.status === 'ready' && plans.length === evidence.plans.length;
+  const safe = evidence.status === 'ready';
+  const plans = safe ? evidence.plans : [];
   return (
     <View style={styles.container}>
       <View style={styles.head}>
