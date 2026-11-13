@@ -303,3 +303,41 @@ service checks, proven pre-import outbound isolation, independently measured
 RPO/RTO, archive retention/cleanup, and explicit founder acceptance.
 Do not claim those gates passed from the read-only report, operator console
 logs, synthetic CI or source-current observations alone.
+
+
+## 2026-11-13 — Measured RPO/RTO acceptance implementation
+
+The existing no-deploy Node/PostgreSQL CI now executes
+`scripts/all12-assess-recovery-timing.test.mjs`, using the pure assessor
+`scripts/all12-assess-recovery-timing.mjs`. GitHub Actions run
+[43437422157](https://github.com/allinproject/All-In-V2/actions/runs/43437422157)
+completed **SUCCESS**, including this new fail-closed timing test. The
+synthetic example proves the arithmetic and rejects missing evidence,
+invalid chronology, an unisolated restore destination, and incomplete
+Auth/Storage/owner-isolation/service-readiness verification.
+
+This is *measurement instrument acceptance*, not a disaster-recovery
+measurement. A genuine RPO value needs independently attested latest
+committed source/target event watermarks with continuity verified;
+a genuine RTO needs a real declared failure time and timestamp at which
+all accepted services are usable again. Backup-file age, GitHub job runtime,
+dump duration, time to first sign-in and previous staging smoke success
+are **not substitutes**.
+
+Before operational acceptance, the evidence record must also have:
+a verified source snapshot identity and exact cutoff; an independently
+outbound-disabled destination distinct from the V2 source; complete
+application domain and private-object checksums; Auth reauthentication,
+owner isolation and service readiness; an explicitly reviewed RPO/RTO
+objective for the release class; and separate provider-physical-restore
+evidence or an explicit recorded risk decision. If any field is absent,
+the assessor returns null metrics and refuses measured acceptance.
+`releaseApproved` is always false: human/security release review
+is a distinct required decision.
+
+**Current operational state:** measured hosted RPO = unavailable,
+measured hosted RTO = unavailable, independent logical recovery
+acceptance = false, provider-managed physical restore accepted = false,
+releaseReady = false. The existing encrypted real-source archive and
+offline target remain operator-controlled; no production or staging
+restore was performed here and no infrastructure was created.
