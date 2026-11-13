@@ -3,6 +3,9 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {randomBytes,createHash} from 'node:crypto';
+import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 assert.equal(process.env.CI,'1');
 const env=Object.fromEntries(execFileSync('supabase',['status','-o','env'],{encoding:'utf8'})
  .split(/\r?\n/).map(s=>s.match(/^(?:export )?([A-Z_]+)=(.*)$/))
@@ -24,7 +27,7 @@ async function req(method,path,key,token,body,contentType){
  return fetch(base.origin+path,{method,headers,body:body===undefined?undefined:contentType?body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
 }
 const hash=b=>createHash('sha256').update(b).digest('hex');
-let policy=false,createdBucket=false;
+let policy=false,createdBucket=false,backupDir=null;
 try{
  for(const who of ['a','b']){
   const email='all12-'+who+'-'+nonce+'@invalid.example',password='A!'+randomBytes(24).toString('hex');
@@ -111,23 +114,33 @@ try{
  // This fixture does not modify the canonical production Storage policies.
  sql(`CREATE POLICY "all12_${nonce}" ON storage.objects FOR SELECT TO authenticated USING (bucket_id='${bucket}' AND split_part(name,'/',1)=(SELECT auth.uid()::text))`);
  policy=true;
- const bytes=randomBytes(131072),path=a.id+'/recovered.bin';paths.push(path);
+ // Save a separate local artifact before deleting Storage's source bytes.
+ backupDir=mkdtempSync(join(tmpdir(),'all12-private-'));
+ const backupPath=join(backupDir,'restore.bin');
+ let bytes=randomBytes(131072);
+ const originalSha256=hash(bytes);
+ writeFileSync(backupPath,bytes,{flag:'wx',mode:0o600});
+ assert.equal(hash(readFileSync(backupPath)),originalSha256,'backup artifact digest mismatch');
+ const path=a.id+'/recovered.bin';paths.push(path);
  const upload=await req('POST','/storage/v1/object/'+bucket+'/'+path,admin,null,bytes,'application/octet-stream');
  assert.ok(upload.ok,'upload synthetic owner media');
  const own=await req('GET','/storage/v1/object/authenticated/'+bucket+'/'+path,anon,a.token);
  assert.equal(own.status,200,'owner can read private file');
- assert.equal(hash(Buffer.from(await own.arrayBuffer())),hash(bytes),'owner bytes match');
+ assert.equal(hash(Buffer.from(await own.arrayBuffer())),originalSha256,'owner bytes match');
  const foreign=await req('GET','/storage/v1/object/authenticated/'+bucket+'/'+path,anon,b.token);
  assert.ok([400,401,403,404].includes(foreign.status),'valid foreign session downloaded owner file');
  const anonymous=await req('GET','/storage/v1/object/authenticated/'+bucket+'/'+path,anon,anon);
  assert.ok([400,401,403,404].includes(anonymous.status),'anonymous downloaded owner file');
  const removed=await req('DELETE','/storage/v1/object/'+bucket+'/'+path,admin,null);
  assert.ok(removed.ok,'delete owner source before recovery');
- const restore=await req('POST','/storage/v1/object/'+bucket+'/'+path,admin,null,bytes,'application/octet-stream');
+ bytes=null; // Restore from the independently persisted artifact, not the original buffer.
+ const recoveryBytes=readFileSync(backupPath);
+ assert.equal(hash(recoveryBytes),originalSha256,'backup artifact changed');
+ const restore=await req('POST','/storage/v1/object/'+bucket+'/'+path,admin,null,recoveryBytes,'application/octet-stream');
  assert.ok(restore.ok,'restore private source file');
  const ownRestored=await req('GET','/storage/v1/object/authenticated/'+bucket+'/'+path,anon,a.token);
  assert.equal(ownRestored.status,200,'owner restored file readable');
- assert.equal(hash(Buffer.from(await ownRestored.arrayBuffer())),hash(bytes),'restored SHA-256 mismatch');
+ assert.equal(hash(Buffer.from(await ownRestored.arrayBuffer())),originalSha256,'restored SHA-256 mismatch');
  const foreignRestored=await req('GET','/storage/v1/object/authenticated/'+bucket+'/'+path,anon,b.token);
  assert.ok([400,401,403,404].includes(foreignRestored.status),'foreign session downloaded RESTORED file');
  // Refresh the independent foreign session, then repeat the denial with
@@ -149,8 +162,9 @@ try{
  assert.ok([400,401,403].includes(replay.status),'logged-out refresh token remained reusable');
  // Access JWTs may remain valid until expiration: logout revokes refresh
  // credentials, not necessarily already-issued bearer JWTs.
- console.log('PASS ALL-12: valid second Auth session denied restored private bytes; owner read and SHA-256 verified');
+ console.log('PASS ALL-12: persisted fixture bytes restored; valid second Auth session denied private bytes; owner SHA-256 verified');
 }finally{
+ if(backupDir)rmSync(backupDir,{recursive:true,force:true});
  if(policy)sql(`DROP POLICY IF EXISTS "all12_${nonce}" ON storage.objects`);
  for(const path of paths.reverse())await req('DELETE','/storage/v1/object/'+bucket+'/'+path,admin,null);
  if(createdBucket)await req('DELETE','/storage/v1/bucket/'+bucket,admin,null);
