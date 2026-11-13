@@ -102,7 +102,7 @@ test('source-release issuer attribution and dual-role separation are durable SQL
   'allin_v2_ingredient_source_releaser',
   'v2_release_ingredient_source_energy',
   'source_releaser_db_login name NOT NULL DEFAULT session_user',
-  'source_releaser_db_login,',
+  'source_review_reference,source_releaser_db_login)',
   'source_releaser_db_login<>v_actor',
   "OR pg_has_role(v_actor::text,'allin_v2_ingredient_reviewer','member')",
   "OR pg_has_role(v_actor::text,'allin_v2_ingredient_publisher','member')",
