@@ -117,6 +117,10 @@ BEGIN
   -- service_role / authenticated / anon must never be reviewer members.
   IF v_actor::text IN ('anon','authenticated','service_role','authenticator','postgres')
      OR NOT pg_has_role(v_actor::text,'allin_v2_ingredient_reviewer','member')
+     -- A source-release officer must not also change canonical review status.
+     -- to_regrole allows earlier isolated writer tests before release-role DDL.
+     OR COALESCE(pg_has_role(v_actor::text,
+          to_regrole('allin_v2_ingredient_source_releaser'),'member'),false)
      OR NOT EXISTS (
        SELECT 1 FROM allin_private.v2_ingredient_review_operators o
        WHERE o.login_role=v_actor AND o.enabled=true
