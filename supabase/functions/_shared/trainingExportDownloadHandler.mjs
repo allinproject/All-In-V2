@@ -45,6 +45,17 @@ export async function handleAccountExportDownload(request,{
   const response=await worker.openApprovedLargeHistoryDownload(input.request_id);
   if(!(response instanceof Response)||response.status!==200)
     return error(503,'account_export_unavailable');
+  // A configured worker must return the canonical private, non-cacheable
+  // archive stream. Never pass through a public/CORS-readable or arbitrary
+  // 200 response just because an adapter claimed to be authorized.
+  if(!/^application\/x-ndjson(?:;|$)/i.test(response.headers.get('content-type')??'')
+    ||!/\bno-store\b/i.test(response.headers.get('cache-control')??'')
+    ||response.headers.has('access-control-allow-origin')
+    ||response.headers.get('x-content-type-options')!=='nosniff'
+    ||response.body===null) {
+    await response.body?.cancel().catch(()=>{});
+    return error(503,'account_export_unavailable');
+  }
   return response;
  }catch{
   // Never leak user existence, request state, provider identifiers or keys.
