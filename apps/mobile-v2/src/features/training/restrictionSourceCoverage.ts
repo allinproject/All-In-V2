@@ -47,7 +47,7 @@ export function preflightRestrictionSourceCoverage(input: {
   const reasons: string[] = [];
   const owner = input.expectedOwnerId;
   const version = input.snapshotVersion;
-  if (!owner.trim() || input.authenticatedOwnerId !== owner) reasons.push('owner_mismatch');
+  if (typeof owner !== 'string' || !owner.trim() || input.authenticatedOwnerId !== owner) reasons.push('owner_mismatch');
   if (typeof version !== 'string' || !version.trim()) reasons.push('missing_snapshot');
   if (!Array.isArray(input.sources)) return { status: 'blocked', reasons: [...reasons, 'missing_sources'] };
   const kinds = new Set<string>();
@@ -56,15 +56,15 @@ export function preflightRestrictionSourceCoverage(input: {
       reasons.push('malformed_source');
       continue;
     }
-    if (!REQUIRED_RESTRICTION_SOURCES.includes(entry.kind)) {
+    if (typeof entry.kind !== 'string' || !REQUIRED_RESTRICTION_SOURCES.some(kind => kind === entry.kind)) {
       reasons.push('unknown_source');
       continue;
     }
     if (kinds.has(entry.kind)) reasons.push('duplicate_source');
     kinds.add(entry.kind);
-    if (entry.ownerId !== owner) reasons.push('source_owner_mismatch');
-    if (!entry.complete || entry.nextCursor !== null) reasons.push('incomplete_source');
-    if (!entry.snapshotVersion?.trim() || entry.snapshotVersion !== version) reasons.push('stale_source');
+    if (typeof entry.ownerId !== 'string' || !entry.ownerId.trim() || entry.ownerId !== owner) reasons.push('source_owner_mismatch');
+    if (entry.complete !== true || entry.nextCursor !== null) reasons.push('incomplete_source');
+    if (typeof entry.snapshotVersion !== 'string' || !entry.snapshotVersion.trim() || entry.snapshotVersion !== version) reasons.push('stale_source');
     if (!isCount(entry.inspectedCount) || !isCount(entry.reconciledCount)
         || !isCount(entry.unresolvedCount)
         || entry.inspectedCount !== entry.reconciledCount
