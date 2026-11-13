@@ -25,6 +25,8 @@ on:
       - 'scripts/test-v2-ingredient-initial-seed-isolated.cjs'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-SEED-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-hosted-catalog-reader.py'
+      - 'scripts/test-v2-ingredient-hosted-eight-seed.py'
+      - 'scripts/test-v2-ingredient-hosted-eight-seed.test.py'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-READER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-catalog-reader-isolated.cjs'
       - 'scripts/test-v2-ingredient-auto-qualification-isolated.cjs'
@@ -75,6 +77,8 @@ on:
       - 'scripts/test-v2-ingredient-initial-seed-isolated.cjs'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-SEED-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-hosted-catalog-reader.py'
+      - 'scripts/test-v2-ingredient-hosted-eight-seed.py'
+      - 'scripts/test-v2-ingredient-hosted-eight-seed.test.py'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-READER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-catalog-reader-isolated.cjs'
       - 'scripts/test-v2-ingredient-auto-qualification-isolated.cjs'
@@ -161,5 +165,9 @@ jobs:
         run: python3 -m py_compile scripts/test-v2-ingredient-temp-hosted-review.py
       - name: Compile independent authenticated hosted catalog reader acceptance (no credentials)
         run: python3 -m py_compile scripts/test-v2-ingredient-hosted-catalog-reader.py
+      - name: Verify independent two-login eight-seed hosted harness without accessing staging
+        run: |
+          python3 -m py_compile scripts/test-v2-ingredient-hosted-eight-seed.py
+          python3 scripts/test-v2-ingredient-hosted-eight-seed.test.py
       - name: Test safe local staging credential provisioning (mocked; no passwords)
         run: python3 scripts/provision-v2-ingredient-temp-login.test.py
