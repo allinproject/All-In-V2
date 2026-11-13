@@ -17,7 +17,7 @@ const nonNegative=v=>Number.isSafeInteger(v)&&v>=0;
 // Ensures an exact independently collected table inventory and detects the
 // known existing legacy limitation rather than claiming an empty V1 source.
 // Archive digest is required, but its authenticity remains a separate review.
-export function assessV1RestrictionSourceManifest(manifest,observation) {
+export function assessV1RestrictionSourceManifest(manifest,observation,extendedObservation) {
  const reasons=[];
  if(manifest?.sourceProjectRef!=='impulecgsgaruvniuttc')
   reasons.push('wrong_v1_source_project');
@@ -61,6 +61,41 @@ export function assessV1RestrictionSourceManifest(manifest,observation) {
     ||!sha.test(manifest?.limitationMapping?.mappingEvidenceSha256??''))
    reasons.push('positive_legacy_limitation_unmapped');
  }
+ // A list of eleven tables does not establish complete V1 history.
+ // A separate source-catalog observation found additional Coach messages and
+ // JSON-bearing tables. Never interpret the explicit 'none' sentinel as proof
+ // that those other sources contain no restrictions.
+ const extended=extendedObservation;
+ if(extended?.observationType!=='v1_extended_restriction_source_inventory_readonly'
+   ||extended?.v1ProjectRef!=='impulecgsgaruvniuttc'
+   ||!validTime(extended?.observedUtc)
+   ||!nonNegative(extended?.allinTableCount)
+   ||!nonNegative(extended?.jsonBearingAllinTableCount)
+   ||extended.jsonBearingAllinTableCount>extended.allinTableCount
+   ||extended.allinTableCount<V1_RESTRICTION_TABLES.length)
+  reasons.push('missing_authoritative_extended_v1_catalog');
+ if(!nonNegative(extended?.trainingSignals?.total_rows)
+   ||!nonNegative(extended?.trainingSignals?.none_sentinel_rows)
+   ||!nonNegative(extended?.trainingSignals?.other_text_limitation_rows)
+   ||extended?.trainingSignals?.total_rows!==signals?.training_rows)
+  reasons.push('unreconciled_legacy_sentinel_inventory');
+ if(!nonNegative(extended?.coachMessageSignals?.total_rows)
+   ||!nonNegative(extended?.coachMessageSignals?.possible_restriction_mentions)
+   ||extended.coachMessageSignals.possible_restriction_mentions>extended.coachMessageSignals.total_rows)
+  reasons.push('missing_coach_message_source_inventory');
+ if(extended?.coachMessageSignals?.possible_restriction_mentions>0
+   &&(manifest?.extendedSourceReview?.coachMessagesIndependentlyReviewed!==true
+   ||manifest?.extendedSourceReview?.reviewedPossibleMentionCount!==
+      extended.coachMessageSignals.possible_restriction_mentions))
+  reasons.push('possible_coach_restrictions_unreviewed');
+ if(manifest?.extendedSourceReview?.allPotentialLegacySourcesIndependentlyReviewed!==true
+   ||!sha.test(manifest?.extendedSourceReview?.reviewEvidenceSha256??''))
+  reasons.push('broader_v1_source_scope_unreviewed');
+ if(extended?.trainingSignals?.none_sentinel_rows>0
+   &&(manifest?.limitationMapping?.disposition!=='independent_owner_review_complete'
+     ||manifest?.limitationMapping?.sentinelClassification!=='no_restriction_declared'
+     ||manifest?.limitationMapping?.createdRestrictionsFromSentinel!==0))
+  reasons.push('none_sentinel_requires_explicit_no_rule_mapping');
  if(manifest?.legacyScopeIndependentlyComplete!==true)
   reasons.push('unattested_full_legacy_history_scope');
  if(manifest?.importManifest?.providerInventoryIndependentlyVerified!==true
