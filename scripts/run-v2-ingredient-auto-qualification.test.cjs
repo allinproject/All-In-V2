@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createHash}=require('node:crypto');
-const {planAutomaticQualification,runAutomaticQualification,runHostedAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,HOSTED_READINESS_SQL,checkHostedIngestReadiness}=
+const {planAutomaticQualification,runAutomaticQualification,runHostedAutomaticQualification,runRoutedHostedAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,HOSTED_READINESS_SQL,checkHostedIngestReadiness}=
   require('./run-v2-ingredient-auto-qualification.cjs');
 const PROFILE='a4b12c65-9fe7-4a89-8c7b-2357656ac134';
 const nutrient=(id,amount,unitName='g')=>({nutrient:{id,unitName},amount});
@@ -205,4 +205,130 @@ test('hosted qualifier requires explicit energy-evidence intent before any host 
    /Hosted energy attestation intent must be an explicit boolean/);
  }
  assert.deepEqual(calls,[]);
+});
+
+const fs=require('node:fs'),path=require('node:path');
+const evidenceRoot=path.join(__dirname,'../docs/evidence');
+const evidenceFile=name=>JSON.parse(fs.readFileSync(path.join(evidenceRoot,name),'utf8'));
+function batchFixture(){
+ const ev=evidenceFile('ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json');
+ const bindings=evidenceFile('ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json');
+ const aliasPolicy=evidenceFile('ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json');
+ const hashes=evidenceFile('ALL-225-USDA-EIGHT-PER-FOOD-ENERGY-DIGESTS-2026-11-12.json');
+ const sourceFoods=[],candidates=[],documents=[],canonicalMappings=[];
+ for(let i=0;i<ev.records.length;i++){
+  const x=ev.records[i],form=aliasPolicy.records.find(a=>a.source_profile_key===x.profile);
+  const selected=hashes.records.find(h=>h.fdcId===x.fdcId);
+  const foodNutrients=[nutrient(Number(x.energy.code),x.energy.kcal,'kcal'),
+   ...(x.energy.alternative?[nutrient(Number(x.energy.alternative.code),x.energy.alternative.kcal,'kcal')]:[]),
+   nutrient(1003,x.protein),nutrient(1004,x.fat),nutrient(1005,x.carbs),nutrient(1093,x.sodiumMg,'mg')];
+  const row={source_profile_key:x.profile,provider:'usda_fdc',dataType:'Foundation',
+   fdcId:x.fdcId,source_description:x.source,archive_sha256:ev.archiveSha256,
+   payload_sha256:selected.sourcePayloadSha256,basis_quantity:100,basis_unit:'g',foodNutrients};
+  sourceFoods.push(row);
+  candidates.push({source_profile_key:x.profile,canonical_name:form.display_name,
+   identity_kind:'generic_food',preparation_state:form.preparation_state,locale:'en',
+   aliases:form.exact_alias_candidates.map(a=>a.value),
+   sources:[{provider:'usda_fdc',source_data_type:'Foundation',external_record_id:String(x.fdcId)}]});
+  const payload_utf8=JSON.stringify({provider:row.provider,dataType:row.dataType,fdcId:row.fdcId,
+   basis_quantity:row.basis_quantity,basis_unit:row.basis_unit,foodNutrients});
+  documents.push({source_profile_key:x.profile,payload_utf8,
+   payload_sha256:createHash('sha256').update(payload_utf8).digest('hex')});
+  canonicalMappings.push({source_profile_key:x.profile,profileId:
+   '12345678-1234-4234-8234-'+String(i+1).padStart(12,'0'),
+   expectedRevision:1,sourceFdcId:String(x.fdcId),sourcePayloadSha256:row.payload_sha256});
+ }
+ return {sourceFoods,sourceBindings:bindings,sourceEvidence:ev,aliasPolicy,
+  candidates,documents,canonicalMappings,attestEnergy:false};
+}
+function routedClient({failSecond=false}={}){
+ const calls=[],proof={login:'allin_ing_workload_food_ingest_v1',
+  effective_role:'allin_v2_ingredient_reviewer',
+  ingredients:true,profiles:true,sources:true,review_events:true,
+  energy_attestations:true,review_writer:true,energy_writer:true,
+  reviewer_role:true,publisher_role:true,login_least_privileged:true,
+  reviewer_member:true,profiles_rls_enabled:true,
+  publisher_member:false,login_public_create:false,
+  login_direct_profile_write:false,login_private_audit_read:false,
+  effective_direct_profile_write:false,effective_private_audit_read:false,
+  effective_review_execute:true,effective_energy_execute:true};
+ let writes=0;
+ return {calls,async query(sql,args){
+  calls.push({sql,args});
+  if(sql===HOSTED_READINESS_SQL)return {rows:[proof]};
+  if(sql===WRITER){
+   writes++;
+   if(failSecond && writes===2)throw Error('canonical writer denied');
+   return {rows:[{result:{status:'reviewed',profile_id:args[0],
+     review_status:args[3],profile_revision:args[1]+1,event_id:writes}}]};
+  }
+  if(sql===ENERGY_WRITER)return {rows:[{result:{status:'attested',attestation_id:99,
+   calculation_ready:false}}]};
+  return {rows:[]};
+ }};
+}
+test('eight verified USDA routing entries reach only canonical SQL writer through restricted session',async()=>{
+ const client=routedClient(),result=await runRoutedHostedAutomaticQualification({client,...batchFixture()});
+ assert.equal(result.qualified.length,8);
+ assert.equal(result.exceptions.length,0);
+ assert.equal(result.status,'source_qualified_not_published');
+ assert.equal(result.calculationReady,false);
+ assert.equal(result.publicationApproved,false);
+ assert.equal(client.calls.filter(c=>c.sql===HOSTED_READINESS_SQL).length,1);
+ assert.equal(client.calls.filter(c=>c.sql===WRITER).length,16);
+ assert.equal(client.calls.filter(c=>c.sql==='BEGIN').length,8);
+ assert.equal(client.calls.filter(c=>c.sql==='COMMIT').length,8);
+ assert.equal(client.calls.filter(c=>c.sql===ENERGY_WRITER).length,0);
+ const batch=batchFixture();
+ for(const [index,row] of batch.sourceFoods.entries()){
+  const calls=client.calls.filter(c=>c.sql===WRITER).slice(index*2,index*2+2);
+  assert(calls.every(c=>c.args[2]===row.payload_sha256));
+ }
+});
+test('one wrong USDA source digest is an exception while seven verified sources use canonical writer',async()=>{
+ const batch=batchFixture();
+ batch.sourceFoods[1].payload_sha256='f'.repeat(64);
+ const client=routedClient();
+ const result=await runRoutedHostedAutomaticQualification({client,...batch});
+ assert.equal(result.qualified.length,7);
+ assert.equal(result.exceptions.length,1);
+ assert.equal(result.exceptions[0].source_profile_key,'red_onion_raw');
+ assert.equal(client.calls.filter(c=>c.sql===WRITER).length,14);
+});
+test('stale canonical mapping and missing identity never call the writer',async()=>{
+ const batch=batchFixture();
+ batch.canonicalMappings[0].sourcePayloadSha256='f'.repeat(64);
+ for(const i of [1,2,3,4,5,6,7])batch.canonicalMappings[i].profileId='not-a-uuid';
+ const client=routedClient();
+ const result=await runRoutedHostedAutomaticQualification({client,...batch});
+ assert.equal(result.qualified.length,0);
+ assert.equal(result.exceptions.length,8);
+ assert.equal(client.calls.length,0);
+});
+test('global USDA source drift blocks all writes, including otherwise valid rows',async()=>{
+ const batch=batchFixture(),client=routedClient();
+ batch.sourceFoods[0].archive_sha256='0'.repeat(64);
+ const result=await runRoutedHostedAutomaticQualification({client,...batch});
+ assert.equal(result.qualified.length,7);
+ assert.equal(result.exceptions.length,1);
+ assert.equal(client.calls.filter(c=>c.sql===WRITER).length,14);
+ const global=batchFixture(),client2=routedClient();
+ global.sourceEvidence.archiveSha256='f'.repeat(64);
+ const denied=await runRoutedHostedAutomaticQualification({client:client2,...global});
+ assert.equal(denied.qualified.length,0);
+ assert.equal(client2.calls.length,0);
+});
+test('canonical SQL failure rolls back and never claims success',async()=>{
+ const client=routedClient({failSecond:true});
+ await assert.rejects(runRoutedHostedAutomaticQualification({client,...batchFixture()}),
+  /canonical writer denied/);
+ assert.equal(client.calls.filter(c=>c.sql==='ROLLBACK').length,1);
+ assert.equal(client.calls.filter(c=>c.sql==='COMMIT').length,0);
+});
+test('routed writer rejects implied energy-attestation intent before any connection',async()=>{
+ const batch=batchFixture(),client=routedClient();
+ delete batch.attestEnergy;
+ await assert.rejects(runRoutedHostedAutomaticQualification({client,...batch}),
+  /explicit boolean/);
+ assert.equal(client.calls.length,0);
 });
