@@ -127,3 +127,29 @@ test('provider-level upload freeze cannot be inferred from signed leases or DB m
         audit.includes('direct S3/TUS protocol completion'),
   'Known provider bypass and unsupported delayed routes must remain release blockers');
 });
+
+
+test('mobile runtime must not carry privileged Storage keys, signing keys, or S3 master credentials',()=>{
+ const forbidden=[
+  /\bSUPABASE_SERVICE_ROLE_KEY\b/,
+  /\bsb_secret_[A-Za-z0-9_-]{8,}\b/,
+  /\bALLIN_WRITER_ATTESTATION_SECRET_B64\b/,
+  /\bALL251_TEMP_STAGING_SECRET_KEY\b/,
+  /\bAWS_SECRET_ACCESS_KEY\b/,
+  /\bS3_SECRET_ACCESS_KEY\b/,
+  /\bS3_ACCESS_KEY_ID\b/,
+ ];
+ const exposed=[];
+ for(const dir of ['apps/mobile-v2/src','apps/mobile-v2/app']){
+  for(const file of enumerate(dir)){
+   // The packaged app must not contain even a convenient reference to a
+   // privileged credential; keep all attestation and account deletion
+   // execution server-side.
+   const src=readFileSync(resolve(root,file),'utf8');
+   for(const pattern of forbidden){
+    if(pattern.test(src))exposed.push(file+' includes '+pattern.source);
+   }
+  }
+ }
+ assert.deepEqual(exposed,[],'Mobile runtime would expose privileged upload authority');
+});
