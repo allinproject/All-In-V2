@@ -155,6 +155,13 @@ test('independent source officer releases 14 immutable observations and separate
    assert.equal(replay.status,'already_released');
   }
   await assert.rejects(()=>db.query("SELECT * FROM allin_private.v2_ingredient_source_energy_evidence"),e=>e.code==='42501');
+  // The source officer must not be able to self-review even if an accidental
+  // later role grant adds reviewer membership: reject combined capabilities.
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  await db.exec('GRANT allin_v2_ingredient_reviewer TO source_release_officer_a');
+  await db.exec('SET SESSION AUTHORIZATION source_release_officer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_source_releaser');
+  await assert.rejects(()=>db.query(release(rows[0],methodsFor(rows[0]))),e=>e.code==='42501');
   await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
   await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await assert.rejects(()=>db.query(release(rows[0],methodsFor(rows[0]))),e=>e.code==='42501');
