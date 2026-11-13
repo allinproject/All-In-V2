@@ -169,6 +169,47 @@ $report$;
 REVOKE ALL ON FUNCTION allin_private.v2_community_report_comment(uuid,uuid,text,text)
  FROM PUBLIC,anon,authenticated,service_role;
 
+-- A comment can have more than one reporter/case. No dismiss or appeal
+-- may accidentally clear another case's live hide/hold. Called while the
+-- canonical comment row is already FOR UPDATE locked by trusted decisions.
+CREATE OR REPLACE FUNCTION allin_private.v2_community_refresh_moderation_state(
+ p_comment_id uuid
+) RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $refresh$
+DECLARE v_state text;
+BEGIN
+ SELECT CASE
+  WHEN EXISTS(
+   SELECT 1 FROM allin_private.v2_community_moderation_reports r
+   JOIN allin_private.v2_community_moderation_events d
+    ON d.report_id=r.id AND d.event_kind='initial_decision'
+    AND d.result_code='hide'
+   WHERE r.comment_id=p_comment_id
+    AND NOT EXISTS(
+      SELECT 1 FROM allin_private.v2_community_moderation_events a
+      WHERE a.report_id=r.id AND a.event_kind='appeal_decision'
+       AND a.result_code='overturn'))
+  THEN 'hidden'
+  WHEN EXISTS(
+   SELECT 1 FROM allin_private.v2_community_moderation_reports r
+   JOIN allin_private.v2_community_moderation_events d
+    ON d.report_id=r.id AND d.event_kind='initial_decision'
+    AND d.result_code='hold'
+   WHERE r.comment_id=p_comment_id
+    AND NOT EXISTS(
+      SELECT 1 FROM allin_private.v2_community_moderation_events a
+      WHERE a.report_id=r.id AND a.event_kind='appeal_decision'
+       AND a.result_code='overturn'))
+  THEN 'held' ELSE 'visible' END INTO v_state;
+ UPDATE allin_private.v2_community_comments c SET
+  moderation_state=v_state,moderation_updated_at=now()
+ WHERE c.id=p_comment_id AND c.deleted_at IS NULL;
+ RETURN v_state;
+END;
+$refresh$;
+REVOKE ALL ON FUNCTION allin_private.v2_community_refresh_moderation_state(uuid)
+ FROM PUBLIC,anon,authenticated,service_role;
+
 -- Both actions serialize a single case using row locks and CAS versions.
 -- Different reviewer permissions are required at each decision level.
 CREATE OR REPLACE FUNCTION allin_private.v2_community_decide_report(
@@ -177,7 +218,6 @@ CREATE OR REPLACE FUNCTION allin_private.v2_community_decide_report(
 AS $decide$
 DECLARE v_actor uuid;v_row allin_private.v2_community_moderation_reports%ROWTYPE;
  v_comment allin_private.v2_community_comments%ROWTYPE;
- v_state text;
 BEGIN
  v_actor:=allin_private.v2_community_moderation_reviewer('initial_review');
  IF p_report_id IS NULL OR p_expected_version IS NULL OR
@@ -192,17 +232,13 @@ BEGIN
  IF v_comment.id IS NULL OR v_comment.deleted_at IS NOT NULL OR
   v_comment.author_id=v_actor OR v_row.reporter_id=v_actor
  THEN RAISE EXCEPTION 'community_moderation_conflict' USING ERRCODE='42501'; END IF;
- v_state:=CASE p_decision WHEN 'hide' THEN 'hidden'
-  WHEN 'hold' THEN 'held' ELSE 'visible' END;
- UPDATE allin_private.v2_community_comments SET
-  moderation_state=v_state,moderation_updated_at=now()
- WHERE id=v_comment.id;
  UPDATE allin_private.v2_community_moderation_reports SET
   status='decided',version=version+1,initial_reviewer_id=v_actor,
   reviewed_at=now() WHERE id=p_report_id;
  INSERT INTO allin_private.v2_community_moderation_events
   (report_id,version,actor_id,event_kind,result_code)
  VALUES(p_report_id,p_expected_version+1,v_actor,'initial_decision',p_decision);
+ PERFORM allin_private.v2_community_refresh_moderation_state(v_comment.id);
  RETURN pg_catalog.jsonb_build_object('reportId',p_report_id,
   'version',p_expected_version+1,'decision',p_decision);
 END;
@@ -268,16 +304,12 @@ BEGIN
   v_comment.author_id=v_actor
  THEN RAISE EXCEPTION 'community_moderation_appeal_reviewer_conflict'
    USING ERRCODE='42501'; END IF;
- IF p_decision='overturn' THEN
-  UPDATE allin_private.v2_community_comments SET
-   moderation_state='visible',moderation_updated_at=now()
-  WHERE id=v_comment.id;
- END IF;
  UPDATE allin_private.v2_community_moderation_reports
   SET status='closed',version=version+1 WHERE id=p_report_id;
  INSERT INTO allin_private.v2_community_moderation_events
   (report_id,version,actor_id,event_kind,result_code)
  VALUES(p_report_id,p_expected_version+1,v_actor,'appeal_decision',p_decision);
+ PERFORM allin_private.v2_community_refresh_moderation_state(v_comment.id);
  RETURN pg_catalog.jsonb_build_object('reportId',p_report_id,
   'version',p_expected_version+1,'appealDecision',p_decision);
 END;
