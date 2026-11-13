@@ -1,0 +1,25 @@
+name: V2 Training and Completed Activity review migration parity (no deploy)
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/2026111303550*_v2_*_review.sql'
+      - 'scripts/test-v2-training-activity-migration-parity.mjs'
+      - 'docs/architecture/sql/V2-*-CANDIDATE.sql'
+      - '.github/workflows/v2-training-activity-migration-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-parity:
+    name: Exact canonical SQL source parity (no database)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify ordered review migrations exactly match canonical candidate SQL
+        run: node --test scripts/test-v2-training-activity-migration-parity.mjs
