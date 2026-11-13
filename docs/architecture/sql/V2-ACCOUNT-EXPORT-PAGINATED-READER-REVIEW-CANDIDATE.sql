@@ -156,7 +156,10 @@ BEGIN
      AND (c.relname LIKE 'v2_nutrition_%'
        OR c.relname LIKE 'v2_progress_%'
        OR (c.relname LIKE 'v2_food_%'
-          AND c.relname <> 'v2_food_log_entries')
+          AND NOT ((n.nspname='public'
+            AND c.relname='v2_food_log_entries')
+          OR (n.nspname='allin_private'
+            AND c.relname='v2_food_log_write_actions')))
        OR (c.relname LIKE 'v2_hydration_%'
           AND c.relname <> 'v2_hydration_events'
           AND c.relname <> 'v2_hydration_actions')
