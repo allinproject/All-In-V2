@@ -2,7 +2,7 @@
  * ALL-230 review-only server adapter for canonical Training restriction source
  * ingestion. NOT an endpoint, deployment, certification writer or source of truth.
  *
- * All five source readers MUST be trusted database readers operating on the
+ * Four externally supplied source readers MUST be trusted database readers operating on the
  * same pinned transaction. An external API, client, Coach summary or fabricated
  * empty inventory is never an acceptable source reader.
  */
@@ -27,7 +27,8 @@ const count=v=>Number.isSafeInteger(v)&&v>=0;
  * authenticateSession must verify a signed token through Supabase Auth, return
  * ownerId/sessionId, and must not derive identity from unverified client data.
  * Source readers must be explicitly supplied by the trusted Training owner.
- * Each returns all canonical source rows, with an independently verified
+ * The current restriction source is fixed to the canonical Training table.
+ * Each reader returns all canonical source rows, with independently verified
  * exhaustive flag and snapshotVersion from this SAME database transaction.
  * reconcileSource is trusted owner logic, not an LLM or client callback. It
  * returns {reconciledCount,unresolvedCount} and must inspect EVERY source row.
@@ -37,8 +38,8 @@ export function createTrainingRestrictionSourceReaderCandidate({
 }) {
  if(typeof pool?.connect!=='function'||typeof authenticateSession!=='function'
    ||typeof reconcileSource!=='function'
-   ||!sourceReaders||TRAINING_RESTRICTION_SOURCES.some(k=>typeof sourceReaders[k]!=='function')
-   ||Object.keys(sourceReaders).length!==TRAINING_RESTRICTION_SOURCES.length)
+   ||!sourceReaders||TRAINING_RESTRICTION_SOURCES.slice(1).some(k=>typeof sourceReaders[k]!=='function')
+   ||Object.keys(sourceReaders).some(k=>!TRAINING_RESTRICTION_SOURCES.slice(1).includes(k)))
   throw Error('All trusted Training source readers and Auth/reconciliation services required');
  return Object.freeze({
   async ingestReviewedSources({bearerToken,snapshotVersion}) {
@@ -70,7 +71,9 @@ export function createTrainingRestrictionSourceReaderCandidate({
      throw Error('Canonical restriction inventory unavailable');
     const evidence=[];
     for(const kind of TRAINING_RESTRICTION_SOURCES) {
-     const raw=await sourceReaders[kind]({client,ownerId,sessionId,snapshotVersion});
+     const reader=kind==='current_restrictions'
+      ?readCanonicalCurrentRestrictionSource:sourceReaders[kind];
+     const raw=await reader({client,ownerId,sessionId,snapshotVersion});
      if(raw?.ownerId!==ownerId||raw?.snapshotVersion!==snapshotVersion
         ||raw?.exhaustive!==true||raw?.nextCursor!==null
         ||!Array.isArray(raw?.records)||!raw?.evidenceRef
