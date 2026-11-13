@@ -53,6 +53,8 @@ export function validateOperatorConfig(env){
 
 async function exercise(){
  const {secret,pub,signer}=config(process.env);
+ // Avoid propagating signing material to any subsequently launched child process.
+ delete process.env.ALL251_OPERATOR_SIGNER_BASE64;
  const users=[],objects=new Set(),cleanupErrors=[];
  const password=randomUUID()+'Aa!9';
  let ownerA=null,ownerB=null;
