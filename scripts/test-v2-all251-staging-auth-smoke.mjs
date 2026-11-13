@@ -62,6 +62,15 @@ try{
  acceptanceStep='synthetic Auth login';
  const aToken=await login(a),bToken=await login(b);
  assert.notEqual(aToken,bToken);
+ acceptanceStep='synthetic Auth invalid password rejection';
+ for(const u of [a,b]){
+   const denied=await request('/auth/v1/token?grant_type=password',{
+     method:'POST',apiKey:anon,
+     body:{email:u.email,password:randomUUID()+'Wrong!9'},
+   });
+   assert([400,401,403].includes(denied.status),'Invalid password unexpectedly authenticated');
+ }
+ process.stdout.write('PASS: invalid passwords rejected for both synthetic owners\\n');
  process.stdout.write('PASS: two real isolated synthetic GoTrue sessions\\n');
  // Hosted byte-level security probe on the APPROVED temporary project only.
  // The buckets have no ordinary authenticated Storage policies. Test a real
