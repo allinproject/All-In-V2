@@ -7,11 +7,11 @@ const source = relative => readFileSync(fileURLToPath(new URL(relative, import.m
 
 test('Today preserves five-section order and four compact verified food tiles', () => {
   const home = source('../../../app/home.tsx');
-  const sections = ["TODAY'S TRAINING", 'Daily Extended', 'Food Log', '>Progress<', '>Recovery<'];
+  const sections = ["TODAY'S TRAINING", '>Daily Energy</Text>', '>Food Log</Text>', '>Progress</Text>', '>Recovery</Text>'];
   const offsets = sections.map(section => home.indexOf(section));
   assert.ok(offsets.every(position => position >= 0));
   assert.deepEqual(offsets, [...offsets].sort((a,b) => a-b));
-  for (const heading of ['Daily Extended','Food Log','Progress','Recovery']) {
+  for (const heading of ['Daily Energy','Food Log','Progress','Recovery']) {
     assert.ok(home.includes(`<Text accessibilityRole="header" style={styles.sectionTitle}>${heading}</Text>`),
       `missing accessible Today heading: ${heading}`);
   }
