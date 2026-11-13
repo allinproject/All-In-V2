@@ -26,7 +26,7 @@ test('preview occurs only after complete download, digest and current owner chec
   verifyFile:f.verified,stillAuthorized:async()=>{checks++;return true;},
  });
  assert.equal(result.bytes,6_000_000);
- assert.equal(checks,2);
+ assert.equal(checks,3); // owner verified before download, before preview and after viewer resolves
  assert.deepEqual(f.events,['download','verify','preview']);
 });
 test('download interrupted: delete partial file, never preview',async()=>{
