@@ -237,3 +237,7 @@ access grant, retention policy approval, or live data schema.
 The existing comment-author export remains opt-out of \`complete=true\`.
 Community media remains blocked pending its canonical attachment contract,
 owner-scoped private bytes, restoration and formal privacy approval.
+
+### Competing independent reports (review-only)
+
+A single comment may be reported by multiple permitted viewers. The canonical comment's moderation state is recomputed from **all** independently reviewed case decisions under its locked comment row, with `hidden` taking precedence over `held`, and `held` over `visible`. An appeal overturns only its own case: another case's active hold/hide cannot be silently cleared. Reviewers who reported a different case cannot decide that case's appeal; a truly independent reviewer is required. The isolated five-actor replay validates overlapping reports, sequential holds/hides, case-specific author appeals, separate reviewer permissions, and restoration only after all effective restrictions are overturned. These operational rules are not legal authority to retain moderation reports indefinitely.
