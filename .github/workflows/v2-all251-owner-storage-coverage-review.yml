@@ -8,6 +8,8 @@ on:
       - 'scripts/fixtures/all251-staging-lease-coverage.pgsql'
       - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
       - 'scripts/test-all251-authoritative-export-deletion-lease-classification.mjs'
+      - 'scripts/generate-all251-exact-export-owner-child-guard.mjs'
+      - 'scripts/test-all251-exact-export-join-only-candidate.psql'
       - '.github/workflows/v2-all251-owner-storage-coverage-review.yml'
   pull_request:
     paths:
@@ -54,3 +56,9 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql
       - name: Prove absent, disabled and unprotected Storage fences block
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-all251-existing-deletion-graph-lease-contract.psql
+      - name: Extract exact canonical export owner-child guard for isolated execution
+        run: node scripts/generate-all251-exact-export-owner-child-guard.mjs
+      - name: Install exact-source export inventory guard in disposable fixture
+        run: psql -v ON_ERROR_STOP=1 -f /tmp/all251-exact-export-owner-child-guard.psql
+      - name: Refuse omitted owner descendants and preserve reviewed Billing exception
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-all251-exact-export-join-only-candidate.psql
