@@ -165,3 +165,29 @@ test('identical retired row with raw pg Date and JSONB timezone string reconcile
  assert(altered.reasons.includes('unmatched_historical_rule'));
  assert.equal(altered.status,'blocked');
 });
+
+test('approved athlete-authored plan restriction is not mislabeled as missing imported provenance',async()=>{
+ const athleteRevision={id:'athlete-revision-2',user_id:a,
+  source_kind:'athlete_authored',status:'accepted',accepted_at:'2026-11-12T12:00:00Z'};
+ const athleteRule={...approved,id:'athlete-approved-rule',source_ref:athleteRevision.id};
+ const f=clientFor({imports:[
+  {user_id:a,kind:'approved_revision',record:athleteRevision},
+  {user_id:a,kind:'linked_restriction',record:athleteRule},
+  {user_id:a,kind:'imported_revision',record:importedRevision},
+  {user_id:a,kind:'linked_restriction',record:approved},
+ ]});
+ const observed=await readCanonicalImportedTrainingSource({
+  client:f.client,ownerId:a,snapshotVersion});
+ assert.deepEqual(observed.observedUnresolvedMappings,[]);
+ assert.equal(observed.records.filter(r=>r.kind==='imported_revision').length,1);
+ assert.equal(observed.records.filter(r=>r.kind==='approved_revision').length,1);
+ assert.match(f.calls[0].sql,/CASE WHEN r.source_kind='imported_template'/);
+ const assessed=reconcileObservedRestrictionSources({
+  ownerId:a,currentRules:[retired,athleteRule,approved],
+  history:{ownerId:a,exhaustive:false,records:[{user_id:a,record:retired}]},
+  imports:observed,
+ });
+ assert(!assessed.reasons.includes('unresolved_imported_restriction_mapping'));
+ assert.equal(assessed.observedImported,1);
+ assert.equal(assessed.firstCertificationAuthorized,false);
+});
