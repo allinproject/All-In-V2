@@ -108,7 +108,7 @@ def main():
         "identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at)"
         " VALUES('" + ROLE + "','workload',true,'ALL228-TEMP-REVIEW-ONLY',"
         "'allin-v2-internal-workload','ingest-temp-review228-" + ROLE[-10:] + "',"
-        "'ALL228-LOCAL-ONE-SHOT-REVIEW',clock_timestamp(),"
+        "'ALL228-LOCAL-" + ROLE[-10:] + "',clock_timestamp(),"
         "clock_timestamp()+interval '10 minutes');\n"
         "INSERT INTO public.v2_ingredients(id,canonical_key,canonical_name,"
         "normalized_name,identity_kind,status) VALUES(" + literal(ident) + ","
