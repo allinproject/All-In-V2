@@ -12,7 +12,7 @@
 -- A separate operator reconciliation is needed for ambiguous writes.
 CREATE TABLE allin_private.v2_privileged_storage_write_leases_review (
  lease_id uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
- owner_id uuid NOT NULL REFERENCES auth.users(id),
+ owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
  bucket_id text NOT NULL CHECK (bucket_id IN (
   'v2-private-workout-objects','v2-private-account-exports')),
  object_path text NOT NULL,
