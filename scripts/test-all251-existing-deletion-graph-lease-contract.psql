@@ -96,3 +96,15 @@ BEGIN
  THEN RAISE EXCEPTION 'Unexpected new owner table omitted from deletion inventory'; END IF;
  RAISE NOTICE 'PASS ALL-251: lease ledger ACL/cascade, all three live Storage fences and unknown owner tables fail closed';
 END $new_table$;
+
+-- Simulate partial shared-staging damage: active SQL fences but vanished
+-- lease relation must be an explicit blocking inventory gap. The original
+-- clean foundation with neither relation nor fences remains replayable.
+DROP TABLE allin_private.v2_privileged_storage_write_leases_review;
+DO $missing_ledger$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+   WHERE reason='missing_privileged_storage_lease_ledger_with_active_fences')
+ THEN RAISE EXCEPTION 'Live privileged Storage fences accepted missing lease ledger'; END IF;
+ RAISE NOTICE 'PASS ALL-251: missing ledger with active fences remains blocked';
+END $missing_ledger$;
