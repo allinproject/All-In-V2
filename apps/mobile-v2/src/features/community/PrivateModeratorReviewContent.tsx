@@ -4,7 +4,7 @@
  * The React Native client never obtains private SQL table/RPC privileges.
  */
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
+import {ActivityIndicator,AppState,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {colors} from '../../theme/tokens';
 import {
  certifyCaseEvidence,certifyReviewQueue,certifyReviewResult,withFreshReviewer,
@@ -32,6 +32,19 @@ export function PrivateModeratorReviewContent({permission,transport,onClose}:Pro
   setItems([]);setCursor(null);setSelection(null);setEvidence(null);
   setAuthorized(false);
  },[]);
+ // Clear private evidence on background/inactive transition. A foreground
+ // return requires a fresh, server-authorized reviewer session and queue.
+ useEffect(()=>{
+  const subscription=AppState.addEventListener('change',status=>{
+   if(status!=='active'){
+    epoch.current++;
+    inFlight.current=false;
+    reset();
+    setBusy(false);
+   }
+  });
+  return ()=>subscription.remove();
+ },[reset]);
  const load=useCallback(async(next:ReviewCursor|null)=>{
   if(inFlight.current)return;
   inFlight.current=true;setBusy(true);setError('');
