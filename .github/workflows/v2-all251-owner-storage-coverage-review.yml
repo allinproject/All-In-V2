@@ -50,6 +50,27 @@ jobs:
           node-version: '22.16.0'
       - name: Verify single owning export reader remains fail closed
         run: node --test scripts/test-all251-authoritative-export-deletion-lease-classification.mjs
+      - name: Validate authenticated canonical export, encrypted pages and media bytes
+        run: |
+          node --test \
+            supabase/functions/_shared/trainingExportAuthServices.node.test.mjs \
+            supabase/functions/_shared/trainingExportCanonicalPgReader.node.test.mjs \
+            supabase/functions/_shared/trainingExportLargeArchive.node.test.mjs \
+            supabase/functions/_shared/trainingExportPrivateMediaPages.node.test.mjs \
+            supabase/functions/_shared/trainingExportMediaCoverage.node.test.mjs \
+            supabase/functions/_shared/trainingExportDownloadVerifier.node.test.mjs \
+            supabase/functions/_shared/trainingExportSupabaseStorage.node.test.mjs \
+            supabase/functions/_shared/trainingExportAwsKms.node.test.mjs
+      - name: Validate durable Storage cleanup, worker denial, recovery and privacy gates
+        run: |
+          node --test \
+            supabase/functions/_shared/trainingDeletionStorageByteAbsenceReview.test.mjs \
+            supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.test.mjs \
+            supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs \
+            supabase/functions/_shared/trainingPrivilegedAccountExportBarrier.test.mjs \
+            scripts/test-all251-private-storage-cleanup-review.test.mjs \
+            scripts/all12-recovery-domain-manifest.test.mjs \
+            scripts/all12-verify-logical-archive.test.mjs
       - name: Create synthetic owner/Storage lease schema
         run: psql -v ON_ERROR_STOP=1 -f scripts/fixtures/all251-staging-lease-coverage.pgsql
       - name: Install existing deletion owner graph scanner, no worker
