@@ -24,10 +24,13 @@ function equalBytes(a,b) {
  for(let i=0;i<a.length;i++)mismatch|=a[i]^b[i];
  return mismatch===0;
 }
-export function createPrivilegedStorageWriter({supabase}) {
+export function createPrivilegedStorageWriter({supabase,leaseAuthority=null}) {
  if(!supabase || typeof supabase.rpc!=='function'||
   typeof supabase.storage?.from!=='function')
   throw Error('Trusted server-only Supabase Storage writer required');
+ if(leaseAuthority!==null &&
+  (typeof leaseAuthority.begin!=='function'||typeof leaseAuthority.settle!=='function'))
+  throw Error('Exact attested privileged Storage lease authority required');
  async function performWithDurableLease({verifiedOwnerId,bucketId,path,bytes,operation,contentType,upload}) {
    if(!UUID.test(verifiedOwnerId??'')||!ALLOWED_BUCKETS.has(bucketId)||
     !validPath(path,verifiedOwnerId)||
@@ -40,10 +43,14 @@ export function createPrivilegedStorageWriter({supabase}) {
     throw Error('Invalid scoped privileged Storage upload');
    // Only canonical DB write-lease RPC can grant a write. No bare
    // in-memory status preflight can substitute for this durable lease.
-   const leased=await supabase.rpc('v2_begin_privileged_storage_write_review',{
-    p_owner_id:verifiedOwnerId,p_bucket_id:bucketId,
-    p_object_path:path,p_operation:operation,
-   });
+   const leased=leaseAuthority
+    ? await leaseAuthority.begin({
+      ownerId:verifiedOwnerId,bucketId,path,operation,bytes,
+     })
+    : await supabase.rpc('v2_begin_privileged_storage_write_review',{
+      p_owner_id:verifiedOwnerId,p_bucket_id:bucketId,
+      p_object_path:path,p_operation:operation,
+     });
    if(leased?.error||!UUID.test(leased?.data??''))
     throw Error('Durable privileged Storage write lease unavailable');
    const leaseId=leased.data;
@@ -65,9 +72,13 @@ export function createPrivilegedStorageWriter({supabase}) {
    const observed=new Uint8Array(await read.data.arrayBuffer());
    if(!equalBytes(observed,bytes))
     throw Error('Privileged Storage bytes differ; lease remains open');
-   const settled=await supabase.rpc('v2_settle_privileged_storage_write_review',{
-    p_owner_id:verifiedOwnerId,p_lease_id:leaseId,
-   });
+   const settled=leaseAuthority
+    ? await leaseAuthority.settle({
+      ownerId:verifiedOwnerId,leaseId,bucketId,path,operation,bytes,
+     })
+    : await supabase.rpc('v2_settle_privileged_storage_write_review',{
+      p_owner_id:verifiedOwnerId,p_lease_id:leaseId,
+     });
    if(settled?.error||settled?.data!==true)
     throw Error('Storage lease settlement unverified; deletion remains blocked');
    return Object.freeze({bucketId,path,verified:true});
