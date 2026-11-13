@@ -9,6 +9,7 @@ on:
       - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
       - 'scripts/test-all251-storage-durable-checkpoint-real-api-local.mjs'
       - 'scripts/test-all251-authoritative-export-deletion-lease-classification.mjs'
+      - 'scripts/test-all251-populated-canonical-encrypted-roundtrip.mjs'
       - 'scripts/generate-all251-exact-export-owner-child-guard.mjs'
       - 'scripts/test-all251-exact-export-join-only-candidate.psql'
       - '.github/workflows/v2-all251-owner-storage-coverage-review.yml'
@@ -20,6 +21,7 @@ on:
       - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
       - 'scripts/test-all251-storage-durable-checkpoint-real-api-local.mjs'
       - 'scripts/test-all251-authoritative-export-deletion-lease-classification.mjs'
+      - 'scripts/test-all251-populated-canonical-encrypted-roundtrip.mjs'
       - '.github/workflows/v2-all251-owner-storage-coverage-review.yml'
 permissions:
   contents: read
@@ -50,6 +52,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
+      - name: Syntax-check complete populated SQL archive integration harness
+        run: node --check scripts/test-all251-populated-canonical-encrypted-roundtrip.mjs
       - name: Verify single owning export reader remains fail closed
         run: node --test scripts/test-all251-authoritative-export-deletion-lease-classification.mjs
       - name: Validate authenticated canonical export, encrypted pages and media bytes
