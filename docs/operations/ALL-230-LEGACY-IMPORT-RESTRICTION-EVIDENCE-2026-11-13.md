@@ -275,3 +275,51 @@ No additional Supabase projects, paid branches, hosted backups, live
 schema modifications or source-private exports were executed in this
 turn. Do not mark ALL-12, ALL-230, or first restriction certification
 complete.
+
+
+## 2026-11-13 — Founder authorization for protected source acquisition
+
+The founder expressly approved encrypted capture of genuine Auth and remaining
+source data with independently verifiable external import/provider provenance.
+This is **execution authorization for controlled, read-only collection**, not
+an independently witnessed provider snapshot or approval to publish sensitive
+contents. The local ciphertext destination and offline-backed-up age key from
+the earlier verified 11-table capture are the intended custody controls.
+
+The new operator-only
+`scripts/all230-capture-v1-approved-source-domains-encrypted.sh`
+provides THREE distinct PostgreSQL 17 `pg_dump -Fc` to `age`
+encrypted capture streams (each with its own untrusted redacted receipt):
+
+1. `app`: `public` and `allin_private` source schema and data, with
+   restricted content potentially including private athlete records. This
+   archive MUST be examined in a sandbox prior to any restore; SQL functions
+   or other database side effects are not safe to execute blindly.
+2. `auth_identity`: real `auth.users` and `auth.identities` source
+   schema/data. Stored password verifiers and provider identifiers are
+   **highly restricted**. Deliberately do NOT capture active Auth sessions,
+   refresh tokens, MFA or production signing secrets into this recovery test
+   source. This is not full Auth backup or working reauthentication.
+3. `storage_catalog`: `storage.buckets`/`storage.objects` database
+   metadata. This does NOT include any of the original private Storage
+   object bytes; those remain a separately approved protected byte-copy
+   workflow consistent with ALL-251 storage safeguards.
+
+The script enforces the original V1 target, CA-verified TLS, protected
+archive destination 0700, age recipient, a transient password or a protected
+0600 PGPASSFILE, no CI, PostgreSQL 17 pg_dump, redacted output, non-overwrite,
+and streaming encryption. Three distinct dump transactions have **distinct
+cutoffs**, so *do not* attest a unified simultaneous source snapshot.
+Capture receipts explicitly keep independent custody, import-history
+verification, private Storage bytes and certification FALSE.
+
+**State as authored:** prepared in GitHub, **not executed on the
+founder's local Ubuntu machine**, no ciphertext acquired by the connected
+tools and no actual provider import-job inventory inspected/attested.
+The owner can run the script only on their trusted WSL/Ubuntu workstation
+with credentials entered privately; results must be verified using
+`sha256sum`, age decoding and scope-specific TOC/row counts, without
+sharing file bytes or user identities with chats/issues. The first Auth
+restore must be on a newly approved isolated Auth-capable target; do not
+merge with the existing Training container or reuse real credentials until
+its independent source review passes. Keep ALL-12 and ALL-230 In Progress.
