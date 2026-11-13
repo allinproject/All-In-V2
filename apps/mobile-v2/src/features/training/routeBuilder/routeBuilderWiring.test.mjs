@@ -31,3 +31,13 @@ test('route view never calls provider data verified if editing invalidated it',(
  assert.match(builder,/Not calculated — map changes invalidate earlier measurements/);
  assert.match(builder,/geometry=\{cleanGeometry\}/);
 });
+
+test('Train and workspace switching preserve the in-session route draft without exposing hidden editor',()=>{
+ const train=read('../../../app/train.tsx');
+ const workspace=read('../RoutesRoutinesContent.tsx');
+ assert.match(train,/display:activeTab === 'routes_routines' \? 'flex' : 'none'/);
+ assert.match(train,/importantForAccessibility=\{activeTab === 'routes_routines' \? 'auto' : 'no-hide-descendants'\}/);
+ assert.match(workspace,/selected !== 'routes' && styles.hidden/);
+ assert.match(workspace,/importantForAccessibility=\{selected === 'routes' \? 'auto' : 'no-hide-descendants'\}/);
+ assert.match(workspace,/<RouteBuilderContent \/>/);
+});
