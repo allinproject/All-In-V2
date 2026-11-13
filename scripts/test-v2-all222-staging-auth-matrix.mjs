@@ -145,11 +145,29 @@ export async function runAll222AuthMatrix({request, a, b, aToken, bToken, anon})
 }
 
 export async function checkAll222RevokedToken({request,bToken,anon}) {
-  const response=await request('/rest/v1/rpc/v2_my_profile_state',{
-    method:'POST',body:{},userJwt:bToken,apiKey:anon,
+  const rpc=async(name,body)=>request('/rest/v1/rpc/'+name,{
+    method:'POST',body,userJwt:bToken,apiKey:anon,
   });
-  // Supabase JWT verification may outlive GoTrue sign-out. If this fails it is
-  // a real release gap to investigate, not a test that may be silently skipped.
-  expectDenied(response,'Revoked B token still accesses owner Profile RPC');
-  process.stdout.write('PASS ALL-222: signed-out B bearer token denied by Profile RPC\n');
+  const check=async(label,name,body)=>{
+    const res=await rpc(name,body);
+    if(!denied.has(res.status)){
+      let state='unknown';
+      try {
+        const payload=await res.clone().json();
+        if(typeof payload?.code==='string' && /^[A-Z0-9_]{3,24}$/.test(payload.code))
+          state=payload.code;
+      }catch{}
+      process.stderr.write('ALL222 signed-out '+label+' HTTP '+res.status+
+        ' SQLSTATE '+state+' (no response bodies or identifiers)\\n');
+    }
+    expectDenied(res,'Revoked B token still accesses '+label);
+  };
+  // A JWT can remain cryptographically valid after sign-out; these owner RPCs
+  // must query the live GoTrue session row and deny a revoked token immediately.
+  await check('Profile RPC','v2_my_profile_state',{});
+  await check('Training day RPC','v2_training_day_read_candidate',{
+    p_expected_user_id:JSON.parse(Buffer.from(bToken.split('.')[1],'base64url').toString()).sub,
+    p_athlete_date:new Date().toISOString().slice(0,10),
+  });
+  process.stdout.write('PASS ALL-222: revoked B token denied by both Profile and Training owner readers\\n');
 }
