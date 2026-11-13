@@ -1,0 +1,43 @@
+name: ALL-251 hosted Storage matrix source and diagnostics (no secrets)
+on:
+  push:
+    branches:
+      - review/all251-hosted-route-matrix-baselines-20261113
+    paths:
+      - 'scripts/test-all251-hosted-storage-http-routes.mjs'
+      - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
+  pull_request:
+    paths:
+      - 'scripts/test-all251-hosted-storage-http-routes.mjs'
+      - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
+permissions:
+  contents: read
+jobs:
+  static-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Syntax validate hosted test with no protected credentials
+        run: node --check scripts/test-all251-hosted-storage-http-routes.mjs
+      - name: Require correct pre-freeze and post-freeze positive controls
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          const s=readFileSync('scripts/test-all251-hosted-storage-http-routes.mjs','utf8');
+          for(const needle of [
+            "bPre.ok?'OBSERVED':'",
+            "preRest.ok?'OBSERVED':'",
+            "preRest.ok?'PASS':'RESTRICTED'",
+            "bPre.ok?'PASS':'OBSERVED'",
+            "postFreezePaths",
+            "safeStorageCode",
+            "if(failed.length||untested.length)throw Error(",
+            "cleanupIssues.length"
+          ])assert(s.includes(needle),'Must retain failing-open denial: '+needle);
+          assert(!s.includes("for(const p of objects){\n  const r=await read(p);"),'Deletion request cannot be treated as completed byte deletion');
+          NODE
