@@ -18,13 +18,13 @@ export type CoachServices={
 export function createCoachOwnerClient(deps:CoachServices,ownerId:string,
  current:()=>boolean=()=>true,readEnabled=V2_COACH_READ_ENABLED,
  sendEnabled=V2_COACH_SEND_ENABLED){
- let token:string|null=null;
+ // A refresh may rotate the access token without changing the owner or auth
+ // session generation. The caller's current() guard must be scoped to that
+ // generation, so reauthentication and account switches still invalidate work.
  const owner=async()=>{
   if(!uuid(ownerId)||!current())return false;
   const next=await deps.session();
-  if(!current()||next?.ownerId!==ownerId||!next.token||
-    (token!==null&&token!==next.token))return false;
-  token=next.token;return true;
+  return Boolean(current()&&next?.ownerId===ownerId&&next.token);
  };
  const call=async(payload:Record<string,unknown>):Promise<Record<string,unknown>|null>=>{
   if(!await owner())return null;
