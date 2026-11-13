@@ -16,6 +16,8 @@
  */
 import assert from 'node:assert/strict';
 import {randomBytes, randomUUID} from 'node:crypto';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {createPrivilegedStorageWriter} from
  '../supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs';
 import {createAttestedPrivilegedStorageLeaseAuthority} from
@@ -171,8 +173,7 @@ async function exercise(){
  if(failure)throw failure;
  console.log('PASS operator-only staging test cleanup; signed/TUS/S3 delayed completion STILL UNTESTED');
 }
-if(process.argv[1] && import.meta.url===new URL('file://'+
- (process.platform==='win32'?'/':'')+process.argv[1].replaceAll('\\','/')).href){
+if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  exercise().catch(e=>{
   // No private key, JWT, response body or user path in output.
   console.error('FAIL staging trusted-writer acceptance: '+String(e?.message??'unknown')
