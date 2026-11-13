@@ -30,7 +30,8 @@ export type ModeratorReviewTransport={
  // Trusted server reads active Auth AND current reviewer permission each call.
  session():Promise<ReviewerSession|null>;
  queue(permission:ReviewPermission,cursor:ReviewCursor|null):Promise<ReviewQueue>;
- evidence(accessId:string,reportId:string,permission:ReviewPermission):Promise<ReviewEvidence>;
+ // Trusted server creates the unique access UUID and records every evidence open.
+ evidence(reportId:string,permission:ReviewPermission):Promise<ReviewEvidence>;
  decide(reportId:string,version:number,decision:'dismiss'|'hold'|'hide'):Promise<ReviewResult>;
  resolveAppeal(reportId:string,version:number,decision:'uphold'|'overturn'):Promise<ReviewResult>;
 };
