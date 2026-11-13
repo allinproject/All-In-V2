@@ -202,3 +202,76 @@ Supabase-managed restore. No provider snapshot ID, verified separate
 restored project, full Auth+Storage recovery evidence, RPO/RTO or
 approvals were established this turn. Hosted recovery gate remains
 blocked and no paid project was provisioned.
+
+
+## 2026-11-13 — Full 236-table cross-schema source-count expansion
+
+The original V1 database was queried **read-only** for the complete
+`public.allin_*` 183-base-table inventory and then for the other 53 base
+tables in `public`, `allin_private`, `auth` and `storage`. These
+four schemas contain **236 base tables, 54 nonempty tables and 15,526 rows**
+at the observations (183/38/13,053 plus 53/16/2,473). No private row
+contents, athlete UUIDs, auth secrets, or Storage file bytes were selected.
+
+The repeatable frozen 183-table SQL baseline is
+`supabase/tests/all230_v1_historical_allin_table_counts_readonly.sql`,
+created at commit `711c7c1` and **executed against original V1**
+at **2026-11-13 17:01:19 UTC** with exact 183/183 catalog-membership
+match, 38 nonempty tables, and 13,053 rows. This remains a *current
+catalog/row-count observation*, not a historical cutoff snapshot.
+The other 53 tables included 16 nonempty with 2,473 rows. Significant
+recovery dependencies: `auth.users`=1, `auth.identities`=1,
+`auth.sessions`=5, `auth.refresh_tokens`=65,
+`storage.buckets`=6, `storage.objects`=522.
+The 522 object records are **metadata, not proof of file byte availability**.
+
+**Independent external import/provenance is still not verified.**
+Current zero-count `allin_workout_sync_sources` and
+race-provider-result/mapping tables cannot independently attest that
+historical third-party import jobs never existed. A provider-issued job
+history, independently controlled acquisition cutoff/custody evidence,
+or an explicit approved external-source coverage statement is required.
+No `negativeZeroJobProofVerified` flag is authorized.
+
+**Auth recovery is NOT a simple copy of current sessions or refresh
+tokens.** Treat active refresh material, password verifiers and identity
+records as restricted security data; restore only with independently
+approved encrypted custody and a managed Auth recovery plan that avoids
+reusing live credentials. Do not manufacture local auth.users owner rows
+from Training foreign keys. A genuine Auth schema/identity recovery is a
+precondition to validating the 17 original FK edges.
+
+The 17 *exact original* FK definitions, captured solely from live V1
+metadata, are pinned in the **review-only, offline-only** file
+`supabase/tests/all230_v1_original_17_fk_offline_candidate.sql`
+(commit `a70fd35`). No FK DDL was applied to any database in this
+work. The guarded operator script
+`scripts/all230-restore-v1-original-fks-offline.sh`
+(commit `fc2d63d`) refuses if the expected Docker target is
+network-connected, has ports, lacks tmpfs, lacks restored Auth
+users/identities/sessions or profile-goal schema, lacks a real
+Training/Auth owner relationship, or lacks separate documented genuine
+source and FK-install approval. It uses atomic FK application and checks
+17 validated definitions against live V1's schema-only fingerprint
+`cb8a4806420ab2b409bef8736678ff59`.
+**The current isolated restore does not have authentic Auth, so that
+script must BLOCK rather than fabricate identity data.** A successful
+FK-only run would still not prove valid Auth sign-in or hosted recovery.
+
+**Snapshot/restore gates still open:**
+1. approve a complete source scope and personally protected encrypted
+   custody, including Auth, all owned domains and actual private Storage
+   object bytes; specify retention/destruction and approved reviewer;
+2. obtain independently verifiable provider/import job and snapshot
+   provenance evidence with consistent cutoff; avoid promoting
+   concurrent live counts to a snapshot receipt;
+3. restore real Auth/schema/rows into a separate isolated environment
+   with secrets and outbound effects controlled, then apply and verify
+   all 17 FKs; test actual reauthentication without live credentials;
+4. prove Storage file bytes, owner isolation, schema/domain digests,
+   provider restore ID, observed RPO/RTO, and reviewer acceptance.
+
+No additional Supabase projects, paid branches, hosted backups, live
+schema modifications or source-private exports were executed in this
+turn. Do not mark ALL-12, ALL-230, or first restriction certification
+complete.
