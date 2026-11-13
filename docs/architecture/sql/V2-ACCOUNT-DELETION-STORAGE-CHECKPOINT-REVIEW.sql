@@ -155,3 +155,28 @@ END $verify$;
 REVOKE ALL ON FUNCTION allin_private.v2_deletion_storage_bucket_checkpoints_review(uuid,uuid,text)
  FROM PUBLIC,anon,authenticated,service_role;
 -- No callable endpoint or deletion-completion integration.
+
+-- ALL-251 SERVICE-ONLY REVIEW BRIDGE, NOT A DEPLOYED MIGRATION.
+-- Exposes only an attested boolean, not sensitive object paths or owner rows.
+-- No worker hook may interpret this alone as authorization to delete Auth.
+CREATE FUNCTION public.v2_review_account_deletion_bucket_checkpoints(
+ p_expected_owner_id uuid,p_expected_request_id uuid,p_bucket_id text
+) RETURNS boolean
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
+AS $bridge$
+DECLARE v_complete boolean;
+BEGIN
+ IF p_expected_owner_id IS NULL OR p_expected_request_id IS NULL
+    OR p_bucket_id IS NULL
+ THEN RAISE EXCEPTION 'Exact checkpoint verification scope required' USING ERRCODE='22023'; END IF;
+ v_complete:=allin_private.v2_deletion_storage_bucket_checkpoints_review(
+  p_expected_owner_id,p_expected_request_id,p_bucket_id);
+ IF v_complete IS DISTINCT FROM true THEN RETURN false; END IF;
+ RETURN true;
+END $bridge$;
+REVOKE ALL ON FUNCTION public.v2_review_account_deletion_bucket_checkpoints(uuid,uuid,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.v2_review_account_deletion_bucket_checkpoints(uuid,uuid,text)
+ TO service_role;
+COMMENT ON FUNCTION public.v2_review_account_deletion_bucket_checkpoints(uuid,uuid,text) IS
+ 'ALL-251 disposable review bridge only. Never deploy until retention, upload blocking and actual deletion lifecycle approval.';
