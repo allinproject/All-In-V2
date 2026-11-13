@@ -206,3 +206,12 @@ The script refuses GitHub/CI execution, missing approval, other project refs, we
 **Next separate steps (not done by capture):** Independently attest the actual source-at-cutoff inventory and compatible sequence list, inspect the archive with `all12-verify-logical-archive.mjs`, provision an unrelated isolated database with outbound actions disabled before import, restore only onto that disposable target, compare source/target data and RLS, validate Auth configuration/sign-in and private Storage according to actual counts, record true RPO/RTO, securely clean up temporary artifacts, and explicitly accept or decline the scoped release. Do **not** enter acceptance flags by hand or claim `ALL-12 Done` from an archive checksum alone.
 
 **Operational limitation:** The connected Supabase tools in ChatGPT cannot run `pg_dump` against the authorized V2 source or retrieve the resulting archive. This capture must be executed by an authorized operator in an isolated/local environment with credentials never disclosed to ChatGPT. No paid clone or provider physical restoration is required.
+
+
+### Live deployed-table reconciliation before capture
+
+The local operator capture now runs a **read-only `psql` catalog query** against the same project-scoped PostgreSQL connection *before* invoking `pg_dump`. The source's actual `public.v2_*` and `allin_private.v2_*` tables must all appear in the approved capture list, or the operation fails without producing an archive. `auth.users`, `auth.identities`, `auth.sessions` and `auth.refresh_tokens` are also mandatory, even when the source has no users. A newly deployed V2 table cannot be silently omitted by an older reviewed list.
+
+The operator must reconcile the *entire* V2 table inventory, not just the sample `auth.users` and `public.v2_profiles` listed above. That example is intentionally incomplete and will be refused. This check is a point-in-time preflight; a migration between catalog inspection and the dump still requires independently comparing the archive cutoff with the source and migration state. Additional Auth provider configuration and Storage metadata/object bytes require separately reviewed recovery plans; the core Auth table list is a minimum, not the whole service-state contract.
+
+The backup archive is never handled by ChatGPT or GitHub Actions. It must remain in an independently secured, encrypted operator-controlled location; the workflow only tests that stale/incomplete inventory is rejected.
