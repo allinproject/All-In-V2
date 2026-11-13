@@ -332,3 +332,24 @@ test('routed writer rejects implied energy-attestation intent before any connect
   /explicit boolean/);
  assert.equal(client.calls.length,0);
 });
+
+test('duplicate canonical profile mapping is denied before any transaction',async()=>{
+ const batch=batchFixture(),client=routedClient();
+ batch.canonicalMappings[1].profileId=batch.canonicalMappings[0].profileId;
+ await assert.rejects(runRoutedHostedAutomaticQualification({client,...batch}),
+  /Conflicting canonical profile mapping/);
+ assert.equal(client.calls.length,0);
+});
+test('normalized source facts must agree with official reviewed USDA facts before canonical write',async()=>{
+ const batch=batchFixture(),client=routedClient();
+ const parsed=JSON.parse(batch.documents[0].payload_utf8);
+ parsed.foodNutrients.find(n=>n.nutrient.id===1003).amount+=0.1;
+ const changed=JSON.stringify(parsed);
+ batch.documents[0].payload_utf8=changed;
+ batch.documents[0].payload_sha256=createHash('sha256').update(changed).digest('hex');
+ const result=await runRoutedHostedAutomaticQualification({client,...batch});
+ assert.equal(result.qualified.length,7);
+ assert.equal(result.exceptions.length,1);
+ assert.equal(result.exceptions[0].source_profile_key,'milk_cottage_2pct');
+ assert.equal(client.calls.filter(c=>c.sql===WRITER).length,14);
+});
