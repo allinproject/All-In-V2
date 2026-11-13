@@ -6,7 +6,7 @@
  * This cannot prove the upload writer freeze and must not be treated as a
  * production deletion-readiness attestation on its own.
  */
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const BUCKET=/^[a-z0-9][a-z0-9-]{1,80}$/;
 const MAX_FILES=10000;
 const validPath=(p,owner)=>typeof p==='string' && p.length<=1024 &&
