@@ -40,6 +40,12 @@ BEGIN
   RAISE EXCEPTION 'Event identity was reassigned';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN
+  UPDATE public.v2_events
+    SET edition_id='10000000-0000-4000-8000-000000000099',
+        event_version=4 WHERE id=e;
+  RAISE EXCEPTION 'Canonical Event edition identity was reassigned';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
   DELETE FROM public.v2_events WHERE id=e;
   RAISE EXCEPTION 'Canonical verified Event identity deleted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
