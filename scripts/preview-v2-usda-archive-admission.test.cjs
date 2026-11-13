@@ -91,3 +91,33 @@ test('rejected source cannot produce a seed plan',async()=>{
   assert.equal(result.seedCounts,null);
   assert.equal(result.writerAuthorized,false);
 });
+
+test('routine verified USDA foods automatically route to existing qualification, no founder review',()=>{
+ const r=previewSourceFoods(sample());
+ assert.equal(r.automaticQualificationCount,8);
+ assert.equal(r.exceptionReviewCount,0);
+ assert.equal(r.individualFounderApprovalRequired,false);
+ assert.equal(r.qualificationQueue.length,8);
+ assert(r.qualificationQueue.every(x=>x.route==='automatic_qualification'&&
+   x.requiresFounderApproval===false&&x.writerAuthorized===false&&
+   x.calculationReady===false&&x.publicationApproved===false));
+});
+test('failed source routes to exception queue while preserving qualified source entries',()=>{
+ const foods=sample();
+ foods[1].payload_sha256='0'.repeat(64);
+ const r=previewSourceFoods(foods);
+ assert.equal(r.status,'review_required');
+ assert.equal(r.automaticQualificationCount,7);
+ assert.equal(r.exceptionReviewCount,1);
+ const failed=r.qualificationQueue.find(x=>x.source_profile_key==='red_onion_raw');
+ assert.equal(failed.route,'exception_review');
+ assert(failed.reasons.includes('source_digest_reference_mismatch:red_onion_raw'));
+ assert.equal(failed.requiresFounderApproval,false);
+ assert.equal(failed.writerAuthorized,false);
+});
+test('batch-wide source contract failure blocks automatic qualification for all',()=>{
+ const result=previewSourceFoods(sample().map(f=>({...f,archive_sha256:'f'.repeat(64)})));
+ assert.equal(result.automaticQualificationCount,0);
+ assert.equal(result.exceptionReviewCount,8);
+ assert(result.qualificationQueue.every(r=>r.route==='exception_review'));
+});
