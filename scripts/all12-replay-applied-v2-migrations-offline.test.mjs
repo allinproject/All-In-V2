@@ -31,7 +31,7 @@ test('cron quarantine refuses changed scheduler structure',()=>{
 
 test('Windows CRLF checkout normalizes to immutable canonical LF hashes without accepting SQL drift',()=>{
  const names=readdirSync(dir);
- const onWindows=n=>read(n).replace(/\n/g,'\r\n');
+ const onWindows=n=>read(n).replace(/\r?\n/g,'\r\n');
  assert.equal(validateInventory(names,onWindows).length,18);
  assert.equal(canonicalSql('a\r\nb\r\n'),'a\nb\n');
  assert.throws(()=>validateInventory(names,n=>onWindows(n)+(n===names.find(x=>x.startsWith('20261110021548'))?'-- malicious edit':''))
