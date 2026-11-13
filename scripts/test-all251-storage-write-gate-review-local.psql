@@ -1,0 +1,61 @@
+\set ON_ERROR_STOP on
+BEGIN;
+\i /tmp/V2-ACCOUNT-DELETION-STORAGE-WRITE-GATE-REVIEW.sql
+INSERT INTO auth.users(id,instance_id,aud,role,email)
+VALUES
+('a8111111-8111-4111-8111-811111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','all251-write-a@invalid.example'),
+('b8222222-8222-4222-8222-822222222222','00000000-0000-0000-0000-000000000000','authenticated','authenticated','all251-write-b@invalid.example');
+INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+VALUES
+('a8111111-8111-4111-8111-811111111111','c8333333-8333-4333-8333-833333333333','requested'),
+('b8222222-8222-4222-8222-822222222222','d8444444-8444-4444-8444-844444444444','cancelled');
+-- Cancellation is a resolved state and requires timestamp.
+UPDATE allin_private.v2_account_deletion_requests SET resolved_at=now()
+ WHERE user_id='b8222222-8222-4222-8222-822222222222';
+
+SELECT pg_catalog.set_config('request.jwt.claim.sub','a8111111-8111-4111-8111-811111111111',true);
+DO $test$
+DECLARE denied boolean;
+ a uuid:='a8111111-8111-4111-8111-811111111111';
+ b uuid:='b8222222-8222-4222-8222-822222222222';
+BEGIN
+ IF has_function_privilege('authenticated',
+  'allin_private.v2_assert_owner_storage_write_allowed_review(uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Storage review function exposed to authenticated'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM allin_private.v2_assert_owner_storage_write_allowed_review(a);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Pending deletion did not block upload'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM allin_private.v2_assert_owner_storage_write_allowed_review(b);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Cross-owner upload allowed'; END IF;
+END $test$;
+
+SELECT pg_catalog.set_config('request.jwt.claim.sub','b8222222-8222-4222-8222-822222222222',true);
+DO $test$
+DECLARE b uuid:='b8222222-8222-4222-8222-822222222222';
+BEGIN
+ IF NOT allin_private.v2_assert_owner_storage_write_allowed_review(b)
+ THEN RAISE EXCEPTION 'Cancelled request incorrectly blocks uploads'; END IF;
+ UPDATE allin_private.v2_account_deletion_requests
+  SET status='requested',resolved_at=null WHERE user_id=b;
+ BEGIN
+   PERFORM allin_private.v2_assert_owner_storage_write_allowed_review(b);
+   RAISE EXCEPTION 'New request did not block uploads';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ UPDATE allin_private.v2_account_deletion_requests
+  SET status='processing' WHERE user_id=b;
+ BEGIN
+   PERFORM allin_private.v2_assert_owner_storage_write_allowed_review(b);
+   RAISE EXCEPTION 'Processing request did not block uploads';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ RAISE NOTICE 'PASS ALL-251 write-gate review: active request denied, cancellation allowed, cross-owner denied; transaction rollback';
+END $test$;
+ROLLBACK;
