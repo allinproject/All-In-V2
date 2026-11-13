@@ -121,6 +121,9 @@ async function runAutomaticQualification({client,attestEnergy=false,...inputs}) 
   if(!client||typeof client.query!=='function')throw Error('Trusted database session required');
   if(typeof attestEnergy!=='boolean')throw Error('Energy attestation mode must be explicit boolean');
   const plan=planAutomaticQualification(inputs);
+  return executeCanonicalReviewPlan(client,plan,attestEnergy);
+}
+async function executeCanonicalReviewPlan(client,plan,attestEnergy) {
   let begun=false,commitAttempted=false;
   try {
     await client.query('BEGIN');begun=true;
@@ -185,6 +188,123 @@ async function runHostedAutomaticQualification({client,attestEnergy,...inputs}) 
   await checkHostedIngestReadiness(client,{requirePublisher:false});
   return runAutomaticQualification({client,attestEnergy,...inputs});
 }
+
+/**
+ * Connect exception-only USDA source routing to the one canonical SQL review
+ * writer. Only an already-mapped profile from trusted DB inventory is eligible.
+ * This is not an ingredient creation writer, a public endpoint or publication.
+ *
+ * sourceFoods are the upstream official-archive-verified policy projections;
+ * canonicalMappings are read-only authoritative DB identity/source revisions.
+ * The document preflight independently validates normalized server-side facts,
+ * while the writer uses the ORIGINAL pinned USDA payload digest stored in DB,
+ * not a hash of the normalized document.
+ */
+async function runRoutedHostedAutomaticQualification({
+  client,sourceFoods,sourceBindings,sourceEvidence,aliasPolicy,
+  candidates,documents,canonicalMappings,attestEnergy
+}) {
+  if(typeof attestEnergy!=='boolean')
+    throw Error('Hosted energy attestation intent must be an explicit boolean');
+  if(!client||typeof client.query!=='function')
+    throw Error('Trusted restricted database connection required');
+  if(!Array.isArray(candidates)||!Array.isArray(documents)||
+     !Array.isArray(sourceFoods)||!Array.isArray(canonicalMappings))
+    throw Error('Exact source, identity, document and canonical mapping inventories required');
+  const {reviewUsdaAdmission}=require('./review-v2-usda-source-admission.cjs');
+  const {validateFdcNutrients}=require('./check-v2-usda-nutrient-policy.cjs');
+  const assessment=reviewUsdaAdmission({sourceFoods,sourceBindings,sourceEvidence,aliasPolicy});
+  const sourceByKey=new Map(),candidateByKey=new Map(),documentByKey=new Map(),mappingByKey=new Map();
+  function uniqueIndex(rows,map,label) {
+    for(const row of rows) {
+      const key=row?.source_profile_key;
+      if(typeof key!=='string'||!key||map.has(key))
+        throw Error('Duplicate or invalid '+label+' identity; no write permitted');
+      map.set(key,row);
+    }
+  }
+  uniqueIndex(sourceFoods,sourceByKey,'source');
+  uniqueIndex(candidates,candidateByKey,'candidate');
+  uniqueIndex(documents,documentByKey,'normalized document');
+  uniqueIndex(canonicalMappings,mappingByKey,'canonical mapping');
+  const exceptions=[],eligible=[];
+  for(const route of assessment.qualificationQueue||[]) {
+    const key=route.source_profile_key;
+    if(route.route!=='automatic_qualification') {
+      exceptions.push({source_profile_key:key,reasons:route.reasons,route:'exception_review'});
+      continue;
+    }
+    const source=sourceByKey.get(key),candidate=candidateByKey.get(key),
+      document=documentByKey.get(key),mapping=mappingByKey.get(key);
+    const reasons=[];
+    if(!source||!candidate||!document||!mapping)
+      reasons.push('missing_trusted_canonical_mapping_or_source_document');
+    else if(!UUID.test(mapping.profileId||'')||
+            !Number.isSafeInteger(mapping.expectedRevision)||mapping.expectedRevision<1||
+            mapping.sourceFdcId!==String(source.fdcId)||
+            mapping.sourcePayloadSha256!==source.payload_sha256||
+            !/^[a-f0-9]{64}$/.test(source.payload_sha256))
+      reasons.push('canonical_mapping_source_revision_mismatch');
+    else {
+      try {
+        const normalizedPlan=planAutomaticQualification({
+          candidates:[candidate],documents:[document],sourceProfileKey:key,
+          profileId:mapping.profileId,expectedRevision:mapping.expectedRevision
+        });
+        // The normalized document must represent the same nutrient facts as
+        // the admitted USDA food, even though their SHA encodings differ.
+        const originalNutrients=validateFdcNutrients({
+          ...source,require_sodium:true
+        });
+        const parsed=JSON.parse(document.payload_utf8);
+        const normalizedNutrients=validateFdcNutrients({
+          ...parsed,require_sodium:true
+        });
+        if(originalNutrients.issues.length||normalizedNutrients.issues.length||
+           originalNutrients.chosenEnergyNutrientId!==normalizedNutrients.chosenEnergyNutrientId||
+           JSON.stringify(originalNutrients.facts)!==JSON.stringify(normalizedNutrients.facts))
+          throw Error('normalized_and_official_source_nutrients_disagree');
+        const canonicalDigest=source.payload_sha256;
+        const plan={...normalizedPlan,sourceDigest:canonicalDigest,
+          phases:normalizedPlan.phases.map(p=>({...p,
+            idempotencyKey:requestKey(mapping.profileId,p.revision,canonicalDigest,p.status)}))};
+        eligible.push({source_profile_key:key,plan});
+      }catch {
+        reasons.push('canonical_preflight_or_nutrient_binding_failed');
+      }
+    }
+    if(reasons.length)
+      exceptions.push({source_profile_key:key,reasons,route:'exception_review'});
+  }
+  // Unlisted or extra identity/mapping documents do not silently gain access.
+  const known=new Set((assessment.qualificationQueue||[]).map(r=>r.source_profile_key));
+  if([...candidateByKey.keys(),...documentByKey.keys(),...mappingByKey.keys()]
+    .some(key=>!known.has(key)))
+    throw Error('Orphan identity, document or mapping; batch blocked');
+  if(!assessment.sourceContractValidated||!assessment.aliasContractValidated)
+    return {status:'review_required',qualified:[],exceptions:
+      [...(assessment.qualificationQueue||[]).map(r=>({
+        source_profile_key:r.source_profile_key,route:'exception_review',
+        reasons:['global_source_or_alias_contract_failed']}))],
+      calculationReady:false,publicationApproved:false};
+  // No hosted query or BEGIN until source routing and exact mapping checks
+  // are complete. If all are exceptions, report them without DB access.
+  if(!eligible.length)
+    return {status:'exception_review_only',qualified:[],exceptions,
+      calculationReady:false,publicationApproved:false};
+  await checkHostedIngestReadiness(client,{requirePublisher:false});
+  const qualified=[];
+  for(const item of eligible) {
+    // Existing canonical SQL writer, CAS, audit and attestation transaction.
+    // Failures cannot be downgraded to successful qualification, and ambiguous
+    // COMMIT outcomes require human operational reconciliation, not retries.
+    const result=await executeCanonicalReviewPlan(client,item.plan,attestEnergy);
+    qualified.push({source_profile_key:item.source_profile_key,profileId:result.profileId,
+      status:result.status,energyAttestation:result.energyAttestation});
+  }
+  return {status:exceptions.length?'partially_qualified':'source_qualified_not_published',
+    qualified,exceptions,calculationReady:false,publicationApproved:false};
+}
 module.exports={planAutomaticQualification,runAutomaticQualification,
-  runHostedAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,
+  runHostedAutomaticQualification,runRoutedHostedAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,
   HOSTED_READINESS_SQL,checkHostedIngestReadiness};
