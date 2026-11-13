@@ -16,9 +16,24 @@ export const TRAINING_RESTRICTION_SOURCES=Object.freeze([
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HEX32=/^[0-9a-f]{32}$/;
 const keySort=(value)=>{
+ if(value instanceof Date) {
+  if(!Number.isFinite(value.getTime()))throw Error('Invalid source timestamp');
+  return value.toISOString();
+ }
  if(Array.isArray(value))return value.map(keySort);
- if(value&&typeof value==='object')
-  return Object.fromEntries(Object.keys(value).sort().map(k=>[k,keySort(value[k])]));
+ if(value&&typeof value==='object') {
+  if(Object.getPrototypeOf(value)!==Object.prototype&&Object.getPrototypeOf(value)!==null)
+   throw Error('Unsupported source record value');
+  return Object.fromEntries(Object.keys(value).sort().map(k=>{
+   if(value[k]===undefined)throw Error('Undefined source evidence field');
+   return [k,keySort(value[k])];
+  }));
+ }
+ if(typeof value==='number'&&!Number.isFinite(value))
+  throw Error('Invalid source numeric value');
+ if(typeof value==='bigint')return value.toString();
+ if(value===undefined||typeof value==='function'||typeof value==='symbol')
+  throw Error('Invalid source evidence field');
  return value;
 };
 const digest=(value)=>createHash('sha256').update(JSON.stringify(keySort(value))).digest('hex');
