@@ -226,7 +226,9 @@ jobs:
       - name: Test migration integrity rejection cases
         run: node --test ../../scripts/check-v2-applied-migration-integrity.test.mjs
       - name: Guard independent encrypted V1 capture (no source credentials or export in CI)
-        run: node --test ../../scripts/all230-capture-v1-restriction-source-encrypted.test.mjs
+        run: |
+          bash -n ../../scripts/all230-capture-v1-restriction-source-encrypted.sh
+          node --test ../../scripts/all230-capture-v1-restriction-source-encrypted.test.mjs
       - name: Validate independent legacy, limitation and import manifest gate (synthetic only)
         run: node --test ../../scripts/all230-assess-v1-restriction-manifest.test.mjs
       - name: Verify ALL-12 recovery inventory and restriction hosted fingerprint gates (metadata only)
