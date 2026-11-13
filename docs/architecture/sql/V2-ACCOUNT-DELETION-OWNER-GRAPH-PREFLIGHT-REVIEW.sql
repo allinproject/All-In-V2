@@ -92,6 +92,26 @@ SELECT 'storage'::text,b.id::text,'objects'::text,
  'unreviewed_storage_bucket_cleanup'::text
 FROM storage.buckets b
 UNION ALL
+-- A partially installed/broken shared staging barrier is never equivalent to
+-- the original canonical foundation (which has no lease or three fences).
+SELECT 'storage'::text,'v2_privileged_storage_write_leases_review'::text,
+ 'owner_id'::text,'missing_privileged_storage_lease_ledger_with_active_fences'::text
+WHERE pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
+ IS NULL
+ AND (
+ EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid=pg_catalog.to_regclass('allin_private.v2_account_deletion_requests')
+      AND t.tgname='v2_privileged_storage_write_fence_review'
+      AND t.tgenabled='O' AND NOT t.tgisinternal)
+ OR EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='auth.users'::pg_catalog.regclass
+      AND t.tgname='v2_privileged_storage_auth_delete_fence_review'
+      AND t.tgenabled='O' AND NOT t.tgisinternal)
+ OR EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid=pg_catalog.to_regclass('storage.objects')
+      AND t.tgname='v2_privileged_storage_metadata_write_fence_review'
+      AND t.tgenabled='O' AND NOT t.tgisinternal))
+UNION ALL
 -- The canonical privileged Storage lease ledger is the active upload fence.
 -- A correct owner FK cannot replace this protection: without the following
 -- live triggers, a claim, Auth cascade, or privileged metadata writer may
