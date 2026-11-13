@@ -1,0 +1,53 @@
+// ALL-251 STAGED CANDIDATE ONLY. Do not deploy until approved hosted race
+// tests, privileged credential isolation and writer inventory are complete.
+// Clients authenticate with their JWT; only server uses service-role Storage.
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
+import {createPrivilegedStorageWriter,MAX_PRIVILEGED_STORAGE_BYTES} from '../_shared/trainingPrivilegedStorageWriter.mjs';
+
+const headers={'content-type':'application/json','cache-control':'no-store'};
+function reply(status:number,code:string){return new Response(JSON.stringify({code}),
+ {status,headers});}
+Deno.serve(async(req:Request)=>{
+ if(req.method!=='POST')return reply(405,'method_not_allowed');
+ // Hard default OFF even if this review function is deployed accidentally.
+ if(Deno.env.get('ALLIN_PRIVATE_WRITER_ACCEPTED')!=='true')
+  return reply(503,'private_writer_not_accepted');
+ const endpoint=(Deno.env.get('SUPABASE_URL')??'').trim();
+ const key=(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')??'').trim();
+ if(!endpoint||!key)return reply(503,'writer_not_configured');
+ const bearer=req.headers.get('authorization')??'';
+ if(!/^Bearer\s+[^\s]+$/i.test(bearer))return reply(401,'auth_required');
+ const length=Number(req.headers.get('content-length')??0);
+ if(!Number.isFinite(length)||length>MAX_PRIVILEGED_STORAGE_BYTES)
+  return reply(413,'body_too_large');
+ const bucketId=req.headers.get('x-allin-bucket')??'';
+ // Ordinary mobile users cannot write account export archives.
+ if(bucketId!=='v2-private-workout-objects')return reply(403,'bucket_not_approved');
+ const path=req.headers.get('x-allin-path')??'';
+ const operation=req.headers.get('x-allin-operation')??'';
+ const contentType=req.headers.get('content-type')??'';
+ const client=createClient(endpoint,key,{auth:{
+  persistSession:false,autoRefreshToken:false,
+ }});
+ const identity=await client.auth.getUser(bearer.replace(/^Bearer\s+/i,''));
+ if(identity.error||!identity.data?.user?.id)return reply(401,'invalid_session');
+ let payload:Uint8Array;
+ try{
+  payload=new Uint8Array(await req.arrayBuffer());
+  if(payload.byteLength===0||payload.byteLength>MAX_PRIVILEGED_STORAGE_BYTES)
+   return reply(413,'body_too_large');
+ }catch{return reply(400,'invalid_body');}
+ try{
+  const result=await createPrivilegedStorageWriter({supabase:client}).write({
+   verifiedOwnerId:identity.data.user.id,bucketId,path,
+   operation,contentType,bytes:payload,
+  });
+  return new Response(JSON.stringify({status:'stored',path:result.path}),
+   {status:201,headers});
+ }catch{
+  // An ambiguous upload can have a durable open lease requiring operator
+  // investigation. Never expose lease IDs, Storage errors or service tokens.
+  return reply(409,'write_not_verified');
+ }
+});
