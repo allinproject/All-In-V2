@@ -165,3 +165,19 @@ test('missing, wrong-owner and stale immutable plan never authorize completion',
  await assert.rejects(reviewPrivateStorageCleanup(missing.opts),/Unplanned owner Storage object/);
  assert.equal(missing.objects.size,3);
 });
+
+test('barrier loss before object delete blocks destructive call',async()=>{
+ const f=fixture();let checks=0,deletes=0;
+ f.opts.assertOwnerWritesQuiesced=async()=>++checks<3;
+ f.opts.deleteObject=async()=>{deletes++;return {deleted:true};};
+ await assert.rejects(reviewPrivateStorageCleanup(f.opts),/expired before object cleanup/);
+ assert.equal(deletes,0);
+ assert.equal(f.objects.size,3);
+});
+test('barrier loss before checkpoint refuses false success',async()=>{
+ const f=fixture();let checks=0;
+ f.opts.assertOwnerWritesQuiesced=async()=>++checks<4;
+ await assert.rejects(reviewPrivateStorageCleanup(f.opts),/expired before checkpoint/);
+ assert.equal(f.checkpoints.length,0);
+ assert.equal(f.objects.has(B+'/leave-me.fit'),true);
+});
