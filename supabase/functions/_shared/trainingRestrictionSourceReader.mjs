@@ -2,7 +2,7 @@
  * ALL-230 review-only server adapter for canonical Training restriction source
  * ingestion. NOT an endpoint, deployment, certification writer or source of truth.
  *
- * Four externally supplied source readers MUST be trusted database readers operating on the
+ * Three externally supplied source readers MUST be trusted database readers operating on the
  * same pinned transaction. An external API, client, Coach summary or fabricated
  * empty inventory is never an acceptable source reader.
  */
@@ -44,7 +44,7 @@ const count=v=>Number.isSafeInteger(v)&&v>=0;
  * Supabase Auth; session_id is then read from that same verified JWT and
  * independently checked against auth.sessions in the private database RPC.
  * Source readers must be explicitly supplied by the trusted Training owner.
- * The current restriction source is fixed to the canonical Training table.
+ * The current restrictions and approved plans are fixed to canonical Training tables.
  * Each reader returns all canonical source rows, with independently verified
  * exhaustive flag and snapshotVersion from this SAME database transaction.
  * reconcileSource is trusted owner logic, not an LLM or client callback. It
@@ -55,8 +55,8 @@ export function createTrainingRestrictionSourceReaderCandidate({
 }) {
  if(typeof pool?.connect!=='function'||typeof authClient?.auth?.getUser!=='function'
    ||typeof reconcileSource!=='function'
-   ||!sourceReaders||TRAINING_RESTRICTION_SOURCES.slice(1).some(k=>typeof sourceReaders[k]!=='function')
-   ||Object.keys(sourceReaders).some(k=>!TRAINING_RESTRICTION_SOURCES.slice(1).includes(k)))
+   ||!sourceReaders||TRAINING_RESTRICTION_SOURCES.slice(2).some(k=>typeof sourceReaders[k]!=='function')
+   ||Object.keys(sourceReaders).some(k=>!TRAINING_RESTRICTION_SOURCES.slice(2).includes(k)))
   throw Error('All trusted Training source readers and Auth/reconciliation services required');
  return Object.freeze({
   async ingestReviewedSources({bearerToken,snapshotVersion}) {
@@ -92,7 +92,8 @@ export function createTrainingRestrictionSourceReaderCandidate({
     const evidence=[];
     for(const kind of TRAINING_RESTRICTION_SOURCES) {
      const reader=kind==='current_restrictions'
-      ?readCanonicalCurrentRestrictionSource:sourceReaders[kind];
+      ?readCanonicalCurrentRestrictionSource
+      :kind==='approved_plans'?readCanonicalApprovedPlanSource:sourceReaders[kind];
      const raw=await reader({client,ownerId,sessionId,snapshotVersion});
      if(raw?.ownerId!==ownerId||raw?.snapshotVersion!==snapshotVersion
         ||raw?.exhaustive!==true||raw?.nextCursor!==null
@@ -164,5 +165,64 @@ export async function readCanonicalCurrentRestrictionSource({
   ownerId,snapshotVersion,exhaustive:true,nextCursor:null,
   evidenceRef:'training-canonical:'+snapshotVersion+':current',
   records:response.rows,
+ };
+}
+
+/**
+ * Authoritative APPROVED plan-history source from the existing Training
+ * plan/calendar tables. It includes accepted/superseded/archived revisions,
+ * their days and sessions, and owning plan identities. Candidate/rejected
+ * revisions are not athlete-approved instructions. An accepted plan with no
+ * training sessions remains represented by its revision and rest days.
+ *
+ * The 201-row sentinel refuses truncation rather than claiming completeness.
+ * This is source observation, not interpretation: the trusted reconciler must
+ * still map actual restriction-bearing content to the canonical rule ledger.
+ */
+export async function readCanonicalApprovedPlanSource({client,ownerId,snapshotVersion}) {
+ if(typeof client?.query!=='function'||!UUID.test(ownerId??'')
+   ||typeof snapshotVersion!=='string'||!snapshotVersion.trim())
+  throw Error('Pinned approved Training plan transaction required');
+ const sql=`
+ SELECT source_kind,user_id,record FROM (
+  SELECT 'plan'::text AS source_kind,p.user_id,pg_catalog.to_jsonb(p) AS record
+   FROM public.v2_training_plans p
+   WHERE p.user_id=$1 AND EXISTS (
+    SELECT 1 FROM public.v2_training_plan_revisions r
+    WHERE r.plan_id=p.id AND r.user_id=p.user_id
+      AND r.accepted_at IS NOT NULL
+      AND r.status IN ('accepted','superseded','archived'))
+  UNION ALL
+  SELECT 'revision',r.user_id,pg_catalog.to_jsonb(r)
+   FROM public.v2_training_plan_revisions r
+   WHERE r.user_id=$1 AND r.accepted_at IS NOT NULL
+    AND r.status IN ('accepted','superseded','archived')
+  UNION ALL
+  SELECT 'day',d.user_id,pg_catalog.to_jsonb(d)
+   FROM public.v2_training_revision_days d
+   JOIN public.v2_training_plan_revisions r
+    ON r.id=d.plan_revision_id AND r.user_id=d.user_id
+   WHERE d.user_id=$1 AND r.accepted_at IS NOT NULL
+    AND r.status IN ('accepted','superseded','archived')
+  UNION ALL
+  SELECT 'session',s.user_id,pg_catalog.to_jsonb(s)
+   FROM public.v2_training_revision_sessions s
+   JOIN public.v2_training_plan_revisions r
+    ON r.id=s.plan_revision_id AND r.user_id=s.user_id
+   WHERE s.user_id=$1 AND r.accepted_at IS NOT NULL
+    AND r.status IN ('accepted','superseded','archived')
+ ) reviewed
+ ORDER BY source_kind,record->>'id' LIMIT 201`;
+ const response=await client.query(sql,[ownerId]);
+ if(!Array.isArray(response?.rows)||response.rows.length>200)
+  throw Error('Approved plan source exceeds bounded canonical review');
+ if(response.rows.some(row=>row?.user_id!==ownerId
+   ||!['plan','revision','day','session'].includes(row?.source_kind)
+   ||row.record?.user_id!==ownerId))
+  throw Error('Approved plan source contains foreign or malformed owner content');
+ return {
+  ownerId,snapshotVersion,exhaustive:true,nextCursor:null,
+  evidenceRef:'training-canonical:'+snapshotVersion+':approved-plans',
+  records:response.rows.map(row=>({user_id:row.user_id,kind:row.source_kind,record:row.record})),
  };
 }
