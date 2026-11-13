@@ -34,13 +34,27 @@ test('all runtime client/server direct Storage upload paths must use the canonic
   ...enumerate('apps/mobile-v2/app'),
  ]){
   const src=readFileSync(resolve(root,name),'utf8');
+  // NEW upload protocols must not silently bypass the canonical writer.
+  // A direct privileged S3 key or signed-upload URL is equivalent to a raw
+  // service-role Storage upload and bypasses the owner deletion lease.
   const markers=[
    /\.upload\s*\(/g,
    /\.uploadToSignedUrl\s*\(/g,
    /\.createSignedUploadUrl\s*\(/g,
-   /\/storage\/v1\/(?:object|s3)/g,
+   /\.createUploadSignedUrl\s*\(/g,
+   /\.update\s*\(/g,
+   /\.move\s*\(/g,
+   /\.copy\s*\(/g,
+   /\/storage\/v1\/(?:object|s3|upload\/resumable)/g,
+   /\b(?:PutObjectCommand|UploadPartCommand|CompleteMultipartUploadCommand|CopyObjectCommand|CreateMultipartUploadCommand)\b/g,
+   /\b(?:tus\.Upload|new\s+S3Client\s*\(|new\s+tus\.Upload\s*\()/g,
   ];
-  const direct=markers.reduce((sum,re)=>sum+[...src.matchAll(re)].length,0);
+  // update/move/copy are common database operations, so only classify those
+  // as Storage when this file also has a Storage client or S3 endpoint.
+  const storageClient=/\.storage\s*\.|\/storage\/v1|\bS3Client\b|\btus\.Upload\b/.test(src);
+  const active=storageClient?markers:markers.filter(re=>!
+   ['/\\.update','/\\.move','/\\.copy'].some(x=>re.toString().startsWith(x)));
+  const direct=active.reduce((sum,re)=>sum+[...src.matchAll(re)].length,0);
   if(!direct)continue;
   const requirements=reviewed.get(name);
   if(!requirements || !requirements.every(term=>src.includes(term))){
