@@ -171,6 +171,54 @@ BEGIN
  END IF;
 END $pagination$;
 
+-- Comments/replies are part of the single post ledger, not a second feed.
+-- Author deletion must preserve a surviving reply by detaching its parent.
+DO $comment_acl$
+BEGIN
+ IF NOT (SELECT relrowsecurity FROM pg_class
+   WHERE oid='allin_private.v2_community_comments'::regclass)
+ OR has_table_privilege('authenticated','allin_private.v2_community_comments','SELECT')
+ OR has_table_privilege('anon','allin_private.v2_community_comments','SELECT')
+ OR has_table_privilege('service_role','allin_private.v2_community_comments','INSERT')
+ THEN RAISE EXCEPTION 'Review-only comment ledger publicly readable/writable'; END IF;
+END $comment_acl$;
+INSERT INTO allin_private.v2_community_comments
+ (id,post_id,author_id,body) VALUES
+ ('81000000-0000-4000-8000-000000000001',
+  '50000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001','Comment from A');
+INSERT INTO allin_private.v2_community_comments
+ (id,post_id,author_id,parent_comment_id,body) VALUES
+ ('81000000-0000-4000-8000-000000000002',
+  '50000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000002',
+  '81000000-0000-4000-8000-000000000001','Surviving reply by B');
+-- An unrelated post cannot be used as a comment's parent.
+DO $cross_post$
+BEGIN
+ BEGIN
+  INSERT INTO allin_private.v2_community_comments
+   (id,post_id,author_id,parent_comment_id,body)
+  VALUES('81000000-0000-4000-8000-000000000003',
+   '50000000-0000-0000-0000-000000000002',
+   '00000000-0000-0000-0000-000000000001',
+   '81000000-0000-4000-8000-000000000001','Wrong post');
+  RAISE EXCEPTION 'Cross-post parent reply accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+END $cross_post$;
+DELETE FROM auth.users WHERE id='00000000-0000-0000-0000-000000000001';
+DO $surviving_reply$
+BEGIN
+ IF EXISTS(SELECT 1 FROM allin_private.v2_community_comments
+   WHERE id='81000000-0000-4000-8000-000000000001')
+ OR NOT EXISTS(SELECT 1 FROM allin_private.v2_community_comments
+   WHERE id='81000000-0000-4000-8000-000000000002'
+     AND author_id='00000000-0000-0000-0000-000000000002'
+     AND parent_comment_id IS NULL)
+ THEN RAISE EXCEPTION 'Deleting one author removed or exposed survivor reply'; END IF;
+ RAISE NOTICE 'PASS ALL-244 comment/reply author deletion preserves survivor, cross-post parent rejected, no client grant';
+END $surviving_reply$;
+
 DELETE FROM auth.users WHERE id='00000000-0000-0000-0000-000000000002';
 DO $delete$
 BEGIN
