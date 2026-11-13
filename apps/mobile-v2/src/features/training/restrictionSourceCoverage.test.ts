@@ -6,7 +6,8 @@ const owner = 'athlete-a';
 const version = 'owner-snapshot-11';
 const sources: RestrictionSourceEvidence[] = REQUIRED_RESTRICTION_SOURCES.map(kind => ({
   kind, ownerId: owner, complete: true, nextCursor: null,
-  snapshotVersion: version, inspectedCount: 0, reconciledCount: 0, unresolvedCount: 0,
+  snapshotVersion: version, evidenceRef: `source-reader:${kind}`,
+  inventoryDigest: 'a'.repeat(64), inspectedCount: 0, reconciledCount: 0, unresolvedCount: 0,
 }));
 const input = { expectedOwnerId: owner, authenticatedOwnerId: owner, snapshotVersion: version, sources };
 const check = (changes: Partial<typeof input>) => preflightRestrictionSourceCoverage({ ...input, ...changes });
@@ -58,4 +59,20 @@ test('malformed owner and source primitives produce blocked status without throw
   ]) {
     assert.equal(check({ sources: [{ ...sources[0], ...mutation } as never, ...sources.slice(1)] }).status, 'blocked', JSON.stringify(mutation));
   }
+});
+
+test('source evidence identity and digest are mandatory even for zero-row sources', () => {
+  for (const changed of [
+    { evidenceRef: '' },
+    { evidenceRef: 99 },
+    { inventoryDigest: '' },
+    { inventoryDigest: 'a'.repeat(32) },
+    { inventoryDigest: 'Z'.repeat(64) },
+    { inventoryDigest: undefined },
+  ]) {
+    assert.equal(check({ sources: [{ ...sources[0], ...changed } as never, ...sources.slice(1)] }).status, 'blocked');
+  }
+  assert.equal(check({ sources: [
+    sources[0], { ...sources[1], evidenceRef: sources[0].evidenceRef }, ...sources.slice(2),
+  ] }).status, 'blocked');
 });
