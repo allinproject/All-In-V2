@@ -343,6 +343,8 @@ INSERT INTO auth.sessions(id,user_id) VALUES
 INSERT INTO allin_private.v2_community_moderator_grants
  (reviewer_id,permission,enabled) VALUES
  ('00000000-0000-0000-0000-000000000003','initial_review',true),
+ ('00000000-0000-0000-0000-000000000003','appeal_review',true),
+ ('00000000-0000-0000-0000-000000000004','initial_review',true),
  ('00000000-0000-0000-0000-000000000004','appeal_review',true);
 INSERT INTO allin_private.v2_community_comments
  (id,post_id,author_id,body) VALUES
@@ -416,7 +418,22 @@ BEGIN
   RAISE EXCEPTION 'Reporter moderated own case';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $real_report$;
+-- A different authorized viewer independently reports the same comment.
+-- The two cases must never overwrite one another's visibility decisions.
+INSERT INTO allin_private.v2_community_follows
+ (follower_id,followed_id,state,approved_at)
+VALUES('00000000-0000-0000-0000-000000000003',
+ '00000000-0000-0000-0000-000000000002','approved',now())
+ON CONFLICT(follower_id,followed_id) DO UPDATE SET
+ state='approved',approved_at=now();
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000003',false);
+DO $second_report$
+BEGIN
+ PERFORM allin_private.v2_community_report_comment(
+  '84000000-0000-4000-8000-000000000002',
+  '82000000-0000-4000-8000-000000000005','spam','Separate reporter');
+END $second_report$;
 SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000003',false);
 DO $initial_review$
 DECLARE r jsonb;
@@ -438,6 +455,20 @@ BEGIN
   RAISE EXCEPTION 'Initial reviewer resolved appeal';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $initial_review$;
+-- A separate reviewer holds the second reported case, but may not
+-- downgrade the already-hidden state from the first case.
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000004',false);
+DO $second_decision$
+BEGIN
+ PERFORM allin_private.v2_community_decide_report(
+  '84000000-0000-4000-8000-000000000002',1,'hold');
+ IF (SELECT moderation_state FROM allin_private.v2_community_comments
+  WHERE id='82000000-0000-4000-8000-000000000005')<>'hidden'
+ THEN RAISE EXCEPTION 'Second hold incorrectly overrode first hide'; END IF;
+END $second_decision$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000003',false);
 -- Removing a trusted reviewer grant must take effect immediately, not
 -- merely when the reviewer's JWT expires.
 UPDATE allin_private.v2_community_moderator_grants SET enabled=false
@@ -493,8 +524,8 @@ BEGIN
   '84000000-0000-4000-8000-000000000001',3,'overturn');
  IF r->>'version'<>'4' OR
   (SELECT moderation_state FROM allin_private.v2_community_comments
-   WHERE id='82000000-0000-4000-8000-000000000005')<>'visible'
- THEN RAISE EXCEPTION 'Independent appeal failed to restore content'; END IF;
+   WHERE id='82000000-0000-4000-8000-000000000005')<>'held'
+ THEN RAISE EXCEPTION 'Overturn wrongly cleared second active hold'; END IF;
  IF (SELECT pg_catalog.string_agg(event_kind,',' ORDER BY version)
   FROM allin_private.v2_community_moderation_events
   WHERE report_id='84000000-0000-4000-8000-000000000001')
@@ -504,6 +535,26 @@ BEGIN
   WHERE report_id='84000000-0000-4000-8000-000000000001')<>4
  THEN RAISE EXCEPTION 'Unexpected audit event count'; END IF;
 END $independent_appeal$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000001',false);
+DO $second_author_appeal$
+BEGIN
+ PERFORM allin_private.v2_community_appeal_report(
+  '84000000-0000-4000-8000-000000000002',2,'Separate case appeal');
+END $second_author_appeal$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000003',false);
+DO $second_independent_appeal$
+BEGIN
+ PERFORM allin_private.v2_community_resolve_appeal(
+  '84000000-0000-4000-8000-000000000002',3,'overturn');
+ IF (SELECT moderation_state FROM allin_private.v2_community_comments
+   WHERE id='82000000-0000-4000-8000-000000000005')<>'visible'
+ THEN RAISE EXCEPTION 'Both overturned cases did not restore visibility'; END IF;
+ RAISE NOTICE 'PASS: Separate reporters cannot weaken one another''s decisions';
+END $second_independent_appeal$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000004',false);
 DELETE FROM auth.sessions WHERE id='83000000-0000-4000-8000-000000000004';
 DO $revoked_reviewer_session$
 BEGIN
