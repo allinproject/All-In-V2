@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import * as Linking from 'expo-linking';
@@ -22,6 +22,7 @@ export default function SignInScreen() {
   const { loading, user, authNotice } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export default function SignInScreen() {
   const requestGuard = useRef(createV2AuthActionGuard());
   const signedOutReady = canStartV2SignedOutAction(loading, user?.id ?? null);
 
-  if (!loading && user) return <Redirect href="/home" />;
+  if (!loading && user) return <Redirect href="/" />;
 
   async function signIn() {
     if (!signedOutReady || submitting || resending) return;
@@ -135,12 +136,22 @@ export default function SignInScreen() {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.card}>
-            <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-            <Text accessibilityRole="header" style={styles.title}>Welcome back</Text>
-            <Text style={styles.body}>Sign in to your ALL IN 365 V2 account.</Text>
-            <TextInput accessibilityLabel="Email" editable={!submitting && !resending} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor="#929292" style={styles.input} value={email} onChangeText={value => { if (requestGuard.current.isBusy()) return; setEmail(value); setConfirmationPendingEmail(null); setError(null); setNotice(null); }} />
-            <TextInput accessibilityLabel="Password" editable={!submitting && !resending} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder="Password" placeholderTextColor="#929292" style={styles.input} value={password} onChangeText={value => { if (requestGuard.current.isBusy()) return; setPassword(value); }} onSubmitEditing={() => void signIn()} />
+          <View style={styles.screen}>
+            <Image source={require('../assets/all-in-365-circle.jpg')} accessibilityLabel="ALL IN 365 circular logo" resizeMode="contain" style={styles.logo} />
+            <Text style={styles.slogan}>LIVE ALL IN.</Text>
+            <Text accessibilityRole="header" style={styles.title}>Welcome back.</Text>
+            <Text style={styles.body}>Sign in to your ALL IN 365 account.</Text>
+            <View style={styles.fields}>
+              <Text style={styles.fieldLabel}>Email address</Text>
+              <TextInput accessibilityLabel="Email" editable={!submitting && !resending} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.mutedText} style={styles.input} value={email} onChangeText={value => { if (requestGuard.current.isBusy()) return; setEmail(value); setConfirmationPendingEmail(null); setError(null); setNotice(null); }} />
+              <Text style={styles.fieldLabel}>Password</Text>
+              <View style={styles.passwordRow}>
+                <TextInput accessibilityLabel="Password" editable={!submitting && !resending} autoCapitalize="none" autoComplete="current-password" secureTextEntry={!passwordVisible} placeholder="Password" placeholderTextColor={colors.mutedText} style={styles.passwordInput} value={password} onChangeText={value => { if (requestGuard.current.isBusy()) return; setPassword(value); setError(null); }} onSubmitEditing={() => void signIn()} />
+                <Pressable accessibilityRole="button" accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'} accessibilityState={{disabled: submitting || resending}} disabled={submitting || resending} onPress={() => setPasswordVisible(value => !value)} style={styles.visibilityToggle}>
+                  <Text style={styles.visibilityText}>{passwordVisible ? 'Hide' : 'Show'}</Text>
+                </Pressable>
+              </View>
+            </View>
             {visibleError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{visibleError}</Text> : null}
             {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: !signedOutReady || submitting || resending, busy: submitting || resending }} disabled={!signedOutReady || submitting || resending} onPress={() => void signIn()} style={({ pressed }) => [styles.button, pressed && styles.pressed, (submitting || resending) && styles.disabled]}>
@@ -155,7 +166,8 @@ export default function SignInScreen() {
               </Pressable>
             ) : null}
             <Text style={styles.note}><Link href="/forgot-password" style={styles.link}>Forgot password?</Link></Text>
-            <Text style={styles.note}>New to ALL IN 365 V2? <Link href="/sign-up" style={styles.link}>Create your V2 account</Link></Text>
+            <Text style={styles.note}>New to ALL IN 365? <Link href="/sign-up" style={styles.link}>Create account</Link></Text>
+            <Text style={styles.note}><Link href="/welcome" style={styles.backLink}>Back to welcome</Link></Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -164,24 +176,31 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  content: { flexGrow: 1, justifyContent: 'center', padding: 22 },
-  card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 22, padding: 28, gap: 16 },
-  brand: { color: colors.warmWhite, fontSize: 18, fontWeight: '800', letterSpacing: 1.5 },
-  gold: { color: colors.gold },
-  title: { color: colors.warmWhite, fontSize: 30, fontWeight: '800', marginTop: 8 },
-  body: { color: colors.mutedText, fontSize: 15, lineHeight: 21 },
-  input: { backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: 14, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 15, paddingVertical: 14 },
-  error: { color: colors.danger, fontSize: 14, lineHeight: 19 },
-  notice: { color: colors.goldSoft, fontSize: 14, lineHeight: 19 },
-  googleButton: { minHeight: 52, borderRadius: 14, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  googleButtonText: { color: colors.warmWhite, fontWeight: '800', fontSize: 16 },
-  resendButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
-  button: { minHeight: 52, borderRadius: 14, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
-  pressed: { opacity: 0.9 },
-  disabled: { opacity: 0.65 },
-  buttonText: { color: colors.background, fontSize: 16, fontWeight: '800' },
-  note: { color: colors.mutedText, fontSize: 12, textAlign: 'center' },
-  link: { color: colors.gold, textDecorationLine: 'underline', fontWeight: '700' }
+  safe: {flex: 1, backgroundColor: colors.background},
+  flex: {flex: 1},
+  content: {flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 26},
+  screen: {width: '100%', maxWidth: 450, alignSelf: 'center', alignItems: 'stretch', gap: 14},
+  logo: {width: 112, height: 112, borderRadius: 56, alignSelf: 'center'},
+  slogan: {color: colors.gold, textAlign: 'center', fontWeight: '800', fontSize: 13, letterSpacing: 2.4, marginBottom: 12},
+  title: {color: colors.warmWhite, textAlign: 'center', fontSize: 32, fontWeight: '900', marginTop: 4},
+  body: {color: colors.mutedText, textAlign: 'center', fontSize: 15, lineHeight: 22, marginBottom: 16},
+  fields: {gap: 10},
+  fieldLabel: {color: colors.warmWhite, fontWeight: '600', fontSize: 14},
+  input: {minHeight: 54, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 14, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 16, paddingVertical: 13, marginBottom: 5},
+  passwordRow: {minHeight: 54, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 14, marginBottom: 10},
+  passwordInput: {flex: 1, minHeight: 52, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 16, paddingVertical: 12},
+  visibilityToggle: {minHeight: 48, minWidth: 56, justifyContent: 'center', alignItems: 'center', paddingRight: 8},
+  visibilityText: {color: colors.goldSoft, fontWeight: '700', fontSize: 14},
+  error: {color: colors.danger, fontSize: 14, lineHeight: 19},
+  notice: {color: colors.goldSoft, fontSize: 14, lineHeight: 19},
+  button: {minHeight: 54, borderRadius: 14, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center'},
+  buttonText: {color: colors.background, fontSize: 17, fontWeight: '800'},
+  googleButton: {minHeight: 54, borderRadius: 14, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center'},
+  googleButtonText: {color: colors.warmWhite, fontWeight: '700', fontSize: 16},
+  resendButton: {minHeight: 40, justifyContent: 'center', alignItems: 'center'},
+  note: {color: colors.mutedText, fontSize: 13, textAlign: 'center', marginTop: 3},
+  link: {color: colors.gold, textDecorationLine: 'underline', fontWeight: '700'},
+  backLink: {color: colors.mutedText, textDecorationLine: 'underline'},
+  pressed: {opacity: 0.85},
+  disabled: {opacity: 0.65}
 });
