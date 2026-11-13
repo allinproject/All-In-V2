@@ -2,8 +2,8 @@
 -- Requires V2-EVENTHUB-IDENTITY-MEMBERSHIP-PARTICIPATION-CANDIDATE.sql.
 -- Return ONLY explicit EventParticipation records; mere URL/group membership
 -- never appears as registration or Training plan evidence.
--- Event provides name/kind/date/sport; Goal owns priority. Edition and
--- Goal binding are NOT certified here. No synthetic edition identifiers.
+-- Event provides name/kind/date/sport and its persisted canonical edition ID.
+-- Goal owns priority and accepted revision binding, NOT certified here.
 -- PRIVATE REVIEW CANDIDATE: not an approved live RPC.
 CREATE FUNCTION allin_private.v2_event_plan_owner_evidence_candidate(
  p_expected_user_id uuid,p_max_events integer DEFAULT 64
@@ -42,7 +42,8 @@ BEGIN
  END IF;
  SELECT coalesce(pg_catalog.jsonb_agg(
    pg_catalog.jsonb_build_object(
-    'eventId',e.id,'ownerId',p.user_id,'eventVersion',e.event_version,
+    'eventId',e.id,'editionId',e.edition_id,
+    'ownerId',p.user_id,'eventVersion',e.event_version,
     'name',e.name,'eventKind',e.event_kind,
     'date',e.start_local_date,'timezone',e.event_timezone,
     'sport',e.sport,'verification',e.source_verification,
@@ -52,7 +53,8 @@ BEGIN
     'cancelled',e.cancelled
    ) ORDER BY e.start_local_date,e.id),'[]'::jsonb),
    coalesce(pg_catalog.md5(pg_catalog.string_agg(
-    e.id::text||':'||e.event_version::text||':'||p.version::text||
+    e.id::text||':'||e.edition_id::text||':'||
+    e.event_version::text||':'||p.version::text||
     ':'||coalesce(e.start_local_date::text,'unknown')||':'||
     coalesce(e.source_revision,'unknown')||':'||p.state||':'||
     p.source_kind||':'||e.source_verification||':'||
