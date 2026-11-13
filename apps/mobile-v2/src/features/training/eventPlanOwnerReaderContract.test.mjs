@@ -84,6 +84,10 @@ test('composite does not invent a Goal priority, edition, or participation regis
  assert.match(sql,/v_matching->>'editionId' IS DISTINCT FROM v_goal->>'editionId'/);
  assert.match(sql,/v_matching->>'eventVersion' IS DISTINCT FROM v_goal->>'boundEventVersion'/);
  assert.match(sql,/v_requires_review:=true/);
+ assert.match(sql,/v_event->>'verification' IS DISTINCT FROM 'organizer_verified'/);
+ assert.match(sql,/v_event->'cancelled' IS DISTINCT FROM 'false'::jsonb/);
+ assert.match(sql,/Partial Goal Event link is invalid/);
+ assert.match(sql,/'owner_sources_complete'/);
  assert.match(sql,/'eventRegistrationInferred',false/);
  assert.match(sql,/'trainingPlanApproved',false/);
  assert.doesNotMatch(sql,/'priority','A'|priority_role.*'A'/);
