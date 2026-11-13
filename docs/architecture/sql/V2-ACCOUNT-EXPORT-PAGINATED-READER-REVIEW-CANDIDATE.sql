@@ -103,7 +103,11 @@ BEGIN
    WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
      AND (c.relname LIKE 'v2_nutrition_%'
        OR c.relname LIKE 'v2_progress_%'
-       OR c.relname LIKE 'v2_food_%'
+       OR (c.relname LIKE 'v2_food_%'
+          AND c.relname <> 'v2_food_log_entries')
+       OR (c.relname LIKE 'v2_hydration_%'
+          AND c.relname <> 'v2_hydration_events'
+          AND c.relname <> 'v2_hydration_actions')
        OR c.relname LIKE 'v2_ingredient_%'
        OR c.relname LIKE 'v2_nutrient_%'
        OR c.relname LIKE 'v2_coach_request_%'
