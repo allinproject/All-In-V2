@@ -202,3 +202,18 @@ test('source officer rejects wrong digest, energy, unauthorized login and source
   await assert.rejects(()=>db.query(release(row,methodsFor(row))),e=>e.code==='42501');
  } finally {await db.close()}
 });
+
+
+test('accidental dual membership cannot self-attest source evidence',async()=>{
+ const {db,rows}=await setup();
+ try {
+  // Evidence exists, but role separation must be enforced by the database
+  // even if an operator mistakenly grants both capabilities to one login.
+  await db.exec('GRANT allin_v2_ingredient_source_releaser TO energy_reviewer_a');
+  await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
+  await assert.rejects(()=>db.query(query(rows[0].id,rows[0].digest)),e=>e.code==='42501');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations')).rows[0].n,0);
+ }finally{await db.close()}
+});
