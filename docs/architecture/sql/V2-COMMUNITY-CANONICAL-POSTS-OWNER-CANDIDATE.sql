@@ -45,6 +45,11 @@ CREATE TABLE allin_private.v2_community_comments (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   deleted_at timestamptz,
+  -- Moderation is trusted server-only. No public moderation action/role is
+  -- approved; blocked/hidden comments must not be returned by the feed.
+  moderation_state text NOT NULL DEFAULT 'visible'
+    CHECK(moderation_state IN ('visible','held','hidden')),
+  moderation_updated_at timestamptz,
   -- The same parent must belong to the SAME canonical post. When its
   -- author leaves, detach surviving replies rather than cascading into
   -- another author's content. Deleting the post still cascades all comments.
@@ -188,6 +193,7 @@ WITH viewer AS (
    c.revision,c.created_at,c.updated_at
  FROM allin_private.v2_community_comments c CROSS JOIN permission perm
  WHERE c.post_id=p_post_id AND c.deleted_at IS NULL
+   AND c.moderation_state='visible'
    AND perm.viewer_active AND perm.owner_active
    AND NOT perm.blocked AND perm.can_view
    AND NOT EXISTS(
