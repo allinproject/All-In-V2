@@ -213,6 +213,9 @@ test('accidental dual membership cannot self-attest source evidence',async()=>{
   await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
   await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await assert.rejects(()=>db.query(query(rows[0].id,rows[0].digest)),e=>e.code==='42501');
+  await assert.rejects(()=>db.query(
+    "SELECT allin_private.v2_review_ingredient_profile_status($1,3,$2,'calculation_ready','Dual-role publication must be denied','891b0d4e-499a-46cc-894b-07bdcab7b6a1')",
+    [rows[0].id,rows[0].digest]),e=>e.code==='42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations')).rows[0].n,0);
  }finally{await db.close()}
