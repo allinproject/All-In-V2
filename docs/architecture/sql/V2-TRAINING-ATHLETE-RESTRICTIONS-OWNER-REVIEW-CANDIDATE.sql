@@ -49,6 +49,7 @@ DECLARE
  v_claim text:=pg_catalog.current_setting('request.jwt.claim.session_id',true);
  v_session uuid;
  v_cert bigint;
+ v_certified_at timestamptz;
  v_restrictions jsonb;
 BEGIN
  IF v_user IS NULL OR p_expected_user_id IS DISTINCT FROM v_user THEN
@@ -64,16 +65,20 @@ BEGIN
      AND (s.not_after IS NULL OR s.not_after>pg_catalog.clock_timestamp()))
  OR NOT EXISTS(SELECT 1 FROM public.v2_profiles p WHERE p.user_id=v_user) THEN
   RAISE EXCEPTION 'Invalid active athlete account/session' USING ERRCODE='42501'; END IF;
- SELECT c.certified_revision INTO v_cert
+ SELECT c.certified_revision,c.certified_at INTO v_cert,v_certified_at
  FROM allin_private.v2_training_restriction_certifications c
  WHERE c.user_id=v_user;
  IF v_cert IS NULL THEN
   RAISE EXCEPTION 'Training restriction inventory not certified'
    USING ERRCODE='42501'; END IF;
- -- No rule updated after certification may leak into a claimed consistent read
- -- until the Training writer updates certification in the SAME transaction.
- IF EXISTS(SELECT 1 FROM public.v2_training_athlete_restrictions r
-   WHERE r.user_id=v_user AND r.revision>v_cert) THEN
+ -- A revision number alone is insufficient: a privileged unreviewed
+ -- UPDATE could keep the old revision while changing the forbidden movement.
+ -- Certification must postdate every recorded rule mutation, with a bounded
+ -- clock. Normal Training writer updates certification AFTER its rule change.
+ IF v_certified_at IS NULL OR v_certified_at>pg_catalog.clock_timestamp() OR
+    EXISTS(SELECT 1 FROM public.v2_training_athlete_restrictions r
+      WHERE r.user_id=v_user AND
+        (r.revision>v_cert OR r.updated_at>v_certified_at)) THEN
   RAISE EXCEPTION 'Training restriction certification stale'
    USING ERRCODE='40001'; END IF;
  WITH selected AS (
