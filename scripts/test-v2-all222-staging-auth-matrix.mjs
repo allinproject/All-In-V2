@@ -32,9 +32,18 @@ export async function runAll222AuthMatrix({request, a, b, aToken, bToken, anon})
   assert.equal(bData.profile?.user_id,b.id,'B profile identity mismatch');
   expectDenied(await rpc('v2_my_profile_state',{}),'Anonymous profile read');
 
+  // This harness runs AFTER the existing Profile/Onboarding/Training acceptance.
+  // Use current versions rather than assuming new accounts still have v1.
+  const preMatrix=await rpc('v2_my_profile_state',{},aToken);
+  expectOK(preMatrix,'A before extended RPC matrix');
+  const currentState=await preMatrix.json();
+  const settingsVersion=currentState.settings?.version;
+  const onboardingVersion=currentState.onboarding?.version;
+  assert(Number.isInteger(settingsVersion)&&settingsVersion>0,'Missing Settings version');
+  assert(Number.isInteger(onboardingVersion)&&onboardingVersion>0,'Missing Onboarding version');
   // 2. Settings: A success, B attempted A and stale A screen under B JWT denied.
   const settingArgs={...ownA,p_section:'app_preferences',
-    p_patch:{all222_ephemeral:'test'},p_expected_version:1,
+    p_patch:{all222_ephemeral:'test'},p_expected_version:settingsVersion,
     p_client_action_id:'all222-settings-'+randomUUID()};
   expectDenied(await rpc('v2_patch_profile_settings_section',settingArgs,bToken),
     'B-to-A settings mutation');
@@ -42,10 +51,10 @@ export async function runAll222AuthMatrix({request, a, b, aToken, bToken, anon})
     'Anonymous settings mutation');
   const setA=await rpc('v2_patch_profile_settings_section',settingArgs,aToken);
   expectOK(setA,'A own settings mutation');
-  assert.equal(await setA.json(),2,'A settings did not increment version');
+  assert.equal(await setA.json(),settingsVersion+1,'A settings did not increment version');
 
   // 3. Onboarding: B-to-A and replayed A screen after account switch rejected.
-  const stepArgs={...ownA,p_step:'focus',p_action:'complete',p_expected_version:1,
+  const stepArgs={...ownA,p_step:'coach',p_action:'complete',p_expected_version:onboardingVersion,
     p_client_action_id:'all222-onboard-'+randomUUID()};
   expectDenied(await rpc('v2_set_onboarding_step',stepArgs,bToken),
     'B-to-A onboarding mutation');
@@ -53,7 +62,7 @@ export async function runAll222AuthMatrix({request, a, b, aToken, bToken, anon})
     'Anonymous onboarding mutation');
   const onboardA=await rpc('v2_set_onboarding_step',stepArgs,aToken);
   expectOK(onboardA,'A own onboarding mutation');
-  assert.equal(await onboardA.json(),2,'A onboarding did not increment version');
+  assert.equal(await onboardA.json(),onboardingVersion+1,'A onboarding did not increment version');
 
   // 4 & 5. Health read/write: A owns a private record, B never sees or alters A.
   const healthBefore=await rpc('v2_my_health_considerations',ownA,aToken);
@@ -125,8 +134,8 @@ export async function runAll222AuthMatrix({request, a, b, aToken, bToken, anon})
   const rereadA=await rpc('v2_my_profile_state',{},aToken);
   expectOK(rereadA,'A post-denial profile read');
   const state=await rereadA.json();
-  assert.equal(state.settings?.version,2,'A settings changed unexpectedly');
-  assert.equal(state.onboarding?.version,2,'A onboarding changed unexpectedly');
+  assert.equal(state.settings?.version,settingsVersion+1,'A settings changed unexpectedly');
+  assert.equal(state.onboarding?.version,onboardingVersion+1,'A onboarding changed unexpectedly');
   const healthAfter=await rpc('v2_my_health_considerations',ownA,aToken);
   expectOK(healthAfter,'A post-denial Health read');
   assert.equal((await healthAfter.json()).version,1,
