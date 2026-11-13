@@ -16,6 +16,7 @@ test('conversion only copies actual pre-workout prescriptions, not performed mea
  assert.equal(preview?.status,'requires_manual_review');
  assert.equal(preview?.excludedBlocks,1);
  assert.equal(preview?.draft.blocks.length,1);
+ assert.deepEqual(preview?.blockLineage,[{draftBlockId:preview?.draft.blocks[0].id,sourceBlockId:'set-group-1'}]);
  assert.equal(preview?.draft.id,null);
  assert.equal(preview?.draft.sourceCompletionId,null);
  assert.equal(preview?.draft.status,'unsaved_draft');
