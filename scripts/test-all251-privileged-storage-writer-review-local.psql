@@ -48,6 +48,21 @@ BEGIN
  THEN RAISE EXCEPTION 'Rejected deletion unexpectedly settled write lease'; END IF;
  denied:=false;
  BEGIN
+  -- Direct privileged Auth deletion previously cascaded away unresolved
+  -- leases. The owning Auth guard must fence this path as well.
+  DELETE FROM auth.users WHERE id=a;
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN
+  RAISE EXCEPTION 'Direct Auth DELETE erased unresolved Storage write lease';
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM auth.users WHERE id=a)
+ OR NOT EXISTS(SELECT 1 FROM allin_private.v2_privileged_storage_write_leases_review
+   WHERE owner_id=a AND lease_id=lease AND settled_at IS NULL)
+ THEN RAISE EXCEPTION 'Rejected Auth delete destroyed owner or lease'; END IF;
+
+ denied:=false;
+ BEGIN
   PERFORM public.v2_settle_privileged_storage_write_review(b,lease);
  EXCEPTION WHEN insufficient_privilege THEN denied:=true;
  END;
