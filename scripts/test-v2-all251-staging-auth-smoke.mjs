@@ -1,6 +1,6 @@
 
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {randomUUID,randomBytes,createHash} from 'node:crypto';
 // ALL-251 only: create and remove two staging-only Auth users. Never log secrets.
 const ref='fbtgknlxjyeqrxemskbl';
 const base='https://'+ref+'.supabase.co';
@@ -17,6 +17,7 @@ assert(/^sb_secret_[A-Za-z0-9_-]+$/.test(key??''),'Staging-only modern secret ke
 assert(/^sb_publishable_[A-Za-z0-9_-]+$/.test(anon??''),'Staging-only modern publishable key required');
 assert(key!==anon,'Distinct protected staging credentials required');
 const ids=[];
+const temporaryStoragePaths=[];
 const password=randomUUID()+'aA!9';
 async function request(path,{method='GET',body,userJwt=null,apiKey=key}={}){
   // Modern sb_secret_ and sb_publishable_ strings go ONLY in apikey.
@@ -60,6 +61,35 @@ try{
  const aToken=await login(a),bToken=await login(b);
  assert.notEqual(aToken,bToken);
  process.stdout.write('PASS: two real isolated synthetic GoTrue sessions\\n');
+ // Hosted byte-level security probe on the APPROVED temporary project only.
+ // The buckets have no ordinary authenticated Storage policies. Test a real
+ // service-created private object and require both owner JWTs to be denied;
+ // authorized user uploads/downloads and any deletion upload barrier remain
+ // separate, unpassed release gates.
+ acceptanceStep='hosted private Storage byte isolation';
+ const bucket='v2-private-workout-objects';
+ const objectPath=a.id+'/all251-hosted-'+randomUUID()+'.bin';
+ const bytes=randomBytes(65536);
+ const storagePath='/storage/v1/object/'+bucket+'/'+objectPath;
+ const storageHeaders={apikey:key,'content-type':'application/octet-stream'};
+ const upload=await fetch(base+storagePath,{method:'POST',headers:storageHeaders,
+   body:bytes,redirect:'manual',signal:AbortSignal.timeout(30000)});
+ assert([200,201].includes(upload.status),'Staging private Storage upload failed');
+ temporaryStoragePaths.push(storagePath);
+ const privateRead=await fetch(base+'/storage/v1/object/authenticated/'+bucket+'/'+objectPath,{
+   method:'GET',headers:{apikey:key},redirect:'manual',signal:AbortSignal.timeout(30000)});
+ assert.equal(privateRead.status,200,'Server readback of stored bytes failed');
+ const readBytes=Buffer.from(await privateRead.arrayBuffer());
+ assert.equal(createHash('sha256').update(readBytes).digest('hex'),
+   createHash('sha256').update(bytes).digest('hex'),'Hosted private Storage bytes changed');
+ for(const jwt of [aToken,bToken]){
+   const denied=await fetch(base+'/storage/v1/object/authenticated/'+bucket+'/'+objectPath,{
+     method:'GET',headers:{apikey:anon,authorization:'Bearer '+jwt},
+     redirect:'manual',signal:AbortSignal.timeout(30000)});
+   assert([400,401,403,404].includes(denied.status),
+     'Owner or cross-owner JWT bypassed disabled private Storage access policy');
+ }
+ process.stdout.write('PASS: hosted Storage service byte SHA-256 and both real JWT read denials\\n');
  // The canonical restricted RPC bridges must never trust a signed-in user
  // directly or authorize an unapproved request, even through a secret-key
  // backend. Verify against real hosted Auth user and session identifiers.
@@ -331,6 +361,15 @@ try{
  failed=true;
  process.stderr.write('FAIL staging checkpoint: '+acceptanceStep+' (no credentials or response data disclosed)\\n');
 }finally{
+ for(const path of temporaryStoragePaths.reverse()){
+   try{
+     const res=await fetch(base+path,{method:'DELETE',redirect:'manual',
+       signal:AbortSignal.timeout(30000),headers:{apikey:key}});
+     assert([200,204].includes(res.status),'Staging byte-fixture cleanup rejected');
+   }catch{
+     failed=true;process.stderr.write('CLEANUP FAILED: temporary staging Storage object requires inspection\\n');
+   }
+ }
  for(const id of ids.reverse()){
   try{
    const res=await request('/auth/v1/admin/users/'+encodeURIComponent(id),{method:'DELETE'});
