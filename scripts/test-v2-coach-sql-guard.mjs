@@ -63,6 +63,18 @@ test("exact exchange reader is owner-invoker and cannot return a partial saved p
  assert.match(replay,/Wrong assistant message ID returned a partial exchange/);
  assert.match(replay,/B read A exact Coach exchange/);
 });
+test("service role cannot bypass fenced Coach writer through private tables",()=>{
+ for(const table of ["v2_coach_turn_claims","v2_coach_request_policy"]){
+  assert.match(candidate,new RegExp("revoke all on allin_private\\."+table+" from public,anon,authenticated,service_role;"));
+  assert.doesNotMatch(candidate,new RegExp("grant\\s+(?:select|insert|update|delete|all)[^;]*on\\s+(?:table\\s+)?allin_private\\."+table+"\\s+to\\s+service_role\\s*;","i"));
+ }
+ for(const rpc of ["v2_coach_claim_turn","v2_coach_append_exchange","v2_coach_finish_turn"]){
+  const grants=candidate.split("grant execute on function public."+rpc+"(");
+  assert.equal(grants.length,2);
+  assert.match(grants[1].split(";")[0],/to service_role/);
+ }
+});
+
 test("Coach claim ledger and fenced writer remain service-only and single-owner",()=>{
  for(const clause of [
    "create table allin_private.v2_coach_turn_claims",
