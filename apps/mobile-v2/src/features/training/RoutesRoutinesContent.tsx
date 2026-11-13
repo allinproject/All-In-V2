@@ -38,7 +38,7 @@ export function RoutesRoutinesContent() {
         <Text style={styles.muted}>The routine library and editor are not connected yet.</Text>
         <Text style={styles.muted}>Your saved routines have not been checked.</Text>
       </View>
-    )}
+    ) : null}
   </View>;
 }
 const styles = StyleSheet.create({
