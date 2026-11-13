@@ -342,6 +342,7 @@ CREATE TABLE allin_private.v2_community_moderation_grant_events (
    ON DELETE CASCADE,
  permission text NOT NULL CHECK(permission IN ('initial_review','appeal_review')),
  enabled boolean NOT NULL,
+ requested_version bigint NOT NULL CHECK(requested_version>=0),
  grant_version bigint NOT NULL CHECK(grant_version>0),
  occurred_at timestamptz NOT NULL DEFAULT now()
 );
@@ -405,7 +406,8 @@ BEGIN
   IF v_prior.operator_id IS DISTINCT FROM v_operator OR
     v_prior.reviewer_id IS DISTINCT FROM p_reviewer_id OR
     v_prior.permission IS DISTINCT FROM p_permission OR
-    v_prior.enabled IS DISTINCT FROM p_enabled
+    v_prior.enabled IS DISTINCT FROM p_enabled OR
+    v_prior.requested_version IS DISTINCT FROM p_expected_version
   THEN RAISE EXCEPTION 'community_operator_action_reuse' USING ERRCODE='23505'; END IF;
   RETURN pg_catalog.jsonb_build_object(
     'reviewerId',p_reviewer_id,'permission',p_permission,
@@ -430,8 +432,8 @@ BEGIN
   RETURNING version INTO v_next;
  END IF;
  INSERT INTO allin_private.v2_community_moderation_grant_events
-  (action_id,operator_id,reviewer_id,permission,enabled,grant_version)
- VALUES (p_action_id,v_operator,p_reviewer_id,p_permission,p_enabled,v_next);
+  (action_id,operator_id,reviewer_id,permission,enabled,requested_version,grant_version)
+ VALUES (p_action_id,v_operator,p_reviewer_id,p_permission,p_enabled,p_expected_version,v_next);
  RETURN pg_catalog.jsonb_build_object(
   'reviewerId',p_reviewer_id,'permission',p_permission,
   'enabled',p_enabled,'version',v_next,'retry',false);
