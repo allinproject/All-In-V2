@@ -9,7 +9,7 @@
  * schema or grant worker RPC to anon/authenticated roles.
  */
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function tokenSessionId(token) {
+export function tokenSessionId(token) {
   if(typeof token!=='string'||token.length>4096||token.length<24)return null;
   const bits=token.split('.');
   if(bits.length!==3||!bits.every(x=>x.length>0))return null;
