@@ -63,7 +63,7 @@ jobs:
             supabase/functions/_shared/trainingExportAwsKms.node.test.mjs
       - name: Validate durable Storage cleanup, worker denial, recovery and privacy gates
         run: |
-          node --test \
+          node --experimental-strip-types --test \
             supabase/functions/_shared/trainingDeletionStorageByteAbsenceReview.test.mjs \
             supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.test.mjs \
             supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs \
