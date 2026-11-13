@@ -6,7 +6,11 @@
  * this suite NEVER creates one or substitutes an unrestricted service key.
  */
 import assert from 'node:assert/strict';
-import {randomUUID,randomBytes} from 'node:crypto';
+import {randomUUID,randomBytes,createHash} from 'node:crypto';
+import {createPrivilegedStorageWriter} from
+ '../supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs';
+import {createAttestedPrivilegedStorageLeaseAuthority} from
+ '../supabase/functions/_shared/trainingPrivilegedStorageWriterAttestor.mjs';
 
 const REF='fbtgknlxjyeqrxemskbl';
 const ORIGIN='https://'+REF+'.supabase.co';
@@ -20,11 +24,69 @@ assert.equal(env.ALL251_STAGING_REF,REF);
 assert.equal(env.ALL251_STAGING_URL,ORIGIN);
 const privileged=env.ALL251_TEMP_STAGING_SECRET_KEY;
 const publishable=env.ALL251_TEMP_STAGING_PUBLISHABLE_KEY;
+const writerSignerB64=env.ALL251_TEMP_STAGING_WRITER_SIGNER_B64??'';
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 assert(/^sb_secret_[\w-]+$/.test(privileged??''),'Protected temporary staging secret required');
 assert(/^sb_publishable_[\w-]+$/.test(publishable??''),'Approved staging publishable key required');
 
 const owners=[],objects=new Set(),postFreezePaths=new Set(),cleanupIssues=[],outcomes=[];
 const tusSessions=new Set();
+let trustedWriter=null,signingKey=null;
+function verifiedSigner(){
+ // The protected environment must provide the approved dedicated signer.
+ // A project-wide secret, hardcoded fixture or unsigned service RPC is NEVER
+ // an acceptable substitute. No Auth users or Storage bytes created yet.
+ if(!/^[A-Za-z0-9+/]{43}=$/.test(writerSignerB64))
+  throw Error('BLOCKED: dedicated 32-byte hosted writer signer not provisioned');
+ const bytes=Buffer.from(writerSignerB64,'base64');
+ if(bytes.byteLength!==32||bytes.toString('base64')!==writerSignerB64)
+  throw Error('BLOCKED: invalid protected writer signer');
+ return bytes;
+}
+function trustedStorageClient(){
+ const scopedRpc=async(name,args)=>{
+  const res=await json('/rest/v1/rpc/'+name,args);
+  if(!res.ok)return {data:null,error:{code:'HTTP_'+res.status}};
+  return {data:await res.json(),error:null};
+ };
+ return {
+  rpc:scopedRpc,
+  storage:{from:bucketId=>{
+   assert.equal(bucketId,BUCKET,'Verified writer bucket only');
+   return {
+    upload:async(path,bytes)=>{
+     objects.add(path);
+     const res=await upload(path,{bytes});
+     return res.ok?{data:{path},error:null}:{data:null,error:{code:'HTTP_'+res.status}};
+    },
+    update:async(path,bytes)=>{
+     objects.add(path);
+     const res=await request(API+'object/'+bucketPath(path),{
+      method:'PUT',body:bytes,headers:{'content-type':'application/octet-stream'}});
+     return res.ok?{data:{path},error:null}:{data:null,error:{code:'HTTP_'+res.status}};
+    },
+    download:async(path)=>{
+     const res=await read(path);
+     return res.ok?{data:{arrayBuffer:()=>res.arrayBuffer()},error:null}:
+      {data:null,error:{code:'HTTP_'+res.status}};
+    },
+   };
+  }},
+ };
+}
+async function verifiedWriterUpload(owner,path,bytes){
+ if(!trustedWriter)throw Error('Canonical attested writer not initialized');
+ const result=await trustedWriter.write({
+  verifiedOwnerId:owner,bucketId:BUCKET,path,bytes,
+  operation:'create',contentType:'application/octet-stream'
+ });
+ assert.equal(result?.verified,true,'Authorized writer receipt missing');
+ const observed=await read(path);
+ assert.equal(observed.status,200,'Authorized bytes not readable');
+ assert.equal(sha(Buffer.from(await observed.arrayBuffer())),sha(bytes),
+  'Provider bytes differ from original canonical writer');
+ return result;
+}
 let a=null,b=null;
 let signerToken=null,signedPath=null;
 const password=randomUUID()+'Aa!9';
@@ -153,6 +215,14 @@ async function tusCreate(p,{key=privileged,jwt=null}={}){
   headers:{'tus-resumable':'1.0.0','upload-length':'50','upload-metadata':m}});
 }
 try{
+ // Fail before allocating disposable Auth users when the authoritative
+ // writer attestation is not provisioned. This is a BLOCKER, never a PASS.
+ signingKey=verifiedSigner();
+ const scoped=trustedStorageClient();
+ const authority=createAttestedPrivilegedStorageLeaseAuthority({
+  supabase:scoped,signingKey,
+ });
+ trustedWriter=createPrivilegedStorageWriter({supabase:scoped,leaseAuthority:authority});
  const buckets=await request(API+'bucket');
  assert.equal(buckets.status,200);
  const list=await buckets.json();
@@ -160,6 +230,13 @@ try{
   list.some(x=>x.id===BUCKET&&x.public===false),'Unexpected staging bucket catalog');
  a=await createOwner();b=await createOwner();
  mark('real staging Auth owner isolation','PASS');
+ // Required positive controls: actual hosted Storage POST + SHA256, using
+ // canonical signed HMAC lease. Raw privileged uploads should remain denied.
+ const canonicalA=addObject(a.id,'attested-pre-freeze');
+ const canonicalB=addObject(b.id,'attested-pre-freeze');
+ await verifiedWriterUpload(a.id,canonicalA,randomBytes(491));
+ await verifiedWriterUpload(b.id,canonicalB,randomBytes(533));
+ mark('canonical A and B signed pre-freeze provider bytes','PASS');
 
  // Attempt an unsigned S3 bucket request. Credentialed SigV4 remains
  // untested if no generated keypair exists, and must NEVER be marked PASS.
@@ -203,6 +280,21 @@ try{
   preRest.ok?'OBSERVED':denied(preRest.status)?'RESTRICTED':'FAIL',await statusDetail(preRest));
  await deletionRequest(a,b);
  mark('canonical synthetic deletion request','PASS');
+ // Same verified attested writer must fail to acquire A's lease after the
+ // freeze, while B retains the ability to write and read original bytes.
+ const aAfter=addObject(a.id,'attested-post-freeze');
+ let rejected=false;
+ try{
+  await verifiedWriterUpload(a.id,aAfter,randomBytes(424));
+ }catch{rejected=true;}
+ mark('canonical A signed write denied after deletion',rejected?'PASS':'FAIL');
+ if(rejected){
+  const observed=await read(aAfter);
+  if(observed.ok)mark('canonical A forbidden post-freeze bytes remain','FAIL');
+ }
+ const bAfter=addObject(b.id,'attested-post-freeze');
+ await verifiedWriterUpload(b.id,bAfter,randomBytes(577));
+ mark('canonical B signed write accepted after A deletion','PASS');
  if(pendingTusLocation){
   const result=await request(pendingTusLocation,{method:'PATCH',origin:DIRECT,
    headers:{'tus-resumable':'1.0.0','upload-offset':'0',
@@ -276,7 +368,10 @@ try{
 }catch(err){
  const msg=String(err?.message??'unexpected').replace(/[A-Za-z0-9_-]{42,}/g,'[REDACTED]');
  mark('test harness exception','FAIL',msg);
-}finally{await cleanup();}
+}finally{
+ if(signingKey)signingKey.fill(0);
+ await cleanup();
+}
 if(cleanupIssues.length)mark('cleanup','FAIL',cleanupIssues.join(','));
 else mark('cleanup','PASS','all synthetic object paths checked and disposable users removed');
 const failed=outcomes.filter(x=>x.status==='FAIL');
