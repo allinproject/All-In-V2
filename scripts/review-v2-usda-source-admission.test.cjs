@@ -12,6 +12,7 @@ const n=(id,amount,unitName='g')=>({nutrient:{id,unitName},amount});
 const fixtureFoods=()=>evidence.records.map(r=>({
   source_profile_key:r.profile,provider:'usda_fdc',dataType:'Foundation',
   fdcId:r.fdcId,source_description:r.source,archive_sha256:evidence.archiveSha256,
+  payload_sha256:bindings.bindings.find(b=>b.source_profile_key===r.profile)?.nutrition_evidence?.source_payload_sha256_verified,
   basis_quantity:100,basis_unit:'g',
   foodNutrients:[n(Number(r.energy.code),r.energy.kcal,'kcal'),
     ...(r.energy.alternative?[n(Number(r.energy.alternative.code),r.energy.alternative.kcal,'kcal')]:[]),
@@ -52,6 +53,20 @@ test('tampered source or alias policy never enters the review-stage-complete pat
   changed.records[1].preparation_state='cooked';
   assert.equal(run(fixtureFoods(),{aliasPolicy:changed}).status,'review_required');
 });
+test('source admission refuses absent or altered per-food SHA even when macro values agree',()=>{
+  const noDigest=fixtureFoods();
+  delete noDigest[0].payload_sha256;
+  assert(run(noDigest).issues.includes('source_digest_reference_mismatch:milk_cottage_2pct'));
+  assert.equal(run(noDigest).authorizedToWrite,false);
+  const wrongDigest=fixtureFoods();
+  wrongDigest[3].payload_sha256='0'.repeat(64);
+  assert(run(wrongDigest).issues.includes('source_digest_reference_mismatch:black_beans_canned_drained'));
+  assert.equal(run(wrongDigest).status,'review_required');
+  const changedBinding=JSON.parse(JSON.stringify(bindings));
+  changedBinding.bindings[0].nutrition_evidence.source_payload_sha256_verified='f'.repeat(64);
+  assert.equal(run(fixtureFoods(),{sourceBindings:changedBinding}).status,'review_required');
+});
+
 test('real local read adapter and recipe calculator remain blocked for review-only source data',()=>{
   const reviewed=run();
   const ingredient=reviewed.sourceRows.find(r=>r.source_profile_key==='black_beans_canned_drained');
