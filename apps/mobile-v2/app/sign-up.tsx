@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { canStartV2SignedOutAction, createV2AuthActionGuard } from '../src/auth/authRoute';
-import { colors, radius, spacing } from '../src/theme/tokens';
+import { colors } from '../src/theme/tokens';
 import { assertV2SessionOwner, assertV2SignupLegalSnapshotCurrent, parsePublishedV2LegalDocuments, v2LegalReviewKey, v2SignupAcceptanceRetryScope, v2SignupConsentScope, type V2LegalDocument } from '../src/auth/accessGateClient';
 import { meetsV2PasswordMinimum } from '../src/auth/passwordPolicy';
 
@@ -15,7 +15,7 @@ function errorMessage(error: unknown) {
     const text = error.message.toLowerCase();
     if (text.includes('already registered')) return 'An account already exists for that email. Sign in instead.';
     if (text.includes('password')) return 'Check the password requirements and try again.';
-    if (text.includes('network') || text.includes('fetch')) return 'V2 could not reach the account service. Check your connection and retry.';
+    if (text.includes('network') || text.includes('fetch')) return 'ALL IN 365 could not reach the account service. Check your connection and retry.';
     return error.message;
   }
   return 'Account creation could not be completed. Try again.';
@@ -27,6 +27,7 @@ export default function SignUpScreen() {
   const [loadingDocuments, setLoadingDocuments] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [reviewed, setReviewed] = useState<Record<string, boolean>>({});
   const [ageConfirmedScope, setAgeConfirmedScope] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -45,7 +46,7 @@ export default function SignUpScreen() {
       .then(({ data, error: readError }) => {
         if (!active) return;
         if (readError) {
-          setError('The V2 legal documents could not be loaded. Signup remains unavailable.');
+          setError('Registration is temporarily unavailable. Please check back soon.');
           return;
         }
         try {
@@ -53,7 +54,7 @@ export default function SignUpScreen() {
           setError(null);
         } catch {
           setDocuments([]);
-          setError('V2 signup is not open yet. Valid Terms, Privacy Policy and Founder Beta Terms must all be published first.');
+          setError(null);
         }
       })
       .catch(() => {
@@ -88,7 +89,7 @@ export default function SignUpScreen() {
       const { data: currentSession, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       if (currentSession.session) {
-        throw new Error('A V2 account is already signed in. Sign out before creating another account.');
+        throw new Error('An account is already signed in. Sign out before creating another account.');
       }
 
       // A publication may have changed since signup first displayed the legal text.
@@ -147,10 +148,10 @@ p_founder_beta_terms_version: founderBetaVersion,
         if (acceptanceError) throw acceptanceError;
         await assertV2SessionOwner(supabase, data.session.user.id);
         pendingAcceptance.current = null;
-        setNotice('Your V2 account was created and the reviewed legal versions were recorded. Opening ALL IN 365…');
+        setNotice('Your account was created and your legal acceptance was recorded. Opening ALL IN 365…');
       } else {
         setSubmittedRegistrationScope(submittedScope);
-        setNotice('Your V2 account request was accepted. Check your email to confirm the address, then sign in to finish the legal acceptance receipt before entering the app.');
+        setNotice('Check your email to confirm your account, then sign in to finish setup.');
       }
     } catch (caught) {
       setError(errorMessage(caught));
@@ -160,43 +161,67 @@ p_founder_beta_terms_version: founderBetaVersion,
     }
   }
 
+  const registrationOpen = !loadingDocuments && documents.length === 3;
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.card}>
-            <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-            <Text accessibilityRole="header" style={styles.title}>Create your V2 account</Text>
-            <Text style={styles.body}>This creates a fresh account in the dedicated ALL IN 365 V2 backend. V1 account credentials and personal history are not imported.</Text>
-            {loadingDocuments ? <ActivityIndicator color={colors.gold} /> : null}
-            {!loadingDocuments && documents.map(doc => (
-              <View key={reviewKey(doc)} style={styles.document}>
-                <Text style={styles.documentTitle}>{doc.title} · {doc.version}</Text>
-                <ScrollView nestedScrollEnabled style={styles.documentBody}>
-                  <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
-                </ScrollView>
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!reviewed[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => { if (requestGuard.current.isBusy()) return; setReviewed(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] })); }} style={styles.reviewRow}>
-                  <Text style={styles.checkbox}>{reviewed[reviewKey(doc)] ? '☑' : '☐'}</Text>
-                  <Text style={styles.reviewText}>I have read and reviewed this document</Text>
+          <View style={styles.screen}>
+            <Image source={require('../assets/all-in-365-circle.jpg')} accessibilityLabel="ALL IN 365 circular logo" resizeMode="contain" style={styles.logo} />
+            <Text style={styles.slogan}>LIVE ALL IN.</Text>
+            <Text accessibilityRole="header" style={styles.title}>Create your account</Text>
+            <Text style={styles.body}>Your whole fitness life in one place.</Text>
+
+            {!registrationOpen && !loadingDocuments ? (
+              <View style={styles.registrationNotice}>
+                <Text style={styles.registrationTitle}>Registration isn't open yet.</Text>
+                <Text style={styles.registrationDescription}>We're preparing ALL IN 365 for our first members. Account creation will be available soon.</Text>
+              </View>
+            ) : null}
+            {loadingDocuments ? <ActivityIndicator accessibilityLabel="Checking registration availability" color={colors.gold} /> : null}
+
+            <View style={styles.fields}>
+              <Text style={styles.fieldLabel}>Email address</Text>
+              <TextInput accessibilityLabel="Email" editable={!submitting} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="you@example.com" placeholderTextColor={colors.mutedText} style={styles.input} value={email} onChangeText={value => { if (requestGuard.current.isBusy()) return; setEmail(value); }} />
+              <Text style={styles.fieldLabel}>Password</Text>
+              <View style={styles.passwordRow}>
+                <TextInput accessibilityLabel="Password (at least 12 characters)" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry={!passwordVisible} placeholder="At least 12 characters" placeholderTextColor={colors.mutedText} style={styles.passwordInput} value={password} onChangeText={value => { if (requestGuard.current.isBusy()) return; setPassword(value); }} />
+                <Pressable accessibilityRole="button" accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'} disabled={submitting} accessibilityState={{disabled: submitting}} onPress={() => setPasswordVisible(value => !value)} style={styles.visibilityToggle}>
+                  <Text style={styles.visibilityText}>{passwordVisible ? 'Hide' : 'Show'}</Text>
                 </Pressable>
               </View>
-            ))}
-            {documents.length === 3 ? (
-              <>
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ageConfirmed, disabled: submitting }} disabled={submitting} onPress={() => { if (requestGuard.current.isBusy()) return; setAgeConfirmedScope(current => current === reviewScope ? null : reviewScope); }} style={styles.reviewRow}>
+              <Text style={styles.passwordHint}>Use at least 12 characters to protect your account.</Text>
+            </View>
+
+            {registrationOpen ? (
+              <View style={styles.legalSection}>
+                <Text style={styles.legalHeading}>Review and accept</Text>
+                <Text style={styles.legalIntro}>Read each document before continuing. Your acceptance is required to create an account.</Text>
+                {documents.map(doc => (
+                  <View key={reviewKey(doc)} style={styles.document}>
+                    <Text style={styles.documentTitle}>{doc.title} · {doc.version}</Text>
+                    <ScrollView nestedScrollEnabled style={styles.documentBody}>
+                      <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
+                    </ScrollView>
+                    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!reviewed[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => { if (requestGuard.current.isBusy()) return; setReviewed(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] })); }} style={styles.reviewRow}>
+                      <Text style={styles.checkbox}>{reviewed[reviewKey(doc)] ? '☑' : '☐'}</Text>
+                      <Text style={styles.reviewText}>I have read and reviewed this document</Text>
+                    </Pressable>
+                  </View>
+                ))}
+                <Pressable accessibilityRole="checkbox" accessibilityState={{checked: ageConfirmed, disabled: submitting}} disabled={submitting} onPress={() => { if (requestGuard.current.isBusy()) return; setAgeConfirmedScope(current => current === reviewScope ? null : reviewScope); }} style={styles.reviewRow}>
                   <Text style={styles.checkbox}>{ageConfirmed ? '☑' : '☐'}</Text>
                   <Text style={styles.reviewText}>I confirm that I am at least 18 years old.</Text>
                 </Pressable>
-                <TextInput accessibilityLabel="Email" editable={!submitting} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.mutedText} style={styles.input} value={email} onChangeText={value => { if (requestGuard.current.isBusy()) return; setEmail(value); }} />
-                <TextInput accessibilityLabel="Password (at least 12 characters)" editable={!submitting} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder="Password (at least 12 characters)" placeholderTextColor={colors.mutedText} style={styles.input} value={password} onChangeText={value => { if (requestGuard.current.isBusy()) return; setPassword(value); }} />
-                <Pressable accessibilityRole="button" accessibilityState={{ disabled: !ready, busy: submitting }} disabled={!ready} onPress={() => void createAccount()} style={[styles.button, !ready && styles.disabled]}>
-                  {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Create V2 account</Text>}
-                </Pressable>
-              </>
+              </View>
             ) : null}
+            <Pressable accessibilityRole="button" accessibilityState={{disabled: !ready, busy: submitting}} disabled={!ready} onPress={() => void createAccount()} style={({pressed}) => [styles.button, !ready && styles.disabled, pressed && styles.pressed]}>
+              {submitting ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>Create account</Text>}
+            </Pressable>
             {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
             {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
-            <Text style={styles.footer}>Already have a V2 account? <Link href="/sign-in" style={styles.link}>Sign in</Link></Text>
+            <Text style={styles.footer}>Already have an account? <Link href="/sign-in" style={styles.link}>Sign in</Link></Text>
+            <Text style={styles.footer}><Link href="/welcome" style={styles.backLink}>Back to welcome</Link></Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -205,27 +230,42 @@ p_founder_beta_terms_version: founderBetaVersion,
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  content: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
-  card: { width: '100%', maxWidth: 520, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.card, padding: spacing.lg, gap: spacing.md },
-  brand: { color: colors.warmWhite, fontSize: 18, fontWeight: '800', letterSpacing: 1.5 },
-  gold: { color: colors.gold },
-  title: { color: colors.warmWhite, fontSize: 28, fontWeight: '800' },
-  body: { color: colors.mutedText, fontSize: 14, lineHeight: 21 },
-  document: { backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: radius.control, padding: spacing.md, gap: spacing.sm },
-  documentTitle: { color: colors.warmWhite, fontSize: 15, fontWeight: '800' },
-  documentBody: { maxHeight: 210 },
-  legalText: { color: colors.mutedText, fontSize: 13, lineHeight: 20 },
-  reviewRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 40 },
-  checkbox: { color: colors.gold, fontSize: 22, width: 28 },
-  reviewText: { flex: 1, color: colors.warmWhite, fontSize: 14, lineHeight: 20 },
-  input: { backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: radius.control, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 15, paddingVertical: 14 },
-  button: { minHeight: 52, borderRadius: radius.control, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.45 },
-  buttonText: { color: colors.background, fontSize: 16, fontWeight: '800' },
-  notice: { color: colors.goldSoft, fontSize: 14, lineHeight: 20 },
-  error: { color: colors.danger, fontSize: 14, lineHeight: 20 },
-  footer: { color: colors.mutedText, fontSize: 13, textAlign: 'center' },
-  link: { color: colors.gold, textDecorationLine: 'underline', fontWeight: '700' }
+  safe: {flex: 1, backgroundColor: colors.background},
+  flex: {flex: 1},
+  content: {flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 26},
+  screen: {width: '100%', maxWidth: 450, alignSelf: 'center', gap: 14},
+  logo: {width: 112, height: 112, borderRadius: 56, alignSelf: 'center'},
+  slogan: {color: colors.gold, textAlign: 'center', fontWeight: '800', fontSize: 13, letterSpacing: 2.4, marginBottom: 12},
+  title: {color: colors.warmWhite, textAlign: 'center', fontSize: 31, fontWeight: '900'},
+  body: {color: colors.mutedText, textAlign: 'center', fontSize: 15, lineHeight: 22, marginBottom: 12},
+  registrationNotice: {borderLeftWidth: 3, borderLeftColor: colors.gold, backgroundColor: colors.surface, padding: 16, borderRadius: 10, gap: 7},
+  registrationTitle: {color: colors.warmWhite, fontSize: 16, fontWeight: '800'},
+  registrationDescription: {color: colors.mutedText, fontSize: 14, lineHeight: 21},
+  fields: {gap: 10},
+  fieldLabel: {color: colors.warmWhite, fontWeight: '600', fontSize: 14},
+  input: {minHeight: 54, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 14, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 16, paddingVertical: 13},
+  passwordRow: {minHeight: 54, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 14},
+  passwordInput: {flex: 1, minHeight: 52, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 16, paddingVertical: 12},
+  visibilityToggle: {minHeight: 48, minWidth: 56, justifyContent: 'center', alignItems: 'center', paddingRight: 8},
+  visibilityText: {color: colors.goldSoft, fontWeight: '700', fontSize: 14},
+  passwordHint: {color: colors.mutedText, fontSize: 12, lineHeight: 17},
+  legalSection: {gap: 14, marginTop: 6},
+  legalHeading: {color: colors.warmWhite, fontSize: 19, fontWeight: '800'},
+  legalIntro: {color: colors.mutedText, fontSize: 14, lineHeight: 21},
+  document: {backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 16, gap: 10},
+  documentTitle: {color: colors.warmWhite, fontSize: 15, fontWeight: '800'},
+  documentBody: {maxHeight: 210},
+  legalText: {color: colors.mutedText, fontSize: 13, lineHeight: 20},
+  reviewRow: {flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44},
+  checkbox: {color: colors.gold, fontSize: 22, width: 28},
+  reviewText: {flex: 1, color: colors.warmWhite, fontSize: 14, lineHeight: 20},
+  button: {minHeight: 54, borderRadius: 14, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center'},
+  disabled: {opacity: 0.45},
+  pressed: {opacity: 0.85},
+  buttonText: {color: colors.background, fontSize: 17, fontWeight: '800'},
+  notice: {color: colors.goldSoft, fontSize: 14, lineHeight: 20},
+  error: {color: colors.danger, fontSize: 14, lineHeight: 20},
+  footer: {color: colors.mutedText, fontSize: 13, textAlign: 'center', marginTop: 3},
+  link: {color: colors.gold, textDecorationLine: 'underline', fontWeight: '700'},
+  backLink: {color: colors.mutedText, textDecorationLine: 'underline'}
 });
