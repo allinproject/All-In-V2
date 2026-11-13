@@ -9,7 +9,7 @@ DECLARE
  a uuid:='a8111111-8111-4111-8111-811111111111';
  b uuid:='b8222222-8222-4222-8222-822222222222';
  l uuid;
- id uuid:=gen_random_uuid();
+ v_object_id uuid:=gen_random_uuid();
  denied boolean;
 BEGIN
  INSERT INTO auth.users(id) VALUES(a),(b);
@@ -18,13 +18,13 @@ BEGIN
  denied:=false;
  BEGIN
   INSERT INTO storage.objects(id,bucket_id,name)
-  VALUES(id,'v2-private-workout-objects',a::text||'/raw-no-lease.fit');
+  VALUES(v_object_id,'v2-private-workout-objects',a::text||'/raw-no-lease.fit');
  EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
  IF NOT denied THEN RAISE EXCEPTION 'Direct privileged Storage metadata write bypassed lease'; END IF;
  l:=public.v2_begin_privileged_storage_write_review(
   a,'v2-private-workout-objects',a::text||'/leased.fit','create');
  INSERT INTO storage.objects(id,bucket_id,name)
- VALUES(id,'v2-private-workout-objects',a::text||'/leased.fit');
+ VALUES(v_object_id,'v2-private-workout-objects',a::text||'/leased.fit');
  denied:=false;
  BEGIN
   INSERT INTO storage.objects(id,bucket_id,name)
@@ -35,7 +35,7 @@ BEGIN
   RAISE EXCEPTION 'Lease settlement rejected'; END IF;
  denied:=false;
  BEGIN
-  UPDATE storage.objects SET metadata='{"test":true}'::jsonb WHERE id=id;
+  UPDATE storage.objects AS obj SET metadata='{"test":true}'::jsonb WHERE obj.id=v_object_id;
  EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
  IF NOT denied THEN RAISE EXCEPTION 'Content metadata updated after lease settlement'; END IF;
  INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
