@@ -1,0 +1,139 @@
+\set ON_ERROR_STOP on
+-- Isolated PostgreSQL 17 only. No Supabase hosted access, no real user bytes.
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE authenticated NOLOGIN;
+CREATE ROLE service_role NOLOGIN;
+CREATE SCHEMA auth;
+CREATE SCHEMA storage;
+CREATE SCHEMA allin_private;
+CREATE SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+CREATE TABLE storage.buckets(id text PRIMARY KEY,public boolean NOT NULL DEFAULT false);
+CREATE TABLE allin_private.v2_account_deletion_requests(
+ user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+ request_id uuid NOT NULL,status text NOT NULL);
+\i docs/architecture/sql/V2-ACCOUNT-DELETION-PRIVILEGED-STORAGE-WRITER-REVIEW.sql
+\i docs/architecture/sql/V2-ACCOUNT-DELETION-ATTESTED-STORAGE-WRITER-REVIEW.sql
+DO $attested$
+DECLARE
+ a uuid:='a8111111-a811-4111-8111-a81111111111';
+ b uuid:='b8222222-b822-4222-8222-b82222222222';
+ nonce uuid:='c8333333-c833-4333-8333-c83333333333';
+ lease uuid;
+ digest text:=repeat('a',64);
+ expiry bigint;
+ secret bytea;
+ mac text;
+ denied boolean;
+ old_lease_count bigint;
+BEGIN
+ IF has_function_privilege('service_role',
+ 'public.v2_begin_privileged_storage_write_review(uuid,text,text,text)','EXECUTE')
+ OR has_function_privilege('service_role',
+ 'public.v2_settle_privileged_storage_write_review(uuid,uuid)','EXECUTE')
+ OR has_function_privilege('authenticated',
+ 'public.v2_begin_attested_privileged_storage_write_review(uuid,text,text,text,text,uuid,bigint,integer,text)','EXECUTE')
+ OR has_table_privilege('service_role',
+ 'allin_private.v2_privileged_storage_writer_attestation_keys_review','SELECT')
+ THEN RAISE EXCEPTION 'Unattested service-role path or key disclosure remains'; END IF;
+ IF NOT has_function_privilege('service_role',
+ 'public.v2_begin_attested_privileged_storage_write_review(uuid,text,text,text,text,uuid,bigint,integer,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Restricted service-only attested begin unavailable'; END IF;
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO storage.buckets(id,public) VALUES('v2-private-workout-objects',false);
+ expiry:=pg_catalog.extract(epoch FROM pg_catalog.clock_timestamp())::bigint+60;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_attested_privileged_storage_write_review(
+   a,'v2-private-workout-objects',a::text||'/one.fit',
+   'create',digest,nonce,expiry,1,repeat('0',64));
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Unprovisioned key created a lease'; END IF;
+ INSERT INTO allin_private.v2_privileged_storage_writer_attestation_keys_review
+ (key_version,secret,enabled) VALUES(1,extensions.gen_random_bytes(32),true);
+ SELECT k.secret INTO secret
+ FROM allin_private.v2_privileged_storage_writer_attestation_keys_review k WHERE key_version=1;
+ mac:=pg_catalog.encode(extensions.hmac(pg_catalog.convert_to(
+   pg_catalog.concat_ws(E'\n','all251-begin-v1',a::text,'v2-private-workout-objects',
+     a::text||'/one.fit','create',digest,nonce::text,expiry::text,'1'),'UTF8'),
+   secret,'sha256'),'hex');
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_attested_privileged_storage_write_review(
+   a,'v2-private-workout-objects',a::text||'/one.fit',
+   'create',digest,nonce,expiry,1,repeat('0',64));
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Invalid MAC minted privileged Storage lease'; END IF;
+ lease:=public.v2_begin_attested_privileged_storage_write_review(
+   a,'v2-private-workout-objects',a::text||'/one.fit',
+   'create',digest,nonce,expiry,1,mac);
+ IF lease IS NULL THEN RAISE EXCEPTION 'Exact attestation did not create lease'; END IF;
+ SELECT count(*) INTO old_lease_count FROM allin_private.v2_privileged_storage_write_leases_review
+ WHERE owner_id=a AND attested_nonce=nonce AND settled_at IS NULL;
+ IF old_lease_count<>1 THEN RAISE EXCEPTION 'Attestation was not durably bound to lease'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_attested_privileged_storage_write_review(
+   a,'v2-private-workout-objects',a::text||'/one.fit',
+   'create',digest,nonce,expiry,1,mac);
+ EXCEPTION WHEN unique_violation THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Replay of signed upload nonce succeeded'; END IF;
+ denied:=false;
+ BEGIN
+  INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+  VALUES(a,'d8444444-d844-4444-8444-d84444444444','requested');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Pending upload did not freeze deletion'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_settle_attested_privileged_storage_write_review(
+   a,lease,repeat('b',64),expiry,repeat('0',64));
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Modified byte digest settled old lease'; END IF;
+ mac:=pg_catalog.encode(extensions.hmac(pg_catalog.convert_to(
+  pg_catalog.concat_ws(E'\n','all251-settle-v1',a::text,lease::text,
+   nonce::text,digest,expiry::text,'1'),'UTF8'),secret,'sha256'),'hex');
+ IF public.v2_settle_attested_privileged_storage_write_review(
+   a,lease,digest,expiry,mac) IS DISTINCT FROM true
+ THEN RAISE EXCEPTION 'Matching attestation did not settle'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_settle_attested_privileged_storage_write_review(
+   a,lease,digest,expiry,mac);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Attested lease re-settled'; END IF;
+ INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+ VALUES(a,'d8444444-d844-4444-8444-d84444444444','requested');
+ -- Even a properly signed late upload is denied once deletion is requested.
+ nonce:='e8555555-e855-4555-8555-e85555555555';
+ mac:=pg_catalog.encode(extensions.hmac(pg_catalog.convert_to(
+  pg_catalog.concat_ws(E'\n','all251-begin-v1',a::text,'v2-private-workout-objects',
+   a::text||'/late.fit','create',digest,nonce::text,expiry::text,'1'),'UTF8'),
+  secret,'sha256'),'hex');
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_attested_privileged_storage_write_review(
+    a,'v2-private-workout-objects',a::text||'/late.fit',
+    'create',digest,nonce,expiry,1,mac);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Signed late upload bypassed active deletion'; END IF;
+ -- Another independent owner can begin a scoped upload even while A is frozen.
+ nonce:='f8666666-f866-4666-8666-f86666666666';
+ mac:=pg_catalog.encode(extensions.hmac(pg_catalog.convert_to(
+  pg_catalog.concat_ws(E'\n','all251-begin-v1',b::text,'v2-private-workout-objects',
+   b::text||'/own.fit','create',digest,nonce::text,expiry::text,'1'),'UTF8'),
+  secret,'sha256'),'hex');
+ IF public.v2_begin_attested_privileged_storage_write_review(
+   b,'v2-private-workout-objects',b::text||'/own.fit',
+   'create',digest,nonce,expiry,1,mac) IS NULL
+ THEN RAISE EXCEPTION 'Frozen A prevented independent B write'; END IF;
+ RAISE NOTICE 'PASS ALL-251 signed lease: no legacy service-role grants, secret hidden, missing/wrong MAC denied, nonce replay, open write, completion digest, frozen owner and independent B';
+END $attested$;
