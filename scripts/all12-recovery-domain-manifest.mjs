@@ -138,3 +138,61 @@ export function assessIndependentLogicalRecoveryEvidence(evidence={}) {
   missing.push('consistentBackupAndRecoveryTimeline');
  return {accepted:missing.length===0,missing};
 }
+
+/**
+ * ALL-12 / ALL-230: compare the existing read-only hosted schema fingerprint
+ * generated on source and independently isolated restore TARGET.
+ *
+ * This is METADATA ONLY. It cannot establish row/owner integrity, provider
+ * snapshot provenance or complete V1/import history, and must never permit
+ * the initial Training restriction certification.
+ */
+export function assessRestrictionHostedRestoreFingerprint({source,target}={}) {
+ const domain=recoveryDomains.find(d=>d.name==='training_restrictions');
+ const expected=domain.tables;
+ const reasons=[];
+ if(!source||!target||typeof source!=='object'||typeof target!=='object') {
+  return {matched:false,reviewRequired:true,reasons:['missing_source_or_restored_fingerprint'],
+   initialCertificationAuthorized:false};
+ }
+ function read(value,label) {
+  const info=value.training_restriction_domain;
+  if(info?.metadata_only!==true||info?.provider_restoration_proven!==false||
+     info?.source_evidence_is_complete!==false||
+     info?.verified_owner_data!==false||!Array.isArray(info?.tables)) {
+   reasons.push(label+'_untrusted_domain_metadata');
+   return null;
+  }
+  const names=info.tables.map(row=>row?.table);
+  if(info.tables.length!==expected.length||new Set(names).size!==expected.length||
+    expected.some(name=>!names.includes(name))) {
+   reasons.push(label+'_restriction_catalog_mismatch');
+   return null;
+  }
+  const missing=info.tables.filter(row=>row.deployed!==true||
+    row.schema_fingerprint_available!==true).map(row=>row.table);
+  if(missing.length||info.all_four_tables_present!==true)
+   reasons.push(label+'_restriction_tables_absent_or_unfingerprinted');
+  const security=value.table_security_fingerprints;
+  if(!Array.isArray(security)){
+   reasons.push(label+'_schema_security_missing');return null;
+  }
+  const rows=security.filter(row=>expected.includes(row?.table));
+  if(rows.length!==expected.length||new Set(rows.map(row=>row.table)).size!==expected.length||
+     rows.some(row=>row.rls!==true||!['columns_md5','policies_md5','constraints_md5']
+      .every(key=>typeof row[key]==='string'&&/^[0-9a-f]{32}$/.test(row[key])))) {
+   reasons.push(label+'_restriction_schema_security_incomplete');return null;
+  }
+  return new Map(rows.map(row=>[row.table,row]));
+ }
+ const a=read(source,'source');
+ const b=read(target,'restored');
+ if(a&&b)for(const name of expected){
+  const before=a.get(name),after=b.get(name);
+  if(!['rls','force_rls','columns_md5','policies_md5','constraints_md5']
+   .every(key=>before[key]===after[key]))
+   reasons.push('restriction_schema_security_drift:'+name);
+ }
+ return {matched:reasons.length===0,reviewRequired:true,reasons:[...new Set(reasons)],
+  tableCount:expected.length,initialCertificationAuthorized:false};
+}
