@@ -1,0 +1,24 @@
+name: ALL-251 harmless staging environment approval probe
+# This workflow never reads or passes secrets and never calls Supabase.
+# Its only purpose is to verify GitHub's required-reviewer gate BEFORE a
+# job can run with the all251-temporary-staging environment.
+on:
+  push:
+    branches:
+      - integration/v2-foundation
+    paths:
+      - .github/workflows/v2-all251-environment-approval-probe.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  approval-gate-only:
+    name: Approval required before harmless staging job
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    environment: all251-temporary-staging
+    steps:
+      - name: Harmless approval gate proof, no secrets accessed
+        run: |
+          printf 'ALL-251 approval gate passed; no credentials accessed.\n'
