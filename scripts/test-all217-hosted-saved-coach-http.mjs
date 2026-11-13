@@ -92,10 +92,27 @@ if(!valid(pub)||!valid(secret)||pub===secret||
   console.log("FIXED_USER_TEXT="+userText);
   console.log("FIXED_ASSISTANT_TEXT="+assistantText);
   console.log("The operator must commit the fixed pair via canonical staging DB RPCs.");
-  console.log("Do NOT press Enter until the operator confirms the commit.");
+  console.log("Pressing Enter before the commit is safe; the test checks actual saved data and stays paused.");
   rl=createInterface({input:stdin,output:stdout});
   process.once("SIGINT",()=>{console.error("Interrupted: attempting disposable account cleanup");rl?.close()});
-  await rl.question("Press Enter AFTER staging canonical pair is committed (early Enter fails safely): ");
+  const fields={p_expected_user_id:a.id,p_thread_id:thread,
+   p_client_request_id:ids.request,p_user_message_id:ids.userMessage,
+   p_assistant_message_id:ids.assistantMessage};
+  // Never advance just because Enter was pressed. Check the actual saved pair.
+  // A premature Enter does not destroy fixtures or abort the test.
+  while(true){
+   await rl.question("Press Enter to CHECK committed pair (early Enter is safe): ");
+   const proof=await exact(a.token,fields);
+   const validPair=proof.status===200&&Array.isArray(proof.data)&&
+    proof.data.length===2&&
+    proof.data.some(m=>m.message_id===ids.userMessage&&
+     m.role==="user"&&m.content===userText)&&
+    proof.data.some(m=>m.message_id===ids.assistantMessage&&
+     m.role==="assistant"&&m.content===assistantText);
+   if(validPair){console.log("PASS canonical pair independently confirmed by real owner JWT");break;}
+   console.log("NOT READY: no matching committed pair yet. Leave this PowerShell running.");
+   console.log("Send the five UUIDs in chat; do not continue until the staging write is confirmed.");
+  }
 
   const hist=await coach(a.token,{action:"history",ownerId:a.id,threadId:thread,limit:40});
   check("real owner JWT HTTP reads committed two-message history",
@@ -105,9 +122,6 @@ if(!valid(pub)||!valid(secret)||pub===secret||
   check("HTTP history matches exact source IDs/roles/content",
    rows.some(m=>m.id===ids.userMessage&&m.role==="user"&&m.content===userText)&&
    rows.some(m=>m.id===ids.assistantMessage&&m.role==="assistant"&&m.content===assistantText));
-  const fields={p_expected_user_id:a.id,p_thread_id:thread,
-   p_client_request_id:ids.request,p_user_message_id:ids.userMessage,
-   p_assistant_message_id:ids.assistantMessage};
   const matched=await exact(a.token,fields);
   check("real JWT exact canonical exchange RPC returns saved pair",
    matched.status===200&&Array.isArray(matched.data)&&matched.data.length===2&&
