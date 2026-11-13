@@ -17,6 +17,7 @@ import { combineCalendarReads, calendarDaySections } from '../src/features/train
 import {projectEventPlanOwnerSnapshot} from '../src/features/training/eventPlanOwnerPresentation';
 import {EventPlanListContent} from '../src/features/training/EventPlanListContent';
 import {TrainingPlanContent} from '../src/features/training/TrainingPlanContent';
+import {projectAcceptedTrainingPlans} from '../src/features/training/trainingPlanOwnerProjection';
 import {RoutesRoutinesContent} from '../src/features/training/RoutesRoutinesContent';
 
 function todayOnDevice(): string {
@@ -230,7 +231,7 @@ function TrainingCalendarOwnerScreen() {
               ))}
             </View>
             {plansTab === 'training' ? (
-              <TrainingPlanContent ownerId={user.id} evidence={{ status: 'unavailable' }} />
+              <TrainingPlanContent evidence={projectAcceptedTrainingPlans(user.id, sessionGeneration, { status: 'unavailable' })} />
             ) : (
               <EventPlanListContent ownerId={user.id} sessionGeneration={sessionGeneration}
                 projection={projectEventPlanOwnerSnapshot({
