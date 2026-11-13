@@ -119,6 +119,8 @@ on:
       - 'supabase/functions/v2-account-deletion-worker/execution.ts'
       - 'supabase/functions/v2-account-deletion-worker/execution.test.mjs'
       - 'supabase/functions/v2-account-deletion-worker/index.ts'
+      - 'supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.mjs'
+      - 'supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.test.mjs'
       - 'scripts/test-v2-account-export-real-local-storage.mjs'
       - 'scripts/test-all12-private-storage-two-auth-local.mjs'
       - 'scripts/test-v2-account-export-populated-db-pages.psql'
@@ -195,6 +197,7 @@ jobs:
         run: |
           set -euo pipefail
           node --experimental-strip-types --test supabase/functions/v2-account-deletion-worker/execution.test.mjs
+          node --experimental-strip-types --test supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.test.mjs
       - name: ALL-251 real service-only PostgreSQL checkpoint verifier RPC
         run: |
           set -euo pipefail
