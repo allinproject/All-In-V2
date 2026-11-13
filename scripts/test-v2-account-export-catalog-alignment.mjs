@@ -362,12 +362,20 @@ test('ALL-217/230 private export redacts replay hashes, provider correlators and
  assert(!sqlOnly.includes('pg_catalog.to_jsonb(t)'),
   'Unredacted raw private records cannot enter athlete export');
  for(const expected of [
-  'subject','status','certified_revision',
+  'subject','status','certified_revision','inventory_digest',
   'result_revision','period_start','held_usd',
   'spent_usd','settled_usd','metered_input_tokens',
   'metered_output_tokens'
  ])assert(sqlOnly.includes("''"+expected+"''"),
   'Portable athlete history missing '+expected);
+ const certStart=reader.indexOf("ELSIF p_collection='allin_private.v2_training_restriction_certifications' THEN");
+ const certEnd=reader.indexOf(' ELSIF p_collection=',certStart+8);
+ assert(certStart>0&&certEnd>certStart,'Review-only certification export projection missing');
+ const certSlice=reader.slice(certStart,certEnd);
+ assert(certSlice.includes("''inventory_digest'',t.inventory_digest"),
+  'A restored Training certification must carry the digest that guards reader/replay');
+ assert(certSlice.includes('WHERE t.user_id=$1'),
+  'Certification digest must stay owner-scoped');
  const r=readFileSync('docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql','utf8');
  const c=readFileSync('docs/architecture/sql/V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql','utf8');
  const b=readFileSync('docs/architecture/sql/V2-COACH-BUDGET-LEDGER-REVIEW-CANDIDATE.sql','utf8');
