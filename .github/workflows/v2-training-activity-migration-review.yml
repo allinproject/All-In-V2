@@ -5,6 +5,8 @@ on:
       - 'supabase/migrations/2026111303550*_v2_*_review.sql'
       - 'scripts/test-v2-training-activity-migration-parity.mjs'
       - 'scripts/test-v2-training-activity-two-owner-local.psql'
+      - 'scripts/test-v2-training-staging-http-readers.mjs'
+      - 'scripts/v2-training-hosted-staging-readiness.sql'
       - 'docs/architecture/sql/V2-*-CANDIDATE.sql'
       - '.github/workflows/v2-training-activity-migration-review.yml'
   workflow_dispatch:
@@ -24,6 +26,8 @@ jobs:
           node-version: '22.16.0'
       - name: Verify ordered review migrations exactly match canonical candidate SQL
         run: node --test scripts/test-v2-training-activity-migration-parity.mjs
+      - name: Validate future hosted HTTP acceptance harness syntax without network calls
+        run: node --check scripts/test-v2-training-staging-http-readers.mjs
 
   local-supabase-migration-replay:
     name: Apply six review migrations to disposable local Supabase (no deploy)
