@@ -77,6 +77,35 @@ INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind)
  VALUES ('c9111111-9111-4111-8111-911111111111',
          'c9333333-9333-4333-8333-933333333333',
          'Representative race','running','race');
+-- Exercise owner-scoped portability of accepted Goal-to-Event edition links,
+-- not merely the inventory allowlist. Both athletes share the canonical Event,
+-- but each must receive only their own accepted Goal revision binding.
+INSERT INTO public.v2_goals(id,user_id,goal_kind,title,status) VALUES
+ ('c9444444-9444-4444-8444-944444444444','91111111-9111-4111-8111-911111111111',
+  'race_event','Owner A edition-bound race','active'),
+ ('c9555555-9555-4555-8555-955555555555','92222222-9222-4222-8222-922222222222',
+  'race_event','Owner B edition-bound race','active');
+INSERT INTO public.v2_goal_revisions
+ (id,goal_id,user_id,revision_number,status,source_kind,priority_role,accepted_at)
+VALUES
+ ('c9666666-9666-4666-8666-966666666666','c9444444-9444-4444-8444-944444444444',
+  '91111111-9111-4111-8111-911111111111',1,'accepted','athlete_authored','primary',now()),
+ ('c9777777-9777-4777-8777-977777777777','c9555555-9555-4555-8555-955555555555',
+  '92222222-9222-4222-8222-922222222222',1,'accepted','athlete_authored','primary',now());
+UPDATE public.v2_goals SET active_revision_id=
+ 'c9666666-9666-4666-8666-966666666666'
+ WHERE id='c9444444-9444-4444-8444-944444444444';
+UPDATE public.v2_goals SET active_revision_id=
+ 'c9777777-9777-4777-8777-977777777777'
+ WHERE id='c9555555-9555-4555-8555-955555555555';
+INSERT INTO public.v2_goal_event_edition_links
+ (goal_id,goal_revision_id,user_id,event_id,edition_id,event_version) VALUES
+ ('c9444444-9444-4444-8444-944444444444','c9666666-9666-4666-8666-966666666666',
+  '91111111-9111-4111-8111-911111111111','c9111111-9111-4111-8111-911111111111',
+  'c9333333-9333-4333-8333-933333333333',1),
+ ('c9555555-9555-4555-8555-955555555555','c9777777-9777-4777-8777-977777777777',
+  '92222222-9222-4222-8222-922222222222','c9111111-9111-4111-8111-911111111111',
+  'c9333333-9333-4333-8333-933333333333',1);
 INSERT INTO public.v2_event_participations
  (user_id,event_id,state,source_kind,source_note) VALUES
  ('91111111-9111-4111-8111-911111111111',
@@ -210,6 +239,29 @@ BEGIN
   v_count:=v_count+1;
  END LOOP;
  IF v_count<>50 THEN RAISE EXCEPTION 'Not all 50 portable owner collections were probed'; END IF;
+ -- The new private Goal/Event edition table must be represented by real
+ -- owner-scoped page rows, not silently allowed in the inventory.
+ v_page:=public.v2_account_export_page_review_candidate(
+   v_owner,v_session,v_request,'public.v2_goal_event_edition_links',NULL,25);
+ IF v_page->>'snapshotId' IS DISTINCT FROM v_snap
+   OR pg_catalog.jsonb_array_length(v_page->'rows')<>1
+   OR v_page->'rows'->0->>'goal_revision_id' IS DISTINCT FROM
+     'c9666666-9666-4666-8666-966666666666'
+   OR v_page->'rows'->0->>'user_id' IS DISTINCT FROM v_owner::text
+   OR v_page::text LIKE '%c9777777-9777-4777-8777-977777777777%'
+ THEN RAISE EXCEPTION 'Goal/Event edition export leaked another athlete or omitted own link'; END IF;
+ v_page:=public.v2_account_export_page_review_candidate(
+   '92222222-9222-4222-8222-922222222222',
+   '94444444-9444-4444-8444-944444444444',
+   '96666666-9666-4666-8666-966666666666',
+   'public.v2_goal_event_edition_links',NULL,25);
+ IF pg_catalog.jsonb_array_length(v_page->'rows')<>1
+   OR v_page->'rows'->0->>'goal_revision_id' IS DISTINCT FROM
+     'c9777777-9777-4777-8777-977777777777'
+   OR v_page->'rows'->0->>'user_id' IS DISTINCT FROM
+     '92222222-9222-4222-8222-922222222222'
+   OR v_page::text LIKE '%c9666666-9666-4666-8666-966666666666%'
+ THEN RAISE EXCEPTION 'Other owner Goal/Event edition link was not isolated'; END IF;
  -- The worker's own request ledger is portable history, not a raw Auth
  -- session export. Verify the real SQL reader redacts session_id.
  v_page:=public.v2_account_export_page_review_candidate(
