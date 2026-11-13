@@ -49,6 +49,7 @@ test('stale Goal to Event edition/version and missing participation are review-o
    [{...goal('g1','one'),boundEventVersion:1}],
    [goal('g1','not-in-event-participations')],
    [{...goal('g1','one'),revisionStatus:'candidate'}],
+   [{...goal('g1','one'),goalStatus:'paused'}],
    [{...goal('g1','one'),priorityRole:'A'}],
    [{...goal('g1','one'),activeRevisionId:null}],
  ]) {
