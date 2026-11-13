@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/tokens';
 import { RouteBuilderContent } from './routeBuilder/RouteBuilderContent';
+import { RoutineBuilderContent } from './routines/RoutineBuilderContent';
 
 type Workspace = 'routes' | 'routines';
 
@@ -31,14 +32,12 @@ export function RoutesRoutinesContent() {
       <RouteBuilderContent />
       <Text style={styles.muted}>Your existing saved routes have not been checked. Canonical route saving and provider-backed rerouting remain gated.</Text>
     </View>
-    {selected === 'routines' ? (
-      <View style={styles.body}>
-        <Text accessibilityRole="header" style={styles.title}>Routines</Text>
-        <Text style={styles.subheading}>Reusable workouts</Text>
-        <Text style={styles.muted}>The routine library and editor are not connected yet.</Text>
-        <Text style={styles.muted}>Your saved routines have not been checked.</Text>
-      </View>
-    ) : null}
+    <View style={[styles.body, selected !== 'routines' && styles.hidden]}
+      accessibilityElementsHidden={selected !== 'routines'}
+      importantForAccessibility={selected === 'routines' ? 'auto' : 'no-hide-descendants'}>
+      <RoutineBuilderContent />
+      <Text style={styles.muted}>Your saved routines have not been checked. This is an unsaved draft, not an accepted workout or persistent template.</Text>
+    </View>
   </View>;
 }
 const styles = StyleSheet.create({
