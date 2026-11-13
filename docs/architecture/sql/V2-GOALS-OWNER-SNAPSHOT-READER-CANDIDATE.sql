@@ -1,6 +1,8 @@
 -- ALL-239 / ALL-222 REVIEW ONLY. Private canonical Goal owner read.
 -- Apply after V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql.
 -- No deployment, client grant, shadow Goal history or EventHub derivation.
+-- Requires review-only V2-GOALS-ACCEPTED-EVENT-EDITION-BINDING-CANDIDATE.sql
+-- when including the accepted Event edition link.
 CREATE FUNCTION allin_private.v2_goal_owner_snapshot_candidate(
   p_expected_user_id uuid,p_max_goals integer DEFAULT 64
 ) RETURNS jsonb
@@ -44,16 +46,23 @@ BEGIN
       'priorityRole',r.priority_role,'priorityOrder',r.priority_order,
       'startDate',r.start_date,'targetDate',r.target_date,
       'checkInDate',r.check_in_date,'timezone',r.timezone,
-      'goalSchemaVersion',r.goal_schema_version
+      'goalSchemaVersion',r.goal_schema_version,
+      'eventId',l.event_id,'editionId',l.edition_id,
+      'boundEventVersion',l.event_version
     ) ORDER BY g.created_at,g.id),'[]'::jsonb),
     coalesce(pg_catalog.md5(pg_catalog.string_agg(
-      g.id::text||':'||g.version::text||':'||coalesce(g.active_revision_id::text,'none'),
+      g.id::text||':'||g.version::text||':'||coalesce(g.active_revision_id::text,'none')||
+      ':'||coalesce(l.event_id::text,'none')||':'||
+      coalesce(l.edition_id::text,'none')||':'||
+      coalesce(l.event_version::text,'none'),
       ',' ORDER BY g.id)),'empty')
   INTO v_records,v_token
   FROM public.v2_goals g
   LEFT JOIN public.v2_goal_revisions r
     ON r.goal_id=g.id AND r.user_id=g.user_id AND r.id=g.active_revision_id
        AND r.status='accepted'
+  LEFT JOIN public.v2_goal_event_edition_links l
+    ON l.goal_revision_id=r.id AND l.goal_id=g.id AND l.user_id=g.user_id
   WHERE g.user_id=v_user;
   RETURN pg_catalog.jsonb_build_object(
     'ownerId',v_user,'complete',true,'nextCursor',null,
