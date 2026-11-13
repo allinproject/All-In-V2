@@ -8,6 +8,7 @@ import {
  type RoutineBlock,type RoutineIntervalBlock,type RoutineStrengthBlock,
 } from './routineDraftEditor';
 import {applyRoutineDraftEdit,createRoutineDraftHistory,redoRoutineDraftEdit,undoRoutineDraftEdit} from './routineDraftHistory';
+import {projectRoutineDraftPreview} from './routineDraftPreview';
 
 const choices:{sport:TrainingSport;label:string}[]=[
  {sport:'strength',label:'Strength'},{sport:'running',label:'Run'},{sport:'walking',label:'Walk'},
@@ -65,6 +66,8 @@ export function RoutineBuilderContent(){
  };
  const [sportConfirm,setSportConfirm]=useState<TrainingSport|null>(null);
  const review=useMemo(()=>inspectRoutineDraft(draft),[draft]);
+ const preview=useMemo(()=>projectRoutineDraftPreview(draft),[draft]);
+ const [showPreview,setShowPreview]=useState(false);
  const update=(block:RoutineBlock)=>setDraft(current=>updateRoutineBlock(current,block));
  function setSport(sport:TrainingSport){
   if(sport===draft.sport)return;
@@ -190,6 +193,21 @@ export function RoutineBuilderContent(){
     <Text style={styles.note}>{draft.blocks.length} block{draft.blocks.length===1?'':'s'} · Version {draft.version} (local only)</Text>
     <Text style={styles.note}>{review.ready?'Structure complete for owner-side review; not saved.':
       review.issues.join(' ')}</Text>
+    <Pressable accessibilityRole="button" accessibilityState={{expanded:showPreview}}
+      onPress={()=>setShowPreview(value=>!value)} style={styles.chip}>
+      <Text style={styles.gold}>{showPreview?'Hide Workout Preview':'Review Workout Structure'}</Text>
+    </Pressable>
+    {showPreview?<View style={styles.reviewRows}>
+      <Text style={styles.heading}>{preview.name||'Unnamed routine'} · {preview.sport}</Text>
+      {preview.rows.map(row=><View key={row.id} style={styles.reviewRow}>
+        <Text style={styles.blockTitle}>{row.title}</Text>
+        {row.details.map((detail,i)=><Text key={String(i)} style={styles.note}>{detail}</Text>)}
+      </View>)}
+      {preview.totalDurationSeconds!==null?
+        <Text style={styles.note}>Exact authored interval duration: {Math.floor(preview.totalDurationSeconds/60)}m {preview.totalDurationSeconds%60}s</Text>:
+        <Text style={styles.note}>Total workout duration not calculated: some blocks have no duration target.</Text>}
+      {!preview.ready?<Text style={styles.note}>{preview.issues.join(' ')}</Text>:null}
+    </View>:null}
     <Text style={styles.note}>No completed workout, training plan, or Coach memory has been changed. Saved routine library and Start Workout are not connected.</Text>
   </View>
  </View>;
@@ -213,4 +231,5 @@ const styles=StyleSheet.create({
  blockTitle:{color:colors.goldSoft,fontWeight:'800',fontSize:15},
  warning:{padding:12,gap:10,borderWidth:1,borderColor:colors.gold,borderRadius:8},
  review:{gap:8,borderTopWidth:2,borderColor:colors.gold,paddingVertical:16},
+ reviewRows:{gap:8,paddingVertical:8},reviewRow:{gap:4,padding:10,borderColor:colors.border,borderWidth:1,borderRadius:8},
 });
