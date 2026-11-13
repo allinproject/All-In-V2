@@ -1,0 +1,49 @@
+name: ALL-251 release gates safety review (no hosted calls)
+on:
+  push:
+    branches: [review/all251-canonical-export-deletion-coverage-20261113]
+    paths:
+      - 'scripts/test-all251-hosted-kms-existing-key.mjs'
+      - 'apps/mobile-v2/src/features/profile/accountExportLargeFile.ts'
+      - 'apps/mobile-v2/src/features/profile/accountExportLargeFile.test.ts'
+      - 'docs/architecture/ALL251-RELEASE-GATES-OPERATOR-ACCEPTANCE.md'
+      - '.github/workflows/v2-all251-release-gates-safety.yml'
+  pull_request:
+    paths:
+      - 'scripts/test-all251-hosted-kms-existing-key.mjs'
+      - 'apps/mobile-v2/src/features/profile/accountExportLargeFile.ts'
+      - 'apps/mobile-v2/src/features/profile/accountExportLargeFile.test.ts'
+      - 'docs/architecture/ALL251-RELEASE-GATES-OPERATOR-ACCEPTANCE.md'
+      - '.github/workflows/v2-all251-release-gates-safety.yml'
+permissions:
+  contents: read
+jobs:
+  review:
+    name: KMS authorization defaults, device export account-switch and cache integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: KMS operator script syntax (no AWS packages or credentials)
+        run: node --check scripts/test-all251-hosted-kms-existing-key.mjs
+      - name: KMS operator test cannot run without cost and operator approval
+        shell: bash
+        env:
+          ALL251_KMS_HOSTED_ALLOW: 'false'
+          ALL251_KMS_COST_APPROVED: 'false'
+          ALL251_KMS_SYNTHETIC_ONLY: 'true'
+        run: |
+          set -euo pipefail
+          if node scripts/test-all251-hosted-kms-existing-key.mjs >/tmp/all251-kms-refusal.log 2>&1; then
+            echo 'FAIL: AWS KMS smoke launched without approval'
+            exit 1
+          fi
+          grep -q 'explicit operator and cost approval' /tmp/all251-kms-refusal.log
+      - name: Mobile pre-release native export cache and session tests
+        run: |
+          node --experimental-strip-types --test \
+            apps/mobile-v2/src/features/profile/accountExportLargeFile.test.ts \
+            apps/mobile-v2/src/features/profile/accountExportFile.test.ts
