@@ -27,7 +27,35 @@ function previewSourceFoods(sourceFoods){
     publicationApproved:false
   });
 }
-module.exports={previewSourceFoods};
+
+/**
+ * The canonical previewIngredientSeed() owns reconciliation. Never create
+ * another source-to-ingredient mapping or infer an approved canonical ID.
+ * The baseline is read-only caller-supplied existing source inventory.
+ */
+async function previewVerifiedSeedPlan(sourceFoods,{existing=[]}={}){
+  const review=previewSourceFoods(sourceFoods);
+  if(review.status!=='review_stage_complete'||review.passedPreflight!==8||
+     !review.sourceContractValidated||!review.aliasContractValidated)
+    return {...review,seedPlanStatus:'blocked_by_source_review',seedCounts:null,
+      dryRunOnly:true,canonicalIdsAssigned:false,writerAuthorized:false};
+  const {previewIngredientSeed}=await import('../apps/mobile-v2/src/features/cookbook/ingredientSeedPreview.ts');
+  const candidates=sourceFoods.map(food=>({
+    provider:'usda_fdc',source_data_type:'Foundation',
+    external_record_id:String(food.fdcId),payload_sha256:food.payload_sha256,
+    description:food.source_description
+  }));
+  const seed=previewIngredientSeed({
+    snapshot_id:'usda-foundation-2026-10-29:'+sourceEvidence.archiveSha256,
+    importer_version:'all228-verified-foundation-dry-run-v1',
+    candidates,existing
+  });
+  return {...review,seedPlanStatus:seed.counts.conflict?'review_required':'dry_run_only',
+    seedCounts:seed.counts,seedActions:seed.actions,
+    dryRunOnly:true,canonicalIdsAssigned:false,writerAuthorized:false,
+    calculationReady:false,publicationApproved:false};
+}
+module.exports={previewSourceFoods,previewVerifiedSeedPlan};
 if(require.main===module){
   let input='';
   process.stdin.setEncoding('utf8');
@@ -40,9 +68,10 @@ if(require.main===module){
   process.stdin.on('end',()=>{
     try{
       const parsed=JSON.parse(input);
-      const result=previewSourceFoods(parsed.sourceFoods);
-      console.log(JSON.stringify(result));
-      if(result.status!=='review_stage_complete'||result.passedPreflight!==8)process.exitCode=1;
+      previewVerifiedSeedPlan(parsed.sourceFoods).then(result=>{
+        console.log(JSON.stringify(result));
+        if(result.status!=='review_stage_complete'||result.seedPlanStatus!=='dry_run_only')process.exitCode=1;
+      }).catch(()=>{console.error('Verified USDA dry-run seed preview failed');process.exitCode=1;});
     }catch(error){
       console.error('Verified USDA review-only admission failed');
       process.exitCode=1;
