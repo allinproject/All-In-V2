@@ -130,6 +130,8 @@ on:
       - 'supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.test.mjs'
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-PRIVILEGED-STORAGE-WRITER-REVIEW.sql'
       - 'scripts/test-all251-privileged-storage-writer-review-local.psql'
+      - 'docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-METADATA-UPLOAD-BARRIER-REVIEW.sql'
+      - 'scripts/test-all251-storage-metadata-fence-local.psql'
       - 'supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs'
       - 'supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs'
       - 'supabase/functions/_shared/trainingPrivilegedAccountExportBarrier.mjs'
@@ -218,10 +220,13 @@ jobs:
           test -n "$db_container"
           for file in \
             docs/architecture/sql/V2-ACCOUNT-DELETION-PRIVILEGED-STORAGE-WRITER-REVIEW.sql \
-            scripts/test-all251-privileged-storage-writer-review-local.psql; do
+            docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-METADATA-UPLOAD-BARRIER-REVIEW.sql \
+            scripts/test-all251-privileged-storage-writer-review-local.psql \
+            scripts/test-all251-storage-metadata-fence-local.psql; do
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
           done
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-all251-privileged-storage-writer-review-local.psql
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-all251-storage-metadata-fence-local.psql
       - name: ALL-251 worker pre-Auth-deletion safety gate tests
         run: |
           set -euo pipefail
