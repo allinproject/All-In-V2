@@ -686,6 +686,37 @@ BEGIN
   RAISE EXCEPTION 'Evidence access ID reused against a second case';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $private_initial_queue$;
+-- More than 50 eligible cases must return an explicit keyset cursor, never
+-- silently omit older reports from the trusted initial-review queue.
+INSERT INTO allin_private.v2_community_comments(id,post_id,author_id,body)
+SELECT ('90000000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,
+ '80000000-0000-0000-0000-000000000001'::uuid,
+ '00000000-0000-0000-0000-000000000001'::uuid,'queue fixture '||i
+FROM generate_series(1,51) i;
+INSERT INTO allin_private.v2_community_moderation_reports
+ (id,comment_id,reporter_id,reason_code,reason_detail)
+SELECT ('91000000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,
+ ('90000000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,
+ '00000000-0000-0000-0000-000000000002'::uuid,'spam','private report '||i
+FROM generate_series(1,51) i;
+DO $moderation_keyset$
+DECLARE first jsonb; second jsonb; cursor_data jsonb;
+BEGIN
+ first:=allin_private.v2_community_moderation_queue('initial_review',NULL,NULL);
+ cursor_data:=first->'nextCursor';
+ IF first->>'complete'<>'false' OR cursor_data IS NULL OR
+    pg_catalog.jsonb_array_length(first->'cases')<>50
+ THEN RAISE EXCEPTION 'Moderator queue truncated >50 cases'; END IF;
+ second:=allin_private.v2_community_moderation_queue('initial_review',
+  (cursor_data->>'submittedAt')::timestamptz,
+  (cursor_data->>'reportId')::uuid);
+ IF second->>'complete'<>'true' OR second->'nextCursor'<>'null'::jsonb
+  OR pg_catalog.jsonb_array_length(second->'cases')<>2
+  OR (first->'cases')::text LIKE '%private report%'
+  OR (second->'cases')::text LIKE '%queue fixture%'
+ THEN RAISE EXCEPTION 'Moderator keyset cursor/payload invalid'; END IF;
+ RAISE NOTICE 'PASS: private moderator queue paginates 52 cases as 50+2';
+END $moderation_keyset$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000006',false);
 SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000006',false);
 DO $operator_revokes$
