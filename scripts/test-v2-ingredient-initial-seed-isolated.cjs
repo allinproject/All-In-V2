@@ -14,8 +14,11 @@ async function dbSetup(){
  await db.exec('CREATE ROLE anon NOLOGIN;CREATE ROLE authenticated NOLOGIN;CREATE ROLE service_role NOLOGIN;');
  for(const n of ['V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql','V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql','V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql','V2-INGREDIENT-USDA-ENERGY-ATTESTATION-CANDIDATE.sql','V2-INGREDIENT-CANONICAL-SEED-WRITER-CANDIDATE.sql'])await db.exec(read(n));
  await db.exec('CREATE ROLE '+reviewer+' LOGIN NOINHERIT;CREATE ROLE '+issuer+' LOGIN NOINHERIT;GRANT allin_v2_ingredient_reviewer TO '+reviewer+' WITH INHERIT FALSE,SET TRUE;GRANT allin_v2_ingredient_source_releaser TO '+issuer+' WITH INHERIT FALSE,SET TRUE');
- for(const [login,principal,issuerName] of [[issuer,'human','test-idp.example'],[reviewer,'workload','allin-v2-internal-workload']])
-  await db.query("INSERT INTO allin_private.v2_ingredient_review_operators(login_role,principal_kind,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES($1,$2,true,'TEST-CANONICAL-SEED',$3,'test-verified-operator','test-vault-ref-seed',now()-interval '1 hour',now()+interval '1 day')",[login,principal,issuerName]);
+ for(const [login,principal,issuerName,subject,vault] of [
+  [issuer,'human','test-idp.example','test-verified-source-officer','test-vault-ref-source'],
+  [reviewer,'workload','allin-v2-internal-workload','ingest-seed-test-local','test-vault-ref-workload']
+ ])
+  await db.query("INSERT INTO allin_private.v2_ingredient_review_operators(login_role,principal_kind,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES($1,$2,true,'TEST-CANONICAL-SEED',$3,$4,$5,now()-interval '1 hour',now()+interval '1 day')",[login,principal,issuerName,subject,vault]);
  await db.exec("INSERT INTO public.v2_nutrient_definitions(code,display_name,canonical_unit,launch_core,is_published) VALUES('energy_kcal','Energy','kcal',true,false),('protein_g','Protein','g',true,false),('carbohydrate_g','Carbs','g',true,false),('total_fat_g','Fat','g',true,false),('sodium_mg','Sodium','mg',false,false)");
  return db;
 }
