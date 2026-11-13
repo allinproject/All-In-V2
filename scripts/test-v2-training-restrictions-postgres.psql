@@ -175,6 +175,20 @@ BEGIN
    'activate',rule,'exercise','lying leg curl',1);
   RAISE EXCEPTION 'Old action receipt replayed over changed rule inventory';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- A NEW legitimate owner action must also fail. Otherwise the writer would
+ -- advance certification and launder the tampered movement into trusted data.
+ BEGIN
+  PERFORM public.v2_training_restriction_write_candidate(a,
+   '77777777-7777-4777-8777-777777777771',
+   'retire',rule,null,null,2);
+  RAISE EXCEPTION 'New owner action recertified a tampered inventory';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_training_restriction_action_receipts
+   WHERE user_id=a AND action_id='77777777-7777-4777-8777-777777777771')
+ OR (SELECT status FROM public.v2_training_athlete_restrictions WHERE id=rule)<>'active'
+ OR (SELECT certified_revision
+     FROM allin_private.v2_training_restriction_certifications WHERE user_id=a)<>2
+ THEN RAISE EXCEPTION 'Rejected mutation persisted despite stale inventory'; END IF;
  -- Restore the synthetic canonical row to its exact certified version.
  UPDATE public.v2_training_athlete_restrictions
   SET subject='lying leg curl',
