@@ -62,3 +62,34 @@ export function projectEventPlanOwnerSnapshot(input:{
   return {status:'ready',ownerId:s.ownerId,authSessionGeneration:s.authSessionGeneration,
     snapshotVersion:s.snapshotVersion,events:projected};
 }
+
+/**
+ * A selected detail is valid only for the exact certified list snapshot
+ * and event revision from which the athlete opened it. Do not resurrect
+ * a previous event after a source refresh, account change, or event reschedule.
+ */
+export type EventPlanSelection = {
+  ownerId:string;
+  authSessionGeneration:number;
+  snapshotVersion:string;
+  eventId:string;
+  editionId:string;
+  eventVersion:number;
+};
+export function resolveSelectedEventPlan(
+  projection:EventPlanOwnerProjection,
+  ownerId:string,
+  sessionGeneration:number,
+  selection:EventPlanSelection|null,
+):EventPlanOwnerRow|null {
+  if(!selection||projection.status!=='ready'||!ownerId.trim()||
+     projection.ownerId!==ownerId||
+     projection.authSessionGeneration!==sessionGeneration||
+     selection.ownerId!==ownerId||
+     selection.authSessionGeneration!==sessionGeneration||
+     selection.snapshotVersion!==projection.snapshotVersion)
+    return null;
+  return projection.events.find(e=>e.ownerId===ownerId&&
+    e.eventId===selection.eventId&&e.editionId===selection.editionId&&
+    e.eventVersion===selection.eventVersion)??null;
+}
