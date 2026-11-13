@@ -109,15 +109,31 @@ async function sourceCatalog(){
  return JSON.parse(value);
 }
 async function removeAll(){
- // Only remove objects/buckets that THIS fixture successfully created.
- for(const [bucket,path] of uploaded.reverse()){
-  const r=await api('DELETE','/object/'+bucket+'/'+encPath(path),{ok:false});
-  if(!r.ok)throw Error('Local private Storage fixture cleanup failed');
+ // Only remove objects/buckets created by this exact fixture. Continue after
+ // individual failures so one stuck object cannot strand the others.
+ const errors=[];
+ for(const [bucket,path] of [...uploaded].reverse()){
+  try{
+   const r=await api('DELETE','/object/'+bucket+'/'+encPath(path),{ok:false});
+   if(!r.ok)errors.push('Storage object cleanup HTTP '+r.status);
+  }catch{errors.push('Storage object cleanup transport failed');}
  }
- for(const bucket of insertedBuckets.reverse()){
-  const r=await api('DELETE','/bucket/'+bucket,{ok:false});
-  if(!r.ok)throw Error('Local Storage bucket cleanup failed');
+ // Verify physical Storage API absence, not just successful delete receipts.
+ // An authenticated service read must NOT still return any fixture bytes.
+ for(const [bucket,path] of uploaded){
+  try{
+   const r=await api('GET','/object/authenticated/'+bucket+'/'+encPath(path),{ok:false});
+   if(r.ok)errors.push('Storage object still readable after deletion');
+  }catch{errors.push('Storage cleanup readback unavailable');}
  }
+ for(const bucket of [...insertedBuckets].reverse()){
+  try{
+   const r=await api('DELETE','/bucket/'+bucket,{ok:false});
+   if(!r.ok)errors.push('Local Storage bucket cleanup HTTP '+r.status);
+  }catch{errors.push('Local Storage bucket cleanup transport failed');}
+ }
+ if(errors.length)throw Error('ALL-251 Storage cleanup not accepted: '+errors.join('; '));
+ console.log('PASS ALL-251: verified all synthetic private Storage object bytes absent after cleanup');
 }
 try{
  const existing=await api('GET','/bucket');
