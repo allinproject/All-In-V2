@@ -1,0 +1,101 @@
+\set ON_ERROR_STOP on
+-- ALL-251: all writes are synthetic and rolled back in disposable local CI.
+BEGIN;
+\i /tmp/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql
+\i /tmp/V2-ACCOUNT-DELETION-STORAGE-READINESS-REVIEW.sql
+DO $all251_readiness$
+DECLARE
+ a uuid:='a1111111-a111-4111-8111-a11111111111';
+ b uuid:='b2222222-b222-4222-8222-b22222222222';
+ req uuid:='c3333333-c333-4333-8333-c33333333333';
+ v jsonb;
+ denied boolean;
+BEGIN
+ IF has_function_privilege('authenticated',
+  'public.v2_verify_account_deletion_storage_readiness(uuid,uuid)','EXECUTE')
+ OR has_function_privilege('anon',
+  'public.v2_verify_account_deletion_storage_readiness(uuid,uuid)','EXECUTE')
+ OR NOT has_function_privilege('service_role',
+  'public.v2_verify_account_deletion_storage_readiness(uuid,uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Aggregate readiness RPC role exposure mismatch'; END IF;
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+ VALUES(a,req,'processing');
+ INSERT INTO allin_private.v2_account_deletion_execution_audit(request_id,user_id,status)
+ VALUES(req,a,'processing');
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM false
+ OR (v->>'completePrivateStorage')::boolean IS DISTINCT FROM false
+ OR (v->>'uploadBarrierEnforced')::boolean IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Zero-bucket readiness was incorrectly accepted'; END IF;
+
+ INSERT INTO storage.buckets(id,name,public) VALUES
+  ('v2-private-workout-objects','v2-private-workout-objects',false),
+  ('v2-private-account-exports','v2-private-account-exports',false);
+ PERFORM allin_private.v2_deletion_storage_plan_review(a,req,
+  'v2-private-workout-objects',ARRAY[a::text||'/one.fit',a::text||'/nested/two.fit']);
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Missing bucket plan unexpectedly passed'; END IF;
+ PERFORM allin_private.v2_deletion_storage_plan_review(a,req,
+  'v2-private-account-exports',ARRAY[]::text[]);
+ PERFORM allin_private.v2_deletion_checkpoint_absence_review(a,req,
+  'v2-private-workout-objects',a::text||'/one.fit');
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Partial checkpoint plan passed'; END IF;
+ PERFORM allin_private.v2_deletion_checkpoint_absence_review(a,req,
+  'v2-private-workout-objects',a::text||'/nested/two.fit');
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'ownerId') IS DISTINCT FROM a::text OR
+    (v->>'requestId') IS DISTINCT FROM req::text OR
+    (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM true OR
+    (v->>'completePrivateStorage')::boolean IS DISTINCT FROM false OR
+    (v->>'uploadBarrierEnforced')::boolean IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Complete checkpoints must prove ONLY DB coverage: %',v; END IF;
+
+ -- Discovery of an extra private bucket invalidates exact catalog coverage.
+ INSERT INTO storage.buckets(id,name,public)
+ VALUES('v2-surprise-bucket','v2-surprise-bucket',false);
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Undiscovered bucket unexpectedly accepted'; END IF;
+ DELETE FROM storage.buckets WHERE id='v2-surprise-bucket';
+
+ -- Public Storage is not approved private data coverage.
+ UPDATE storage.buckets SET public=true WHERE id='v2-private-account-exports';
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Public bucket unexpectedly accepted'; END IF;
+ UPDATE storage.buckets SET public=false WHERE id='v2-private-account-exports';
+
+ -- Checkpoints are exact-plan evidence, not a way to override a path list.
+ INSERT INTO allin_private.v2_account_deletion_storage_checkpoint_review
+ (request_id,bucket_id,object_path) VALUES
+ (req,'v2-private-workout-objects',a::text||'/unplanned.fit');
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Unplanned checkpoint unexpectedly accepted'; END IF;
+ DELETE FROM allin_private.v2_account_deletion_storage_checkpoint_review
+ WHERE request_id=req AND object_path=a::text||'/unplanned.fit';
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM true
+ THEN RAISE EXCEPTION 'Valid checkpoints did not restore DB-only coverage'; END IF;
+
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_verify_account_deletion_storage_readiness(b,req);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Foreign owner could verify deletion audit'; END IF;
+ UPDATE allin_private.v2_account_deletion_requests SET status='cancelled'
+ WHERE request_id=req;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_verify_account_deletion_storage_readiness(a,req);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Cancelled deletion request accepted'; END IF;
+ RAISE NOTICE 'PASS ALL-251 aggregate readiness: exact owner + all private bucket plans + checkpoint completeness; upload and Storage acceptance still FALSE';
+END $all251_readiness$;
+ROLLBACK;
