@@ -147,3 +147,45 @@ acceptance:** real Auth-backed comment writer and audience reader,
 moderation policy, live media byte coverage, legal retention sign-off,
 KMS-backed complete archive or positive hosted account export. Keep the
 existing system and its `complete=false` gate.
+
+## 2026-11-13 — Comment edit/delete and moderation decision checkpoint
+
+**Implemented review-only SQL, no client grants or hosted deployment:**
+
+- Comment authors can edit only their own visible, undeleted comment
+  using the expected current revision. Stale writes and edits of hidden/held
+  records fail; existing post identity and reply thread identity do not change.
+- Explicit author deletion permanently replaces the active comment body
+  with `[deleted]`, increments revision, timestamps deletion, and
+  rejects resurrection. An exact duplicate delete may return the same
+  result. Other authors' replies remain their own records.
+- The canonical comment reader filters deleted and `held`/`hidden` comments
+  **inside SQL**. It still checks post audience, approved follows, and both
+  block directions. A held parent cannot receive a new reply.
+- Moderation may mark comments `visible`, `held`, or `hidden` **only
+  through future reviewed trusted operations**. No moderator identity,
+  authority, report-triage workflow, appeal process, automated classifier,
+  rate limit or audit-retention period is approved by this checkpoint.
+  There is intentionally no exposed moderation RPC or public
+  `UPDATE` grant. No user-facing feature should claim operational
+  reporting/appeals until these are defined and tested.
+- Before approving retention or actual deletion, counsel/privacy review must
+  decide: notices for author-deleted versus moderator-hidden bodies, whether
+  appeal/audit records need purpose-limited copies, abuse-evidence retention,
+  backup expiration and legal holds, and how a post owner's deletion affects
+  other authors' replies. This checkpoint does **not** set a duration or
+  authorize retaining deleted private body text in a second store.
+
+**Media:** No canonical Community attachment source with owner,
+post/comment identity, private bucket/path, byte checksum and deletion
+provenance has been approved. The existing ALL-251 Storage verifier remains
+Training-only and rejects a new Community bucket; do not add a speculative
+media table or treat absent references as proof there are no future media
+files. An approved Community media source must be extended through the
+existing canonical post/comment and Storage writer, then pass complete
+owner-only enumeration, physical-byte checksums, KMS archive, cross-owner
+denial, deletion and independent restore.
+
+**Release state:** Review-only SQL and isolated PostgreSQL tests are not
+hosted owner-session, rate-limit, moderation, legal or media acceptance.
+Keep account-export complete=false and deletion worker disabled.
