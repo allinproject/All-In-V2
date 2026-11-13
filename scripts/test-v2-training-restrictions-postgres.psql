@@ -115,6 +115,72 @@ BEGIN
  IF EXISTS(SELECT 1 FROM allin_private.v2_training_restriction_certifications
   WHERE user_id=a) THEN RAISE EXCEPTION 'Evidence issued certification'; END IF;
 END $source_ledger$;
+-- The ingestion candidate is private, auth-bound, and all-or-nothing.
+-- These are disposable test inputs, not independently verified source proof.
+DO $trusted_ingestion$
+DECLARE
+ a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ batch jsonb;
+ broken jsonb;
+ result jsonb;
+BEGIN
+ IF has_function_privilege('authenticated',
+  'allin_private.v2_training_ingest_restriction_source_evidence_candidate(uuid,text,jsonb)','EXECUTE')
+ OR has_function_privilege('anon',
+  'allin_private.v2_training_ingest_restriction_source_evidence_candidate(uuid,text,jsonb)','EXECUTE')
+ OR has_function_privilege('service_role',
+  'allin_private.v2_training_ingest_restriction_source_evidence_candidate(uuid,text,jsonb)','EXECUTE')
+ THEN RAISE EXCEPTION 'Training evidence ingestion unexpectedly exposed'; END IF;
+ SELECT pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+   'kind',kind,'ownerId',a::text,'snapshotVersion','ingested',
+   'evidenceRef','verified-adapter:'||kind,
+   'inventoryDigest',repeat('b',64),
+   'canonicalInventoryDigest',
+     allin_private.v2_training_restriction_inventory_digest_candidate(a),
+   'inspectedCount',0,'reconciledCount',0,'unresolvedCount',0,
+   'complete',true,'nextCursor',NULL
+ )) INTO batch FROM unnest(ARRAY[
+  'current_restrictions','approved_plans','historical_records',
+  'imported_records','restored_records']) kind;
+ BEGIN
+  PERFORM allin_private.v2_training_ingest_restriction_source_evidence_candidate(
+   a,'ingested',batch);
+  RAISE EXCEPTION 'Missing Auth context accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM pg_catalog.set_config('request.jwt.claim.sub',a::text,true);
+ PERFORM pg_catalog.set_config('request.jwt.claim.session_id',
+  'cccccccc-cccc-4ccc-8ccc-cccccccccccc',true);
+ BEGIN
+  PERFORM allin_private.v2_training_ingest_restriction_source_evidence_candidate(
+   b,'ingested',batch);
+  RAISE EXCEPTION 'Cross-owner batch accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ broken:=pg_catalog.jsonb_set(batch,'{4,unresolvedCount}','1'::jsonb);
+ BEGIN
+  PERFORM allin_private.v2_training_ingest_restriction_source_evidence_candidate(
+   a,'ingested',broken);
+  RAISE EXCEPTION 'Invalid last page unexpectedly ingested';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_training_restriction_source_evidence
+  WHERE user_id=a AND snapshot_version='ingested') THEN
+  RAISE EXCEPTION 'Partial source ledger write survived rollback'; END IF;
+ result:=allin_private.v2_training_ingest_restriction_source_evidence_candidate(
+  a,'ingested',batch);
+ IF result->>'status'<>'review_required' OR
+    result->>'initialCertificationAuthorized'<>'false' OR
+    (SELECT count(*) FROM allin_private.v2_training_restriction_source_evidence
+      WHERE user_id=a AND snapshot_version='ingested')<>5 THEN
+  RAISE EXCEPTION 'Trusted ingestion produced incomplete or certified result'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_training_ingest_restriction_source_evidence_candidate(
+   a,'ingested',batch);
+  RAISE EXCEPTION 'Repeated snapshot replay was accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_training_restriction_certifications
+   WHERE user_id=a) THEN
+  RAISE EXCEPTION 'Ingestion wrongly issued first certification'; END IF;
+END $trusted_ingestion$;
 DO $acl$ BEGIN
  IF has_function_privilege('authenticated',
   'public.v2_training_restriction_write_candidate(uuid,uuid,text,uuid,text,text,bigint)','EXECUTE')
