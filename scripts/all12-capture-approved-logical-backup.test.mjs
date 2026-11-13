@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateCaptureInputs} from './all12-capture-approved-logical-backup.mjs';
+import {validateCaptureInputs,assessCurrentV2TableCoverage} from './all12-capture-approved-logical-backup.mjs';
 
 const env={
  ALL12_CAPTURE_APPROVED:'YES',
@@ -54,4 +54,30 @@ test('source host identity must belong to expected V2 project, never a lookalike
   ...env,PGHOST:'aws-0-us-east-1.pooler.supabase.com',PGUSER:'postgres'
  },approved});
  assert(unscoped.errors.includes('unrecognized_project_bound_endpoint'));
+});
+
+test('live V2 preflight blocks newly deployed or omitted tables before backup',()=>{
+ const approvedTables=[...approved.tables,'public.v2_profile_settings'];
+ assert.deepEqual(assessCurrentV2TableCoverage({
+   actualTables:['public.v2_profiles','public.v2_profile_settings'],
+   approvedTables
+ }),{valid:true,reasons:[]});
+ const unexpected=assessCurrentV2TableCoverage({
+   actualTables:['public.v2_profiles','allin_private.v2_new_private_domain'],
+   approvedTables
+ });
+ assert.equal(unexpected.valid,false);
+ assert(unexpected.reasons.includes('unapproved_live_v2_table:allin_private.v2_new_private_domain'));
+});
+test('live V2 preflight requires core Auth tables and rejects malformed catalog results',()=>{
+ const a=assessCurrentV2TableCoverage({
+   actualTables:['public.v2_profiles'],approvedTables:approved.tables
+ });
+ assert.equal(a.valid,false);
+ assert(a.reasons.includes('missing_core_auth_table:auth.identities'));
+ const malformed=assessCurrentV2TableCoverage({
+   actualTables:['public.v2_profiles','public.v2_profiles'],
+   approvedTables:[...approved.tables,'auth.identities','auth.sessions','auth.refresh_tokens']
+ });
+ assert(malformed.reasons.includes('invalid_live_v2_inventory'));
 });
