@@ -69,6 +69,7 @@ on:
       - 'scripts/verify-v2-usda-foundation-manifest.mjs'
       - 'scripts/verify-v2-usda-foundation-manifest.test.mjs'
       - 'scripts/check-v2-ingredient-writer-candidate.test.cjs'
+      - 'scripts/verify-v2-usda-eight-source-nutrients.py'
       - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
@@ -151,6 +152,7 @@ on:
       - 'scripts/verify-v2-usda-foundation-manifest.mjs'
       - 'scripts/verify-v2-usda-foundation-manifest.test.mjs'
       - 'scripts/check-v2-ingredient-writer-candidate.test.cjs'
+      - 'scripts/verify-v2-usda-eight-source-nutrients.py'
       - 'scripts/check-v2-ci-cost-policy.test.mjs'
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
@@ -213,6 +215,8 @@ jobs:
         run: node --test ../../scripts/verify-v2-usda-foundation-manifest.test.mjs
       - name: Validate canonical ingredient review and source/form safety (no deploy)
         run: node --test ../../scripts/check-v2-ingredient-writer-candidate.test.cjs
+      - name: Check raw USDA eight-food nutrient verifier rejects forged evidence (synthetic, no source download)
+        run: python3 ../../scripts/verify-v2-usda-eight-source-nutrients.py --self-test
       - name: Validate disabled account-deletion worker policy and non-retry execution
         run: |
           node --experimental-strip-types --test ../../supabase/functions/v2-account-deletion-worker/policy.test.mjs ../../supabase/functions/v2-account-deletion-worker/execution.test.mjs
