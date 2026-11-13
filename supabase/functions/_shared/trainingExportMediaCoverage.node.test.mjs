@@ -43,6 +43,8 @@ test('unexpected public or unknown media buckets fail before canonical reads',as
  for(const buckets of [
   [{id:bucket,public:true}],
   [{id:'v2-private-nutrition-photos',public:false}],
+  [{id:'v2-private-community-media',public:false}],
+  [{id:bucket,public:false},{id:'v2-private-community-media',public:false}],
   [{id:bucket,public:false},{id:bucket,public:false}],
  ]){
   const f=fixture({buckets});
