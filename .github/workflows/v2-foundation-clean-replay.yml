@@ -114,6 +114,7 @@ on:
       - 'supabase/functions/_shared/trainingDeletionStorageByteAbsenceReview.mjs'
       - 'supabase/functions/_shared/trainingDeletionStorageByteAbsenceReview.test.mjs'
       - 'scripts/test-all251-food-log-export-projection-local.psql'
+      - 'scripts/test-all251-fuel-canonical-populated-inventory-local.psql'
       - 'scripts/test-v2-account-export-pinned-snapshot-race-local.sh'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-account-export-populated-db-pages.mjs'
@@ -646,6 +647,19 @@ jobs:
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
             docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f "/tmp/$(basename "$file")"
           done
+          # Real canonical ALL-251 inventory, no mocked allowlist: install the
+          # complete ALL-247 owner quartet only inside the disposable test
+          # transaction and prove populated 43+4 sources stay scoped and
+          # complete=false. Its DDL, records and privileges all ROLLBACK.
+          for file in \
+            docs/architecture/candidates/ALL-247-food-log-first-writer.review.sql \
+            docs/architecture/candidates/ALL-247-food-log-lifecycle.review.sql \
+            docs/architecture/candidates/ALL-247-hydration-manual-lifecycle.review.sql \
+            scripts/test-all251-fuel-canonical-populated-inventory-local.psql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+          done
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f /tmp/test-all251-fuel-canonical-populated-inventory-local.psql
           # Exercise the ACTUAL SQL post projection with A/B synthetic users.
           # Its test-only inventory override lives inside BEGIN/ROLLBACK.
           docker cp docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql "$db_container:/tmp/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql"
