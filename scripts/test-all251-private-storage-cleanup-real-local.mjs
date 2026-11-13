@@ -38,6 +38,7 @@ async function storage(method,path,body,contentType='application/json') {
 }
 let created=false;
 const checkpoints=[];
+const durablePlanFixture=new Map();
 try {
  const before=await transport.listBucketCatalog();
  assert(!before.some(b=>b.id===bucket),'Refuse to overwrite existing bucket');
@@ -57,7 +58,17 @@ try {
  const opts={
   ownerId:A,requestId:R,approvedBucketIds:[bucket],
   ...transport,
-  recordCheckpoint:async row=>{checkpoints.push(row);return {persisted:true};},
+  recordCheckpoint:async row=>{
+   const idx=checkpoints.findIndex(c=>c.path===row.path&&c.bucketId===row.bucketId);
+   if(idx<0)checkpoints.push(row);else checkpoints[idx]=row;
+   return {persisted:true};
+  },
+  // TEST-ONLY Map, not a durable DB plan or approved deletion implementation.
+  persistAndLoadObjectPlan:async({ownerId,requestId,bucketId,observedPaths})=>{
+   const id=ownerId+':'+requestId+':'+bucketId;
+   if(!durablePlanFixture.has(id))durablePlanFixture.set(id,[...observedPaths]);
+   return {ownerId,requestId,bucketId,durable:true,paths:[...durablePlanFixture.get(id)]};
+  },
   // Local fixture readback, NOT proof of durable database persistence.
   readCheckpoint:async({ownerId,requestId,bucketId,path})=>checkpoints.find(row=>
    row.ownerId===ownerId&&row.requestId===requestId&&row.bucketId===bucketId&&row.path===path),
@@ -75,7 +86,7 @@ try {
  assert.ok(bAfter.ok,'Other owner object remains');
  assert.equal(hash(Buffer.from(await bAfter.arrayBuffer())),hash(files.get(b1)));
  const second=await reviewPrivateStorageCleanup(opts);
- assert.equal(second.verifiedAbsent,0,'Idempotent cleanup');
+ assert.equal(second.verifiedAbsent,2,'Idempotent plan replay');
  assert.equal(checkpoints.length,2,'No duplicated checkpoints');
  const denied={...opts,assertOwnerWritesQuiesced:async()=>false};
  await assert.rejects(reviewPrivateStorageCleanup(denied),/not authoritatively quiesced/);
