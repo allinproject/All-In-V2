@@ -217,7 +217,7 @@ BEGIN
  INSERT INTO public.v2_training_athlete_restrictions
   (id,user_id,category,subject,source,status,revision,created_at,updated_at)
  SELECT rule,a,'exercise','lying leg curl','explicit_user','retired',3,
-  pg_catalog.now(),c.certified_at
+  pg_catalog.now()-interval '1 minute',c.certified_at
  FROM allin_private.v2_training_restriction_certifications c WHERE c.user_id=a;
  -- The original record's created_at is part of the fingerprint; a reinsert
  -- cannot reproduce it, so this synthetic restore must remain blocked.
