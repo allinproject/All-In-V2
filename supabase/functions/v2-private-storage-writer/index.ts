@@ -1,3 +1,8 @@
+// WARNING: Hosted Supabase Edge secrets are PROJECT-WIDE, not function-scoped.
+// A signer stored in Supabase Edge Secrets can also be read by other Edge
+// functions in the same project. It improves accidental caller separation,
+// but is NOT independent cryptographic custody or writer-only enforcement.
+// Never set ALLIN_PRIVATE_WRITER_ACCEPTED=true on that basis alone.
 // ALL-251 STAGED CANDIDATE ONLY. Do not deploy until approved hosted race
 // tests, privileged credential isolation and writer inventory are complete.
 // Clients authenticate with their JWT; only server uses service-role Storage.
