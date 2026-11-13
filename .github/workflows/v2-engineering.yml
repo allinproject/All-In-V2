@@ -59,6 +59,8 @@ jobs:
         run: |
           node ../../scripts/check-v2-founder-ios-build.mjs --config-only
           node --test ../../scripts/check-v2-founder-ios-build.test.mjs
+      - name: Validate staging-only mobile project guard (no network or credentials)
+        run: node --test src/lib/coachStagingBuildGuard.test.mjs
       - name: Clean dependency install
         run: npm ci --no-audit --no-fund
       - name: Test V2 source lint rejection cases
