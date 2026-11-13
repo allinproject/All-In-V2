@@ -13,7 +13,7 @@ export const TRAINING_RESTRICTION_SOURCES=Object.freeze([
  'current_restrictions','approved_plans','historical_records',
  'imported_records','restored_records',
 ]);
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HEX32=/^[0-9a-f]{32}$/;
 const keySort=(value)=>{
  if(value instanceof Date) {
