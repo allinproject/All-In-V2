@@ -26,7 +26,7 @@ jobs:
         run: node --test scripts/test-v2-training-activity-migration-parity.mjs
 
   local-supabase-migration-replay:
-    name: Apply five review migrations to disposable local Supabase (no deploy)
+    name: Apply six review migrations to disposable local Supabase (no deploy)
     runs-on: ubuntu-latest
     timeout-minutes: 18
     env:
@@ -69,16 +69,16 @@ jobs:
                   AND NOT c.relrowsecurity
               ) THEN RAISE EXCEPTION 'Canonical owner RLS disabled'; END IF;
               IF pg_catalog.has_function_privilege('anon','public.v2_training_day_read_candidate(uuid,date)','EXECUTE')
-                OR pg_catalog.has_function_privilege('authenticated','public.v2_training_day_read_candidate(uuid,date)','EXECUTE')
+                OR NOT pg_catalog.has_function_privilege('authenticated','public.v2_training_day_read_candidate(uuid,date)','EXECUTE')
                 OR pg_catalog.has_function_privilege('anon','public.v2_completed_activity_detail_candidate(uuid,uuid)','EXECUTE')
-                OR pg_catalog.has_function_privilege('authenticated','public.v2_completed_activity_detail_candidate(uuid,uuid)','EXECUTE')
-              THEN RAISE EXCEPTION 'Review-only reader prematurely executable by client'; END IF;
-              RAISE NOTICE 'PASS ALL-222/243/246: actual versioned migration schema, RLS and denied client reader grants';
+                OR NOT pg_catalog.has_function_privilege('authenticated','public.v2_completed_activity_detail_candidate(uuid,uuid)','EXECUTE')
+              THEN RAISE EXCEPTION 'Reader grant not limited to authenticated owner-read functions'; END IF;
+              RAISE NOTICE 'PASS ALL-222/243/246: actual versioned migration schema, RLS, authenticated readers and denied anon';
             END \$assert\$;"
           docker exec "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc "
             SELECT count(*) FROM supabase_migrations.schema_migrations
             WHERE version IN ('20261113035500','20261113035501','20261113035502',
-              '20261113035503','20261113035504');" | grep -qx '5'
+              '20261113035503','20261113035504','20261113035505');" | grep -qx '6'
       - name: Audit entire canonical graph and ALL-251 account lifecycle gates
         shell: bash
         run: |
@@ -123,7 +123,11 @@ jobs:
             LOOP
               total_functions := total_functions + 1;
               IF pg_catalog.has_function_privilege('anon',row.oid,'EXECUTE') OR
-                 pg_catalog.has_function_privilege('authenticated',row.oid,'EXECUTE')
+                 (pg_catalog.has_function_privilege('authenticated',row.oid,'EXECUTE')
+                  AND NOT (
+                   row.nspname='public' AND row.proname IN
+                   ('v2_training_day_read_candidate','v2_completed_activity_detail_candidate')
+                  ))
               THEN
                 RAISE EXCEPTION 'Unapproved function grant: %.%',row.nspname,row.proname;
               END IF;
@@ -156,7 +160,7 @@ jobs:
             ) THEN
               RAISE EXCEPTION 'ALL-251 direct owner Auth cascade missing';
             END IF;
-            RAISE NOTICE 'PASS release review: % RLS owner tables, % denied client functions, export and Auth cascade gates',total_tables,total_functions;
+            RAISE NOTICE 'PASS release review: % RLS owner tables, % guarded client functions, export and Auth cascade gates',total_tables,total_functions;
           END $audit$;
           SQL
       - name: Exercise both authenticated owner readers with populated two-athlete fixtures
