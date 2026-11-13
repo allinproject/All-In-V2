@@ -258,3 +258,46 @@ The successfully green local synthetic recovery suite is retained and must **not
 be repeated solely to satisfy missing real-source operational evidence.
 No new billable project, remote restore, production data mutation, or deployment
 is authorized by this section.
+
+
+## 2026-11-13 — Operator offline source-artifact evidence collection
+
+The existing encrypted source archive remains on the founder's own machine;
+connected ChatGPT tools do not have access to that volume or the local Docker
+engine. The read-only verifier in
+\`scripts/all12-verify-real-source-offline-target.mjs\` does not connect to
+Supabase, create or delete containers, restore data or modify a database. It
+requires the specifically named existing Docker container
+\`all12-scoped-restore-20261112\`, network mode \`none\`, matching archive
+hash/16-table TOC and one refresh-token sequence. The target DB must contain
+the exact *operator-reported empty real-source* row counts: one disabled
+deletion-processor configuration row and 0 in the remaining 15 scoped tables.
+Use \`postgres\` only if it is the original real-source restore database,
+not the separate synthetic two-athlete test DBs.
+
+On the founder's Windows PC (from the current ALL-IN V2 checkout, with the
+encrypted V: volume unlocked), this is a **local operator action**:
+
+~~~powershell
+git pull --ff-only origin integration/v2-foundation
+$m = Get-ChildItem 'V:\ALL-12-Recovery\*.capture.json' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $m) { throw 'No local ALL-12 capture manifest' }
+$a = $m.FullName -replace '\.capture\.json$', '.custom'
+node scripts/all12-verify-real-source-offline-target.mjs --archive "$a" --capture "$($m.FullName)" --database postgres
+~~~
+
+Do not run the command if the selected capture manifest is not the reviewed
+source archive, the offline container is not the *real-source* restore, or
+the working branch contains uncommitted local changes that need preservation.
+Never paste private archive contents, local connection credentials or secrets.
+A local read-only output report may be redacted before sharing its counts,
+hash and statuses. The command intentionally fails if prerequisites do not
+match. This is not an authorization to alter/initialize the local container.
+
+A successful output is still only offline evidence. Final **independent logical
+operational** acceptance separately requires exact source-at-cutoff digests
+and schema/grants comparison, independent Auth/Storage configuration and
+service checks, proven pre-import outbound isolation, independently measured
+RPO/RTO, archive retention/cleanup, and explicit founder acceptance.
+Do not claim those gates passed from the read-only report, operator console
+logs, synthetic CI or source-current observations alone.
