@@ -24,6 +24,7 @@ assert(/^sb_secret_[\w-]+$/.test(privileged??''),'Protected temporary staging se
 assert(/^sb_publishable_[\w-]+$/.test(publishable??''),'Approved staging publishable key required');
 
 const owners=[],objects=new Set(),cleanupIssues=[],outcomes=[];
+const tusSessions=new Set();
 let a=null,b=null;
 let signerToken=null,signedPath=null;
 const password=randomUUID()+'Aa!9';
@@ -63,6 +64,14 @@ async function createOwner(){
  return {id:user.id,jwt:data.access_token};
 }
 async function cleanup(){
+ for(const location of tusSessions){
+  try{
+   const r=await request(location,{method:'DELETE',origin:DIRECT,
+    headers:{'tus-resumable':'1.0.0'}});
+   if(![200,202,204,404,410].includes(r.status))
+    cleanupIssues.push('tus-termination-unconfirmed:'+r.status);
+  }catch{cleanupIssues.push('tus-termination-exception');}
+ }
  for(const p of [...objects].reverse()){
   try{
    const r=await request(API+'object/'+bucketPath(p),{method:'DELETE'});
@@ -114,6 +123,15 @@ async function deletionRequest(owner,otherOwner){
  assert.equal(res.status,200,'Owner-scoped synthetic deletion request denied');
  assert.equal(await res.json(),true,'Synthetic deletion request not confirmed');
 }
+function resumableLocation(response){
+ const raw=response.headers.get('location');
+ if(!raw)return null;
+ const url=new URL(raw,DIRECT);
+ assert.equal(url.origin,DIRECT,'Cross-origin TUS session forbidden');
+ const result=url.pathname+url.search;
+ tusSessions.add(result);
+ return result;
+}
 async function tusCreate(p,{key=privileged,jwt=null}={}){
  const m=[['bucketName',BUCKET],['objectName',p],['contentType','application/octet-stream']]
   .map(([k,v])=>k+' '+Buffer.from(v).toString('base64')).join(',');
@@ -144,14 +162,38 @@ try{
   if(typeof signerToken!=='string'||!signerToken.length)
    mark('signed upload token format','FAIL','mint returned no token');
   else mark('pre-deletion signed URL minted','OBSERVED');
- }else mark('pre-deletion signed URL minting',denied(minted.status)?'PASS':'FAIL','HTTP '+minted.status);
+ }else mark('pre-deletion signed URL minting',denied(minted.status)?'RESTRICTED':'FAIL','HTTP '+minted.status+' (no delayed token)');
 
+ const pendingTusPath=addObject(a.id,'tus-predelete-pending');
+ const pendingTus=await tusCreate(pendingTusPath);
+ let pendingTusLocation=null;
+ if([201,204].includes(pendingTus.status)){
+  pendingTusLocation=resumableLocation(pendingTus);
+  if(pendingTusLocation)mark('pre-deletion TUS session created','OBSERVED');
+  else{
+   mark('pre-deletion TUS session created','FAIL','No terminable Location');
+   cleanupIssues.push('pre-deletion-tus-without-location');
+  }
+ }else mark('pre-deletion TUS session creation',
+  denied(pendingTus.status)?'RESTRICTED':'FAIL','HTTP '+pendingTus.status);
+ const preRestPath=addObject(a.id,'privileged-rest-before-delete');
+ const preRest=await upload(preRestPath);
+ mark('pre-deletion privileged REST upload baseline',
+  preRest.ok?'OBSERVED':denied(preRest.status)?'RESTRICTED':'FAIL','HTTP '+preRest.status);
  await deletionRequest(a,b);
  mark('canonical synthetic deletion request','PASS');
+ if(pendingTusLocation){
+  const result=await request(pendingTusLocation,{method:'PATCH',origin:DIRECT,
+   headers:{'tus-resumable':'1.0.0','upload-offset':'0',
+    'content-type':'application/offset+octet-stream'},body:randomBytes(50)});
+  mark('delayed pre-deletion TUS completion',denied(result.status)?'PASS':'FAIL','HTTP '+result.status);
+ }else mark('delayed pre-deletion TUS completion','UNTESTED','no pre-deletion session');
 
  const restPath=addObject(a.id,'privileged-rest-late');
  const rest=await upload(restPath);
- mark('post-deletion privileged REST POST',denied(rest.status)?'PASS':'FAIL','HTTP '+rest.status);
+ mark('post-deletion privileged REST POST',
+  denied(rest.status)?(preRest.ok?'PASS':'RESTRICTED'):'FAIL',
+  'HTTP '+rest.status+(preRest.ok?' (baseline allowed)':' (baseline also denied)'));
 
  const ordinaryPath=addObject(a.id,'owner-jwt-rest-late');
  const ordinary=await upload(ordinaryPath,{key:publishable,jwt:a.jwt});
@@ -171,24 +213,16 @@ try{
  // collected without verified termination support.
  const tusPath=addObject(a.id,'tus-late');
  const tus=await tusCreate(tusPath);
- mark('post-deletion TUS resumable creation',denied(tus.status)?'PASS':'FAIL','HTTP '+tus.status);
+ mark('post-deletion TUS resumable creation',
+  denied(tus.status)?([201,204].includes(pendingTus.status)?'PASS':'RESTRICTED'):'FAIL',
+  'HTTP '+tus.status);
  if([201,204].includes(tus.status)){
-  const location=tus.headers.get('location');
+  const location=resumableLocation(tus);
   if(location){
-   const target=new URL(location,DIRECT);
-   assert.equal(target.origin,DIRECT,'Cross-origin TUS Location forbidden');
-   try{
-    const result=await request(target.pathname+target.search,{method:'PATCH',origin:DIRECT,
-     headers:{'tus-resumable':'1.0.0','upload-offset':'0',
-      'content-type':'application/offset+octet-stream'},
-     body:randomBytes(50)});
-    mark('TUS post-deletion completion',denied(result.status)?'PASS':'FAIL','HTTP '+result.status);
-   }finally{
-    const stopped=await request(target.pathname+target.search,{method:'DELETE',origin:DIRECT,
-     headers:{'tus-resumable':'1.0.0'}});
-    if(![200,202,204,404,410].includes(stopped.status))
-     cleanupIssues.push('TUS-session-unconfirmed-termination:'+stopped.status);
-   }
+   const result=await request(location,{method:'PATCH',origin:DIRECT,
+    headers:{'tus-resumable':'1.0.0','upload-offset':'0',
+     'content-type':'application/offset+octet-stream'},body:randomBytes(50)});
+   mark('TUS post-deletion completion',denied(result.status)?'PASS':'FAIL','HTTP '+result.status);
   }else{
    mark('TUS completion','UNTESTED','creation had no Location header');
    cleanupIssues.push('TUS-session-created-without-terminable-location');
@@ -198,7 +232,9 @@ try{
  // One user must not gain rights to the other owner's deleted content.
  const bPath=addObject(b.id,'independent-owner');
  const bUser=await upload(bPath,{key:publishable,jwt:b.jwt});
- mark('independent B user-scoped REST',bUser.status===200||bUser.status===201?'OBSERVED':denied(bUser.status)?'RESTRICTED':'FAIL','HTTP '+bUser.status);
+ mark('independent B user-scoped REST',
+  bUser.status===200||bUser.status===201?'OBSERVED':denied(bUser.status)?'UNTESTED':'FAIL',
+  'HTTP '+bUser.status+(denied(bUser.status)?' (no positive control)':''));
 
  for(const p of objects){
   const r=await read(p);
@@ -212,6 +248,6 @@ try{
 if(cleanupIssues.length)mark('cleanup','FAIL',cleanupIssues.join(','));
 else mark('cleanup','PASS','all synthetic object paths checked and disposable users removed');
 const failed=outcomes.filter(x=>x.status==='FAIL');
-const untested=outcomes.filter(x=>x.status==='UNTESTED');
+const untested=outcomes.filter(x=>x.status==='UNTESTED'||x.status==='RESTRICTED');
 process.stdout.write('ALL-251 real HTTP route outcomes: '+outcomes.length+'; failures='+failed.length+'; not-proven='+untested.length+'\n');
 if(failed.length||untested.length)throw Error('ALL-251 hosted Storage exclusive security acceptance remains BLOCKED');
