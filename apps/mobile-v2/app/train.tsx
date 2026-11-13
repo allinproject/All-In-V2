@@ -125,6 +125,20 @@ function TrainingCalendarOwnerScreen() {
         </View>
         {activeTab === 'calendar' ? (
           <>
+        <View style={styles.compactTabs} accessibilityRole="tablist">
+          {([['month', 'Month'], ['week', 'Week']] as const).map(([choice, label]) => (
+            <Pressable key={choice} accessibilityRole="tab"
+              accessibilityState={{ selected: level === choice }}
+              accessibilityLabel={label + ' calendar'}
+              onPress={() => {
+                if (choice === 'month') setMonth(firstOfMonth(day) ?? month);
+                setLevel(choice);
+              }}
+              style={[styles.compactTab, level === choice && styles.activeCompactTab]}>
+              <Text style={[styles.compactTabText, level === choice && styles.activeCompactTabText]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
         {level === 'month' ? (
           <>
             <View style={styles.header}>
@@ -162,9 +176,6 @@ function TrainingCalendarOwnerScreen() {
           </>
         ) : (
           <>
-            <Pressable accessibilityRole="button" onPress={() => setLevel('month')} style={styles.back}>
-              <Text style={styles.muted}>‹ Month view</Text>
-            </Pressable>
             <View style={styles.header}>
               <Pressable accessibilityRole="button" accessibilityLabel="Previous week"
                 onPress={() => changeWeek(-1)} style={styles.arrow}><Text style={styles.white}>‹</Text></Pressable>
