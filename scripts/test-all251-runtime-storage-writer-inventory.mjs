@@ -66,6 +66,7 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   'v2-all251-temporary-auth-smoke.yml',
   'v2-all251-temporary-hosted-storage.yml',
   'v2-all251-hosted-privileged-writer.yml',
+  'v2-all251-hosted-http-route-matrix.yml',
  ]);
  const seen=new Set();
  for(const file of readdirSync(resolve(root,'.github/workflows'))){
@@ -82,6 +83,18 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
  }
  assert.deepEqual([...seen].sort(),[...approved].sort(),
   'Protected privileged Storage credential workflow inventory changed');
+ const matrix=readFileSync(resolve(root,
+  '.github/workflows/v2-all251-hosted-http-route-matrix.yml'),'utf8');
+ assert(matrix.includes('workflow_dispatch:') &&
+  matrix.includes("github.ref == 'refs/heads/integration/v2-foundation'") &&
+  matrix.includes('environment: all251-temporary-staging') &&
+  matrix.includes('needs: offline-script-syntax-only') &&
+  matrix.includes('scripts/test-all251-hosted-storage-http-routes.mjs'),
+  'New Storage HTTP probe needs protected review and exact staging scope');
+ assert(matrix.includes('- .github/workflows/v2-all251-hosted-http-route-matrix.yml') &&
+  matrix.includes('- scripts/test-all251-hosted-storage-http-routes.mjs') &&
+  !matrix.includes('pull_request:'),
+  'New privileged Storage probe push scope must be narrow and no PR secrets');
  const rawProbe=readFileSync(resolve(root,
   '.github/workflows/v2-all251-hosted-privileged-writer.yml'),'utf8');
  assert(rawProbe.includes('workflow_dispatch:'),
