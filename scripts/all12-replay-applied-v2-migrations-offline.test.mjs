@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
 import {dirname,resolve,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {quarantineCron,validateInventory} from './all12-replay-applied-v2-migrations-offline.mjs';
+import {canonicalSql,quarantineCron,validateInventory} from './all12-replay-applied-v2-migrations-offline.mjs';
 const dir=resolve(dirname(fileURLToPath(import.meta.url)),'../supabase/migrations');
 const read=n=>readFileSync(join(dir,n),'utf8');
 test('all 18 canonical applied migrations pass immutable digest provenance',()=>{
@@ -27,4 +27,14 @@ test('migration ledger rejects changes, absent migrations and unknown historical
 test('cron quarantine refuses changed scheduler structure',()=>{
  const original=read('20261110124420_v2_provider_cache_cron_schedule.sql');
  assert.throws(()=>quarantineCron(original.replace('select cron.schedule(', 'select pg_catalog.now(')));
+});
+
+test('Windows CRLF checkout normalizes to immutable canonical LF hashes without accepting SQL drift',()=>{
+ const names=readdirSync(dir);
+ const onWindows=n=>read(n).replace(/\n/g,'\r\n');
+ assert.equal(validateInventory(names,onWindows).length,18);
+ assert.equal(canonicalSql('a\r\nb\r\n'),'a\nb\n');
+ assert.throws(()=>validateInventory(names,n=>onWindows(n)+(n===names.find(x=>x.startsWith('20261110021548'))?'-- malicious edit':''))
+ );
+ assert.throws(()=>canonicalSql('bad\rending'));
 });
