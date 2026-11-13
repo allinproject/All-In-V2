@@ -70,6 +70,13 @@ BEGIN
  FROM allin_private.v2_training_restriction_certifications
  WHERE user_id=v_user FOR UPDATE;
  v_current:=coalesce(v_current,0);
+ -- A first-time explicit mutation cannot certify the athlete's ENTIRE
+ -- restriction inventory. The Training owner must reconcile historical and
+ -- current restriction sources before issuing the first certification.
+ -- Otherwise a new single restriction would conceal previously stored ones.
+ IF v_current=0 THEN
+  RAISE EXCEPTION 'Trusted Training inventory reconciliation required'
+   USING ERRCODE='42501'; END IF;
  IF p_expected_revision<>v_current THEN
   RAISE EXCEPTION 'Restriction revision changed; reload and retry'
    USING ERRCODE='40001'; END IF;
