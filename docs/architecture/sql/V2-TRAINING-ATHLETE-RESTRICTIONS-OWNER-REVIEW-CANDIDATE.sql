@@ -135,6 +135,10 @@ CREATE TABLE allin_private.v2_training_restriction_source_evidence (
    'imported_records','restored_records')),
  evidence_ref text NOT NULL CHECK(length(btrim(evidence_ref)) BETWEEN 1 AND 200),
  source_digest text NOT NULL CHECK(source_digest ~ '^[0-9a-f]{64}$'),
+ -- A trusted recorder must bind every source row to the exact full canonical
+ -- Training inventory (including retired records) observed at review time.
+ canonical_inventory_digest text NOT NULL
+  CHECK(canonical_inventory_digest ~ '^[0-9a-f]{32}$'),
  inspected_count bigint NOT NULL CHECK(inspected_count>=0),
  reconciled_count bigint NOT NULL CHECK(reconciled_count>=0),
  unresolved_count bigint NOT NULL CHECK(unresolved_count>=0),
@@ -156,7 +160,7 @@ CREATE FUNCTION allin_private.v2_training_restriction_source_coverage_review(
  p_owner uuid,p_snapshot_version text
 ) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER
  SET search_path='' AS $coverage$
-DECLARE v_count bigint; v_digest text;
+DECLARE v_count bigint; v_digest text; v_bound_digest text; v_digest_variants bigint;
 BEGIN
  IF p_owner IS NULL OR p_snapshot_version IS NULL OR
     length(btrim(p_snapshot_version)) NOT BETWEEN 1 AND 160 OR
@@ -164,13 +168,20 @@ BEGIN
     NOT EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id=p_owner)
  THEN RAISE EXCEPTION 'Restriction source owner/snapshot missing'
   USING ERRCODE='42501'; END IF;
- SELECT count(*) INTO v_count
+ SELECT count(*),count(DISTINCT e.canonical_inventory_digest),
+        min(e.canonical_inventory_digest)
+ INTO v_count,v_digest_variants,v_bound_digest
  FROM allin_private.v2_training_restriction_source_evidence e
  WHERE e.user_id=p_owner AND e.snapshot_version=p_snapshot_version;
  IF v_count<>5 THEN
   RAISE EXCEPTION 'Incomplete Training restriction source coverage'
    USING ERRCODE='42501'; END IF;
  v_digest:=allin_private.v2_training_restriction_inventory_digest_candidate(p_owner);
+ -- Five well-formed rows alone cannot attest a stale or partially restored
+ -- canonical inventory. This is consistency only, not source authenticity.
+ IF v_digest_variants<>1 OR v_bound_digest IS DISTINCT FROM v_digest THEN
+  RAISE EXCEPTION 'Restriction source snapshot no longer matches canonical inventory'
+   USING ERRCODE='40001'; END IF;
  RETURN pg_catalog.jsonb_build_object('ownerId',p_owner,
   'snapshotVersion',p_snapshot_version,'sourceRowsReviewed',v_count,
   'recordedInventoryDigest',v_digest,'status','review_required',
