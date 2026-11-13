@@ -222,3 +222,23 @@ test('populated source cannot pass with empty-data fallback',()=>{
  assert.ok(r.missing.includes('authDatabaseAndSignInRecovered'));
  assert.ok(r.missing.includes('privateStorageInventoryAndBytesRecovered'));
 });
+
+test('Training restriction source, certification and action receipts remain explicit pending recovery gates',()=>{
+ const domain=recoveryDomains.find(d=>d.name==='training_restrictions');
+ assert.equal(domain?.kind,'pending_schema');
+ assert.deepEqual(domain.tables,[
+  'public.v2_training_athlete_restrictions',
+  'allin_private.v2_training_restriction_certifications',
+  'allin_private.v2_training_restriction_action_receipts'
+ ]);
+ assert.deepEqual(findUntrackedRecoveryTables(domain.tables),[]);
+ const tables=recoveryDomains.flatMap(d=>d.tables);
+ const coverage=assessRecoveryCoverage({presentTables:tables,verifiedTables:tables,
+  verifiedExternal:['private_media','auth_configuration']});
+ assert.equal(coverage.complete,false);
+ assert.equal(coverage.domains.find(d=>d.name==='training_restrictions').status,'unverified');
+ const absent=assessRecoveryCoverage({presentTables:tables.filter(t=>t!=='allin_private.v2_training_restriction_certifications'),
+  verifiedTables:tables,verifiedExternal:['private_media','auth_configuration']});
+ assert.equal(absent.complete,false);
+ assert.ok(absent.domains.find(d=>d.name==='training_restrictions').absent.includes('allin_private.v2_training_restriction_certifications'));
+});
