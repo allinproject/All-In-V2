@@ -7,7 +7,7 @@ const env={
  ALL12_SOURCE_PROJECT_REF:'xarhuczrtzuiljmtdaeu',
  ALL12_SECURE_BACKUP_DIRECTORY_CONFIRMED:'YES',
  ALL12_BACKUP_DIRECTORY:'/tmp/approved-encrypted-volume',
- PGHOST:'db.example.invalid',PGUSER:'approved_readonly',PGDATABASE:'postgres',
+ PGHOST:'db.xarhuczrtzuiljmtdaeu.supabase.co',PGUSER:'approved_readonly',PGDATABASE:'postgres',
  PGPASSWORD:'dummy-test-only',PGSSLMODE:'verify-full'
 };
 const approved={
@@ -41,4 +41,17 @@ test('requires independent approved exact table list; blocks cron/vault and dupl
  }
  const missing=validateCaptureInputs({env,approved:{...approved,approvedForLogicalBackup:false}});
  assert(missing.errors.includes('table_inventory_not_approved'));
+});
+
+test('source host identity must belong to expected V2 project, never a lookalike',()=>{
+ const wrong=validateCaptureInputs({env:{...env,PGHOST:'db.impulecgsgaruvniuttc.supabase.co'},approved});
+ assert(wrong.errors.includes('unrecognized_project_bound_endpoint'));
+ const pooler=validateCaptureInputs({env:{
+  ...env,PGHOST:'aws-0-us-east-1.pooler.supabase.com',PGUSER:'postgres.xarhuczrtzuiljmtdaeu'
+ },approved});
+ assert.equal(pooler.valid,true);
+ const unscoped=validateCaptureInputs({env:{
+  ...env,PGHOST:'aws-0-us-east-1.pooler.supabase.com',PGUSER:'postgres'
+ },approved});
+ assert(unscoped.errors.includes('unrecognized_project_bound_endpoint'));
 });
