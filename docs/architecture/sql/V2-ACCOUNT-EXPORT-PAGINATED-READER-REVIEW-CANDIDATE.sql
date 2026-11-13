@@ -38,6 +38,7 @@ BEGIN
     ('public','v2_goals'),
     ('public','v2_goal_revisions'),
     ('public','v2_goal_revision_behavior_targets'),
+    ('public','v2_goal_event_edition_links'),
     ('public','v2_event_group_memberships'),
     ('public','v2_event_participations'),
     ('allin_private','v2_health_considerations'),
@@ -75,7 +76,7 @@ BEGIN
     -- their four owner tables are not registered until ALL-222/247/251
     -- approve the shared canonical export source and privacy contract.
     -- See ALL-247-ALL-251-fuel-privacy-preflight.review.sql:
-    -- export_registered=false; the active 42-table inventory must fail
+    -- export_registered=false; the active owner-table inventory must fail
     -- closed if any of those candidate owner tables are introduced.
  ) AS reviewed(schema_name,table_name);
  SELECT pg_catalog.array_agg(n.nspname||'.'||c.relname ORDER BY n.nspname,c.relname)
