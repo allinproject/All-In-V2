@@ -43,6 +43,8 @@ jobs:
           set -euo pipefail
           case "$(supabase --version)" in 2.*) ;; *) exit 1 ;; esac
           node scripts/check-v2-applied-migration-integrity.mjs
+          # Isolate local Supabase from other runner services using default 5432x ports.
+          printf '\n[api]\nport = 55421\n[db]\nport = 55422\nshadow_port = 55420\n' >> supabase/config.toml
           supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor
           supabase db reset --local --no-seed
           container="$(docker ps --filter name=supabase_db_ --format '{{.ID}}' | head -n 1)"
