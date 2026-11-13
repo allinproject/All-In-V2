@@ -359,3 +359,23 @@ The signing secret must be generated out-of-band with a CSPRNG, placed in
 
 No signer key, migration or function was applied to hosted staging or
 production as part of this implementation slice.
+
+
+## 2026-11-13 — Provider-boundary decision review (not acceptance)
+
+Rechecked the integration branch, temporary staging (read-only), and Supabase Storage documentation. **Provider-level exclusivity is not achieved in the shared V2 project.** A hosted direct privileged upload after deletion was already recorded as successful. Project-wide service-role secrets and privileged S3 key pairs are not narrowed by application HMAC leases or owner RLS; project-wide Edge secrets do not establish independent signing-key custody. The metadata fence remains defense in depth, not a provider-level byte-write guarantee.
+
+### Separate security boundary required for strict release assurance
+
+Preferred architecture: isolate the protected private-file provider credentials so that **only the existing canonical ALL-251 writer and cleanup authority** can access the private bytes. Continue to own Auth, account identity, request/lease/manifest/checkpoint, exports and deletion in their existing V2 systems. Extend the existing Storage transport adapter, not a new owner ledger. A dedicated Supabase project or separately secured object store is a candidate, **not approved or provisioned**. Do not repurpose the V1 'All in' project or canonical V2 production, create potentially billable services, rotate active keys, move files, or reset shared staging without separate cost/recovery/architecture acceptance.
+
+Provider-level release tests must prove each of these facts using real independent credentials:
+1. A V2 project-wide secret, unapproved privileged REST, unrelated service credentials, privileged S3, old signed upload URLs and delayed TUS/multipart completion cannot upload or overwrite protected A files, including after A's deletion freeze.
+2. The narrowly trusted canonical writer uploads with byte readback before freeze, but cannot initiate or complete an A upload afterward; B remains independent.
+3. In-flight operations have actually drained or become uncompletable, and no unresolved lease is auto-expired or independently settled by an untrusted credential.
+4. Every approved bucket and object is inventoried, every actual provider byte deleted with independent absence verification, and durable owner/request-specific checkpoints and recovery remain intact.
+5. Independent credential-custody inventory, private audit evidence, IAM/key rotation and provider backup/restore precede any operational readiness approval.
+
+**Current project inventory:** Legacy V1, canonical V2, and active temporary staging. None is an approved separate private-media provider. Latest read-only temporary staging inspection: two buckets, zero objects, zero open leases, three enabled Storage fences, deletion processor OFF, no operational readiness RPC. The old unsigned service-role lease grants are currently absent there, but that is not the same as provider-wide REST/S3/TUS exclusivity.
+
+**Release decision: BLOCKED.** Existing completePrivateStorage=false and uploadBarrierEnforced=false, default-OFF writer and deletion worker must remain unchanged. The new canonical runtime-inventory regression test checks these invariants; it is deliberately not a hosted bypass acceptance test. The next external prerequisite is explicit approval of a separate credential/provider boundary and its price/recovery plan. Only then is a protected multi-protocol hosted negative test meaningful.
