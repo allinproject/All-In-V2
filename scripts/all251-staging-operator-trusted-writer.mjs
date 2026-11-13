@@ -179,7 +179,7 @@ async function exercise(){
   },pub,ownerA.jwt);
   assert.equal(deleteResult.error,null,'Synthetic owner deletion request denied');
   assert.equal(deleteResult.data,true);
-  await assert.rejects(write(ownerA,'A-after'),/lease unavailable/,
+  await assert.rejects(write(ownerA,'A-after'),/Durable privileged Storage write lease unavailable/,
    'Deleted owner unexpectedly obtained a writer lease');
   await write(ownerB,'B-after');
   console.log('PASS post-request A denied while B still uploads with attested writer');
