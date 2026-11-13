@@ -82,6 +82,10 @@ DECLARE
 BEGIN
   IF v_actor::text IN ('anon','authenticated','service_role','authenticator','postgres')
     OR NOT pg_has_role(v_actor::text,'allin_v2_ingredient_reviewer','member')
+    -- The issuer and reviewer must be different independently authenticated
+    -- DB principals. An accidental dual-membership grant cannot self-attest.
+    OR COALESCE(to_regrole('allin_v2_ingredient_source_releaser') IS NOT NULL
+       AND pg_has_role(v_actor::text,'allin_v2_ingredient_source_releaser','member'),false)
     OR NOT EXISTS (SELECT 1 FROM allin_private.v2_ingredient_review_operators o
        WHERE o.login_role=v_actor AND o.enabled=true
          AND o.identity_issuer IS NOT NULL AND o.identity_subject IS NOT NULL
