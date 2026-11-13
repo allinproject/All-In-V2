@@ -226,3 +226,158 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_attest_ingredient_energy(uuid,integer
 -- IMPORTANT: The existing v2_review_ingredient_profile_status() keeps its
 -- unconditional calculation_ready denial. An attestation is necessary but
 -- not a sufficient publication authorization. No operator is enrolled here.
+
+-- ALL-228 independently authorized source-release capability.
+-- CANDIDATE ONLY; NEVER deploy without ALL-222/ALL-12 recovery and release
+-- acceptance. This is a distinct role from the canonical reviewer/publisher.
+-- An actual source officer must verify the original USDA archive off-database
+-- with the pinned ZIP tool before issuing this decision; PostgreSQL does not
+-- have access to those original ZIP bytes and cannot prove that step itself.
+DO $source_release_role$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='allin_v2_ingredient_source_releaser') THEN
+    CREATE ROLE allin_v2_ingredient_source_releaser NOLOGIN NOINHERIT NOBYPASSRLS;
+  END IF;
+END;
+$source_release_role$;
+GRANT USAGE ON SCHEMA allin_private TO allin_v2_ingredient_source_releaser;
+REVOKE ALL ON allin_private.v2_ingredient_source_energy_evidence
+ FROM allin_v2_ingredient_source_releaser;
+REVOKE ALL ON allin_private.v2_ingredient_energy_attestations
+ FROM allin_v2_ingredient_source_releaser;
+
+-- Source release is the ONLY private evidence INSERT path exposed to the
+-- restricted independent officer. Reviewer/member/workload accounts cannot
+-- certify their own evidence, and no publisher grant is created.
+CREATE OR REPLACE FUNCTION allin_private.v2_release_ingredient_source_energy(
+  p_source_id uuid,
+  p_expected_payload_sha256 text,
+  p_archive_sha256 text,
+  p_methods jsonb,
+  p_source_review_reference text
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,pg_temp
+AS $source_release$
+DECLARE
+  v_actor name := session_user;
+  v_source public.v2_ingredient_source_records%ROWTYPE;
+  v_pinned_sha text;
+  v_pinned_methods jsonb;
+  v_row record;
+  v_current allin_private.v2_ingredient_source_energy_evidence%ROWTYPE;
+  v_inserted integer := 0;
+  v_existing integer := 0;
+  v_count integer;
+BEGIN
+  IF v_actor::text IN ('postgres','anon','authenticated','service_role','authenticator')
+     OR NOT pg_has_role(v_actor::text,'allin_v2_ingredient_source_releaser','member')
+     OR pg_has_role(v_actor::text,'allin_v2_ingredient_reviewer','member')
+     OR pg_has_role(v_actor::text,'allin_v2_ingredient_publisher','member')
+     OR NOT EXISTS (
+       SELECT 1 FROM allin_private.v2_ingredient_review_operators o
+       WHERE o.login_role=v_actor AND o.enabled=true AND o.revoked_at IS NULL
+         AND o.identity_issuer IS NOT NULL AND o.identity_subject IS NOT NULL
+         AND o.identity_verified_at IS NOT NULL AND o.identity_verified_at<=clock_timestamp()
+         AND o.credential_vault_reference IS NOT NULL
+         AND o.credential_expires_at>clock_timestamp()
+       FOR SHARE OF o
+     )
+  THEN RAISE EXCEPTION 'unauthorized independent USDA source releaser' USING ERRCODE='42501';
+  END IF;
+  IF p_source_id IS NULL OR p_expected_payload_sha256 IS NULL
+     OR p_expected_payload_sha256 !~ '^[0-9a-f]{64}$'
+     OR p_archive_sha256 IS NULL
+     OR p_archive_sha256 <> 'dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579'
+     OR p_methods IS NULL OR jsonb_typeof(p_methods)<>'array'
+     OR p_source_review_reference IS NULL
+     OR length(trim(p_source_review_reference))<12 OR length(p_source_review_reference)>2000
+  THEN RAISE EXCEPTION 'invalid controlled USDA source-release input' USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO v_source FROM public.v2_ingredient_source_records
+     WHERE id=p_source_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'source record unavailable' USING ERRCODE='P0002';
+  END IF;
+  IF v_source.provider<>'usda_fdc' OR v_source.source_data_type<>'Foundation'
+     OR v_source.mapping_status<>'mapped' OR v_source.ingredient_id IS NULL
+     OR lower(v_source.payload_sha256)<>p_expected_payload_sha256
+     OR v_source.source_license<>'CC0'
+  THEN RAISE EXCEPTION 'source record is not a pinned mapped Foundation food' USING ERRCODE='23514';
+  END IF;
+  CASE v_source.external_record_id
+    WHEN '328841' THEN
+      v_pinned_sha := '77cf3ae438814c51bb5ef732b14a6f2643fa54b5c428f0104354c24473368323';
+      v_pinned_methods := '[{"nutrientId":1008,"kcal":84}]'::jsonb;
+    WHEN '790577' THEN
+      v_pinned_sha := '0b8fc2d591a88381aa11cf0e3041f3b3f30ef4a660d68f74e3f483214f6d8b51';
+      v_pinned_methods := '[{"nutrientId":1008,"kcal":44}]'::jsonb;
+    WHEN '2346407' THEN
+      v_pinned_sha := '88bec4819f0243de72ad7ada9f6f4f9295e66f3e19892710d4757adc41d70b8f';
+      v_pinned_methods := '[{"nutrientId":2047,"kcal":31.4},{"nutrientId":2048,"kcal":27.9}]'::jsonb;
+    WHEN '2644285' THEN
+      v_pinned_sha := 'b2e32066eeb463137d35b84670e3c26504c5fa62f32734946a8b59e404d4e2e6';
+      v_pinned_methods := '[{"nutrientId":2047,"kcal":118},{"nutrientId":2048,"kcal":115}]'::jsonb;
+    WHEN '2644288' THEN
+      v_pinned_sha := 'd369e999d09bc5e73742bcfd466350874a3671f6c96f9d916c6cecff5787f08f';
+      v_pinned_methods := '[{"nutrientId":2047,"kcal":137},{"nutrientId":2048,"kcal":133}]'::jsonb;
+    WHEN '2644289' THEN
+      v_pinned_sha := '9666e868d07842fc3f6e69a904b7aa7cf4b8607342fdc9391210168d98b28224';
+      v_pinned_methods := '[{"nutrientId":2047,"kcal":127},{"nutrientId":2048,"kcal":123}]'::jsonb;
+    WHEN '2685580' THEN
+      v_pinned_sha := '020baa3671721a0d4fea358fd729afd3b06eb39f5d46166a81061805748a41ed';
+      v_pinned_methods := '[{"nutrientId":2047,"kcal":104},{"nutrientId":2048,"kcal":88.5}]'::jsonb;
+    WHEN '2685581' THEN
+      v_pinned_sha := 'de8faf99cdeb9b24b9ac84bfee58e1ff1dcd1ab576919794946c400f8be39121';
+      v_pinned_methods := '[{"nutrientId":2047,"kcal":37.9},{"nutrientId":2048,"kcal":32.3}]'::jsonb;
+    ELSE
+      RAISE EXCEPTION 'unapproved USDA Foundation source record' USING ERRCODE='23514';
+  END CASE;
+  IF v_pinned_sha<>p_expected_payload_sha256 OR v_pinned_methods<>p_methods THEN
+    RAISE EXCEPTION 'USDA source payload or energy observations differ from pinned release' USING ERRCODE='23514';
+  END IF;
+  -- Existing release can only replay if *every* energy observation agrees;
+  -- a conflicting or incomplete immutable set fails closed, never repaired
+  -- by an update/delete or by adding a missing method implicitly.
+  SELECT count(*) INTO v_count
+    FROM allin_private.v2_ingredient_source_energy_evidence
+    WHERE source_record_id=p_source_id;
+  IF v_count<>0 AND v_count<>jsonb_array_length(v_pinned_methods) THEN
+    RAISE EXCEPTION 'incomplete existing immutable USDA source release' USING ERRCODE='23514';
+  END IF;
+  FOR v_row IN SELECT (item->>'nutrientId')::integer AS nutrient_id,
+                       (item->>'kcal')::numeric AS kcal
+      FROM jsonb_array_elements(v_pinned_methods) item
+  LOOP
+    SELECT * INTO v_current FROM allin_private.v2_ingredient_source_energy_evidence
+      WHERE source_record_id=p_source_id AND fdc_nutrient_id=v_row.nutrient_id;
+    IF FOUND THEN
+      IF lower(v_current.source_payload_sha256)<>p_expected_payload_sha256
+         OR lower(v_current.archive_sha256)<>p_archive_sha256
+         OR v_current.energy_kcal<>v_row.kcal
+         OR v_current.basis_quantity<>100 OR v_current.basis_unit<>'g'
+         OR v_current.nutrient_unit<>'kcal'
+      THEN RAISE EXCEPTION 'conflicting immutable USDA source release' USING ERRCODE='23514';
+      END IF;
+      v_existing := v_existing+1;
+    ELSE
+      INSERT INTO allin_private.v2_ingredient_source_energy_evidence
+       (source_record_id,source_payload_sha256,archive_sha256,
+        fdc_nutrient_id,energy_kcal,source_review_reference)
+      VALUES(p_source_id,p_expected_payload_sha256,p_archive_sha256,
+             v_row.nutrient_id,v_row.kcal,p_source_review_reference);
+      v_inserted:=v_inserted+1;
+    END IF;
+  END LOOP;
+  RETURN jsonb_build_object('status',
+    CASE WHEN v_inserted=0 THEN 'already_released' ELSE 'released' END,
+    'source_record_id',p_source_id,'evidence_count',v_inserted+v_existing,
+    'archive_sha256',p_archive_sha256,
+    'calculation_ready',false,'publication_approved',false);
+END;
+$source_release$;
+REVOKE ALL ON FUNCTION allin_private.v2_release_ingredient_source_energy(uuid,text,text,jsonb,text)
+  FROM PUBLIC,anon,authenticated,service_role,allin_v2_ingredient_reviewer,
+       allin_v2_ingredient_publisher;
+GRANT EXECUTE ON FUNCTION allin_private.v2_release_ingredient_source_energy(uuid,text,text,jsonb,text)
+  TO allin_v2_ingredient_source_releaser;
