@@ -23,6 +23,9 @@ on:
       - 'docs/architecture/sql/V2-GOALS-REVISION-HISTORY-GUARD-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-REVISION-ACCEPTANCE-WRITER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-OWNER-SNAPSHOT-READER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-GOALS-ACCEPTED-EVENT-EDITION-BINDING-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-EVENT-PLAN-COMPOSITE-OWNER-READER-CANDIDATE.sql'
+      - 'scripts/test-v2-event-plan-composite-local-postgres.psql'
       - 'docs/architecture/sql/V2-GOALS-BEHAVIOR-TARGET-OWNER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-DURABLE-REVIEW-GATE-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-GOALS-REVIEW-ISSUANCE-CANDIDATE.sql'
@@ -326,10 +329,6 @@ jobs:
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-acceptance.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-acceptance-qa.psql
           bash scripts/test-v2-goals-acceptance-race-local.sh "$db_container"
-          docker cp docs/architecture/sql/V2-GOALS-OWNER-SNAPSHOT-READER-CANDIDATE.sql "$db_container:/tmp/v2-goals-owner-reader.sql"
-          docker cp scripts/test-v2-goals-owner-snapshot-local-postgres.psql "$db_container:/tmp/v2-goals-owner-reader-qa.psql"
-          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-reader.sql
-          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-reader-qa.psql
           docker cp docs/architecture/sql/V2-GOALS-BEHAVIOR-TARGET-OWNER-CANDIDATE.sql "$db_container:/tmp/v2-goals-behavior.sql"
           docker cp scripts/test-v2-goals-behavior-local-postgres.psql "$db_container:/tmp/v2-goals-behavior-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-behavior.sql
@@ -365,6 +364,18 @@ jobs:
           docker cp scripts/test-v2-eventhub-version-guard-local-postgres.psql "$db_container:/tmp/v2-eventhub-version-qa.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-version.sql
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-eventhub-version-qa.psql
+          # Goal-owned Event edition link depends on BOTH canonical owners.
+          # Keep these candidates isolated and private; no hosted writes.
+          docker cp docs/architecture/sql/V2-GOALS-ACCEPTED-EVENT-EDITION-BINDING-CANDIDATE.sql "$db_container:/tmp/v2-goal-event-links.sql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goal-event-links.sql
+          docker cp docs/architecture/sql/V2-GOALS-OWNER-SNAPSHOT-READER-CANDIDATE.sql "$db_container:/tmp/v2-goals-owner-reader.sql"
+          docker cp scripts/test-v2-goals-owner-snapshot-local-postgres.psql "$db_container:/tmp/v2-goals-owner-reader-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-reader.sql
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-goals-owner-reader-qa.psql
+          docker cp docs/architecture/sql/V2-EVENT-PLAN-COMPOSITE-OWNER-READER-CANDIDATE.sql "$db_container:/tmp/v2-event-plan-composite.sql"
+          docker cp scripts/test-v2-event-plan-composite-local-postgres.psql "$db_container:/tmp/v2-event-plan-composite-qa.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-event-plan-composite.sql
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/v2-event-plan-composite-qa.psql
       - name: Replay existing Community privacy candidate with two owner isolation
         run: |
           set -euo pipefail
