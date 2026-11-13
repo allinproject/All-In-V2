@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
 import { AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/auth/AuthProvider';
-import { createV2AuthActionGuard, v2AuthenticatedScreenKey } from '../src/auth/authRoute';
+import { v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
@@ -31,11 +31,8 @@ export default function HomeScreen() {
 }
 
 function HomeOwnerScreen() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const gate = useAccessGate();
-  const [signingOut, setSigningOut] = useState(false);
-  const [signOutError, setSignOutError] = useState<string | null>(null);
-  const signOutGuard = useRef(createV2AuthActionGuard());
   // Re-evaluate the date on focus after backgrounding or crossing local midnight.
   // This is device-local until the athlete's preferred timezone is available.
   const [localDay, setLocalDay] = useState(deviceLocalToday);
@@ -120,20 +117,6 @@ function HomeOwnerScreen() {
   // Weather provider and explicit location consent are not connected in V2.
   const weatherGlance = todayWeatherGlance({status:'unavailable'}, user?.id ?? '', localDay);
 
-  async function handleSignOut() {
-    if (!signOutGuard.current.tryEnter()) return;
-    setSigningOut(true);
-    setSignOutError(null);
-    try {
-      await signOut();
-    } catch (error) {
-      setSignOutError(error instanceof Error ? error.message : 'Could not sign out. Please retry.');
-    } finally {
-      signOutGuard.current.leave();
-      setSigningOut(false);
-    }
-  }
-
   if (!loading && !user) return <Redirect href="/sign-in" />;
   if (gate.status === 'legal_required') return <Redirect href="/legal-acceptance" />;
   if (gate.status === 'onboarding_required') return <Redirect href="/onboarding-required" />;
@@ -175,23 +158,6 @@ function HomeOwnerScreen() {
           </Link>
         </View>
 
-        <Text accessibilityRole="header" style={styles.groupHeading}>Quick actions</Text>
-        <View style={styles.quickActions}>
-          <Link href={trainingDestination} asChild>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open today's Train calendar to add a workout" style={styles.quickAction}>
-              <Text style={styles.quickActionText}>+ Add Workout</Text>
-              <Text style={styles.quickActionHint}>Via Train calendar</Text>
-            </Pressable>
-          </Link>
-          <Link href="/coach" asChild>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open Coach conversation" style={styles.quickAction}>
-              <Text style={styles.quickActionText}>Ask Coach</Text>
-              <Text style={styles.quickActionHint}>One conversation</Text>
-            </Pressable>
-          </Link>
-        </View>
-
-        <Text accessibilityRole="header" style={styles.groupHeading}>Your day</Text>
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>Daily Energy</Text>
@@ -270,12 +236,6 @@ function HomeOwnerScreen() {
           <Text style={styles.help}>{recoveryGlance.detail}</Text>
         </View>
 
-        <Text style={styles.account}>Signed in as {user.email ?? 'your V2 account'}</Text>
-        {signOutError ? <Text accessibilityRole="alert" style={styles.error}>{signOutError}</Text> : null}
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: signingOut, busy: signingOut }}
-          disabled={signingOut} onPress={() => void handleSignOut()} style={styles.signOut}>
-          <Text style={styles.signOutText}>{signingOut ? 'Signing out…' : 'Sign out'}</Text>
-        </Pressable>
       </ScrollView>
       <V2BottomNavigation />
     </SafeAreaView>
@@ -284,44 +244,44 @@ function HomeOwnerScreen() {
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: colors.background},
-  content: {paddingHorizontal: 20, paddingTop: 18, paddingBottom: 44, gap: 14, maxWidth: 620, width: '100%', alignSelf: 'center'},
+  content: {paddingHorizontal: 22, paddingTop: 18, paddingBottom: 40, gap: 12, maxWidth: 620, width: '100%', alignSelf: 'center'},
   topBar: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10},
   identity: {flexDirection: 'row', alignItems: 'center', gap: 13, flexShrink: 1},
   identityText: {gap: 3, flexShrink: 1},
   brandMark: {width: 58, height: 58, borderRadius: 29},
   kicker: {color: colors.goldSoft, fontSize: 11, fontWeight: '900', letterSpacing: 1.8},
   heading: {color: colors.warmWhite, fontSize: 31, lineHeight: 36, fontWeight: '900'},
-  profile: {borderColor: colors.border, borderWidth: 1, paddingHorizontal: 15, minHeight: 44, justifyContent: 'center', borderRadius: 14, backgroundColor: colors.surface},
-  profileText: {color: colors.warmWhite, fontWeight: '700', fontSize: 13},
+  profile: {paddingHorizontal: 8, minHeight: 44, justifyContent: 'center'},
+  profileText: {color: colors.goldSoft, fontWeight: '800', fontSize: 13},
   dayStrip: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', minHeight: 42, paddingHorizontal: 12, borderBottomColor: colors.border, borderBottomWidth: 1, gap: 6},
   dayLabel: {color: colors.mutedText, fontSize: 13, fontWeight: '600'},
   weather: {color: colors.mutedText, fontSize: 12},
-  hero: {backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 18, padding: 20, gap: 13, marginTop: 6},
+  hero: {backgroundColor: colors.background, borderTopColor: colors.gold, borderTopWidth: 2, borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 20, paddingHorizontal: 2, gap: 12, marginTop: 3},
   heroTopLine: {flexDirection: 'row', alignItems: 'center', gap: 9},
   heroGoldLine: {width: 4, height: 20, backgroundColor: colors.gold, borderRadius: 3},
   sectionLabel: {fontSize: 11, color: colors.goldSoft, fontWeight: '900', letterSpacing: 1.2},
-  heroTitle: {fontSize: 23, lineHeight: 29, color: colors.warmWhite, fontWeight: '900'},
+  heroTitle: {fontSize: 25, lineHeight: 30, color: colors.warmWhite, fontWeight: '900'},
   help: {color: colors.mutedText, fontSize: 13, lineHeight: 20},
-  primaryAction: {backgroundColor: colors.gold, borderRadius: 14, minHeight: 52, alignItems: 'center', justifyContent: 'center'},
+  primaryAction: {backgroundColor: colors.gold, borderRadius: 8, minHeight: 49, alignItems: 'center', justifyContent: 'center'},
   primaryActionText: {color: colors.background, fontWeight: '900', fontSize: 15},
   groupHeading: {color: colors.warmWhite, fontSize: 19, fontWeight: '800', marginTop: 10, marginBottom: 1},
   quickActions: {flexDirection: 'row', gap: 10},
   quickAction: {flex: 1, minWidth: 0, minHeight: 74, borderWidth: 1, borderColor: colors.border, borderRadius: 16, backgroundColor: colors.surface, padding: 14, justifyContent: 'center', gap: 6},
   quickActionText: {color: colors.goldSoft, fontSize: 15, fontWeight: '800'},
   quickActionHint: {color: colors.mutedText, fontSize: 11},
-  card: {backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 17, gap: 12},
+  card: {backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 18, paddingHorizontal: 2, gap: 12},
   sectionHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8},
   sectionTitle: {color: colors.warmWhite, fontSize: 17, fontWeight: '800'},
   inlineAction: {minHeight: 44, justifyContent: 'center', paddingHorizontal: 4},
   actionText: {color: colors.goldSoft, fontSize: 13, fontWeight: '700'},
   metricRow: {flexDirection: 'row', gap: 8},
-  metric: {flex: 1, minWidth: 0, backgroundColor: colors.background, borderRadius: 12, padding: 11, gap: 7, borderWidth: 1, borderColor: colors.border},
+  metric: {flex: 1, minWidth: 0, paddingVertical: 8, paddingHorizontal: 4, gap: 7},
   metricLabel: {color: colors.mutedText, fontSize: 11},
   metricUnknown: {color: colors.warmWhite, fontSize: 21, fontWeight: '800'},
   foodPhotoRow: {flexDirection: 'row', gap: 8},
   foodTile: {width: '22%', maxWidth: 88, minWidth: 0, gap: 4},
   foodPhoto: {width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: colors.surfaceRaised},
-  foodPhotoFallback: {width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center', padding: 4},
+  foodPhotoFallback: {width: '100%', aspectRatio: 1, borderRadius: 3, backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center', padding: 4},
   foodFallbackText: {color: colors.mutedText, fontSize: 10, textAlign: 'center'},
   foodTileLabel: {color: colors.warmWhite, fontSize: 10, textAlign: 'center'},
   account: {color: colors.mutedText, fontSize: 12},
