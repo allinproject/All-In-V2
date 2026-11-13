@@ -24,6 +24,12 @@ export function validateCaptureInputs({env,approved}) {
  for(const key of ['PGHOST','PGUSER','PGDATABASE','PGPASSWORD','PGSSLMODE'])
   if(typeof env[key]!=='string'||!env[key])errors.push('missing_'+key.toLowerCase());
  if(env.PGSSLMODE!=='verify-full')errors.push('tls_verify_full_required');
+ // Supabase direct host is project-specific. Transaction/session poolers
+ // identify the project by postgres.<project-ref> in PGUSER.
+ const directHost=env.PGHOST==='db.xarhuczrtzuiljmtdaeu.supabase.co';
+ const scopedPooler=/^[a-z0-9.-]+\\.pooler\\.supabase\\.com$/.test(env.PGHOST??'')&&
+   env.PGUSER==='postgres.xarhuczrtzuiljmtdaeu';
+ if(!directHost&&!scopedPooler)errors.push('unrecognized_project_bound_endpoint');
  if(env.PGDATABASE && env.PGDATABASE!=='postgres')errors.push('unexpected_source_database');
  if(!approved||typeof approved!=='object'||Array.isArray(approved))errors.push('missing_approved_inventory');
  if(approved && approved.sourceProjectRef!==env.ALL12_SOURCE_PROJECT_REF)errors.push('inventory_source_mismatch');
