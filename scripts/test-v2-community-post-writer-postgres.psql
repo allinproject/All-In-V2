@@ -213,6 +213,78 @@ BEGIN
    '82000000-0000-4000-8000-000000000001','Author reply',true);
  IF r->>'created'<>'true' THEN RAISE EXCEPTION 'Same-post reply was not created'; END IF;
 END $comment_approved$;
+-- Guarded owner revision editing and irreversible tombstone deletion.
+DO $edit_comment$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_edit_comment(
+  '00000000-0000-0000-0000-000000000001',
+  '82000000-0000-4000-8000-000000000001',1,'Edited authored body');
+ IF r->>'revision'<>'2' OR
+  (SELECT body FROM allin_private.v2_community_comments
+   WHERE id='82000000-0000-4000-8000-000000000001')<>'Edited authored body'
+ THEN RAISE EXCEPTION 'Comment edit did not update same ID'; END IF;
+ BEGIN
+  PERFORM public.v2_community_edit_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000001',1,'Stale edit');
+  RAISE EXCEPTION 'Stale comment edit accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ r:=public.v2_community_delete_comment(
+  '00000000-0000-0000-0000-000000000001',
+  '82000000-0000-4000-8000-000000000001',2);
+ IF r->>'revision'<>'3' OR r->>'deleted'<>'true'
+ OR (SELECT body FROM allin_private.v2_community_comments
+   WHERE id='82000000-0000-4000-8000-000000000001')<>'[deleted]'
+ OR (SELECT deleted_at FROM allin_private.v2_community_comments
+   WHERE id='82000000-0000-4000-8000-000000000001') IS NULL
+ THEN RAISE EXCEPTION 'Comment deletion did not redact source body'; END IF;
+ r:=public.v2_community_delete_comment(
+  '00000000-0000-0000-0000-000000000001',
+  '82000000-0000-4000-8000-000000000001',2);
+ IF r->>'retry'<>'true' THEN RAISE EXCEPTION 'Exact comment delete retry denied'; END IF;
+ BEGIN
+  PERFORM public.v2_community_edit_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000001',3,'Resurrected');
+  RAISE EXCEPTION 'Deleted comment resurrected';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ IF (SELECT count(*) FROM allin_private.v2_community_comments
+   WHERE post_id='80000000-0000-0000-0000-000000000001')<>2 THEN
+   RAISE EXCEPTION 'Comment editing/deletion duplicated a post item'; END IF;
+END $edit_comment$;
+-- A different account cannot edit or delete authored records.
+SELECT set_config('request.jwt.claim.sub',
+ '00000000-0000-0000-0000-000000000002',false);
+DO $foreign_comment$
+BEGIN
+ BEGIN
+  PERFORM public.v2_community_delete_comment(
+   '00000000-0000-0000-0000-000000000002',
+   '82000000-0000-4000-8000-000000000002',1);
+  RAISE EXCEPTION 'Foreign comment deletion accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $foreign_comment$;
+SELECT set_config('request.jwt.claim.sub',
+ '00000000-0000-0000-0000-000000000001',false);
+-- Held and hidden comments never enter the audience reader.
+UPDATE allin_private.v2_community_comments SET moderation_state='held',
+ moderation_updated_at=now()
+WHERE id='82000000-0000-4000-8000-000000000002';
+DO $held_comment$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_comments_read(
+  '80000000-0000-0000-0000-000000000001');
+ IF r::text LIKE '%Author reply%' THEN
+   RAISE EXCEPTION 'Moderation-held comment disclosed'; END IF;
+ BEGIN
+  PERFORM public.v2_community_edit_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000002',1,'Bypass held');
+  RAISE EXCEPTION 'Held comment edit accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+END $held_comment$;
 INSERT INTO allin_private.v2_community_blocks(blocker_id,blocked_id)
 VALUES ('00000000-0000-0000-0000-000000000002',
         '00000000-0000-0000-0000-000000000001');
