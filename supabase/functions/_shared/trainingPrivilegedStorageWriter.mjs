@@ -33,7 +33,8 @@ export function createPrivilegedStorageWriter({supabase}) {
     !validPath(path,verifiedOwnerId)||
     !['create','replace'].includes(operation)||
     !(bytes instanceof Uint8Array)||bytes.length===0||
-    bytes.length>MAX_PRIVILEGED_STORAGE_BYTES||
+    bytes.length>(bucketId==='v2-private-account-exports'?
+      25*1024*1024:MAX_PRIVILEGED_STORAGE_BYTES)||
     typeof contentType!=='string'||contentType.length>100||
     !/^[a-z0-9.+-]+\/[a-z0-9.+-]+$/i.test(contentType))
     throw Error('Invalid scoped privileged Storage upload');
