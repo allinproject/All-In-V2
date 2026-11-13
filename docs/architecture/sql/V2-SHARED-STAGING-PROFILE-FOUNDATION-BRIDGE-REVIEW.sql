@@ -62,16 +62,13 @@ WHERE n.nspname IN ('public','allin_private') AND p.proname LIKE 'v2_%';
 
 create schema if not exists allin_private;
 
--- Fail closed for future objects created by the postgres migration role.
--- Each later migration must grant only the privileges its own API surface needs.
-alter default privileges for role postgres in schema public
-  revoke all on tables from public, anon, authenticated, service_role;
-alter default privileges for role postgres in schema public
-  revoke execute on functions from public, anon, authenticated, service_role;
-alter default privileges for role postgres in schema public
-  revoke usage, select on sequences from public, anon, authenticated, service_role;
-revoke all on schema allin_private from public, anon, authenticated;
-grant usage on schema allin_private to postgres, service_role;
+-- SHARED-STAGING EXCEPTION: preserve pre-existing database-default and
+-- allin_private schema ACLs, including ALL-228 reviewer/operator access.
+-- The canonical source M1 global default privilege changes are deliberately
+-- NOT replayed into the existing shared staging project. Newly created
+-- profile tables/functions retain their explicit canonical per-object RLS,
+-- policy and GRANT/REVOKE rules from the unchanged remainder of M1/M2.
+-- No service_role USAGE is added to the existing private schema here.
 
 create table if not exists public.v2_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
