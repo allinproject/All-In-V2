@@ -88,6 +88,29 @@ test('both inline and paginated Community follow/block exports minimize fields',
   &&paged.includes("RAISE EXCEPTION 'Unreviewed Community export projection'"));
 });
 
+test('canonical Community comments inherit one post identity while author export stays review-only',()=>{
+ const post=readFileSync('docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql','utf8');
+ assert(post.includes('CREATE TABLE allin_private.v2_community_comments ('));
+ assert(post.includes('REFERENCES allin_private.v2_community_posts(id)'));
+ assert(post.includes('REFERENCES public.v2_profiles(user_id)'));
+ assert(post.includes('ON DELETE SET NULL (parent_comment_id)'));
+ assert(post.includes('v2_community_comments_parent_same_post'));
+ assert(post.includes('ALTER TABLE allin_private.v2_community_comments ENABLE ROW LEVEL SECURITY'));
+ assert(post.includes('REVOKE ALL ON allin_private.v2_community_comments'));
+ const start=reader.indexOf("ELSIF p_collection='community.my_comments' THEN");
+ const end=reader.indexOf(" ELSIF p_collection LIKE 'community.%' THEN",start);
+ assert(start>0&&end>start,'Author-only comment projection must remain separate');
+ const scope=reader.slice(start,end);
+ assert(scope.includes('WHERE c.author_id=$1'),'Comment owner must be author, not parent post owner');
+ assert(scope.includes('LIMIT $2 OFFSET $3'),'Comments must paginate');
+ assert(!scope.includes('to_jsonb(c)'),'Raw comment records cannot be exported');
+ for(const sensitive of ['moderation_reason','post_owner_id','media_url'])
+  assert(!scope.includes("''"+sensitive+"''"),'Comment export leaked third-party or media data');
+ const inventory=reader.slice(0,reader.indexOf('$inventory$;'));
+ assert(!inventory.includes("'community.my_comments'"),'Comment export must remain unregistered');
+ assert(inventory.includes("'complete',false"),'Comment review must not release whole account');
+});
+
 test('Community relation exports use explicit owner-scoped redaction, never raw relation rows',()=>{
  const start=reader.indexOf("ELSIF p_collection LIKE 'community.%' THEN");
  const end=reader.indexOf(" ELSIF p_collection='public.v2_training_athlete_restrictions' THEN",start);
