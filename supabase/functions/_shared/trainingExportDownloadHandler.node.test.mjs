@@ -26,7 +26,7 @@ test('authenticated owner request opens reviewed worker attachment without publi
    seenToken=token;
    return {openApprovedLargeHistoryDownload:async id=>{
     seenId=id;return new Response('sealed-or-verified-stream',{
-     headers:{'Content-Type':'application/x-ndjson','Cache-Control':'private, no-store'},
+     headers:{'Content-Type':'application/x-ndjson','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'},
    });}};
   },
  });
@@ -71,4 +71,31 @@ test('non-200 result from worker is not treated as a downloaded export',async()=
   }),
  });
  assert.equal(response.status,503);
+});
+
+test('never release a worker 200 with unsafe download headers or no body',async()=>{
+ for(const headers of [
+  {'Content-Type':'text/plain','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'},
+  {'Content-Type':'application/x-ndjson','Cache-Control':'public, max-age=120','X-Content-Type-Options':'nosniff'},
+  {'Content-Type':'application/x-ndjson','Cache-Control':'private, no-store','Access-Control-Allow-Origin':'*','X-Content-Type-Options':'nosniff'},
+  {'Content-Type':'application/x-ndjson','Cache-Control':'private, no-store'},
+ ]) {
+  const result=await handleAccountExportDownload(req(),{
+   enabled:true,createAuthorizedWorker:async()=>({
+    openApprovedLargeHistoryDownload:async()=>new Response('unsafe', {status:200,headers}),
+   }),
+  });
+  assert.equal(result.status,503);
+  assert.equal(result.headers.get('cache-control'),'no-store');
+  assert.equal(result.headers.get('access-control-allow-origin'),null);
+ }
+ const empty=await handleAccountExportDownload(req(),{
+  enabled:true,createAuthorizedWorker:async()=>({
+   openApprovedLargeHistoryDownload:async()=>new Response(null,{
+    status:200,headers:{'Content-Type':'application/x-ndjson',
+     'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'},
+   }),
+  }),
+ });
+ assert.equal(empty.status,503,'Missing archive stream was released');
 });
