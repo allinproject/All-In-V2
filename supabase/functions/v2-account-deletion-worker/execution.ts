@@ -4,6 +4,7 @@ export type RpcResponse = { data?: unknown; error?: unknown };
 export type AdminResponse = { error?: { status?: number; code?: string } | null };
 export type DeletionServices = {
   claim: (request: WorkerRequest) => Promise<RpcResponse>;
+  verifyStorageReadiness: (request: WorkerRequest) => Promise<unknown>;
   deleteAuthUser: (userId: string) => Promise<AdminResponse>;
   inspectAuthUser: (userId: string) => Promise<AdminResponse>;
   complete: (request: WorkerRequest) => Promise<RpcResponse>;
@@ -11,7 +12,7 @@ export type DeletionServices = {
   recordFailure: (request: WorkerRequest, reason: FailureReason) => Promise<RpcResponse>;
 };
 export type FailureReason = 'auth_delete_failed' | 'auth_verify_failed' | 'completion_failed';
-export type WorkerResult = 'claim_not_accepted' | 'completed' | 'manual_recovery_required';
+export type WorkerResult = 'claim_not_accepted' | 'storage_not_accepted' | 'completed' | 'manual_recovery_required';
 
 function matchingReceipt(value: unknown, status: 'processing' | 'completed', request: WorkerRequest): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -31,6 +32,22 @@ export async function executeDeletionOnce(request: WorkerRequest, services: Dele
   try { claim = await services.claim(request); }
   catch { return 'claim_not_accepted'; }
   if (claim.error || !matchingReceipt(claim.data, 'processing', request)) return 'claim_not_accepted';
+
+  // Storage and its uploads must be fully protected before Auth deletion.
+  // A generic true is NOT sufficient: the independently verified server
+  // receipt must be bound to the same exact owner and request and certify
+  // both immutable object completeness and the durable upload write barrier.
+  // This guard is mandatory even when a caller accidentally omits the service.
+  let storage: unknown;
+  try { storage = await services.verifyStorageReadiness?.(request); }
+  catch { return 'storage_not_accepted'; }
+  if (!storage || typeof storage !== 'object' || Array.isArray(storage))
+    return 'storage_not_accepted';
+  const proof = storage as Record<string, unknown>;
+  if (proof.ownerId !== request.user_id || proof.requestId !== request.request_id ||
+      proof.completePrivateStorage !== true || proof.uploadBarrierEnforced !== true ||
+      proof.durableCheckpointVerified !== true)
+    return 'storage_not_accepted';
 
   // A transport timeout or failed delete response does not prove whether the
   // destructive call committed. Never repeat it. Make one read-only Auth lookup
