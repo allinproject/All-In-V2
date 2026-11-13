@@ -36,6 +36,14 @@ export function summarizeTodayTraining(
         actionLabel: 'Open Training Calendar',
       };
     }
+    if (sections.completed.status === 'ready') {
+      return {
+        status: 'partial',
+        title: 'Training schedule unavailable',
+        detail: 'Completed activities were checked for today, but the planned schedule is unavailable. No rest day or empty plan is inferred.',
+        actionLabel: 'Open Training Calendar',
+      };
+    }
     return fallback;
   }
   const scheduled = sections.scheduled.records;
