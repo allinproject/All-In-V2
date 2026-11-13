@@ -14,8 +14,9 @@ const admin=env.SERVICE_ROLE_KEY,anon=env.ANON_KEY;
 assert.ok(admin&&anon);
 const nonce=randomBytes(8).toString('hex'),bucket='all12-private-restore-'+nonce;
 const users=[],paths=[];
-const db=execFileSync('docker',['ps','--filter','name=supabase_db_','--format','{{.ID}}'],{encoding:'utf8'}).trim().split('\n')[0];
-assert.ok(db);
+const dbCandidates=execFileSync('docker',['ps','--filter','name=supabase_db_','--format','{{.ID}}'],{encoding:'utf8'}).trim().split(/\r?\n/).filter(Boolean);
+assert.equal(dbCandidates.length,1,'Refusing ambiguous local Supabase database selection');
+const [db]=dbCandidates;
 const sql=s=>execFileSync('docker',['exec','-i',db,'psql','-X','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-c',s],{encoding:'utf8'});
 async function req(method,path,key,token,body,contentType){
  const headers={apikey:key,Authorization:'Bearer '+(token??key)};
