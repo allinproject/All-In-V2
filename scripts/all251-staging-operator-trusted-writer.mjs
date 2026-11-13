@@ -28,7 +28,14 @@ const ORIGIN='https://'+PROJECT+'.supabase.co';
 const BUCKET='v2-private-workout-objects';
 const API='/storage/v1/';
 const encode=p=>p.split('/').map(encodeURIComponent).join('/');
-const denied=s=>[400,401,403,404,409,422].includes(s);
+// HTTP 400 alone is NOT proof that private Storage bytes are absent.
+export async function isConfirmedStorageAbsence(response){
+ if(![400,404].includes(response.status))return false;
+ const body=await response.clone().json().catch(()=>null);
+ return body!==null &&
+  (body.code==='NoSuchKey'||body.error==='not_found') &&
+  body.message==='Object not found';
+}
 
 function config(env){
  assert.notEqual(env.CI,'true','This is an operator-only staging test, not CI');
@@ -142,9 +149,16 @@ async function exercise(){
   for(const path of [...objects].reverse()){
    try{
     const res=await request(API+'object/'+BUCKET+'/'+encode(path),{method:'DELETE'});
-    if(!res.ok&&!denied(res.status))cleanupErrors.push('object delete failed');
+    if(!res.ok&&!(await isConfirmedStorageAbsence(res)))
+     cleanupErrors.push('object delete not verified');
     const check=await request(API+'object/authenticated/'+BUCKET+'/'+encode(path));
     if(check.ok)cleanupErrors.push('object still readable');
+    else if(!(await isConfirmedStorageAbsence(check)))
+     cleanupErrors.push('object absence not confirmed');
+    const info=await request(API+'object/info/'+BUCKET+'/'+encode(path));
+    if(info.ok)cleanupErrors.push('object metadata still exists');
+    else if(!(await isConfirmedStorageAbsence(info)))
+     cleanupErrors.push('object metadata absence unconfirmed');
    }catch{cleanupErrors.push('object cleanup exception');}
   }
   for(const id of users.reverse()){
