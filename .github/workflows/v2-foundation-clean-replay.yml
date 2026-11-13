@@ -97,6 +97,8 @@ on:
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-CLAIM-COMPLETION-GRAPH-GATE-REVIEW.sql'
       - 'scripts/test-all251-deletion-claim-graph-gate-local.psql'
+      - 'docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql'
+      - 'scripts/test-all251-storage-checkpoint-review-local.psql'
       - 'scripts/test-all251-food-log-export-projection-local.psql'
       - 'scripts/test-v2-account-export-pinned-snapshot-race-local.sh'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
@@ -608,6 +610,15 @@ jobs:
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
           done
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-all251-food-log-export-projection-local.psql
+      - name: ALL-251 review-only Storage checkpoint versus canonical deletion audit
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          docker cp docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql "$db_container:/tmp/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql"
+          docker cp scripts/test-all251-storage-checkpoint-review-local.psql "$db_container:/tmp/test-all251-storage-checkpoint-review-local.psql"
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-all251-storage-checkpoint-review-local.psql
       - name: Verify pinned account export snapshot against concurrent PostgreSQL mutation
         run: |
           set -euo pipefail
