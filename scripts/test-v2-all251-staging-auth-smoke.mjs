@@ -366,6 +366,14 @@ try{
      const res=await fetch(base+path,{method:'DELETE',redirect:'manual',
        signal:AbortSignal.timeout(30000),headers:{apikey:key}});
      assert([200,204].includes(res.status),'Staging byte-fixture cleanup rejected');
+     // Storage delete ACK is not proof of removal: check real hosted bytes
+     // cannot be fetched by the privileged test identity after cleanup.
+     const readback=await fetch(base+path.replace('/object/','/object/authenticated/'),{
+       method:'GET',redirect:'manual',signal:AbortSignal.timeout(30000),
+       headers:{apikey:key},
+     });
+     assert([400,404].includes(readback.status),
+       'Staging object bytes remained readable after deletion');
    }catch{
      failed=true;process.stderr.write('CLEANUP FAILED: temporary staging Storage object requires inspection\\n');
    }
