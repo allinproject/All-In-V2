@@ -39,6 +39,20 @@ function setup(options={}) {
  const data={v2_activity_series:[row()],v2_activity_route_objects:[]};
  const serviceClient={
   rpc:async (name,args)=>{
+   if(name==='v2_begin_privileged_storage_write_review'){
+     events.push('writeLeaseBegin');
+     assert.equal(args.p_owner_id,owner);
+     assert.equal(args.p_bucket_id,'v2-private-account-exports');
+     assert(args.p_object_path.startsWith(owner+'/'+requestId+'/'));
+     assert.equal(args.p_operation,'create');
+     if(options.denyWriteLease)return {data:null,error:Error('deletion active')};
+     return {data:'a8111111-8111-4111-8111-811111111111',error:null};
+   }
+   if(name==='v2_settle_privileged_storage_write_review'){
+     events.push('writeLeaseSettled');
+     assert.equal(args.p_owner_id,owner);
+     return {data:true,error:null};
+   }
    assert.equal(name,'v2_account_export_worker_authorize_candidate');
    assert.deepEqual(args,{p_user_id:owner,p_session_id:session,p_request_id:requestId});
    events.push('approvedRequest');
@@ -192,14 +206,6 @@ function setup(options={}) {
  const worker=createTrainingAccountExportWorkerCandidate({
    bearerToken:token,authClient,serviceClient,
    resolveEncryptionKey:async args=>options.keyLease?options.keyLease(args):key,...selectedPersistence,
-   // Synthetic boundary ONLY. Real release requires a durable DB-owned lease
-   // that fences deletion claims for the whole external Storage HTTP write.
-   withOwnerStorageWriteBarrier:options.writeBarrier??(async({ownerId,requestId:rid,bucketId,objectPath,write})=>{
-     assert.equal(ownerId,owner);assert.equal(rid,requestId);
-     assert.equal(bucketId,'v2-private-account-exports');
-     assert(objectPath.startsWith(owner+'/'+requestId+'/'));
-     events.push('barrier');return write();
-   }),
    canonicalPageReader:pinnedPageReader??canonicalPageReader,
  });
  return {worker,events,key,pagedArchives,get envelope(){return envelope;},
@@ -424,11 +430,20 @@ test('ALL-251 full canonical worker HTTP integration: approved request, provider
  assert.equal(forged.status,400);
 });
 
-test('owning worker fails closed when the privileged Storage barrier denies upload',async()=>{
- const f=setup({useSupabasePersistence:true,writeBarrier:async()=>{
-   throw Error('Deletion claim blocks privileged archive upload');
- }});
+test('owning worker refuses privileged archive upload when canonical lease is denied',async()=>{
+ const f=setup({useSupabasePersistence:true,denyWriteLease:true});
  await assert.rejects(f.worker.stageApprovedRequest(requestId),
-   /Deletion claim blocks privileged archive upload/);
+   /Durable privileged Storage write lease unavailable/);
  assert.equal(f.events.filter(x=>x==='archiveUpload').length,0);
+ assert.equal(f.events.filter(x=>x==='writeLeaseSettled').length,0);
+});
+
+test('owning worker obtains durable lease before Storage upload and settles only after byte verification',async()=>{
+ const f=setup({useSupabasePersistence:true});
+ await f.worker.stageApprovedRequest(requestId);
+ const begin=f.events.indexOf('writeLeaseBegin');
+ const upload=f.events.indexOf('archiveUpload');
+ const readback=f.events.indexOf('pagedDownload');
+ const settle=f.events.indexOf('writeLeaseSettled');
+ assert(begin>=0&&begin<upload&&upload<readback&&readback<settle);
 });
