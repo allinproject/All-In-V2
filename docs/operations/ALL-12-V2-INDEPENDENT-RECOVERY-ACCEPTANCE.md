@@ -341,3 +341,49 @@ acceptance = false, provider-managed physical restore accepted = false,
 releaseReady = false. The existing encrypted real-source archive and
 offline target remain operator-controlled; no production or staging
 restore was performed here and no infrastructure was created.
+
+
+## 2026-11-13 — Auth / provider settings / Storage service-configuration recovery audit (read-only)
+
+**Scope and evidence.** Reviewed the actual V2 project `xarhuczrtzuiljmtdaeu` with
+read-only Supabase project/catalog queries, current `supabase/config.toml` on
+`integration/v2-foundation`, the successful isolated local Auth and Storage
+recovery CI [43440039202](https://github.com/allinproject/All-In-V2/actions/runs/43440039202),
+the existing checksum-matched operator-held 16-table real-source archive, and
+Supabase's current JWT signing-key, Storage URL signing-key and manual database
+restore documentation. **No secrets were queried, exported, logged or committed.**
+No settings were changed. This audit is not a service-recovery rehearsal.
+
+| Configuration or recovery asset | Read-only observation | Treatment and acceptance gap |
+| --- | --- | --- |
+| Auth database | Live `auth` has 27 base tables and one sequence. Core users, identities, sessions, refresh tokens: zero live rows; real-source logical archive includes only these four core tables and the refresh-token sequence | Database-level empty-state row/sequence verification PASS in its narrow scope; does **not** prove complete `auth` database catalog, login service, session renewal, JWT issuance or any non-database settings |
+| Auth JWT signing keys | Actual key algorithm, active/standby key IDs and custody cannot be read with available connected provider actions | **UNVERIFIED.** Modern managed JWT private signing keys cannot be extracted from Supabase. Treat new-project recovery as re-provisioning/rotation and new token trust, not cloning a private key from SQL. Record non-secret key ID/algorithm/status separately in restricted operator evidence, verify a fresh sign-in and JWKS/claim behavior and reauthorize sessions; do not paste private keys or bearer tokens into GitHub, Linear or chat |
+| Auth providers and policies | Sign-up settings, email/SMS/SMTP providers, OAuth/SAML, redirect allowlist, allowed domains, MFA and hooks are **not** in the 16-table archive and cannot be authoritatively viewed via current Supabase connection tools | **UNVERIFIED.** Independently inventory nonsecret settings, verify secure external secret custody, recreate provider-specific redirect/client configuration via trusted dashboard or approved secret manager, and test fresh sign-in, rejection, session refresh and owner isolation after recovery |
+| API credentials, callback secrets and service secrets | Source `supabase/config.toml` declares only a subset of Edge Function JWT requirements; no Edge Functions currently deployed to V2; current project secrets/legacy-key activation and external provider credential holders not audited | **UNVERIFIED.** Recover/reissue **new project-specific** publishable/secret/API and webhook credentials under least privilege. Never reuse old project-bound values blindly or store them in the archive, repo or runbook. Record only secret *references*, owners and reconciliation results |
+| Storage database and policies | Live source: 0 `storage.buckets`, 0 `storage.objects`, 0 custom `storage` RLS policies and 11 enabled user-visible Storage-schema triggers (origin/provenance not independently classified). The 16-table backup does not include Storage metadata | Empty actual data scope **observed**; Storage service/policy restore **UNVERIFIED**. Reconstruct only approved buckets, per-user policy/ACL, object metadata, private byte checksums and ownership in the correct sequence. Do not copy the experimental temporary-staging writer fence into V2 without separate design/security approval |
+| Storage URL signing keys and signed URLs | Actual live source Storage signing-key IDs/status, outstanding upload/download URLs and CDN cache are not available through read-only connector actions | **UNVERIFIED.** Storage signed URLs are controlled by a **separate** key from Auth JWT keys; Auth-key rotation alone does not invalidate them. On recovery, establish the new Storage signing-key trust and explicitly address old signed URLs, upload leases/in-flight transfers, expiry/revocation and CDN cache. Do not rotate current keys as an audit step |
+| Scheduled and outbound automation | Live database has 1 active `cron.job`; full indirect side effects / `pg_net` call graph not proven absent. No V2 Edge Functions currently deployed | **BLOCKED until proved.** Outbound-disabled **before import/bootstrap**, restore quarantine of scheduled work, webhook/delivery sandbox, and only re-enable after service/auth/owner and idempotency checks. Never treat network isolation of the offline DB alone as hosted provider-side isolation |
+| Data encryption / Vault | Source encryption-root requirements, Vault/pgsodium usage, encrypted-column coverage and operator custody not established by this audit | **UNVERIFIED/conditional.** A manual logical database backup does not carry platform encryption-root keys; evaluate whether any protected data require source key transfer/re-encryption. Never commit key material or overwrite a working target's encryption root to test this |
+| Application configuration provenance | `supabase/config.toml` includes JWT settings for future function names; live V2 has 0 deployed Edge Functions. The real-source archive contains 12 V2 application tables + 4 Auth tables, not a deployable whole-service image | **SOURCE-ONLY.** Restore reviewed migration/grant/RLS/function/trigger definition provenance and any separately deployed service code, then verify Auth/Storage API availability after target bootstrap |
+
+### Safe service recovery sequence and evidence requirements
+
+1. **Preflight (no secrets in reports):** Obtain an independent operator inventory of Auth signing-key algorithm/status/key IDs, publishable/secret/legacy API key *types and holders* (not values), SMTP/OAuth/MFA/hook settings, allowed redirects and external provider registrations, Storage signed-key state, bucket policies, webhook endpoints, cron/pg_net and use of Vault/column encryption. Attach time-stamped, access-controlled **redacted evidence** to an operator-owned location. Unknown configuration must remain unknown; don't guess or silently generate credentials.
+2. **Bootstrap only in separately authorized isolation:** A local offline `pg_restore` verifies database rows but **cannot** establish live Auth/Storage provider services. Prepare an independently approved destination with outbound work disabled *before* import and separate credentials; never overwrite V2 source or the shared ALL-251 temporary staging environment. Restore approved database schema/roles/grants/migrations then exact source data; restore any independently approved provider-managed `auth` / `storage` customizations separately.
+3. **Reconstitute Auth securely:** Provision target-specific JWT signing keys and API keys through the provider/approved secret manager. For managed asymmetric keys, do **not** claim recoverability of old private keys. Register required provider URLs, clients and secrets through approved channels; establish new signing trust. Verify sign-up/sign-in (or deliberate disabled-signup), wrong-password rejection, JWKS/claims, token expiry/refresh and session revocation, and authenticated owner A/B RLS after recovery. An empty source requires explicitly synthetic target-only accounts to test live functionality, with cleanup.
+4. **Reconstitute Storage securely:** Explicitly restore approved bucket definition, metadata and **actual bytes** from separately inventoried encrypted file artifacts; compare object SHA-256, owner path/policies and byte completeness; verify owner A allow / owner B deny / anonymous deny, signed download/upload expiration and unauthorized service writer routes. Do not assume restoring `storage.objects` alone copies bytes. Do not promote an unreviewed custom `storage.objects` trigger, S3 credential or signed upload route.
+5. **Unquarantine intentionally:** Check secrets aren't in mobile/client bundle, process webhook/idempotency and scheduled-work limits, document cleanup/rollback and revoke retired credentials/tokens only through authorized controls; monitor logs before enabling any source-facing delivery or deletion worker.
+6. **Acceptance:** Require source-at-cutoff provenance and content hashes, exact non-data service-settings comparisons, independent target isolation evidence, real Auth/Storage API recovery results, privacy-negative tests, restoration timing with independently observed event watermarks and agreed RPO/RTO objectives, and explicit reviewed founder/security sign-off. Do not turn the synthetic CI run or empty-source checks into release approval.
+
+**Current assessment:** database/Auth/Storage *synthetic recovery tests* PASS; actual
+empty-source 16-table logical restore inspection PASS; full managed
+Auth signing/provider configuration restoration NOT TESTED; Storage service
+and URL-signing configuration recovery NOT TESTED; true historical source
+cutoff and RPO/RTO NOT MEASURED. `ALL-12` remains **In Progress**,
+`releaseReady=false`. No migrations, production, temporary staging,
+secret material or project billing changed.
+
+References (provider-maintained; source evidence is from our own live project):
+- https://supabase.com/docs/guides/auth/signing-keys
+- https://supabase.com/docs/guides/storage/security/signing-keys
+- https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
