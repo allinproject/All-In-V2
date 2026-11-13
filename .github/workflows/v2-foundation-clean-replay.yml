@@ -127,6 +127,11 @@ on:
       - 'supabase/functions/v2-account-deletion-worker/index.ts'
       - 'supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.mjs'
       - 'supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.test.mjs'
+      - 'docs/architecture/sql/V2-ACCOUNT-DELETION-PRIVILEGED-STORAGE-WRITER-REVIEW.sql'
+      - 'scripts/test-all251-privileged-storage-writer-review-local.psql'
+      - 'supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs'
+      - 'supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs'
+      - 'supabase/functions/v2-private-storage-writer/index.ts'
       - 'scripts/test-v2-account-export-real-local-storage.mjs'
       - 'scripts/test-all12-private-storage-two-auth-local.mjs'
       - 'scripts/test-v2-account-export-populated-db-pages.psql'
@@ -200,6 +205,19 @@ jobs:
           set -euo pipefail
           test "${CI}" = "1"
           node scripts/test-v2-account-export-real-local-storage.mjs
+      - name: ALL-251 controlled privileged Storage writer and durable lease fence review
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          node --test supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          for file in \
+            docs/architecture/sql/V2-ACCOUNT-DELETION-PRIVILEGED-STORAGE-WRITER-REVIEW.sql \
+            scripts/test-all251-privileged-storage-writer-review-local.psql; do
+            docker cp "$file" "$db_container:/tmp/$(basename "$file")"
+          done
+          docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-all251-privileged-storage-writer-review-local.psql
       - name: ALL-251 worker pre-Auth-deletion safety gate tests
         run: |
           set -euo pipefail
