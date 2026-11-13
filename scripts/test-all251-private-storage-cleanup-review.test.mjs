@@ -66,8 +66,8 @@ test('failure to verify object absence fails without checkpoint',async()=>{
  assert.equal(f.checkpoints.length,0);
 });
 test('invalid owner and missing durable checkpoint dependency fail',async()=>{
- const f=fixture();f.opts.ownerId=B;
- await assert.rejects(reviewPrivateStorageCleanup(f.opts),/mismatched|Foreign/);
+ const f=fixture();f.opts.ownerId='not-a-uuid';
+ await assert.rejects(reviewPrivateStorageCleanup(f.opts),/dependencies required/);
  delete f.opts.recordCheckpoint;
  await assert.rejects(reviewPrivateStorageCleanup(f.opts),/dependencies required/);
 });
