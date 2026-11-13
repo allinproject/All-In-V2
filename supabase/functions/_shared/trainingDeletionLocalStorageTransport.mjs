@@ -18,6 +18,17 @@ function assertPath(ownerId,path) {
   throw Error('ALL-251 foreign or malformed Storage path');
 }
 const encodePath = p=>p.split('/').map(encodeURIComponent).join('/');
+// Local Supabase Storage can express a missing key using a legacy 400.
+// An arbitrary 400, auth denial, or malformed body MUST NOT imply absence.
+async function isExplicitMissingKey(response) {
+ if(response.status!==400)return false;
+ let detail;
+ try {detail=await response.json();}catch{return false;}
+ if(!detail || typeof detail!=='object')return false;
+ const code=detail.code??detail.error;
+ return ['NoSuchKey','not_found'].includes(code) &&
+  detail.message==='Object not found';
+}
 export function createLocalDeletionStorageTransport({
  apiUrl,serviceRoleKey,fetchImpl=fetch,
 }) {
@@ -89,8 +100,8 @@ export function createLocalDeletionStorageTransport({
   assertPath(ownerId,path);
   const r=await request('GET','/object/info/'+encodeURIComponent(bucketId)+'/'+encodePath(path));
   if(r.status===200)return true;
-  if(r.status===404)return false;
-  throw Error('Storage object existence could not be verified');
+  if(r.status===404 || await isExplicitMissingKey(r))return false;
+  throw Error('Storage object existence could not be verified (HTTP '+r.status+')');
  }
  async function deleteObject({ownerId,requestId,bucketId,path}) {
   if(!UUID.test(requestId??'')||!BUCKET.test(bucketId??''))
@@ -98,8 +109,8 @@ export function createLocalDeletionStorageTransport({
   assertPath(ownerId,path);
   const r=await request('DELETE','/object/'+encodeURIComponent(bucketId)+'/'+encodePath(path));
   if([200,204].includes(r.status))return {deleted:true};
-  if(r.status===404)return {alreadyAbsent:true};
-  throw Error('Storage delete not acknowledged');
+  if(r.status===404 || await isExplicitMissingKey(r))return {alreadyAbsent:true};
+  throw Error('Storage delete not acknowledged (HTTP '+r.status+')');
  }
  return Object.freeze({listBucketCatalog,listOwnerStorageObjects,objectExists,deleteObject});
 }
