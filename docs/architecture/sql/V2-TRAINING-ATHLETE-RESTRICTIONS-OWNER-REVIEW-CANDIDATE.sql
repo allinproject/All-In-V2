@@ -209,6 +209,122 @@ REVOKE ALL ON FUNCTION
  allin_private.v2_training_restriction_source_coverage_review(uuid,text)
  FROM PUBLIC,anon,authenticated,service_role;
 
+-- Trusted Training owner ingestion CANDIDATE, not deployed or granted.
+-- Caller MUST be a separately approved source-verifying server transaction
+-- with privileged table access. Auth binding below is necessary, NOT proof of
+-- an independently verified source manifest; never grant this to a client.
+-- Every entry is persisted atomically or none are. Duplicate snapshots refuse
+-- mutation; original evidence stays append-only. No certification is issued.
+CREATE FUNCTION allin_private.v2_training_ingest_restriction_source_evidence_candidate(
+ p_owner uuid,p_snapshot_version text,p_sources jsonb
+) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY INVOKER
+ SET search_path='' AS $ingest$
+DECLARE
+ v_user uuid:=auth.uid();
+ v_claim text:=pg_catalog.current_setting('request.jwt.claim.session_id',true);
+ v_session uuid;
+ v_digest text;
+ v_rows bigint;
+ v_source jsonb;
+ v_kind text;
+ v_ref text;
+ v_source_digest text;
+ v_expected_digest text;
+ v_inspected bigint;
+ v_reconciled bigint;
+ v_unresolved bigint;
+ v_complete boolean;
+ v_next_cursor jsonb;
+ v_seen text[]:=ARRAY[]::text[];
+ v_refs text[]:=ARRAY[]::text[];
+BEGIN
+ IF v_user IS NULL OR p_owner IS DISTINCT FROM v_user OR
+    p_snapshot_version IS NULL OR
+    length(btrim(p_snapshot_version)) NOT BETWEEN 1 AND 160 OR
+    p_sources IS NULL OR pg_catalog.jsonb_typeof(p_sources)<>'array' OR
+    pg_catalog.jsonb_array_length(p_sources)<>5
+ THEN RAISE EXCEPTION 'Unapproved Training ingestion owner or source batch'
+   USING ERRCODE='42501'; END IF;
+ IF v_claim IS NULL OR v_claim='' THEN
+  RAISE EXCEPTION 'Current athlete session required for Training ingestion'
+   USING ERRCODE='42501'; END IF;
+ BEGIN v_session:=v_claim::uuid;
+ EXCEPTION WHEN invalid_text_representation THEN
+  RAISE EXCEPTION 'Malformed Training ingestion session' USING ERRCODE='42501'; END;
+ IF NOT EXISTS(SELECT 1 FROM auth.users WHERE id=p_owner) OR
+    NOT EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id=p_owner) OR
+    NOT EXISTS(SELECT 1 FROM auth.sessions
+     WHERE id=v_session AND user_id=p_owner
+       AND (not_after IS NULL OR not_after>pg_catalog.clock_timestamp())) THEN
+  RAISE EXCEPTION 'Active Training ingestion session unavailable'
+   USING ERRCODE='42501'; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('v2-training-restrictions:'||p_owner::text,0));
+ -- A reused snapshot may not silently change immutable evidence, even if a
+ -- privileged caller attempts a retry with different source manifests.
+ SELECT count(*) INTO v_rows
+ FROM allin_private.v2_training_restriction_source_evidence
+ WHERE user_id=p_owner AND snapshot_version=p_snapshot_version;
+ IF v_rows<>0 THEN
+  RAISE EXCEPTION 'Training source snapshot already recorded'
+   USING ERRCODE='23505'; END IF;
+ v_digest:=allin_private.v2_training_restriction_inventory_digest_candidate(p_owner);
+ FOR v_source IN SELECT value FROM pg_catalog.jsonb_array_elements(p_sources)
+ LOOP
+  IF pg_catalog.jsonb_typeof(v_source)<>'object' OR
+     (SELECT count(*) FROM pg_catalog.jsonb_object_keys(v_source))<>9 THEN
+   RAISE EXCEPTION 'Malformed Training source evidence fields'
+    USING ERRCODE='22023'; END IF;
+  v_kind:=v_source->>'kind';
+  v_ref:=v_source->>'evidenceRef';
+  v_source_digest:=v_source->>'inventoryDigest';
+  v_expected_digest:=v_source->>'canonicalInventoryDigest';
+  IF v_kind IS NULL OR v_kind NOT IN
+    ('current_restrictions','approved_plans','historical_records',
+     'imported_records','restored_records')
+    OR v_kind=ANY(v_seen)
+    OR v_ref IS NULL OR length(btrim(v_ref)) NOT BETWEEN 1 AND 200
+    OR v_ref=ANY(v_refs)
+    OR v_source_digest IS NULL OR v_source_digest !~ '^[0-9a-f]{64}$'
+    OR v_expected_digest IS DISTINCT FROM v_digest
+    OR v_source->>'ownerId' IS DISTINCT FROM p_owner::text
+    OR v_source->>'snapshotVersion' IS DISTINCT FROM p_snapshot_version
+    OR v_source->'complete' IS DISTINCT FROM 'true'::jsonb
+    OR v_source->'nextCursor' IS DISTINCT FROM 'null'::jsonb
+    OR pg_catalog.jsonb_typeof(v_source->'inspectedCount')<>'number'
+    OR pg_catalog.jsonb_typeof(v_source->'reconciledCount')<>'number'
+    OR pg_catalog.jsonb_typeof(v_source->'unresolvedCount')<>'number'
+  THEN RAISE EXCEPTION 'Training source evidence failed owner, coverage or digest validation'
+    USING ERRCODE='42501'; END IF;
+  BEGIN
+   v_inspected:=(v_source->>'inspectedCount')::bigint;
+   v_reconciled:=(v_source->>'reconciledCount')::bigint;
+   v_unresolved:=(v_source->>'unresolvedCount')::bigint;
+  EXCEPTION WHEN invalid_text_representation OR numeric_value_out_of_range THEN
+   RAISE EXCEPTION 'Invalid Training source count' USING ERRCODE='22023'; END;
+  IF v_inspected<0 OR v_reconciled<>v_inspected OR v_unresolved<>0 THEN
+   RAISE EXCEPTION 'Unreconciled Training source evidence' USING ERRCODE='42501'; END IF;
+  v_seen:=pg_catalog.array_append(v_seen,v_kind);
+  v_refs:=pg_catalog.array_append(v_refs,v_ref);
+  INSERT INTO allin_private.v2_training_restriction_source_evidence
+   (user_id,snapshot_version,source_kind,evidence_ref,source_digest,
+    canonical_inventory_digest,inspected_count,reconciled_count,
+    unresolved_count,complete,next_cursor)
+  VALUES(p_owner,p_snapshot_version,v_kind,v_ref,v_source_digest,
+   v_digest,v_inspected,v_reconciled,v_unresolved,true,NULL);
+ END LOOP;
+ -- A stable canonical fingerprint must still match after writing the batch.
+ IF v_digest IS DISTINCT FROM
+   allin_private.v2_training_restriction_inventory_digest_candidate(p_owner) THEN
+  RAISE EXCEPTION 'Training restriction inventory changed during ingestion'
+   USING ERRCODE='40001'; END IF;
+ RETURN allin_private.v2_training_restriction_source_coverage_review(
+  p_owner,p_snapshot_version);
+END;$ingest$;
+REVOKE ALL ON FUNCTION
+ allin_private.v2_training_ingest_restriction_source_evidence_candidate(uuid,text,jsonb)
+ FROM PUBLIC,anon,authenticated,service_role;
+
 -- Training-only reconnaissance for a future trusted initial-inventory
 -- reconciler. It reports just the canonical restriction table's current
 -- contents, NOT proof that historical imports, plans or restorations were
