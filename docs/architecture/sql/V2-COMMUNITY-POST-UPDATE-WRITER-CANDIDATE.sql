@@ -122,7 +122,7 @@ BEGIN
  IF p_parent_comment_id IS NOT NULL THEN
   SELECT * INTO v_parent FROM allin_private.v2_community_comments
   WHERE id=p_parent_comment_id AND post_id=p_post_id
-    AND deleted_at IS NULL FOR SHARE;
+    AND deleted_at IS NULL AND moderation_state='visible' FOR SHARE;
   IF v_parent.id IS NULL OR EXISTS(
     SELECT 1 FROM allin_private.v2_community_blocks b
     WHERE (b.blocker_id=v_actor AND b.blocked_id=v_parent.author_id)
@@ -149,4 +149,87 @@ END;
 $comment_create$;
 REVOKE ALL ON FUNCTION public.v2_community_create_comment(
  uuid,uuid,uuid,uuid,text,boolean)
+ FROM PUBLIC,anon,authenticated,service_role;
+
+-- Review-only owner CAS edit. A deleted or moderation-held comment may not
+-- be rewritten, and a stale edit must never resurrect a deleted body.
+CREATE OR REPLACE FUNCTION public.v2_community_edit_comment(
+ p_actor_id uuid,p_comment_id uuid,p_expected_revision bigint,p_body text
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $comment_edit$
+DECLARE v_actor uuid:=auth.uid();v_revision bigint;
+BEGIN
+ IF v_actor IS NULL OR v_actor IS DISTINCT FROM p_actor_id
+   OR NOT EXISTS(SELECT 1 FROM auth.users u JOIN public.v2_profiles p
+      ON p.user_id=u.id WHERE u.id=v_actor)
+ THEN RAISE EXCEPTION 'community_comment_account_unavailable' USING ERRCODE='42501'; END IF;
+ IF p_comment_id IS NULL OR p_expected_revision IS NULL OR p_expected_revision<1
+    OR p_body IS NULL OR length(btrim(p_body)) NOT BETWEEN 1 AND 4000
+ THEN RAISE EXCEPTION 'invalid_community_comment_edit' USING ERRCODE='22023'; END IF;
+ UPDATE allin_private.v2_community_comments c SET
+   body=btrim(p_body),revision=c.revision+1,updated_at=now()
+ WHERE c.id=p_comment_id AND c.author_id=v_actor
+   AND c.revision=p_expected_revision AND c.deleted_at IS NULL
+   AND c.moderation_state='visible'
+   AND EXISTS(SELECT 1 FROM allin_private.v2_community_posts p
+     WHERE p.id=c.post_id AND (
+       p.owner_id=v_actor OR (
+        p.audience<>'private'
+        AND NOT EXISTS(SELECT 1 FROM allin_private.v2_community_blocks b
+          WHERE (b.blocker_id=v_actor AND b.blocked_id=p.owner_id)
+             OR (b.blocker_id=p.owner_id AND b.blocked_id=v_actor))
+        AND (EXISTS(SELECT 1 FROM allin_private.v2_community_follows f
+          WHERE f.follower_id=v_actor AND f.followed_id=p.owner_id AND f.state='approved')
+          OR (p.audience='public'
+           AND COALESCE((SELECT profile_visibility
+             FROM allin_private.v2_community_visibility
+             WHERE user_id=p.owner_id),'private')='public'))
+      )))
+ RETURNING c.revision INTO v_revision;
+ IF v_revision IS NULL
+ THEN RAISE EXCEPTION 'community_comment_missing_stale_or_restricted' USING ERRCODE='40001'; END IF;
+ RETURN pg_catalog.jsonb_build_object('commentId',p_comment_id,'authorId',v_actor,
+   'revision',v_revision,'edited',true);
+END;
+$comment_edit$;
+REVOKE ALL ON FUNCTION public.v2_community_edit_comment(uuid,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+
+-- Author delete is a one-way redaction. It keeps a tombstone for reply
+-- context, but irreversibly overwrites the original body in the active row.
+-- A second delete may only retry the exact resulting revision; no stale
+-- write can resurrect the content.
+CREATE OR REPLACE FUNCTION public.v2_community_delete_comment(
+ p_actor_id uuid,p_comment_id uuid,p_expected_revision bigint
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $comment_delete$
+DECLARE v_actor uuid:=auth.uid();v_row allin_private.v2_community_comments%ROWTYPE;
+BEGIN
+ IF v_actor IS NULL OR v_actor IS DISTINCT FROM p_actor_id OR
+    NOT EXISTS(SELECT 1 FROM auth.users u JOIN public.v2_profiles p
+      ON p.user_id=u.id WHERE u.id=v_actor)
+ THEN RAISE EXCEPTION 'community_comment_account_unavailable' USING ERRCODE='42501'; END IF;
+ IF p_comment_id IS NULL OR p_expected_revision IS NULL OR p_expected_revision<1
+ THEN RAISE EXCEPTION 'invalid_community_comment_delete' USING ERRCODE='22023'; END IF;
+ SELECT * INTO v_row FROM allin_private.v2_community_comments
+ WHERE id=p_comment_id AND author_id=v_actor FOR UPDATE;
+ IF v_row.id IS NULL THEN
+   RAISE EXCEPTION 'community_comment_not_owned' USING ERRCODE='42501'; END IF;
+ IF v_row.deleted_at IS NOT NULL THEN
+   IF v_row.revision<>p_expected_revision+1 THEN
+    RAISE EXCEPTION 'community_comment_stale_delete' USING ERRCODE='40001'; END IF;
+   RETURN pg_catalog.jsonb_build_object('commentId',p_comment_id,
+     'revision',v_row.revision,'deleted',true,'retry',true);
+ END IF;
+ IF v_row.revision<>p_expected_revision THEN
+   RAISE EXCEPTION 'community_comment_stale_delete' USING ERRCODE='40001'; END IF;
+ UPDATE allin_private.v2_community_comments SET
+   body='[deleted]',deleted_at=now(),updated_at=now(),revision=revision+1
+ WHERE id=p_comment_id AND author_id=v_actor AND deleted_at IS NULL
+ RETURNING * INTO v_row;
+ RETURN pg_catalog.jsonb_build_object('commentId',p_comment_id,
+   'revision',v_row.revision,'deleted',true,'retry',false);
+END;
+$comment_delete$;
+REVOKE ALL ON FUNCTION public.v2_community_delete_comment(uuid,uuid,bigint)
  FROM PUBLIC,anon,authenticated,service_role;
