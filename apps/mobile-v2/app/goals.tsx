@@ -28,9 +28,9 @@ function OwnedGoalsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Link href="/train" asChild>
-          <Pressable accessibilityRole="button" accessibilityLabel="Back to Training"
-            style={styles.back}><Text style={styles.muted}>‹ Training</Text></Pressable>
+        <Link href="/home" asChild>
+          <Pressable accessibilityRole="button" accessibilityLabel="Back to Today"
+            style={styles.back}><Text style={styles.muted}>‹ Today</Text></Pressable>
         </Link>
         <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
         <Text accessibilityRole="header" style={styles.title}>Goals</Text>
