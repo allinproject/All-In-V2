@@ -3,6 +3,8 @@ name: V2 Engineering validation (no deploy)
 on:
   # Targeted integration acceptance runs only for workflow changes.
   # Ordinary source pushes do not start the full npm/Expo job.
+  # Full requested mobile acceptance after guarded Coach/Kitchen/Watch/Event Plan
+  # type fixes (ALL-209 / ALL-224): run once on this workflow change.
   push:
     branches: [integration/v2-foundation]
     paths:
