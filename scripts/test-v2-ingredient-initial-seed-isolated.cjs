@@ -49,3 +49,51 @@ test('unreleased and mismatched nutrient submissions fail with zero candidate wr
  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.v2_ingredients')).rows[0].n,0);
  }finally{await db.close()}
 });
+
+test('eight verified USDA canonical candidate seeds store exact independent energy, protein, carbohydrate, fat and sodium',async()=>{
+ const db=await dbSetup();
+ try{
+  const foods=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'),'utf8')).records;
+  const policy=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'),'utf8')).records;
+  const digestRows=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-225-USDA-EIGHT-PER-FOOD-ENERGY-DIGESTS-2026-11-12.json'),'utf8')).records;
+  assert.equal(foods.length,8);
+  const entries=foods.map((f,i)=>{
+   const p=policy.find(x=>x.source_profile_key===f.profile),d=digestRows.find(x=>x.fdcId===f.fdcId);
+   assert(p&&d);assert.equal(d.selectedEnergyKcal,f.energy.kcal);
+   const nutrient={energy_kcal:f.energy.kcal,protein_g:f.protein,carbohydrate_g:f.carbs,total_fat_g:f.fat,sodium_mg:f.sodiumMg};
+   const tail=String(i+1).padStart(12,'0');
+   const ids=['ffffffff-ffff-4fff-8fff-'+tail,'11111111-1111-4111-8111-'+tail,'22222222-2222-4222-8222-'+tail,'33333333-3333-4333-8333-'+tail];
+   return {f,p,d,nutrient,ids};
+  });
+  await as(db,issuer,'allin_v2_ingredient_source_releaser');
+  for(const e of entries){
+   const receipt=(await db.query(release,[String(e.f.fdcId),e.d.sourcePayloadSha256,ARCHIVE,JSON.stringify(e.nutrient)])).rows[0].r;
+   assert.equal(receipt.status,'released');
+  }
+  await as(db,reviewer,'allin_v2_ingredient_reviewer');
+  for(const e of entries){
+   const seedArgs=[...e.ids,e.f.profile,e.p.display_name,e.p.preparation_state,
+    String(e.f.fdcId),e.f.source,e.d.sourcePayloadSha256,ARCHIVE,JSON.stringify(e.nutrient)];
+   assert.equal((await db.query(insert,seedArgs)).rows[0].r.status,'candidate_seeded');
+   assert.equal((await db.query(insert,seedArgs)).rows[0].r.status,'already_seeded');
+  }
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  const counts=(await db.query("SELECT (SELECT count(*)::int FROM public.v2_ingredients) ingredients,(SELECT count(*)::int FROM public.v2_ingredient_nutrition_profiles WHERE review_status='candidate') candidates,(SELECT count(*)::int FROM public.v2_ingredient_source_records) sources,(SELECT count(*)::int FROM public.v2_ingredient_profile_nutrients) facts,(SELECT count(*)::int FROM allin_private.v2_ingredient_seed_events) audits,(SELECT count(*)::int FROM public.v2_ingredient_nutrition_profiles WHERE review_status='calculation_ready') published")).rows[0];
+  assert.deepEqual(counts,{ingredients:8,candidates:8,sources:8,facts:40,audits:8,published:0});
+  for(const e of entries){
+   const rows=(await db.query('SELECT nutrient_code,amount FROM public.v2_ingredient_profile_nutrients WHERE profile_id=$1',[e.ids[2]])).rows;
+   assert.deepEqual(Object.fromEntries(rows.map(r=>[r.nutrient_code,Number(r.amount)])),e.nutrient);
+  }
+ }finally{await db.close()}
+});
+test('idempotency cannot silently reuse the same seed request with altered canonical identity',async()=>{
+ const db=await dbSetup();
+ try{
+  await as(db,issuer,'allin_v2_ingredient_source_releaser');
+  await db.query(release,['790577',SOURCE,ARCHIVE,JSON.stringify(core)]);
+  await as(db,reviewer,'allin_v2_ingredient_reviewer');
+  await db.query(insert,args(core));
+  const wrong=args(core);wrong[5]='Altered unverified food label';
+  await assert.rejects(()=>db.query(insert,wrong),e=>e.code==='23505');
+ }finally{await db.close()}
+});
