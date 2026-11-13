@@ -39,7 +39,7 @@ assert.equal(original.collections.length,50);
 assert.equal(new Set(original.collections).size,50);
 // One additional private-media collection is approved ONLY by this synthetic
 // test after strict source-byte auditing, never by the canonical SQL release.
-const collections=[...original.collections,'private_media'];
+const collections=[...original.collections];
 const snapshotId=original.snapshotId;
 assert.match(snapshotId,/^[0-9a-f-]{36}$/i);
 const sourcePages=new Map(collections.map(c=>[c,[]]));
@@ -129,6 +129,7 @@ do{
  mediaCursor=page.nextCursor;
 }while(mediaPages.length<20);
 assert(mediaPages.at(-1)?.done);
+collections.push('private_media');
 sourcePages.set('private_media',mediaPages);
 const mediaRows=mediaPages.flatMap(page=>page.rows);
 assert(mediaRows.length>=4);
