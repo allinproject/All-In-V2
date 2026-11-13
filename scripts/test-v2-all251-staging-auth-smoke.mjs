@@ -553,14 +553,30 @@ try{
      failed=true;process.stderr.write('CLEANUP FAILED: temporary staging Storage object requires inspection\\n');
    }
  }
+ // Training has non-cascading composite session foreign keys. Remove ONLY
+ // verified fresh all251 synthetic Training children through the staging-only
+ // secret-key service RPC before GoTrue admin deletes the Auth identity.
+ // Never enable the product account-deletion worker for test cleanup.
+ let cleanupFailed=false;
  for(const id of ids.reverse()){
   try{
+   const children=await request('/rest/v1/rpc/v2_all222_cleanup_synthetic_training_fixture',{
+    method:'POST',apiKey:key,body:{p_expected_user_id:id},
+   });
+   assert.equal(children.status,200,'Staging synthetic Training dependent cleanup RPC rejected');
+   const childResult=await children.json();
+   assert(['training_dependents_removed','absent'].includes(childResult.status),
+     'Unexpected synthetic Training cleanup result');
    const res=await request('/auth/v1/admin/users/'+encodeURIComponent(id),{method:'DELETE'});
-   assert([200,204].includes(res.status),'Cleanup rejected');
+   assert([200,204].includes(res.status),'GoTrue synthetic Auth cleanup rejected');
+   const gone=await request('/auth/v1/admin/users/'+encodeURIComponent(id),{method:'GET'});
+   assert.equal(gone.status,404,'Synthetic Auth user remains after delete ACK');
   }catch{
-   failed=true;process.stderr.write('CLEANUP FAILED: staging Auth requires manual inspection\\n');
+   failed=true;cleanupFailed=true;
+   process.stderr.write('CLEANUP FAILED: staging synthetic Auth/Training requires manual inspection\\n');
   }
  }
- if(!failed&&ids.length===2)process.stdout.write('PASS: two synthetic Auth users deleted\\n');
+ if(!cleanupFailed&&ids.length===2)
+   process.stdout.write('PASS: both synthetic Auth identities and Training dependents removed; admin 404 verified\\n');
 }
 if(failed)process.exitCode=1;
