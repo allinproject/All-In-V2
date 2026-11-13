@@ -16,6 +16,7 @@ function fixture(){
    ownerId,bucketId,exhaustive:true,totalCount:exists?1:0,
    paths:exists?[A+'/late.fit']:[]}),
   objectExists:async()=>false,
+  objectBytesAbsent:async()=>true,
   verifyBucketCheckpoints:async()=>true,
   assertOwnerWritesQuiesced:async()=>true,
  };
@@ -35,6 +36,8 @@ test('late upload, unverified existence, stale barrier, unplanned bucket all den
    exhaustive:true,totalCount:1,paths:[A+'/late.fit']});},
   s=>{s.objectExists=async()=>true;},
   s=>{s.objectExists=async()=>null;},
+  s=>{s.objectBytesAbsent=async()=>false;},
+  s=>{s.objectBytesAbsent=async()=>null;},
   s=>{s.assertOwnerWritesQuiesced=async()=>false;},
   s=>{s.verifyBucketCheckpoints=async()=>false;},
   s=>{s.listBucketCatalog=async()=>[{id:bucket,public:true}];},
