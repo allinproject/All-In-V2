@@ -66,7 +66,7 @@ DECLARE
  sb uuid:='f4444444-4444-4444-8444-444444444444';
  ra uuid:='f5555555-5555-4555-8555-555555555555';
  rb uuid:='f6666666-6666-4666-8666-666666666666';
- inventory jsonb; page1 jsonb; page2 jsonb; water jsonb; food_actions jsonb;
+ inventory jsonb; page1 jsonb; page2 jsonb; water jsonb; b_food jsonb; b_water jsonb; food_actions jsonb;
  hydration_actions jsonb; all_food jsonb;
 BEGIN
  inventory:=public.v2_account_export_inventory_review_candidate(a,sa,ra);
@@ -113,10 +113,16 @@ BEGIN
     OR (food_actions::text||hydration_actions::text) LIKE '%FINGERPRINT%'
     OR (food_actions::text||hydration_actions::text) LIKE '%request_fingerprint%'
  THEN RAISE EXCEPTION 'Private Fuel replay details leaked into export'; END IF;
- BEGIN
-   PERFORM public.v2_account_export_page_review_candidate(b,sb,rb,
-     'public.v2_food_log_entries',NULL,25);
- EXCEPTION WHEN OTHERS THEN RAISE; END;
+ b_food:=public.v2_account_export_page_review_candidate(b,sb,rb,
+   'public.v2_food_log_entries',NULL,25);
+ b_water:=public.v2_account_export_page_review_candidate(b,sb,rb,
+   'public.v2_hydration_events',NULL,25);
+ IF pg_catalog.jsonb_array_length(b_food->'rows')<>1
+    OR b_food::text NOT LIKE '%OWNER_B_PRIVATE_FOOD%'
+    OR pg_catalog.jsonb_array_length(b_water->'rows')<>1
+    OR b_food::text LIKE '%Owner A snack%'
+    OR b_water::text LIKE '%f9999999-9999-4999-8999-999999999999%'
+ THEN RAISE EXCEPTION 'B owner portfolio incomplete or contained A data'; END IF;
  BEGIN
    PERFORM public.v2_account_export_page_review_candidate(a,sb,rb,
      'public.v2_food_log_entries',NULL,25);
