@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { Sentry } from '../src/monitoring/sentry';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../src/auth/AuthProvider';
 import { AccessGateProvider } from '../src/auth/AccessGateProvider';
+import { V2CoachAccessHost } from '../src/navigation/V2CoachAccessHost';
 
 function RootLayout() {
   useEffect(() => {
@@ -24,7 +25,10 @@ function RootLayout() {
       <AuthProvider>
         <AccessGateProvider>
           <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#090909' } }} />
+          <View style={{ flex: 1, backgroundColor: '#0B0B0B' }}>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#090909' } }} />
+            <V2CoachAccessHost />
+          </View>
         </AccessGateProvider>
       </AuthProvider>
     </SafeAreaProvider>
