@@ -29,9 +29,25 @@ test('candidate is not falsely treated as a complete mounted Event Plan owner re
   const sql=source('../../../../../docs/architecture/sql/V2-EVENTHUB-OWNER-EVENT-PLAN-READER-CANDIDATE.sql');
   const train=source('../../../app/train.tsx');
   const model=source('./eventPlanOwnerPresentation.ts');
-  assert.match(sql,/Edition and\s*\n-- Goal binding are NOT certified/);
-  assert.doesNotMatch(sql,/'editionId'/);
+  assert.match(sql,/'editionId',e\\.edition_id/);
+  assert.match(sql,/Goal owns priority and accepted revision binding/);
   assert.doesNotMatch(sql,/'priority'/);
   assert.match(train,/snapshot:null/);
   assert.match(model,/editionId:event\.editionId/);
+});
+
+test('canonical Event edition and Goal revision references remain stable and private',()=>{
+ const event=source('../../../../../docs/architecture/sql/V2-EVENTHUB-IDENTITY-MEMBERSHIP-PARTICIPATION-CANDIDATE.sql');
+ const guard=source('../../../../../docs/architecture/sql/V2-EVENTHUB-EVENT-VERSION-GUARD-CANDIDATE.sql');
+ const binding=source('../../../../../docs/architecture/sql/V2-GOALS-ACCEPTED-EVENT-EDITION-BINDING-CANDIDATE.sql');
+ assert.match(event,/edition_id uuid NOT NULL UNIQUE/);
+ assert.match(event,/UNIQUE\\(id,edition_id\\)/);
+ assert.match(guard,/NEW\\.edition_id IS DISTINCT FROM OLD\\.edition_id/);
+ assert.match(binding,/FOREIGN KEY\\(goal_revision_id,goal_id,user_id\\)/);
+ assert.match(binding,/REFERENCES public\\.v2_goal_revisions\\(id,goal_id,user_id\\)/);
+ assert.match(binding,/FOREIGN KEY\\(event_id,edition_id\\)/);
+ assert.match(binding,/REFERENCES public\\.v2_events\\(id,edition_id\\)/);
+ assert.match(binding,/ALTER TABLE public\\.v2_goal_event_edition_links ENABLE ROW LEVEL SECURITY/);
+ assert.match(binding,/FROM PUBLIC,anon,authenticated,service_role/);
+ assert.doesNotMatch(binding,/CREATE POLICY.*USING.*true/);
 });
