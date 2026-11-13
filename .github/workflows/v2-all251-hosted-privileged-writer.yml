@@ -1,12 +1,8 @@
 name: ALL-251 temporary hosted privileged writer acceptance (two synthetic accounts)
+# Privileged direct-upload probes may execute only on an intentional manual
+# invocation under the protected staging environment, never on each code push.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - integration/v2-foundation
-    paths:
-      - .github/workflows/v2-all251-hosted-privileged-writer.yml
-      - scripts/test-all251-hosted-privileged-storage-writer.mjs
 permissions:
   contents: read
 concurrency:
