@@ -121,3 +121,34 @@ CREATE TRIGGER v2_privileged_storage_write_fence_review
 -- Review-only: callers with unrestricted service-role credentials can still
 -- bypass this route through direct Storage API. Credential isolation and
 -- removal of alternate privileged upload paths are release prerequisites.
+
+
+-- A privileged direct DELETE from auth.users otherwise cascades and erases
+-- unsettled lease rows, bypassing the canonical deletion-request trigger.
+-- Fence that path with the SAME owner advisory transaction lock. This must
+-- be reviewed alongside Auth account lifecycle and restore before release.
+CREATE FUNCTION allin_private.v2_deny_auth_delete_with_open_storage_leases_review()
+RETURNS trigger LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $auth_fence$
+BEGIN
+ IF OLD.id IS NULL THEN
+  RAISE EXCEPTION 'Verified Auth owner required for deletion fence'
+   USING ERRCODE='42501';
+ END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('v2-delete-request:'||OLD.id::text,0));
+ IF EXISTS(
+  SELECT 1 FROM allin_private.v2_privileged_storage_write_leases_review l
+  WHERE l.owner_id=OLD.id AND l.settled_at IS NULL
+ ) THEN
+  RAISE EXCEPTION 'Unresolved privileged Storage write blocks Auth deletion'
+   USING ERRCODE='42501';
+ END IF;
+ RETURN OLD;
+END $auth_fence$;
+REVOKE ALL ON FUNCTION
+ allin_private.v2_deny_auth_delete_with_open_storage_leases_review()
+ FROM PUBLIC,anon,authenticated,service_role;
+CREATE TRIGGER v2_privileged_storage_auth_delete_fence_review
+ BEFORE DELETE ON auth.users FOR EACH ROW EXECUTE FUNCTION
+ allin_private.v2_deny_auth_delete_with_open_storage_leases_review();
