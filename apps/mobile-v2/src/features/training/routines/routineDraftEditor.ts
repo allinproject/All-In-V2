@@ -25,7 +25,6 @@ export type RoutineDraft={
  nextId:number;version:number;status:'unsaved_draft';
 };
 const supportedSports:ReadonlySet<TrainingSport>=new Set<TrainingSport>(V2_ACTIVITY_SPORTS);
-const clean=(value:string,max=200)=>value.replace(/[\r\n\t]+/g,' ').trim().slice(0,max);
 export function isStrengthRoutine(sport:TrainingSport){return sport==='strength';}
 export function newRoutineDraft(sport:TrainingSport='strength'):RoutineDraft{
  if(!supportedSports.has(sport))throw new Error('Unsupported routine sport.');
@@ -33,7 +32,10 @@ export function newRoutineDraft(sport:TrainingSport='strength'):RoutineDraft{
   sport,notes:'',blocks:[],nextId:1,version:0,status:'unsaved_draft'};
 }
 export function renameRoutineDraft(draft:RoutineDraft,value:string):RoutineDraft{
- const name=clean(value,120);return name&&name!==draft.name?{...draft,name,version:draft.version+1}:draft;
+ // Do not trim on every keystroke: otherwise athletes cannot type spaces
+ // between words in a controlled TextInput. Validate completed names at review.
+ const name=value.replace(/[\r\n\t]/g,' ').slice(0,120);
+ return name!==draft.name?{...draft,name,version:draft.version+1}:draft;
 }
 export function changeRoutineSport(draft:RoutineDraft,sport:TrainingSport):RoutineDraft{
  if(!supportedSports.has(sport))return draft;
@@ -42,7 +44,8 @@ export function changeRoutineSport(draft:RoutineDraft,sport:TrainingSport):Routi
  return {...newRoutineDraft(sport),name:draft.name,notes:draft.notes,version:draft.version+1};
 }
 export function setRoutineNotes(draft:RoutineDraft,value:string):RoutineDraft{
- return {...draft,notes:clean(value,1000),version:draft.version+1};
+ const notes=value.replace(/[\r\n\t]/g,' ').slice(0,1000);
+ return notes!==draft.notes?{...draft,notes,version:draft.version+1}:draft;
 }
 export function addRoutineBlock(draft:RoutineDraft):RoutineDraft{
  if(draft.blocks.length>=60)return draft;
