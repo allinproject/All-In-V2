@@ -67,7 +67,7 @@ def fixtures(zip_path):
     hashes=json.loads(DIGESTS.read_text("utf8"))
     if evidence["archiveSha256"]!=ARCHIVE or hashes["archiveSha256"]!=ARCHIVE:
         raise RuntimeError("Original USDA archive pin disagrees with review contracts")
-    if len(verified)!=len(evidence["records"])!=8:
+    if not (len(verified)==len(evidence["records"])==8):
         raise RuntimeError("Eight independently verified foods required")
     approved={row["source_profile_key"]:row for row in aliases["records"]}
     digests={row["fdcId"]:row for row in hashes["records"]}
@@ -138,7 +138,7 @@ def source_sql(foods,login):
       " THEN RAISE EXCEPTION 'source session is not independently authenticated'; END IF; END $auth$;"]
     for f in foods:
         statements.append("SELECT "+SOURCE+"("+",".join(map(lit,
-          [f["fdc"],f["digest"],ARCHIVE,json.dumps(f["core"],separators=(",",":"))]))[:-1]+ "::jsonb) AS result;")
+          [f["fdc"],f["digest"],ARCHIVE]))+","+lit(json.dumps(f["core"],separators=(",",":")))+"::jsonb) AS result;")
     statements.append("COMMIT;")
     return "\n".join(statements)
 
@@ -235,6 +235,13 @@ def cleanup_sql(foods,officer,worker):
     sources=",".join(lit(f["ids"]["source"]) for f in foods)
     ingredients=",".join(lit(f["ids"]["ingredient"]) for f in foods)
     return """BEGIN;
+ALTER ROLE """+officer+""" NOLOGIN PASSWORD NULL;
+ALTER ROLE """+worker+""" NOLOGIN PASSWORD NULL;
+REVOKE allin_v2_ingredient_source_releaser FROM """+officer+""";
+REVOKE allin_v2_ingredient_reviewer FROM """+worker+""";
+UPDATE allin_private.v2_ingredient_review_operators SET enabled=false,
+ revoked_at=clock_timestamp(),credential_expires_at=clock_timestamp()
+ WHERE login_role IN ("""+lit(officer)+","+lit(worker)+""") AND enabled;
 DROP FUNCTION IF EXISTS allin_private.v2_seed_ingredient_candidate(uuid,uuid,uuid,uuid,text,text,text,text,text,text,text,jsonb);
 DROP FUNCTION IF EXISTS allin_private.v2_release_ingredient_source_core(text,text,text,jsonb);
 DROP TABLE IF EXISTS allin_private.v2_ingredient_seed_events;
@@ -256,16 +263,18 @@ SELECT 'cleanup_committed';
 
 
 def clean_sql(officer,worker):
-    return "SELECT CASE WHEN (SELECT count(*) FROM public.v2_ingredients)=0"+
-      " AND (SELECT count(*) FROM public.v2_ingredient_source_records)=0"+
-      " AND (SELECT count(*) FROM public.v2_ingredient_nutrition_profiles)=0"+
-      " AND (SELECT count(*) FROM public.v2_ingredient_profile_sources)=0"+
-      " AND to_regclass('allin_private.v2_ingredient_source_core_evidence') IS NULL"+
-      " AND to_regclass('allin_private.v2_ingredient_seed_events') IS NULL"+
-      " AND to_regrole('allin_v2_ingredient_source_releaser') IS NULL"+
-      " AND to_regrole("+lit(officer)+") IS NULL"+
-      " AND to_regrole("+lit(worker)+") IS NULL"+
-      " THEN 'clean' ELSE 'not_clean' END;"
+    return (
+        "SELECT CASE WHEN (SELECT count(*) FROM public.v2_ingredients)=0"
+        " AND (SELECT count(*) FROM public.v2_ingredient_source_records)=0"
+        " AND (SELECT count(*) FROM public.v2_ingredient_nutrition_profiles)=0"
+        " AND (SELECT count(*) FROM public.v2_ingredient_profile_sources)=0"
+        " AND to_regclass('allin_private.v2_ingredient_source_core_evidence') IS NULL"
+        " AND to_regclass('allin_private.v2_ingredient_seed_events') IS NULL"
+        " AND to_regrole('allin_v2_ingredient_source_releaser') IS NULL"
+        " AND to_regrole("+lit(officer)+") IS NULL"
+        " AND to_regrole("+lit(worker)+") IS NULL"
+        " THEN 'clean' ELSE 'not_clean' END;"
+    )
 
 
 def main():
