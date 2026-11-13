@@ -34,7 +34,7 @@ fi
   -d "${ALL230_V1_ARCHIVE_DIRECTORY}" &&
   ! -L "${ALL230_V1_ARCHIVE_DIRECTORY}" ]] ||
  { echo 'Pre-existing, non-symlink encrypted archive directory required' >&2; exit 1; }
-for command in pg_dump age sha256sum stat node openssl; do
+for command in pg_dump age sha256sum stat openssl; do
  command -v "$command" >/dev/null ||
  { echo 'Required local backup command unavailable' >&2; exit 1; }
 done
