@@ -57,7 +57,7 @@ CREATE FUNCTION public.v2_begin_attested_privileged_storage_write_review(
 AS $begin$
 DECLARE v_now bigint;v_secret bytea;v_expected text;v_status text;v_id uuid;
 BEGIN
- v_now:=pg_catalog.extract(epoch FROM pg_catalog.clock_timestamp())::bigint;
+ v_now:=EXTRACT(epoch FROM pg_catalog.clock_timestamp())::bigint;
  IF p_owner IS NULL OR p_nonce IS NULL
  OR p_bucket NOT IN ('v2-private-workout-objects','v2-private-account-exports')
  OR p_operation NOT IN ('create','replace')
@@ -109,7 +109,7 @@ CREATE FUNCTION public.v2_settle_attested_privileged_storage_write_review(
 AS $settle$
 DECLARE v_lease record;v_now bigint;v_secret bytea;v_expected text;
 BEGIN
- v_now:=pg_catalog.extract(epoch FROM pg_catalog.clock_timestamp())::bigint;
+ v_now:=EXTRACT(epoch FROM pg_catalog.clock_timestamp())::bigint;
  IF p_owner IS NULL OR p_lease IS NULL
  OR p_sha256 !~ '^[0-9a-f]{64}$' OR p_mac !~ '^[0-9a-f]{64}$'
  OR p_expires_epoch IS NULL OR p_expires_epoch<=v_now OR p_expires_epoch>v_now+90
