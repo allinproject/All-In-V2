@@ -134,74 +134,7 @@ CREATE TABLE allin_private.v2_training_restriction_source_evidence (
   ('current_restrictions','approved_plans','historical_records',
    'imported_records','restored_records')),
  evidence_ref text NOT NULL CHECK(length(btrim(evidence_ref)) BETWEEN 1 AND 200),
- source_digest text NOT NULL CHECK(source_digest ~ '^[0-9a-f]{64}
--- reconciler. It reports just the canonical restriction table's current
--- contents, NOT proof that historical imports, plans or restorations were
--- fully examined. Never use its counters to authorize a first certificate.
--- No client/service EXECUTE and no SECURITY DEFINER authority.
-CREATE FUNCTION allin_private.v2_training_restriction_reconciliation_status_candidate(
- p_owner uuid
-) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER
- SET search_path='' AS $status$
-DECLARE
- v_total bigint;
- v_active bigint;
- v_retired bigint;
- v_by_source jsonb;
- v_cert_revision bigint;
- v_cert_digest text;
- v_certified_at timestamptz;
- v_current_digest text;
- v_cert_matches boolean:=false;
-BEGIN
- IF p_owner IS NULL OR
-  NOT EXISTS(SELECT 1 FROM auth.users WHERE id=p_owner) OR
-  NOT EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id=p_owner)
- THEN RAISE EXCEPTION 'Training owner not established' USING ERRCODE='42501'; END IF;
- SELECT count(*),count(*) FILTER(WHERE status='active'),
-  count(*) FILTER(WHERE status='retired')
- INTO v_total,v_active,v_retired
- FROM public.v2_training_athlete_restrictions WHERE user_id=p_owner;
- SELECT coalesce(pg_catalog.jsonb_object_agg(source,n),'{}'::jsonb)
- INTO v_by_source
- FROM (SELECT source,count(*) AS n
-  FROM public.v2_training_athlete_restrictions WHERE user_id=p_owner
-  GROUP BY source) q;
- SELECT certified_revision,inventory_digest,certified_at
- INTO v_cert_revision,v_cert_digest,v_certified_at
- FROM allin_private.v2_training_restriction_certifications
- WHERE user_id=p_owner;
- v_current_digest:=allin_private.v2_training_restriction_inventory_digest_candidate(p_owner);
- IF v_cert_revision IS NOT NULL THEN
-  v_cert_matches:=v_cert_digest=v_current_digest AND
-   v_certified_at IS NOT NULL AND
-   v_certified_at<=pg_catalog.clock_timestamp() AND
-   NOT EXISTS(SELECT 1 FROM public.v2_training_athlete_restrictions r
-    WHERE r.user_id=p_owner AND
-    (r.revision>v_cert_revision OR r.updated_at>v_certified_at));
- END IF;
- RETURN pg_catalog.jsonb_build_object(
-  'ownerId',p_owner,
-  'recordedRows',v_total,'recordedActive',v_active,
-  'recordedRetired',v_retired,'recordedBySource',v_by_source,
-  'recordedInventoryDigest',v_current_digest,
-  'certificationPresent',v_cert_revision IS NOT NULL,
-  'certificationMatchesRecordedRows',v_cert_matches,
-  'certifiedRevision',v_cert_revision,
-  -- These can only be set by an approved source-aware reconciler. A count
-  -- of zero is never evidence that external and historical sources are empty.
-  'historicalSourceCoverageVerified',false,
-  'firstCertificationAuthorized',false,
-  'reconciliationRequired',true);
-END;$status$;
-REVOKE ALL ON FUNCTION
- allin_private.v2_training_restriction_reconciliation_status_candidate(uuid)
- FROM PUBLIC,anon,authenticated,service_role;
-
--- A later reviewed Auth-owner migration explicitly grants authenticated
--- EXECUTE. There are deliberately NO app grants in this candidate.
-COMMIT;
-),
+ source_digest text NOT NULL CHECK(source_digest ~ '^[0-9a-f]{64}$'),
  inspected_count bigint NOT NULL CHECK(inspected_count>=0),
  reconciled_count bigint NOT NULL CHECK(reconciled_count>=0),
  unresolved_count bigint NOT NULL CHECK(unresolved_count>=0),
