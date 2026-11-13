@@ -82,7 +82,7 @@ const originalOwnerRows=collections.flatMap(c=>sourcePages.get(c).flatMap(p=>p.r
 assert.equal(originalOwnerRows.length,sourceRows);
 const corpus=JSON.stringify(originalOwnerRows);
 for(const secret of ['Owner B private Coach','B private race note','private-checkout-B','private-subscription-B'])
- assert(!corpus.includes(secret),'Foreign owner's private data entered canonical capture');
+ assert(!corpus.includes(secret),"Foreign owner's private data entered canonical capture");
 for(const internal of ['payload_sha256','expected_version','result_version'])
  assert(!originalOwnerRows.some(({collection,record})=>collection==='community.my_action_receipts'&&
   Object.hasOwn(record,internal)), 'Community internal CAS state leaked');
