@@ -173,6 +173,10 @@ jobs:
           set -euo pipefail
           test "${CI}" = "1"
           node scripts/test-v2-account-export-real-local-storage.mjs
+      - name: ALL-251 private Storage cleanup review fail-closed unit tests
+        run: |
+          set -euo pipefail
+          node --test scripts/test-all251-private-storage-cleanup-review.test.mjs
       - name: ALL-12 restored private Storage two authenticated owners
         run: |
           set -euo pipefail
