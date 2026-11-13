@@ -14,6 +14,8 @@ import {
 } from '../src/features/training/calendarDayView';
 import { validAthleteLocalDate } from '../src/features/training/manualActivityDraft';
 import { combineCalendarReads, calendarDaySections } from '../src/features/training/trainingCalendarReadModel';
+import {projectEventPlanOwnerSnapshot} from '../src/features/training/eventPlanOwnerPresentation';
+import {EventPlanListContent} from '../src/features/training/EventPlanListContent';
 
 function todayOnDevice(): string {
   const now = new Date();
@@ -44,7 +46,7 @@ export default function TrainingCalendarScreen() {
 }
 
 function TrainingCalendarOwnerScreen() {
-  const { user, loading } = useAuth();
+  const { user, loading, sessionGeneration } = useAuth();
   const params = useLocalSearchParams<{ date?: string }>();
   const gate = useAccessGate();
   const initialDay = typeof params.date === 'string' && validAthleteLocalDate(params.date)
@@ -246,12 +248,16 @@ function TrainingCalendarOwnerScreen() {
                 <Text style={styles.muted}>Training preparation, progression, weekly structure, recovery and taper belong here. The accepted Training Plan reader and review/apply writer are not connected yet; no plan can be shown or changed from this screen.</Text>
               </View>
             ) : (
-              <View style={styles.card}>
-                <Text style={styles.section}>Event Plan</Text>
-                <Text style={styles.muted}>Your upcoming events and event-specific Coach strategies will appear here after the private, owner-certified Event reader is connected. We cannot verify whether you have events yet.</Text>
-                <Text style={styles.muted}>Event overview, strategy, course or sport-specific logistics, fueling when relevant, and event-day execution will share one expandable detail page. Training preparation stays in Training Plan.</Text>
-                <Text style={styles.note}>Event creation, website import, event details and automatic strategy refresh are not active in this V2 screen yet.</Text>
-              </View>
+              <EventPlanListContent projection={projectEventPlanOwnerSnapshot({
+                expectedOwnerId:user.id,
+                authenticatedOwnerId:user.id,
+                sessionGeneration,
+                accessGateReady:gate.status==='ready',
+                // No certified Event owner reader yet. Do NOT fabricate a
+                // complete empty snapshot or accept client-created event data.
+                snapshot:null,
+                today:todayOnDevice(),
+              })}/>
             )}
           </>
         ) : (
