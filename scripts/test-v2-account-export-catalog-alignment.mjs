@@ -59,6 +59,24 @@ test('new Nutrition, food, Progress, equipment, race and alternate-owner schemas
  assert(reader.includes('New domain requires explicit account export classification'));
  assert(reader.includes('Unreviewed alternate-key owner table requires export coverage'));
 });
+test('staging ingredient reference, Coach policy and private Storage-lease additions require explicit owner export classification',()=>{
+ // These names exist in approved temporary staging, but being an ingredient
+ // catalog or an internal lease does not automatically make it exportable.
+ // A new reference/operational classification must be reviewed explicitly
+ // rather than bypassing the canonical complete=false privacy release gate.
+ for(const sql of [source,reader]){
+  const guard=guardSegment(sql);
+  for(const prefix of [
+   'v2_ingredient_%','v2_nutrient_%','v2_coach_request_%',
+   'v2_privileged_storage_%',
+  ])assert(guard.includes("'"+prefix+"'"),
+   'Unreviewed staging domain bypassed canonical export guard: '+prefix);
+  assert(guard.includes('New domain requires explicit account export classification'));
+ }
+ assert(reader.includes("'complete',false"),
+  'Unreviewed staging data cannot be declared a complete export');
+});
+
 test('canonical snapshot and private paginated reader both redact blocked incoming follow requests',()=>{
  assert(source.includes('b.blocker_id=f.follower_id and b.blocked_id=v_user'));
  assert(source.includes('b.blocker_id=v_user and b.blocked_id=f.follower_id'));
