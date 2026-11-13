@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
  readCanonicalHistoricalRestrictionSource,readCanonicalImportedTrainingSource,
  readCanonicalRestoredRestrictionSource,reconcileObservedRestrictionSources,
+ inspectCanonicalRestrictionProvenance,
 } from './trainingRestrictionProvenanceReaders.mjs';
 const a='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const b='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -109,4 +110,31 @@ test('restoration requires independent ALL-12 evidence even for empty account',a
  await assert.rejects(readCanonicalRestoredRestrictionSource({
   client:f.client,ownerId:a,snapshotVersion}),/independent restriction restoration proof unavailable/);
  assert.equal(f.calls.length,0);
+});
+
+test('single pinned snapshot reconciles observed history/import against canonical, never certifies restore',async()=>{
+ const calls=[];
+ const db={query:async(sql,args)=>{
+  calls.push({sql,args});
+  if(sql.startsWith('SELECT * FROM public.v2_training_athlete_restrictions'))
+   return {rows:[retired,active,approved]};
+  if(sql.includes("r.status='retired'"))return {rows:[{user_id:a,record:retired}]};
+  if(sql.includes("source_kind='imported_template'"))return {rows:[
+   {user_id:a,kind:'imported_revision',record:importedRevision},
+   {user_id:a,kind:'linked_restriction',record:approved},
+  ]};
+  throw Error('Unexpected review SQL');
+ }};
+ const report=await inspectCanonicalRestrictionProvenance({
+  client:db,ownerId:a,snapshotVersion,
+ });
+ assert.equal(report.canonicalRuleCount,3);
+ assert.equal(report.retiredCount,1);
+ assert.equal(report.observedImportedRevisions,1);
+ assert.equal(report.restoration,'unverified');
+ assert.equal(report.status,'blocked');
+ assert.equal(report.initialCertificationAuthorized,false);
+ assert(report.missingOrConflictingMappings.includes('independent_source_completeness_unverified'));
+ assert.equal(calls.length,3);
+ assert(calls.every(q=>q.args?.[0]===a));
 });
