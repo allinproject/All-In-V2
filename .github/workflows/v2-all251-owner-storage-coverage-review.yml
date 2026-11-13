@@ -7,6 +7,10 @@ on:
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
       - 'scripts/fixtures/all251-staging-lease-coverage.pgsql'
       - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
+      - 'supabase/functions/_shared/trainingPrivilegedStorageLeaseAttestation.node.test.mjs'
+      - 'supabase/functions/_shared/trainingPrivilegedStorageLeaseAttestation.mjs'
+      - 'scripts/test-all251-attested-canonical-storage-writer-isolated.psql'
+      - 'docs/architecture/sql/V2-ACCOUNT-DELETION-ATTESTED-STORAGE-WRITER-REVIEW.sql'
       - 'scripts/test-all251-storage-durable-checkpoint-real-api-local.mjs'
       - 'scripts/test-all251-authoritative-export-deletion-lease-classification.mjs'
       - 'scripts/test-all251-populated-canonical-encrypted-roundtrip.mjs'
@@ -19,6 +23,10 @@ on:
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
       - 'scripts/fixtures/all251-staging-lease-coverage.pgsql'
       - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
+      - 'supabase/functions/_shared/trainingPrivilegedStorageLeaseAttestation.node.test.mjs'
+      - 'supabase/functions/_shared/trainingPrivilegedStorageLeaseAttestation.mjs'
+      - 'scripts/test-all251-attested-canonical-storage-writer-isolated.psql'
+      - 'docs/architecture/sql/V2-ACCOUNT-DELETION-ATTESTED-STORAGE-WRITER-REVIEW.sql'
       - 'scripts/test-all251-storage-durable-checkpoint-real-api-local.mjs'
       - 'scripts/test-all251-authoritative-export-deletion-lease-classification.mjs'
       - 'scripts/test-all251-populated-canonical-encrypted-roundtrip.mjs'
@@ -83,6 +91,14 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql
       - name: Prove absent, disabled and unprotected Storage fences block
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-all251-existing-deletion-graph-lease-contract.psql
+      - name: Exercise existing canonical writer with signed lease and byte-bound settlement
+        run: node --test supabase/functions/_shared/trainingPrivilegedStorageLeaseAttestation.node.test.mjs
+      - name: Run isolated PostgreSQL attested writer/late-upload/deletion race contract
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -c 'CREATE DATABASE all251_attested_review'
+          PGDATABASE=all251_attested_review psql -v ON_ERROR_STOP=1 \
+            -f scripts/test-all251-attested-canonical-storage-writer-isolated.psql
       - name: Extract exact canonical export owner-child guard for isolated execution
         run: node scripts/generate-all251-exact-export-owner-child-guard.mjs
       - name: Install exact-source export inventory guard in disposable fixture
