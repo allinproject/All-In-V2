@@ -28,7 +28,8 @@
         "EXPO_PUBLIC_V2_COACH_READ_ENABLED": "true",
         "EXPO_PUBLIC_V2_COACH_SEND_ENABLED": "false",
         "EXPO_PUBLIC_V2_COACH_STAGING_ACCEPTANCE": "true"
-      }
+      },
+      "environment": "preview"
     }
   }
 }
