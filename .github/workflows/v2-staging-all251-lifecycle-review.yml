@@ -6,6 +6,7 @@ on:
       - 'scripts/fixtures/v2-shared-staging-all251-export-auth-minimal.psql'
       - 'scripts/test-v2-shared-staging-all251-export-auth-upgrade.psql'
       - '.github/workflows/v2-staging-all251-lifecycle-review.yml'
+      - 'docs/architecture/sql/V2-STAGING-ALL251-HARD-OFF-AUDIT-BRIDGE-REVIEW.sql'
   workflow_dispatch:
 
 permissions:
@@ -41,6 +42,15 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-STAGING-ALL251-EXPIRED-SESSION-GATE-REVIEW.sql
       - name: Verify existing session, deletion, Storage-leases and permissions
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-v2-shared-staging-all251-export-auth-upgrade.psql
+      - name: Install canonical disabled deletion processor and minimal durable audit in isolation
+        run: psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-STAGING-ALL251-HARD-OFF-AUDIT-BRIDGE-REVIEW.sql
+      - name: Assert destructive processing remains disabled and audit is private
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -At -c "SELECT execution_enabled FROM allin_private.v2_account_deletion_processor_config WHERE singleton=true" | grep -qx 'f'
+          psql -At -c "SELECT count(*) FROM allin_private.v2_account_deletion_execution_audit" | grep -qx '0'
+          psql -At -c "SELECT has_table_privilege('authenticated','allin_private.v2_account_deletion_execution_audit','SELECT')" | grep -qx 'f'
       - name: Guard refuses unreviewed second replacement
         shell: bash
         run: |
