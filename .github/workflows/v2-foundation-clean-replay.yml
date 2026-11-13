@@ -136,6 +136,9 @@ on:
       - 'scripts/test-all251-storage-metadata-fence-local.psql'
       - 'supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs'
       - 'supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs'
+      - 'supabase/functions/_shared/trainingPrivilegedStorageWriterAttestor.mjs'
+      - 'supabase/functions/_shared/trainingPrivilegedStorageWriterAttestor.test.mjs'
+      - 'supabase/functions/v2-private-storage-writer/index.ts'
       - 'supabase/functions/_shared/trainingPrivilegedAccountExportBarrier.mjs'
       - 'supabase/functions/_shared/trainingPrivilegedAccountExportBarrier.test.mjs'
       - 'supabase/functions/v2-private-storage-writer/index.ts'
@@ -217,6 +220,7 @@ jobs:
           set -euo pipefail
           test "${CI}" = "1"
           node --test supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs
+          node --test supabase/functions/_shared/trainingPrivilegedStorageWriterAttestor.test.mjs
           node --test supabase/functions/_shared/trainingPrivilegedAccountExportBarrier.test.mjs
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
