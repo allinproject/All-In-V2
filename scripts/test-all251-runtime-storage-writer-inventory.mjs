@@ -91,3 +91,26 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
  assert.equal(/^\s*push\s*:/m.test(rawProbe),false,
   'Raw privileged Storage bypass probe must never run automatically');
 });
+
+
+test('provider-level upload freeze cannot be inferred from signed leases or DB metadata alone',()=>{
+ const source=(path)=>readFileSync(resolve(root,path),'utf8');
+ const readiness=source('docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-READINESS-REVIEW.sql');
+ const runtime=source('supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.mjs');
+ const writer=source('supabase/functions/v2-private-storage-writer/index.ts');
+ const audit=source('docs/architecture/ALL-251-PRIVILEGED-STORAGE-CREDENTIAL-ROUTE-AUDIT.md');
+ assert(readiness.includes("'completePrivateStorage',false"),
+  'Review-only SQL must never certify Storage bytes from database receipts');
+ assert(readiness.includes("'uploadBarrierEnforced',false"),
+  'Review-only SQL must never certify provider-wide upload freeze');
+ assert(runtime.includes('data.uploadBarrierEnforced!==true') &&
+        runtime.includes('data.completePrivateStorage!==true'),
+  'Operational worker must require both independent provider attestations');
+ assert(writer.includes("Deno.env.get('ALLIN_PRIVATE_WRITER_ACCEPTED')!=='true'"),
+  'Canonical private writer cannot be enabled by default');
+ assert(writer.includes('PROJECT-WIDE')&&writer.includes('NOT independent'),
+  'Shared Supabase Edge secrets cannot be represented as scoped writer custody');
+ assert(audit.includes('Raw ') && audit.includes('sb_secret_') &&
+        audit.includes('direct S3/TUS protocol completion'),
+  'Known provider bypass and unsupported delayed routes must remain release blockers');
+});
