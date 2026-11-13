@@ -1,0 +1,80 @@
+\set ON_ERROR_STOP on
+-- ALL-251 rollback-only policy acceptance; no live Storage object write.
+BEGIN;
+\i /tmp/V2-ACCOUNT-DELETION-STORAGE-WRITE-GATE-REVIEW.sql
+\i /tmp/V2-ACCOUNT-DELETION-STORAGE-AUTH-UPLOAD-POLICY-REVIEW.sql
+INSERT INTO auth.users(id) VALUES
+ ('a8111111-8111-4111-8111-811111111111'),
+ ('b8222222-8222-4222-8222-822222222222');
+INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+VALUES ('a8111111-8111-4111-8111-811111111111',
+        'c8333333-8333-4333-8333-833333333333','requested');
+DO $policies$
+BEGIN
+ IF (SELECT count(*) FROM pg_catalog.pg_policies
+  WHERE schemaname='storage' AND tablename='objects'
+    AND policyname IN ('v2_all251_auth_upload_insert_review',
+                      'v2_all251_auth_upload_update_review')
+    AND permissive='RESTRICTIVE')<>2 THEN
+  RAISE EXCEPTION 'Restrictive upload policies missing'; END IF;
+ IF has_function_privilege('anon',
+    'public.v2_storage_owner_upload_gate_review(text,text)','EXECUTE')
+ OR NOT has_function_privilege('authenticated',
+    'public.v2_storage_owner_upload_gate_review(text,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Unauthorized upload-policy RPC roles'; END IF;
+END $policies$;
+SET LOCAL ROLE authenticated;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',
+ 'a8111111-8111-4111-8111-811111111111',true);
+DO $denials$
+DECLARE denied boolean;
+BEGIN
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_storage_owner_upload_gate_review(
+    'v2-private-workout-objects',
+    'a8111111-8111-4111-8111-811111111111/sensor.fit');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Pending deletion accepted owner upload'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_storage_owner_upload_gate_review(
+    'v2-private-workout-objects',
+    'b8222222-8222-4222-8222-822222222222/foreign.fit');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Foreign owner accepted'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_storage_owner_upload_gate_review(
+    'unreviewed-bucket',
+    'a8111111-8111-4111-8111-811111111111/sensor.fit');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Unreviewed bucket accepted'; END IF;
+END $denials$;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',
+ 'b8222222-8222-4222-8222-822222222222',true);
+DO $other$
+BEGIN
+ IF NOT public.v2_storage_owner_upload_gate_review(
+ 'v2-private-workout-objects',
+ 'b8222222-8222-4222-8222-822222222222/private.fit')
+ THEN RAISE EXCEPTION 'Unblocked owner falsely denied'; END IF;
+END $other$;
+RESET ROLE;
+UPDATE allin_private.v2_account_deletion_requests SET status='cancelled',
+ resolved_at=now() WHERE user_id='a8111111-8111-4111-8111-811111111111';
+SET LOCAL ROLE authenticated;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',
+ 'a8111111-8111-4111-8111-811111111111',true);
+DO $resume$
+BEGIN
+ IF NOT public.v2_storage_owner_upload_gate_review(
+  'v2-private-workout-objects',
+  'a8111111-8111-4111-8111-811111111111/resumed.fit')
+ THEN RAISE EXCEPTION 'Cancelled owner could not resume'; END IF;
+ RAISE NOTICE 'PASS ALL-251: authenticated-only restrictive Storage policy, pending denied, foreign denied, independent owner allowed, cancelled allowed';
+END $resume$;
+ROLLBACK;
