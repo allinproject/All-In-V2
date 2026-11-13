@@ -27,6 +27,33 @@ test('all 43 authoritative owner tables match the canonical snapshot allowlist e
  assert.equal(new Set(candidate).size,candidate.length);
  assert.deepEqual(candidate,owned,'any added owner table must be explicitly reviewed and paginated');
 });
+test('Food/Hydration quartet joins the existing paginated registry only with complete Auth-owner protection',()=>{
+ const inventory=reader.slice(0,reader.indexOf('$inventory$;'));
+ const quartet=[
+  'public.v2_food_log_entries',
+  'allin_private.v2_food_log_write_actions',
+  'public.v2_hydration_events',
+  'allin_private.v2_hydration_actions',
+ ];
+ for(const table of quartet)assert(inventory.includes("'"+table+"'"),
+  'Missing canonical Fuel owner source '+table);
+ assert(inventory.includes('v_fuel_count NOT IN (0,4)'),
+  'Partial Food/Hydration installation must fail closed');
+ assert(inventory.includes('v_expected:=v_expected||v_fuel_expected'),
+  'Fuel quartet must join same canonical owner graph');
+ for(const text of [
+  'c.relrowsecurity','fk.confdeltype=\'c\'',
+  "fk.confrelid='auth.users'::pg_catalog.regclass",
+  "has_table_privilege('anon'",
+  "has_table_privilege('authenticated'",
+ ])assert(inventory.includes(text),'Missing Fuel owner security preflight: '+text);
+ assert(inventory.includes("'complete',false"),
+  'Fuel registration cannot imply complete personal-data export');
+ // Inline export has no approved Fuel page graph. It must keep rejecting
+ // new owner tables, even as the pinned paginated candidate gains coverage.
+ assert(!sourceTables(source).includes('public.v2_food_log_entries'));
+ assert(!sourceTables(source).includes('public.v2_hydration_events'));
+});
 test('private relationship policies remain explicit and incoming blocks are not exposed',()=>{
  for(const name of [
   'community.outgoing_follows','community.incoming_follow_requests',
