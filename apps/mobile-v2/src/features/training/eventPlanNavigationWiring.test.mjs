@@ -11,7 +11,8 @@ test('Train keeps compact approved tabs and mounts Event Plan under Plans only',
   assert.match(train,/'routes_routines', 'Routes\/Routines'/);
   assert.match(train,/'training', 'Training Plan'/);
   assert.match(train,/'event', 'Event Plan'/);
-  assert.match(train,/<EventPlanListContent projection=\{projectEventPlanOwnerSnapshot\(/);
+  assert.match(train,/<EventPlanListContent ownerId=\{user\.id\} sessionGeneration=\{sessionGeneration\}/);
+  assert.match(train,/projection=\{projectEventPlanOwnerSnapshot\(/);
   assert.doesNotMatch(train,/Training Preparation<\/Text>/);
 });
 test('Event Plan must not fake a ready owner snapshot or enable unsupported writes',()=>{
@@ -32,4 +33,13 @@ test('Event Plan detail stays version and owner scoped, with training preparatio
  assert.match(detail,/certifiedEventPlanSectionText\(event,props\.sectionEvidence\)/);
  assert.doesNotMatch(policy,/id:'training'/);
  assert.match(policy,/event\.eventVersion!==context\.eventVersion/);
+});
+
+test('the displayed Event Plan list rejects a previous athlete or session',()=>{
+ const list=source('./EventPlanListContent.tsx');
+ const owner=source('./eventPlanOwnerPresentation.ts');
+ assert.match(list,/projection\.ownerId===ownerId/);
+ assert.match(list,/projection\.authSessionGeneration===sessionGeneration/);
+ assert.match(list,/projection\.events\.every\(e=>e\.ownerId===ownerId\)/);
+ assert.match(owner,/ownerId:s\.ownerId,authSessionGeneration:s\.authSessionGeneration/);
 });
