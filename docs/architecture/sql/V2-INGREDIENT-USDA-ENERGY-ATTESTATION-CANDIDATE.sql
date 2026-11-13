@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS allin_private.v2_ingredient_source_energy_evidence (
   basis_unit text NOT NULL DEFAULT 'g' CHECK (basis_unit='g'),
   nutrient_unit text NOT NULL DEFAULT 'kcal' CHECK (nutrient_unit='kcal'),
   source_review_reference text NOT NULL CHECK (length(trim(source_review_reference)) >= 12),
+  -- Immutable attribution to the independent issuer's actual PostgreSQL
+  -- session_user, not a caller-supplied JWT claim, reason or arbitrary UUID.
+  source_releaser_db_login name NOT NULL DEFAULT session_user,
   imported_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY(source_record_id,source_payload_sha256,fdc_nutrient_id)
 );
@@ -361,6 +364,7 @@ BEGIN
          OR v_current.energy_kcal<>v_row.kcal
          OR v_current.basis_quantity<>100 OR v_current.basis_unit<>'g'
          OR v_current.nutrient_unit<>'kcal'
+         OR v_current.source_releaser_db_login<>v_actor
       THEN RAISE EXCEPTION 'conflicting immutable USDA source release' USING ERRCODE='23514';
       END IF;
       v_existing := v_existing+1;
@@ -371,9 +375,9 @@ BEGIN
       END IF;
       INSERT INTO allin_private.v2_ingredient_source_energy_evidence
        (source_record_id,source_payload_sha256,archive_sha256,
-        fdc_nutrient_id,energy_kcal,source_review_reference)
+        fdc_nutrient_id,energy_kcal,source_review_reference,source_releaser_db_login)
       VALUES(p_source_id,p_expected_payload_sha256,p_archive_sha256,
-             v_row.nutrient_id,v_row.kcal,p_source_review_reference);
+             v_row.nutrient_id,v_row.kcal,p_source_review_reference,v_actor);
       v_inserted:=v_inserted+1;
     END IF;
   END LOOP;
