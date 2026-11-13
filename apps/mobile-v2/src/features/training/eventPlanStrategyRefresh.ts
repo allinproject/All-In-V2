@@ -67,3 +67,52 @@ export function reviewEventStrategySourceRefresh(input:{
     requiresTrainingApproval:true,
   };
 }
+
+/**
+ * Compare a returned Coach advisory result against the CURRENT authoritative
+ * event/source and strategy revisions. Late async responses must not overwrite
+ * newer advice or accidentally accept changes to canonical Training.
+ *
+ * A caller may display a matching advisory preview; persisting any strategy
+ * requires a separately authorized owner writer with compare-and-swap.
+ */
+export type EventStrategyGenerationReceipt=StrategyEventRef&{
+  basedOnStrategyRevision:number;
+  basedOnSourceRevision:number;
+  basedOnCourseVersion:string|null;
+  adviceText:string;
+};
+export type EventStrategyResponseReview=
+ | {status:'unavailable';reason:'event_mismatch'|'invalid_receipt'}
+ | {status:'stale';reason:'source_changed'|'strategy_advanced'}
+ | {status:'review_ready';adviceText:string;requiresTrainingApproval:true};
+
+export function reviewEventStrategyGenerationReceipt(input:{
+  expected:StrategyEventRef;
+  current:EventStrategySnapshot|null;
+  latestSource:StrategySourceRevision|null;
+  receipt:EventStrategyGenerationReceipt|null;
+}):EventStrategyResponseReview {
+  const {expected,current,latestSource,receipt}=input;
+  if(!expected||!validRef(expected)||!current||!latestSource||!receipt||
+    !validRef(current)||!validRef(latestSource)||!validRef(receipt)||
+    !sameRef(expected,current)||!sameRef(expected,latestSource)||
+    !sameRef(expected,receipt))
+    return {status:'unavailable',reason:'event_mismatch'};
+  if(!Number.isSafeInteger(current.strategyRevision)||current.strategyRevision<1||
+    !Number.isSafeInteger(current.sourceRevision)||current.sourceRevision<1||
+    !Number.isSafeInteger(latestSource.sourceRevision)||latestSource.sourceRevision<1||
+    !Number.isSafeInteger(receipt.basedOnStrategyRevision)||receipt.basedOnStrategyRevision<1||
+    !Number.isSafeInteger(receipt.basedOnSourceRevision)||receipt.basedOnSourceRevision<1||
+    !validCourseVersion(current.courseVersion)||!validCourseVersion(latestSource.courseVersion)||
+    !validCourseVersion(receipt.basedOnCourseVersion)||
+    latestSource.evidenceState!=='verified'||typeof receipt.adviceText!=='string'||
+    !receipt.adviceText.trim())
+    return {status:'unavailable',reason:'invalid_receipt'};
+  if(receipt.basedOnSourceRevision!==latestSource.sourceRevision||
+     receipt.basedOnCourseVersion!==latestSource.courseVersion)
+    return {status:'stale',reason:'source_changed'};
+  if(receipt.basedOnStrategyRevision!==current.strategyRevision)
+    return {status:'stale',reason:'strategy_advanced'};
+  return {status:'review_ready',adviceText:receipt.adviceText,requiresTrainingApproval:true};
+}
