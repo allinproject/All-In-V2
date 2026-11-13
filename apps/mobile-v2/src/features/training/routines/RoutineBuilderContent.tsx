@@ -23,7 +23,7 @@ const positiveOrNull=(value:string):number|null=>{
  if(!value.trim())return null;
  const v=Number(value);return Number.isFinite(v)&&v>0?v:null;
 };
-const strOrNull=(value:string)=>value.trim()?value:null;
+const strOrNull=(value:string)=>value.length?value:null;
 const setTypes:RoutineStrengthBlock['setType'][]=['warmup','working','drop','failure'];
 const phases:RoutineIntervalBlock['phase'][]=['warmup','work','recovery','cooldown'];
 const units:NonNullable<RoutineIntervalBlock['distanceUnit']>[]=['meters','yards','kilometers','miles'];
