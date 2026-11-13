@@ -6,6 +6,9 @@
 BEGIN;
 CREATE TABLE public.v2_events (
  id uuid PRIMARY KEY,
+ -- Stable event edition identity must be supplied by trusted canonical Event
+ -- creation. Never derive from URL, year, EventHub group or participation.
+ edition_id uuid NOT NULL UNIQUE,
  event_version bigint NOT NULL DEFAULT 1 CHECK (event_version>=1),
  name text NOT NULL CHECK (length(btrim(name)) BETWEEN 1 AND 200),
  sport text NOT NULL CHECK (length(btrim(sport)) BETWEEN 1 AND 80),
@@ -23,7 +26,8 @@ CREATE TABLE public.v2_events (
  CONSTRAINT v2_event_verified_date_timezone CHECK(
    source_verification<>'organizer_verified'
    OR (start_local_date IS NOT NULL AND event_timezone IS NOT NULL)),
- UNIQUE(id,event_version)
+ UNIQUE(id,event_version),
+ UNIQUE(id,edition_id)
 );
 CREATE TABLE public.v2_event_url_aliases (
  id uuid PRIMARY KEY,
