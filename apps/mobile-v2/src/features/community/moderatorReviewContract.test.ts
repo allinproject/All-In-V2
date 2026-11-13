@@ -93,6 +93,8 @@ test('private moderator screen is not linked into Community, tabs, or public rou
  assert.ok(!layout.includes('PrivateModeratorReviewContent'));
  assert.ok(!screen.includes('supabase.rpc('));
  assert.ok(!contract.includes('supabase.rpc('));
+ assert.ok(screen.includes("AppState.addEventListener('change'"));
+ assert.ok(screen.includes("status!=='active'"));
  assert.ok(screen.includes('withFreshReviewer('));
  assert.ok(screen.includes('certifyCaseEvidence('));
  assert.ok(screen.includes('certifyReviewResult('));
