@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateCaptureInputs,assessCurrentV2TableCoverage} from './all12-capture-approved-logical-backup.mjs';
+import {validateCaptureInputs,assessCurrentV2TableCoverage,compareCaptureInventories} from './all12-capture-approved-logical-backup.mjs';
 
 const env={
  ALL12_CAPTURE_APPROVED:'YES',
@@ -82,4 +82,20 @@ test('live V2 preflight requires core Auth tables and rejects malformed catalog 
    approvedTables:[...approved.tables,'auth.identities','auth.sessions','auth.refresh_tokens']
  });
  assert(malformed.reasons.includes('invalid_live_v2_inventory'));
+});
+
+
+test('catalog before and after capture must match exactly, regardless of row ordering',()=>{
+ const before=['public.v2_profiles','allin_private.v2_provider_cache'];
+ assert.deepEqual(compareCaptureInventories(before,[...before].reverse()),{stable:true,reason:null});
+ const changed=compareCaptureInventories(before,[...before,'public.v2_new_domain']);
+ assert.deepEqual(changed,{stable:false,reason:'live_table_inventory_changed_during_capture'});
+ const removed=compareCaptureInventories(before,['public.v2_profiles']);
+ assert.equal(removed.stable,false);
+});
+test('missing or duplicated live catalog readback cannot certify a backup',()=>{
+ for(const after of [[],['public.v2_profiles','public.v2_profiles'],null]){
+  const result=compareCaptureInventories(['public.v2_profiles'],after);
+  assert.deepEqual(result,{stable:false,reason:'invalid_capture_inventory'});
+ }
 });
