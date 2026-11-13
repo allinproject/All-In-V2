@@ -32,7 +32,8 @@ CREATE TABLE allin_private.v2_training_restriction_certifications (
  certified_revision bigint NOT NULL CHECK(certified_revision>=1),
  -- Snapshot checksum of all active AND retired owner rules. Detects an
  -- incomplete restore or a backdated edit that revision/timestamp miss.
- inventory_digest text NOT NULL CHECK(inventory_digest ~ '^[0-9a-f]{32}
+ inventory_digest text NOT NULL CHECK(length(inventory_digest)=32 AND inventory_digest ~ '^[0-9a-f]+$'),
+ certified_at timestamptz NOT NULL DEFAULT now(),
  CHECK(certified_at<=now())
 );
 -- Canonical Training owner checksum, used by the same existing
