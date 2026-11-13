@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {projectEventPlanOwnerSnapshot,type EventPlanOwnerSnapshot,type EventPlanOwnerRow} from './eventPlanOwnerPresentation.ts';
+import {projectEventPlanOwnerSnapshot,resolveSelectedEventPlan,type EventPlanOwnerSnapshot,type EventPlanOwnerRow} from './eventPlanOwnerPresentation.ts';
 
 const event=(id:string,date:string,priority:'A'|'B'|'C'|'null'='A'):EventPlanOwnerRow=>({
   ownerId:'owner-1',eventId:id,editionId:id+'-2027',eventVersion:1,
@@ -53,4 +53,32 @@ test('a genuinely complete certified empty snapshot is distinct from unavailable
   const result=projectEventPlanOwnerSnapshot(input(snap([])));
   assert.equal(result.status,'ready');
   if(result.status==='ready')assert.deepEqual(result.events,[]);
+});
+
+test('opened detail is fenced to the exact owner, session, snapshot and event revision',()=>{
+ const projection=projectEventPlanOwnerSnapshot(input());
+ assert.equal(projection.status,'ready');
+ if(projection.status!=='ready')return;
+ const selection={ownerId:'owner-1',authSessionGeneration:4,
+   snapshotVersion:projection.snapshotVersion,eventId:'early',
+   editionId:'early-2027',eventVersion:1};
+ assert.equal(resolveSelectedEventPlan(projection,'owner-1',4,selection)?.eventId,'early');
+ assert.equal(resolveSelectedEventPlan(projection,'owner-2',4,selection),null);
+ assert.equal(resolveSelectedEventPlan(projection,'owner-1',5,selection),null);
+ assert.equal(resolveSelectedEventPlan({...projection,snapshotVersion:'newer'},'owner-1',4,selection),null);
+ assert.equal(resolveSelectedEventPlan(projection,'owner-1',4,{...selection,editionId:'early-2028'}),null);
+ assert.equal(resolveSelectedEventPlan(projection,'owner-1',4,{...selection,eventVersion:2}),null);
+ assert.equal(resolveSelectedEventPlan(projection,'owner-1',4,{...selection,eventId:'late'}),null);
+});
+test('an old selected detail cannot reappear when the event is cancelled or removed',()=>{
+ const projection=projectEventPlanOwnerSnapshot(input());
+ if(projection.status!=='ready')throw Error('Expected owner fixture ready');
+ const selection={ownerId:'owner-1',authSessionGeneration:4,
+   snapshotVersion:projection.snapshotVersion,eventId:'early',
+   editionId:'early-2027',eventVersion:1};
+ const next=projectEventPlanOwnerSnapshot(input(snap([event('late','2027-09-01')])));
+ if(next.status!=='ready')throw Error('Expected owner fixture ready');
+ assert.equal(resolveSelectedEventPlan(next,'owner-1',4,selection),null);
+ assert.equal(resolveSelectedEventPlan({status:'unavailable',reason:'stale',events:null},
+   'owner-1',4,selection),null);
 });
