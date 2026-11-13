@@ -14,7 +14,7 @@ const validPath=(p,owner)=>typeof p==='string' && p.length<=1024 &&
  p.split('/').every(x=>x && x!=='.' && x!=='..' && !/[\\\u0000-\u001f]/.test(x));
 export async function verifyPrivateStorageByteAbsenceReview({
  ownerId,requestId,approvedBucketIds,listBucketCatalog,
- readExistingObjectPlan,listOwnerStorageObjects,objectExists,
+ readExistingObjectPlan,listOwnerStorageObjects,objectExists,objectBytesAbsent,
  verifyBucketCheckpoints,assertOwnerWritesQuiesced,
 }) {
  if(!UUID.test(ownerId??'')||!UUID.test(requestId??'')||
@@ -22,7 +22,7 @@ export async function verifyPrivateStorageByteAbsenceReview({
   new Set(approvedBucketIds).size!==approvedBucketIds.length||
   approvedBucketIds.some(id=>!BUCKET.test(id))||
   [listBucketCatalog,readExistingObjectPlan,listOwnerStorageObjects,
-   objectExists,verifyBucketCheckpoints,assertOwnerWritesQuiesced]
+   objectExists,objectBytesAbsent,verifyBucketCheckpoints,assertOwnerWritesQuiesced]
    .some(x=>typeof x!=='function'))
   throw Error('Trusted Storage absence verification dependencies required');
  async function barrier() {
@@ -57,6 +57,8 @@ export async function verifyPrivateStorageByteAbsenceReview({
    await barrier();
    if(await objectExists({ownerId,requestId,bucketId,path})!==false)
     throw Error('Private Storage object still present or unverifiable');
+   if(await objectBytesAbsent({ownerId,requestId,bucketId,path})!==true)
+    throw Error('Private Storage bytes remain downloadable or unverified');
   }
   // The provider's exhaustive owner listing must also detect paths omitted
   // from the plan (e.g. malicious late uploads).
