@@ -10,6 +10,7 @@ on:
     paths:
       - .github/workflows/v2-all251-temporary-auth-smoke.yml
       - scripts/test-v2-all251-staging-auth-smoke.mjs
+      - scripts/test-v2-all222-staging-auth-matrix.mjs
 permissions:
   contents: read
 concurrency:
@@ -24,6 +25,7 @@ jobs:
     env:
       CI: 'true'
       ALL251_STAGING_AUTH_ALLOW: 'true'
+      ALL222_STAGING_AUTH_MATRIX_ALLOW: 'true'
       ALL247_TEST_FOOD_RPC: 'true'
       ALL251_STAGING_REF: fbtgknlxjyeqrxemskbl
       ALL251_STAGING_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
@@ -36,7 +38,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
-      - name: Create isolated Auth users, test disabled HTTP route and remove users
+      - name: Create isolated Auth users, verify ALL-222 owner RPCs and ALL-251 routes, then remove users
         run: node scripts/test-v2-all251-staging-auth-smoke.mjs
 # The environment still requires its existing protected staging credentials.
 # Push trigger is restricted to the exact integration branch and two test paths.
