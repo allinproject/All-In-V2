@@ -67,7 +67,10 @@ export function openOwnedRoutineWorkoutReview(
     !allowed.has(snapshot.sport)||typeof snapshot.name!=='string'||!snapshot.name.trim()||
     snapshot.name.length>120||typeof snapshot.notes!=='string'||snapshot.notes.length>1000||
     !Array.isArray(snapshot.blocks)||snapshot.blocks.length===0||snapshot.blocks.length>60)return null;
- const original=draftFromSnapshot(snapshot);
+ let original:RoutineDraft|null=null;
+ // A typed owner DTO may still be malformed on the wire. Treat it as
+ // unavailable, never as a confirmed session or a reason to write anything.
+ try{original=draftFromSnapshot(snapshot);}catch{return null;}
  if(!original)return null;
  return {identity:'session_only_routine_preview',ownerId,sessionGeneration,
    routineId:snapshot.routineId,routineVersion:snapshot.version,
@@ -88,7 +91,8 @@ export function reviewCoachRoutineSuggestion(
     !Array.isArray(proposal.evidenceRefs)||proposal.evidenceRefs.length===0||
     proposal.evidenceRefs.length>30||!proposal.evidenceRefs.every(id))return review;
  const originalBlock=review.original.blocks.find(b=>b.id===proposal.blockId);
- if(!originalBlock||!sameEvidence(originalBlock,proposal.replacement))return review;
+ if(!originalBlock||!proposal.replacement||
+    !sameEvidence(originalBlock,proposal.replacement))return review;
  // Review must never inherit another temporary proposal's changes.
  const sessionDraft={...clone(review.original),
   blocks:review.original.blocks.map(b=>b.id===proposal.blockId?clone(proposal.replacement):clone(b))};
