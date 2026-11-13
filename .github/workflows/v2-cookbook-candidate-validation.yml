@@ -14,6 +14,9 @@ on:
       - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
       - 'scripts/review-v2-usda-source-admission.cjs'
       - 'scripts/review-v2-usda-source-admission.test.cjs'
+      - 'scripts/preview-v2-usda-archive-admission.test.cjs'
+      - 'scripts/preview-v2-usda-archive-admission.cjs'
+      - 'scripts/preview-v2-usda-verified-admission.py'
       - 'scripts/run-v2-ingredient-auto-qualification.cjs'
       - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
       - 'scripts/test-v2-ingredient-auto-qualification-isolated.cjs'
@@ -53,6 +56,9 @@ on:
       - 'scripts/check-v2-usda-nutrient-policy.test.cjs'
       - 'scripts/review-v2-usda-source-admission.cjs'
       - 'scripts/review-v2-usda-source-admission.test.cjs'
+      - 'scripts/preview-v2-usda-archive-admission.test.cjs'
+      - 'scripts/preview-v2-usda-archive-admission.cjs'
+      - 'scripts/preview-v2-usda-verified-admission.py'
       - 'scripts/run-v2-ingredient-auto-qualification.cjs'
       - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
       - 'scripts/test-v2-ingredient-auto-qualification-isolated.cjs'
@@ -108,6 +114,10 @@ jobs:
         run: node --test scripts/check-v2-usda-nutrient-policy.test.cjs
       - name: Test source-to-canonical-review-to-calculator staging path (no writes)
         run: node --experimental-strip-types --test scripts/review-v2-usda-source-admission.test.cjs
+      - name: Test verified ZIP to canonical review admission bridge (no database or network)
+        run: |
+          python3 -m py_compile scripts/preview-v2-usda-verified-admission.py
+          node --test scripts/preview-v2-usda-archive-admission.test.cjs
       - name: Test automatic ingredient qualification through existing canonical writer transaction
         run: node --test scripts/run-v2-ingredient-auto-qualification.test.cjs
       - name: Test canonical writer transaction and rollback in disposable PGlite
