@@ -140,7 +140,7 @@ def main():
         "('protein_g','Protein','g',true,true),"
         "('carbohydrate_g','Carbohydrate','g',true,true),"
         "('total_fat_g','Fat','g',true,true),"
-        "('sodium_mg','Sodium','mg',false,true);\n"
+        "('sodium_mg','Sodium','mg',false,true) ON CONFLICT (code) DO NOTHING;\n"
     )
     for code, value in [("energy_kcal",44),("protein_g",source["protein"]),
                         ("carbohydrate_g",source["carbs"]),
@@ -194,7 +194,7 @@ def main():
         # prevents their creation. If the reviewer transaction ever committed,
         # immutable ledger constraints will prevent cleanup and fail loudly.
         cleanup = ("BEGIN;\n"
-                   "ALTER ROLE " + ROLE + " PASSWORD NULL;\n"
+                   "DO $safe$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname=\u0027" + ROLE + "\u0027) THEN EXECUTE \u0027ALTER ROLE " + ROLE + " PASSWORD NULL\u0027; END IF; END $safe$;\n"
                    "UPDATE allin_private.v2_ingredient_review_operators SET "
                    "enabled=false, credential_expires_at=clock_timestamp(),"
                    "revoked_at=clock_timestamp() WHERE login_role='" + ROLE +
@@ -207,9 +207,7 @@ def main():
                 "DELETE FROM public.v2_ingredient_source_records WHERE id=" + literal(source_id) + ";\n"
                 "DELETE FROM public.v2_ingredient_nutrition_profiles WHERE id=" + literal(profile) + ";\n"
                 "DELETE FROM public.v2_ingredients WHERE id=" + literal(ident) + ";\n"
-                "DELETE FROM public.v2_nutrient_definitions WHERE code IN "
-                "('energy_kcal','protein_g','carbohydrate_g','total_fat_g','sodium_mg');\n"
-            )
+                # Never delete shared nutrient definitions.\n            )
         cleanup += "COMMIT;\n"
         try:
             db_call("postgres", admin_pw, ca, cleanup)
