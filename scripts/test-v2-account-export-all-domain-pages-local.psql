@@ -219,14 +219,17 @@ BEGIN
   THEN RAISE EXCEPTION 'Foreign Auth identity was exported'; END IF;
   IF v_collection='community.outgoing_follows' AND EXISTS(
        SELECT 1 FROM pg_catalog.jsonb_array_elements(v_page->'rows') AS x(item)
-       WHERE x.item->>'follower_id' IS DISTINCT FROM v_owner::text
+       WHERE NOT (x.item ? 'followed_id' AND x.item ? 'state'
+         AND x.item ? 'requested_at' AND x.item ? 'approved_at')
+         OR x.item ? 'follower_id' OR x.item ? 'updated_at'
      )
-  THEN RAISE EXCEPTION 'Foreign outgoing follow row'; END IF;
+  THEN RAISE EXCEPTION 'Outgoing follow disclosed unreviewed row fields'; END IF;
   IF v_collection='community.outgoing_blocks' AND EXISTS(
        SELECT 1 FROM pg_catalog.jsonb_array_elements(v_page->'rows') AS x(item)
-       WHERE x.item->>'blocker_id' IS DISTINCT FROM v_owner::text
+       WHERE NOT (x.item ? 'blocked_id' AND x.item ? 'created_at')
+         OR x.item ? 'blocker_id'
      )
-  THEN RAISE EXCEPTION 'Foreign outgoing block row'; END IF;
+  THEN RAISE EXCEPTION 'Outgoing block disclosed unreviewed row fields'; END IF;
   IF v_collection='community.my_action_receipts' AND EXISTS(
        SELECT 1 FROM pg_catalog.jsonb_array_elements(v_page->'rows') AS x(item)
        WHERE NOT (x.item ? 'action_id' AND x.item ? 'action' AND x.item ? 'created_at')
