@@ -120,6 +120,27 @@ begin
  -- security state, not downloadable athlete history. Classify this EXACT
  -- existing table explicitly, but only while the full safety contract holds.
  -- A newer or renamed owner_id relation still fails the unknown-key scanner.
+ -- A removed lease table with any active lease-driven fence signals an
+ -- incomplete migration or tampering, not permission to skip this safety gate.
+ IF pg_catalog.to_regclass(
+   'allin_private.v2_privileged_storage_write_leases_review') IS NULL
+ AND (
+  EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid=pg_catalog.to_regclass('allin_private.v2_account_deletion_requests')
+     AND t.tgname='v2_privileged_storage_write_fence_review'
+     AND t.tgenabled='O' AND NOT t.tgisinternal)
+  OR EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='auth.users'::pg_catalog.regclass
+     AND t.tgname='v2_privileged_storage_auth_delete_fence_review'
+     AND t.tgenabled='O' AND NOT t.tgisinternal)
+  OR EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid=pg_catalog.to_regclass('storage.objects')
+     AND t.tgname='v2_privileged_storage_metadata_write_fence_review'
+     AND t.tgenabled='O' AND NOT t.tgisinternal)
+ ) THEN
+  RAISE EXCEPTION 'Privileged Storage lease ledger missing while fences are active'
+   USING ERRCODE='42501';
+ END IF;
  IF pg_catalog.to_regclass(
    'allin_private.v2_privileged_storage_write_leases_review') IS NOT NULL THEN
   IF NOT EXISTS(
