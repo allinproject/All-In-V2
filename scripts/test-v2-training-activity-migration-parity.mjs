@@ -19,7 +19,6 @@ const files=[
 test('five review-only migrations exactly preserve the existing ordered SQL graph',()=>{
  assert.equal(names.length,30);
  assert.equal(new Set(names).size,30);
- const chunks=[];
  for(const file of files){
    const sql=readFileSync(resolve(root,'supabase/migrations',file),'utf8');
    assert.match(sql,/REVIEW ONLY/);
