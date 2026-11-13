@@ -6,6 +6,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
 import { parseDeletionWorkerRequest, isWorkerArmed, isAuthenticatedWorkerToken } from './policy.ts';
 import { executeDeletionOnce } from './execution.ts';
+import { createOperationalStorageReadiness } from '../_shared/trainingDeletionOperationalStorageReadiness.mjs';
 
 const headers = { 'content-type': 'application/json', 'cache-control': 'no-store' };
 function reply(status: number, code: string) {
@@ -47,11 +48,11 @@ Deno.serve(async (req: Request) => {
   };
   const result = await executeDeletionOnce(request, {
     claim: async () => await client.rpc('v2_claim_account_deletion_for_processing', args),
-    // Deliberately fail closed until server-controlled immutable Storage plans,
-    // service-role database checkpoint verification, and the authoritative
-    // upload write barrier are all integrated and certified. A passing review
-    // RPC alone MUST NOT unlock irreversible Auth deletion.
-    verifyStorageReadiness: async () => null,
+    // Requires an authoritative, request-scoped DB attestation combining
+    // actual Storage absence, durable object checkpoints and a real upload
+    // freeze. The RPC is intentionally NOT deployed until that contract is
+    // accepted; its absence fails closed before irreversible Auth deletion.
+    verifyStorageReadiness: createOperationalStorageReadiness({ supabase: client }).verifyStorageReadiness,
     deleteAuthUser: async userId => await client.auth.admin.deleteUser(userId),
     inspectAuthUser: async userId => await client.auth.admin.getUserById(userId),
     complete: async () => await client.rpc('v2_record_account_deletion_completion', args),
