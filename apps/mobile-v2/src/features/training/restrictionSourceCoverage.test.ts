@@ -39,3 +39,23 @@ test('unknown, malformed or absent source list rejects', () => {
   assert.equal(check({ sources: [null as never, ...sources] }).status, 'blocked');
   assert.equal(check({ sources: null as never }).status, 'blocked');
 });
+
+test('malformed owner and source primitives produce blocked status without throwing', () => {
+  for (const invalidOwner of [undefined, null, 27, {}, '']) {
+    assert.equal(check({ expectedOwnerId: invalidOwner as never }).status, 'blocked');
+  }
+  for (const invalidVersion of [undefined, null, 27, {}, '']) {
+    assert.equal(check({ snapshotVersion: invalidVersion as never }).status, 'blocked');
+  }
+  for (const mutation of [
+    { kind: 123 },
+    { kind: null },
+    { snapshotVersion: 123 },
+    { snapshotVersion: {} },
+    { ownerId: 123 },
+    { complete: 'true' },
+    { nextCursor: undefined },
+  ]) {
+    assert.equal(check({ sources: [{ ...sources[0], ...mutation } as never, ...sources.slice(1)] }).status, 'blocked', JSON.stringify(mutation));
+  }
+});
