@@ -19,7 +19,7 @@ function fixture(options={}) {
       ||sql==='COMMIT'||sql==='ROLLBACK'||sql.includes('set_config('))
     return {rows:[]};
    if(sql.includes('inventory_digest_candidate'))return {rows:[{digest:fingerprint}]};
-   if(sql.startsWith('SELECT * FROM public.v2_training_athlete_restrictions'))return {rows:[]};
+   if(sql.startsWith('SELECT * FROM public.v2_training_athlete_restrictions'))return {rows:options.currentRecords??[]};
    if(sql.includes('ingest_restriction_source_evidence_candidate')) {
     const sources=JSON.parse(args[2]);
     assert.equal(sources.length,5);
@@ -182,4 +182,23 @@ test('revoked Auth token and supplied current-reader override are rejected',asyn
   bearerToken:signedFixtureToken,snapshotVersion:version,
  }),/Verified Training Auth owner/);
  assert.equal(connected,false);
+});
+
+test('PostgreSQL Date timestamps change source digests; invalid evidence fails before DB ingestion',async()=>{
+ const record=(when)=>({id:'restriction-1',user_id:owner,status:'retired',updated_at:new Date(when)});
+ const first=fixture({currentRecords:[record('2026-11-12T08:00:00Z')]});
+ const second=fixture({currentRecords:[record('2026-11-12T09:00:00Z')]});
+ await first.instance().ingestReviewedSources({bearerToken:signedFixtureToken,snapshotVersion:version});
+ await second.instance().ingestReviewedSources({bearerToken:signedFixtureToken,snapshotVersion:version});
+ const hash=f=>JSON.parse(f.calls.find(c=>c.sql.includes('ingest_restriction_source_evidence_candidate')).args[2])
+  .find(s=>s.kind==='current_restrictions').inventoryDigest;
+ assert.notEqual(hash(first),hash(second),'Changing canonical updated_at must change source digest');
+ for(const bad of [{updated_at:new Date(NaN)},{payload:new Map([['ignored',1]])},{value:undefined}]) {
+  const f=fixture({currentRecords:[{id:'restriction-1',user_id:owner,...bad}]});
+  await assert.rejects(f.instance().ingestReviewedSources({
+   bearerToken:signedFixtureToken,snapshotVersion:version,
+  }),/Invalid source|Unsupported source|Undefined source/);
+  assert.equal(f.calls.some(c=>c.sql.includes('ingest_restriction_source_evidence_candidate')),false);
+  assert.equal(f.calls.at(-1).sql,'ROLLBACK');
+ }
 });
