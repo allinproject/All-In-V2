@@ -250,7 +250,7 @@ DELETE FROM public.v2_ingredient_profile_sources WHERE profile_id IN ("""+profil
 DELETE FROM public.v2_ingredient_source_records WHERE id IN ("""+sources+""");
 DELETE FROM public.v2_ingredient_nutrition_profiles WHERE id IN ("""+profiles+""");
 DELETE FROM public.v2_ingredients WHERE id IN ("""+ingredients+""");
-DELETE FROM allin_private.v2_ingredient_review_operators WHERE login_role IN ("""+lit(officer)+","+lit(worker)+""") AND enabled=false;
+-- Enrollments are immutable audit history: retain both revoked records.
 DROP ROLE IF EXISTS """+officer+""";
 DROP ROLE IF EXISTS """+worker+""";
 REVOKE USAGE ON SCHEMA allin_private FROM allin_v2_ingredient_source_releaser;
@@ -266,6 +266,11 @@ def clean_sql(officer,worker):
         " AND (SELECT count(*) FROM public.v2_ingredient_source_records)=0"
         " AND (SELECT count(*) FROM public.v2_ingredient_nutrition_profiles)=0"
         " AND (SELECT count(*) FROM public.v2_ingredient_profile_sources)=0"
+        " AND (SELECT count(*) FROM public.v2_ingredient_profile_nutrients)=0"
+        " AND (SELECT count(*) FROM allin_private.v2_ingredient_review_events)=0"
+        " AND (SELECT count(*) FROM allin_private.v2_ingredient_energy_attestations)=0"
+        " AND (SELECT count(*) FROM allin_private.v2_ingredient_review_operators WHERE login_role IN ("
+        +lit(officer)+","+lit(worker)+") AND enabled=false AND revoked_at IS NOT NULL)=2"
         " AND to_regclass('allin_private.v2_ingredient_source_core_evidence') IS NULL"
         " AND to_regclass('allin_private.v2_ingredient_seed_events') IS NULL"
         " AND to_regrole('allin_v2_ingredient_source_releaser') IS NULL"
