@@ -41,7 +41,7 @@ async function setup(options={}){
    const digest=verified.sourcePayloadSha256;
    const state=states.get(key);assert(state,'missing accepted preparation state');
    await db.exec("INSERT INTO public.v2_ingredients(id,canonical_key,canonical_name,normalized_name,identity_kind,status) VALUES("+[identity,key,r.v1,key,'generic_food','active'].map(literal).join(',')+")");
-   await db.exec("INSERT INTO public.v2_ingredient_nutrition_profiles(id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,coverage_status,review_status,source_quality,profile_revision,required_nutrient_set_version,is_default) VALUES("+[profile,identity,state,'g',100,'100 g','launch_core_complete','reviewed','Foundation',3,'cookbook-launch-macros-v1',false].map(v=>typeof v==='boolean'?String(v):typeof v==='number'?String(v):literal(v)).join(',')+")");
+   await db.exec("INSERT INTO public.v2_ingredient_nutrition_profiles(id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,coverage_status,review_status,source_quality,profile_revision,required_nutrient_set_version,is_default) VALUES("+[profile,identity,state,'g',100,'100 g','launch_core_complete',options.initialCandidate?'candidate':'reviewed','Foundation',options.initialCandidate?1:3,'cookbook-launch-macros-v1',false].map(v=>typeof v==='boolean'?String(v):typeof v==='number'?String(v):literal(v)).join(',')+")");
    await db.exec("INSERT INTO public.v2_ingredient_source_records(id,ingredient_id,provider,source_data_type,external_record_id,source_description,source_quality,source_license,payload_sha256,mapping_status) VALUES("+[source,identity,'usda_fdc','Foundation',r.fdcId,r.source,'foundation_review','CC0',digest,'mapped'].map(literal).join(',')+")");
    await db.exec("INSERT INTO public.v2_ingredient_profile_sources(profile_id,source_record_id,evidence_role) VALUES("+[profile,source,'primary'].map(literal).join(',')+")");
    const nutrientRows=[['energy_kcal',r.energy.kcal],['protein_g',r.protein],['carbohydrate_g',r.carbs],['total_fat_g',r.fat],['sodium_mg',r.sodiumMg]];
@@ -244,5 +244,91 @@ test('accidental dual membership cannot self-attest source evidence',async()=>{
     [rows[0].id,rows[0].digest]),e=>e.code==='42501');
   await db.exec('SET SESSION AUTHORIZATION postgres');
   assert.equal((await db.query('SELECT count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations')).rows[0].n,0);
+ }finally{await db.close()}
+});
+
+
+test('eight-food canonical bulk seed flows through machine review, independent source energy release and attestation without publishing',async()=>{
+ const {db,rows}=await setup({skipSourceEnergyEvidence:true,initialCandidate:true});
+ try {
+  assert.equal(rows.length,8);
+  // Ingestion identities are created in the canonical catalog fixture only.
+  // No new table, external API, source-value invention or publisher grant.
+  await db.exec("CREATE ROLE allin_ing_workload_eight_ingest_v1 LOGIN NOINHERIT NOBYPASSRLS;"+
+   "GRANT allin_v2_ingredient_reviewer TO allin_ing_workload_eight_ingest_v1 WITH INHERIT FALSE, SET TRUE");
+  await db.exec("INSERT INTO allin_private.v2_ingredient_review_operators"+
+   "(login_role,principal_kind,enabled,enrollment_reference,identity_issuer,identity_subject,"+
+   "credential_vault_reference,identity_verified_at,credential_expires_at) VALUES"+
+   "('allin_ing_workload_eight_ingest_v1','workload',true,'ISOLATED-EIGHT-INGEST',"+
+   "'allin-v2-internal-workload','ingest-eight-fixture','test-vault-reference-eight-ingest',"+
+   "now()-interval '1 hour',now()+interval '1 day')");
+  await db.exec("CREATE ROLE source_release_officer_eight LOGIN NOINHERIT NOBYPASSRLS;"+
+   "GRANT allin_v2_ingredient_source_releaser TO source_release_officer_eight WITH INHERIT FALSE, SET TRUE");
+  await db.exec("INSERT INTO allin_private.v2_ingredient_review_operators"+
+   "(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,"+
+   "credential_vault_reference,identity_verified_at,credential_expires_at) VALUES"+
+   "('source_release_officer_eight',true,'ISOLATED-EIGHT-SOURCE',"+
+   "'test-idp.example','source-officer-eight-fixture','test-vault-source-officer-eight',"+
+   "now()-interval '1 hour',now()+interval '1 day')");
+  // Independent source officer alone may release immutable USDA observations.
+  await db.exec('SET SESSION AUTHORIZATION source_release_officer_eight');
+  await db.exec('SET ROLE allin_v2_ingredient_source_releaser');
+  for(const row of rows){
+    const released=(await db.query(release(row,methodsFor(row)))).rows[0].out;
+    assert.equal(released.status,'released');
+    assert.equal(released.calculation_ready,false);
+  }
+  // The machine reviewer cannot self-release provenance and cannot publish.
+  await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_eight_ingest_v1');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
+  await assert.rejects(()=>db.query(release(rows[0],methodsFor(rows[0]))),
+   e=>e.code==='42501');
+  for(const [i,row] of rows.entries()){
+    for(const [stage,next] of ['needs_review','reviewed'].entries()){
+      const expectedRevision=stage+1;
+      const idempotency='aaaaaaaa-aaaa-4aaa-8aaa-'+String(i*2+stage+1).padStart(12,'0');
+      const result=(await db.query(
+       'SELECT allin_private.v2_review_ingredient_profile_status($1::uuid,$2::integer,$3::text,$4::text,$5::text,$6::uuid) AS out',
+       [row.id,expectedRevision,row.digest,next,
+        'Automatic verified USDA Foundation source qualification test',idempotency]
+      )).rows[0].out;
+      assert.equal(result.review_status,next);
+      assert.equal(result.profile_revision,expectedRevision+1);
+      assert.equal(result.status,'reviewed');
+    }
+    const attested=(await db.query(query(row.id,row.digest,3))).rows[0].out;
+    assert.equal(attested.status,'attested');
+    assert.equal(attested.energy_fdc_nutrient_id,row.energyCode);
+    assert.equal(Number(attested.energy_kcal),row.energy);
+    assert.equal(attested.calculation_ready,false);
+    const replay=(await db.query(query(row.id,row.digest,3))).rows[0].out;
+    assert.equal(replay.status,'already_attested');
+  }
+  await assert.rejects(()=>db.query(
+    'SELECT allin_private.v2_review_ingredient_profile_status($1,3,$2,$3,$4,$5)',
+    [rows[0].id,rows[0].digest,'calculation_ready',
+     'Unauthorized isolated bulk publication must be denied',
+     'aaaaaaaa-aaaa-4aaa-8aaa-000000000077']),
+   e=>['0A000','23514','42501'].includes(e.code));
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  const statuses=(await db.query(
+   'SELECT review_status,profile_revision,count(*)::int AS n FROM public.v2_ingredient_nutrition_profiles GROUP BY 1,2')).rows;
+  assert.deepEqual(statuses,[{review_status:'reviewed',profile_revision:3,n:8}]);
+  const counts=(await db.query(
+   'SELECT (SELECT count(*)::int FROM public.v2_ingredients) ingredients,'+
+   '(SELECT count(*)::int FROM public.v2_ingredient_source_records) sources,'+
+   '(SELECT count(*)::int FROM public.v2_ingredient_profile_sources) links,'+
+   '(SELECT count(*)::int FROM allin_private.v2_ingredient_source_energy_evidence) observations,'+
+   '(SELECT count(*)::int FROM allin_private.v2_ingredient_review_events) review_events,'+
+   '(SELECT count(*)::int FROM allin_private.v2_ingredient_energy_attestations) attestations,'+
+   "(SELECT count(*)::int FROM public.v2_ingredient_nutrition_profiles WHERE review_status='calculation_ready') published")).rows[0];
+  assert.deepEqual(counts,{ingredients:8,sources:8,links:8,observations:14,
+   review_events:16,attestations:8,published:0});
+  assert.deepEqual((await db.query(
+   'SELECT DISTINCT source_releaser_db_login::text AS actor FROM allin_private.v2_ingredient_source_energy_evidence')).rows,
+   [{actor:'source_release_officer_eight'}]);
+  assert.deepEqual((await db.query(
+   'SELECT DISTINCT reviewer_db_login::text AS actor FROM allin_private.v2_ingredient_energy_attestations')).rows,
+   [{actor:'allin_ing_workload_eight_ingest_v1'}]);
  }finally{await db.close()}
 });
