@@ -359,3 +359,47 @@ The signing secret must be generated out-of-band with a CSPRNG, placed in
 
 No signer key, migration or function was applied to hosted staging or
 production as part of this implementation slice.
+
+
+## 2026-11-13 — Provider-boundary decision review (not acceptance)
+
+Rechecked the integration branch, temporary staging (read-only), and Supabase Storage documentation. **Provider-level exclusivity is not achieved in the shared V2 project.** A hosted direct privileged upload after deletion was already recorded as successful. Project-wide service-role secrets and privileged S3 key pairs are not narrowed by application HMAC leases or owner RLS; project-wide Edge secrets do not establish independent signing-key custody. The metadata fence remains defense in depth, not a provider-level byte-write guarantee.
+
+### Separate security boundary required for strict release assurance
+
+Preferred architecture: isolate the protected private-file provider credentials so that **only the existing canonical ALL-251 writer and cleanup authority** can access the private bytes. Continue to own Auth, account identity, request/lease/manifest/checkpoint, exports and deletion in their existing V2 systems. Extend the existing Storage transport adapter, not a new owner ledger. A dedicated Supabase project or separately secured object store is a candidate, **not approved or provisioned**. Do not repurpose the V1 'All in' project or canonical V2 production, create potentially billable services, rotate active keys, move files, or reset shared staging without separate cost/recovery/architecture acceptance.
+
+Provider-level release tests must prove each of these facts using real independent credentials:
+1. A V2 project-wide secret, unapproved privileged REST, unrelated service credentials, privileged S3, old signed upload URLs and delayed TUS/multipart completion cannot upload or overwrite protected A files, including after A's deletion freeze.
+2. The narrowly trusted canonical writer uploads with byte readback before freeze, but cannot initiate or complete an A upload afterward; B remains independent.
+3. In-flight operations have actually drained or become uncompletable, and no unresolved lease is auto-expired or independently settled by an untrusted credential.
+4. Every approved bucket and object is inventoried, every actual provider byte deleted with independent absence verification, and durable owner/request-specific checkpoints and recovery remain intact.
+5. Independent credential-custody inventory, private audit evidence, IAM/key rotation and provider backup/restore precede any operational readiness approval.
+
+**Current project inventory:** Legacy V1, canonical V2, and active temporary staging. None is an approved separate private-media provider. Latest read-only temporary staging inspection: two buckets, zero objects, zero open leases, three enabled Storage fences, deletion processor OFF, no operational readiness RPC. The old unsigned service-role lease grants are currently absent there, but that is not the same as provider-wide REST/S3/TUS exclusivity.
+
+**Release decision: BLOCKED.** Existing completePrivateStorage=false and uploadBarrierEnforced=false, default-OFF writer and deletion worker must remain unchanged. The new canonical runtime-inventory regression test checks these invariants; it is deliberately not a hosted bypass acceptance test. The next external prerequisite is explicit approval of a separate credential/provider boundary and its price/recovery plan. Only then is a protected multi-protocol hosted negative test meaningful.
+
+
+## 2026-11-13 — Founder architecture approval, with financial gate preserved
+
+**Founder decision: APPROVED IN PRINCIPLE.** The founder explicitly approved advancing the separate private-file provider/credential security boundary to close ALL-251's unrestricted privileged-upload vulnerability. Apply the governing principle broadly: an application-level lease or shared Supabase secret is never sufficient to attest exclusive file writes, and **private media must be protected by an independently controlled provider credential boundary while retaining the existing canonical ALL-251 owner, export, deletion and recovery systems**.
+
+This authorizes detailed provider selection, actual cost quotation, non-destructive architecture and adapter work, and preparation of a protected A/B provider acceptance test plan. It **does not yet authorize an unknown/nonzero charge**, creating a billable project, transferring user data, exposing or rotating active credentials, repurposing production/V1/staging, switching live Storage transport, or marking release gates accepted.
+
+Before provisioning, confirm the organization/account to bill, show its provider-specific price and any backup/egress/KMS/retention implications, and obtain the required separate financial approval. Choose the provider with the least new cost that can actually isolate privileged private-file credentials. Provider choice and migration plan must identify where the sole trusted writer executes and which other project/service-role holders are physically unable to write. The existing account export/deletion ledger remains the source of truth.
+
+**Acceptance still pending:** provision approved isolated boundary; verify real REST/S3/signed/TUS/multipart and delayed-completion denials with owner A frozen and B unaffected, credential/key custody, byte-absence checkpoints, independent restore, and ALL-12/ALL-219 final gates. Keep uploadBarrierEnforced=false, completePrivateStorage=false and deletion worker OFF until those proofs exist.
+
+
+## 2026-11-13 — Updated founder direction: V2 first, no fourth project
+
+**Latest founder product decision supersedes the earlier architecture-in-principle approval:** exhaust the existing canonical V2 project, credential custody, reviewed trusted Storage writer and provider route protections BEFORE considering any other provider. **Do not provision a fourth Supabase project or new storage service; no additional recurring expense is authorized.** Strengthen current V2's actual security and disclose any non-enforceable provider limitation explicitly. Do not infer that the separate provider is already approved simply because the owner said to fix ALL-251.
+
+### Actual protected hosted negative-route test — not a pass
+
+[Protected staging run 43473709582](https://github.com/allinproject/All-In-V2/actions/runs/43473709582) executed on existing temporary staging and finished **FAIL by design: 18 route outcomes, 0 observed failures, 10 unproven or restricted**; cleanup verified synthetic users and test object paths removed. The pre-deletion raw privileged REST upload was HTTP 400, and the same route post-deletion was HTTP 400: **no positive pre-freeze control**. Signed-upload minting returned HTTP 400 before deletion, TUS initiation HTTP 403 before deletion, and owner B's upload HTTP 400. Therefore these 400/403 denials cannot be attributed specifically to the owner deletion freeze. Credentialed S3 SigV4/multipart, valid pre-signed token completion, valid pre-created TUS delayed completion and B positive upload remain untested. The unsigned S3 endpoint returned HTTP 403; that alone proves nothing about generated privileged S3 keys.
+
+Do not relax the existing restrictive metadata, Auth or request fences merely to make baseline uploads work. Safe next engineering proof uses a duly authorized canonical signed writer and a protected, independent pre-deletion positive control before exercising the identical credentials/routes after the request, while preserving V2 production and authenticated B's normal operations. The project-wide service credential may still bypass RLS and a metadata-only guard is not provider byte-fence proof. No claims of provider-level release, nor activation of the deletion worker, until all routes and delayed completions are independently denied with **actual bytes** and complete credential custody.
+
+Current release settings remain completePrivateStorage=false, uploadBarrierEnforced=false, trusted writer default OFF and deletion processor OFF.
