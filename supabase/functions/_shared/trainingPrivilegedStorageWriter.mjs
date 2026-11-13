@@ -28,8 +28,7 @@ export function createPrivilegedStorageWriter({supabase}) {
  if(!supabase || typeof supabase.rpc!=='function'||
   typeof supabase.storage?.from!=='function')
   throw Error('Trusted server-only Supabase Storage writer required');
- return Object.freeze({
-  async write({verifiedOwnerId,bucketId,path,bytes,operation,contentType}) {
+ async function performWithDurableLease({verifiedOwnerId,bucketId,path,bytes,operation,contentType,upload}) {
    if(!UUID.test(verifiedOwnerId??'')||!ALLOWED_BUCKETS.has(bucketId)||
     !validPath(path,verifiedOwnerId)||
     !['create','replace'].includes(operation)||
@@ -50,9 +49,11 @@ export function createPrivilegedStorageWriter({supabase}) {
    const store=supabase.storage.from(bucketId);
    // Do not settle a lease after a failed/ambiguous write. The backend
    // might still commit after a timeout: deletion must remain blocked.
-   const uploaded=operation==='create'
-    ? await store.upload(path,bytes,{upsert:false,contentType})
-    : await store.update(path,bytes,{contentType});
+   const uploaded=typeof upload==='function'
+    ? await upload()
+    : operation==='create'
+      ? await store.upload(path,bytes,{upsert:false,contentType})
+      : await store.update(path,bytes,{contentType});
    if(uploaded?.error||uploaded?.data?.path!==path)
     throw Error('Privileged Storage write outcome unverified; lease remains open');
    // Require real privileged bytes to round-trip before releasing the
@@ -69,6 +70,16 @@ export function createPrivilegedStorageWriter({supabase}) {
    if(settled?.error||settled?.data!==true)
     throw Error('Storage lease settlement unverified; deletion remains blocked');
    return Object.freeze({bucketId,path,verified:true});
-  },
+  }
+ return Object.freeze({
+   write:input=>performWithDurableLease(input),
+   // The owning account-export writer supplies its exact Storage upload
+   // closure; the same canonical lease/readback/settle transaction sequence
+   // surrounds the actual HTTP write. Never use a standalone status check.
+   writeWithBarrier:input=>{
+     if(typeof input?.upload!=='function')
+       throw Error('Canonical privileged Storage upload callback required');
+     return performWithDurableLease(input);
+   },
  });
 }
