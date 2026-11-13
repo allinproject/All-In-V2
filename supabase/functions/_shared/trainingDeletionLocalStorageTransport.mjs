@@ -103,6 +103,18 @@ export function createLocalDeletionStorageTransport({
   if(r.status===404 || await isExplicitMissingKey(r))return false;
   throw Error('Storage object existence could not be verified (HTTP '+r.status+')');
  }
+ async function objectBytesAbsent({ownerId,requestId,bucketId,path}) {
+  if(!UUID.test(requestId??'')||!BUCKET.test(bucketId??''))
+   throw Error('Exact Storage byte check scope required');
+  assertPath(ownerId,path);
+  // A metadata 404 is not proof that the privileged read endpoint cannot
+  // still return bytes. Verify absence at the actual authenticated endpoint.
+  const r=await request('GET','/object/authenticated/'+
+   encodeURIComponent(bucketId)+'/'+encodePath(path));
+  if(r.status===404||await isExplicitMissingKey(r))return true;
+  if(r.status===200)return false;
+  throw Error('Storage bytes could not be authoritatively checked');
+ }
  async function deleteObject({ownerId,requestId,bucketId,path}) {
   if(!UUID.test(requestId??'')||!BUCKET.test(bucketId??''))
    throw Error('Exact Storage delete scope required');
@@ -112,5 +124,5 @@ export function createLocalDeletionStorageTransport({
   if(r.status===404 || await isExplicitMissingKey(r))return {alreadyAbsent:true};
   throw Error('Storage delete not acknowledged (HTTP '+r.status+')');
  }
- return Object.freeze({listBucketCatalog,listOwnerStorageObjects,objectExists,deleteObject});
+ return Object.freeze({listBucketCatalog,listOwnerStorageObjects,objectExists,objectBytesAbsent,deleteObject});
 }
