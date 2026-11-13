@@ -192,6 +192,14 @@ function setup(options={}) {
  const worker=createTrainingAccountExportWorkerCandidate({
    bearerToken:token,authClient,serviceClient,
    resolveEncryptionKey:async args=>options.keyLease?options.keyLease(args):key,...selectedPersistence,
+   // Synthetic boundary ONLY. Real release requires a durable DB-owned lease
+   // that fences deletion claims for the whole external Storage HTTP write.
+   withOwnerStorageWriteBarrier:options.writeBarrier??(async({ownerId,requestId:rid,bucketId,objectPath,write})=>{
+     assert.equal(ownerId,owner);assert.equal(rid,requestId);
+     assert.equal(bucketId,'v2-private-account-exports');
+     assert(objectPath.startsWith(owner+'/'+requestId+'/'));
+     events.push('barrier');return write();
+   }),
    canonicalPageReader:pinnedPageReader??canonicalPageReader,
  });
  return {worker,events,key,pagedArchives,get envelope(){return envelope;},
@@ -414,4 +422,13 @@ test('ALL-251 full canonical worker HTTP integration: approved request, provider
  flags.revokeKey=false;
  const forged=await handleAccountExportDownload(req({owner_id:owner}),opts);
  assert.equal(forged.status,400);
+});
+
+test('owning worker fails closed when the privileged Storage barrier denies upload',async()=>{
+ const f=setup({useSupabasePersistence:true,writeBarrier:async()=>{
+   throw Error('Deletion claim blocks privileged archive upload');
+ }});
+ await assert.rejects(f.worker.stageApprovedRequest(requestId),
+   /Deletion claim blocks privileged archive upload/);
+ assert.equal(f.events.filter(x=>x==='archiveUpload').length,0);
 });
