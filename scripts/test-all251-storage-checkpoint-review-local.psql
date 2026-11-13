@@ -10,12 +10,20 @@ DECLARE
  denied boolean;
 BEGIN
  IF has_function_privilege('service_role',
+  'allin_private.v2_deletion_storage_plan_review(uuid,uuid,text,text[])','EXECUTE')
+ OR has_table_privilege('authenticated',
+  'allin_private.v2_account_deletion_storage_plan_review','SELECT')
+ THEN RAISE EXCEPTION 'Immutable plan leaked API access'; END IF;
+ IF has_function_privilege('service_role',
   'allin_private.v2_deletion_checkpoint_absence_review(uuid,uuid,text,text)','EXECUTE')
   OR has_table_privilege('authenticated',
   'allin_private.v2_account_deletion_storage_checkpoint_review','SELECT')
  THEN RAISE EXCEPTION 'Review checkpoint leaked API access'; END IF;
  INSERT INTO allin_private.v2_account_deletion_execution_audit
   (request_id,user_id,status) VALUES(req,a,'processing');
+ IF (SELECT cardinality(allin_private.v2_deletion_storage_plan_review(
+    a,req,'v2-private-empty-bucket',ARRAY[]::text[])))<>0
+ THEN RAISE EXCEPTION 'Empty bucket plan not durably represented'; END IF;
  IF (SELECT cardinality(allin_private.v2_deletion_storage_plan_review(
     a,req,'v2-private-workout-objects',ARRAY[a::text||'/sensor.fit'])))<>1
  THEN RAISE EXCEPTION 'Initial durable Storage plan not created'; END IF;
