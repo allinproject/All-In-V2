@@ -1,0 +1,29 @@
+\set ON_ERROR_STOP on
+DO $unclassified$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_test_exact_export_join_only_guard();
+  RAISE EXCEPTION 'Unclassified join-only owner receipt silently omitted from export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $unclassified$;
+DROP TABLE public.v2_test_join_child;
+SELECT allin_private.v2_test_exact_export_join_only_guard();
+CREATE TABLE allin_private.v2_subscription_purchases(
+ id uuid PRIMARY KEY, owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE);
+CREATE TABLE allin_private.v2_subscription_verified_events(
+ id uuid PRIMARY KEY,
+ purchase_id uuid NOT NULL REFERENCES allin_private.v2_subscription_purchases(id) ON DELETE CASCADE);
+SELECT allin_private.v2_test_exact_export_join_only_guard();
+CREATE TABLE public.v2_surprise_child_receipts(
+ id uuid PRIMARY KEY,
+ parent_id uuid NOT NULL REFERENCES public.v2_test_owned_parent(id) ON DELETE CASCADE);
+DO $surprise$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_test_exact_export_join_only_guard();
+  RAISE EXCEPTION 'New join-only receipt was not inventoried by export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ RAISE NOTICE 'PASS ALL-251: exact source export gate refuses missing child projection and retains narrow Billing exception';
+END $surprise$;

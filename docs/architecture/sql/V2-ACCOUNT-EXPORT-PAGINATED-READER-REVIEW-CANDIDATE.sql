@@ -1,3 +1,6 @@
+-- ALL-251 PRIVILEGED STORAGE LEDGER CLASSIFICATION: operational-only,
+-- only with RLS/owner-cascade and all three live write/delete fences verified.
+-- This does NOT activate exports or authorize download of private bytes.
 -- ALL-251 REVIEW ONLY. Supplement the existing canonical owner export with
 -- a restricted server-side paginated source. NOT a versioned migration.
 -- This intentionally does NOT set completeUserExport=true. A single repeatable-
@@ -196,6 +199,74 @@ BEGIN
        OR c.relname LIKE 'v2_achievement_%')
  ) THEN RAISE EXCEPTION 'New domain requires explicit account export classification'
    USING ERRCODE='42501'; END IF;
+ -- ALL-251 PRIVILEGED STORAGE: the durable write-lease ledger is operational
+ -- security state, not downloadable athlete history. Classify this EXACT
+ -- existing table explicitly, but only while the full safety contract holds.
+ -- A newer or renamed owner_id relation still fails the unknown-key scanner.
+ -- A removed lease table with any active lease-driven fence signals an
+ -- incomplete migration or tampering, not permission to skip this safety gate.
+ IF pg_catalog.to_regclass(
+   'allin_private.v2_privileged_storage_write_leases_review') IS NULL
+ AND (
+  EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid=pg_catalog.to_regclass('allin_private.v2_account_deletion_requests')
+     AND t.tgname='v2_privileged_storage_write_fence_review'
+     AND t.tgenabled='O' AND NOT t.tgisinternal)
+  OR EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='auth.users'::pg_catalog.regclass
+     AND t.tgname='v2_privileged_storage_auth_delete_fence_review'
+     AND t.tgenabled='O' AND NOT t.tgisinternal)
+  OR EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid=pg_catalog.to_regclass('storage.objects')
+     AND t.tgname='v2_privileged_storage_metadata_write_fence_review'
+     AND t.tgenabled='O' AND NOT t.tgisinternal)
+ ) THEN
+  RAISE EXCEPTION 'Privileged Storage lease ledger missing while fences are active'
+   USING ERRCODE='42501';
+ END IF;
+ IF pg_catalog.to_regclass(
+   'allin_private.v2_privileged_storage_write_leases_review') IS NOT NULL THEN
+  IF NOT EXISTS(
+    SELECT 1 FROM pg_catalog.pg_class c
+    WHERE c.oid=pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
+      AND c.relkind='r' AND c.relrowsecurity
+  ) OR NOT EXISTS(
+    SELECT 1 FROM pg_catalog.pg_attribute a
+    WHERE a.attrelid=pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
+      AND a.attname='owner_id' AND a.attnum>0 AND NOT a.attisdropped
+  ) OR NOT EXISTS(
+    SELECT 1 FROM pg_catalog.pg_constraint fk
+    JOIN pg_catalog.pg_attribute col
+      ON col.attrelid=fk.conrelid AND col.attname='owner_id'
+    WHERE fk.conrelid=pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
+      AND fk.confrelid='auth.users'::pg_catalog.regclass
+      AND fk.contype='f' AND fk.confdeltype='c'
+      AND col.attnum=ANY(fk.conkey)
+  ) OR pg_catalog.has_table_privilege('anon',
+    'allin_private.v2_privileged_storage_write_leases_review',
+    'SELECT,INSERT,UPDATE,DELETE')
+  OR pg_catalog.has_table_privilege('authenticated',
+    'allin_private.v2_privileged_storage_write_leases_review',
+    'SELECT,INSERT,UPDATE,DELETE')
+  OR pg_catalog.has_table_privilege('service_role',
+    'allin_private.v2_privileged_storage_write_leases_review',
+    'SELECT,INSERT,UPDATE,DELETE')
+  OR NOT EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='allin_private.v2_account_deletion_requests'::pg_catalog.regclass
+      AND t.tgname='v2_privileged_storage_write_fence_review'
+      AND t.tgenabled='O' AND NOT t.tgisinternal)
+  OR NOT EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='auth.users'::pg_catalog.regclass
+      AND t.tgname='v2_privileged_storage_auth_delete_fence_review'
+      AND t.tgenabled='O' AND NOT t.tgisinternal)
+  OR NOT EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='storage.objects'::pg_catalog.regclass
+      AND t.tgname='v2_privileged_storage_metadata_write_fence_review'
+      AND t.tgenabled='O' AND NOT t.tgisinternal)
+  THEN RAISE EXCEPTION 'Privileged Storage lease ledger or write/delete fences changed'
+    USING ERRCODE='42501';
+  END IF;
+ END IF;
  -- Future owner data can use owner_id / athlete_id / actor_id rather
  -- than user_id.  Reject unknown V2 relations before a supposedly complete
  -- export silently skips Nutrition, Progress, equipment or Community posts.
@@ -218,7 +289,8 @@ BEGIN
        n.nspname='allin_private' AND c.relname=ANY(ARRAY[
          'v2_community_pair_revisions','v2_community_follows',
          'v2_community_blocks','v2_community_action_receipts',
-         'v2_subscription_checkout_attempts','v2_subscription_purchases'
+         'v2_subscription_checkout_attempts','v2_subscription_purchases',
+         'v2_privileged_storage_write_leases_review'
        ])
      )
  ) THEN RAISE EXCEPTION 'Unreviewed alternate-key owner table requires export coverage'
@@ -251,6 +323,50 @@ BEGIN
    WHERE pg_catalog.to_regclass(required.name) IS NULL
  ) THEN RAISE EXCEPTION 'Billing export source graph is incomplete'
     USING ERRCODE='42501'; END IF;
+ -- Join-only owner-derived tables can have no user_id/owner_id column;
+ -- they may still contain athlete records through an FK to a canonical
+ -- owner table. Every such descendant needs an explicit export projection or
+ -- a narrow, reviewed privacy/internal-operation classification. Reject
+ -- future unregistered receipts even when Auth deletion cascade is valid.
+ IF EXISTS (
+  SELECT 1
+  FROM pg_catalog.pg_class child
+  JOIN pg_catalog.pg_namespace child_ns ON child_ns.oid=child.relnamespace
+  WHERE child_ns.nspname IN ('public','allin_private')
+    AND child.relkind IN ('r','p') AND child.relname LIKE 'v2_%'
+    AND NOT EXISTS(
+      SELECT 1 FROM pg_catalog.pg_attribute own
+      WHERE own.attrelid=child.oid AND own.attnum>0 AND NOT own.attisdropped
+        AND own.attname=ANY(ARRAY[
+          'user_id','owner_id','athlete_id','actor_id','created_by_user_id',
+          'athlete_user_id','follower_id','followed_id','blocker_id','blocked_id',
+          'lower_user_id','upper_user_id','target_id','account_id','profile_id'
+        ])
+    )
+    AND EXISTS(
+      SELECT 1 FROM pg_catalog.pg_constraint link
+      JOIN pg_catalog.pg_class parent ON parent.oid=link.confrelid
+      JOIN pg_catalog.pg_namespace parent_ns ON parent_ns.oid=parent.relnamespace
+      JOIN pg_catalog.pg_attribute parent_owner
+        ON parent_owner.attrelid=parent.oid
+        AND parent_owner.attnum>0 AND NOT parent_owner.attisdropped
+      WHERE link.conrelid=child.oid AND link.contype='f'
+        AND parent_ns.nspname IN ('public','allin_private')
+        AND parent.relname LIKE 'v2_%'
+        AND parent_owner.attname=ANY(ARRAY[
+          'user_id','owner_id','athlete_id','athlete_user_id','account_id'
+        ])
+    )
+    AND NOT(
+      child_ns.nspname='allin_private'
+      AND child.relname=ANY(ARRAY[
+        -- Existing Billing export projects this through the owning purchase
+        -- and strips provider secrets; the raw event table is never exposed.
+        'v2_subscription_verified_events'
+      ])
+    )
+ ) THEN RAISE EXCEPTION 'Unclassified join-only owner child requires account export projection or private exclusion'
+   USING ERRCODE='42501'; END IF;
  -- This ID is bound to the exact PostgreSQL snapshot and export request.
  -- It MUST NOT be recomputed using a new transaction during staging.
  v_snapshot:=pg_catalog.md5(p_owner::text||':'||p_request::text||':'||

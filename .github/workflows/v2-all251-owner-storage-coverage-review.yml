@@ -1,0 +1,85 @@
+name: ALL-251 canonical export/deletion Storage lease coverage (no deploy)
+on:
+  push:
+    branches: [review/all251-canonical-export-deletion-coverage-20261113]
+    paths:
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
+      - 'scripts/fixtures/all251-staging-lease-coverage.pgsql'
+      - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
+      - 'scripts/test-all251-authoritative-export-deletion-lease-classification.mjs'
+      - 'scripts/generate-all251-exact-export-owner-child-guard.mjs'
+      - 'scripts/test-all251-exact-export-join-only-candidate.psql'
+      - '.github/workflows/v2-all251-owner-storage-coverage-review.yml'
+  pull_request:
+    paths:
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
+      - 'scripts/fixtures/all251-staging-lease-coverage.pgsql'
+      - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
+      - 'scripts/test-all251-authoritative-export-deletion-lease-classification.mjs'
+      - '.github/workflows/v2-all251-owner-storage-coverage-review.yml'
+permissions:
+  contents: read
+jobs:
+  exact-lease-coverage:
+    name: Test current canonical owner inventory against durable Storage fences
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci_only_unused
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGDATABASE: postgres
+      PGPASSWORD: ci_only_unused
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify single owning export reader remains fail closed
+        run: node --test scripts/test-all251-authoritative-export-deletion-lease-classification.mjs
+      - name: Validate authenticated canonical export, encrypted pages and media bytes
+        run: |
+          node --test \
+            supabase/functions/_shared/trainingExportAuthServices.node.test.mjs \
+            supabase/functions/_shared/trainingExportCanonicalPgReader.node.test.mjs \
+            supabase/functions/_shared/trainingExportLargeArchive.node.test.mjs \
+            supabase/functions/_shared/trainingExportPrivateMediaPages.node.test.mjs \
+            supabase/functions/_shared/trainingExportMediaCoverage.node.test.mjs \
+            supabase/functions/_shared/trainingExportDownloadVerifier.node.test.mjs \
+            supabase/functions/_shared/trainingExportSupabaseStorage.node.test.mjs \
+            supabase/functions/_shared/trainingExportAwsKms.node.test.mjs
+      - name: Validate durable Storage cleanup, worker denial, recovery and privacy gates
+        run: |
+          node --experimental-strip-types --test \
+            supabase/functions/_shared/trainingDeletionStorageByteAbsenceReview.test.mjs \
+            supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.test.mjs \
+            supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs \
+            supabase/functions/_shared/trainingPrivilegedAccountExportBarrier.test.mjs \
+            scripts/test-all251-private-storage-cleanup-review.test.mjs \
+            scripts/all12-recovery-domain-manifest.test.mjs \
+            scripts/all12-verify-logical-archive.test.mjs
+      - name: Create synthetic owner/Storage lease schema
+        run: psql -v ON_ERROR_STOP=1 -f scripts/fixtures/all251-staging-lease-coverage.pgsql
+      - name: Install existing deletion owner graph scanner, no worker
+        run: psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql
+      - name: Prove absent, disabled and unprotected Storage fences block
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-all251-existing-deletion-graph-lease-contract.psql
+      - name: Extract exact canonical export owner-child guard for isolated execution
+        run: node scripts/generate-all251-exact-export-owner-child-guard.mjs
+      - name: Install exact-source export inventory guard in disposable fixture
+        run: psql -v ON_ERROR_STOP=1 -f /tmp/all251-exact-export-owner-child-guard.psql
+      - name: Refuse omitted owner descendants and preserve reviewed Billing exception
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-all251-exact-export-join-only-candidate.psql
