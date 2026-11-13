@@ -34,8 +34,13 @@ export function quarantineCron(sql){
  assert(!/\b(?:cron\.|create\s+extension|pg_net|vault\.)/i.test(safe),'unsafe scheduler/runtime reference');
  return safe+'\n';
 }
-export function canonicalSql(sql){\n assert(!/(?<!\\r)\\r(?!\\n)/.test(sql),'unsupported isolated CR line ending');\n return sql.replace(/\\r\\n/g,'\\n');\n}\nexport function validateInventory(names,read){
- // Windows Git can check out unchanged .sql with CRLF. Pin the canonical LF\n // bytes already recorded in the authoritative immutable digest ledger.\n const result=auditAppliedMigrations(names,n=>canonicalSql(read(n)));
+export function canonicalSql(sql){
+ assert(!/(?<!\r)\r(?!\n)/.test(sql),'unsupported isolated CR line ending');
+ return sql.replace(/\r\n/g,'\n');
+}
+export function validateInventory(names,read){
+ // Windows Git can check out unchanged .sql with CRLF. Pin the canonical LF
+ // bytes already recorded in the authoritative immutable digest ledger.\n const result=auditAppliedMigrations(names,n=>canonicalSql(read(n)));
  assert(result.ok,result.problems.join('; '));
  assert(result.appliedCount===18,'expected 18 canonical migrations');
  const observed=names.filter(n=>/^\d{14}_.*\.sql$/.test(n));
