@@ -50,3 +50,53 @@ A source-side read-only catalog/aggregate is now available, but an **actual prot
 - **Hosted restriction restore:** fresh read-only checks show ALL FOUR canonical Training restriction/recovery/evidence tables **absent** on BOTH V2 source `xarhuczrtzuiljmtdaeu` and temporary staging `fbtgknlxjyeqrxemskbl`. The latter is not an approved recovery target. Schema deployment, independent restore destination consent and pre-start egress/job quarantine are prerequisites. Only then may an independently approved provider snapshot be restored and compared using the existing ALL-12 hosted fingerprint and per-owner rule/receipt/digest checks.
 - **Certification stays OFF:** five source categories may not be marked exhaustive based on metadata alone. No hosted import, deployed restriction schema, actual first certification or production write occurred in this work.
 
+
+
+## V1 operator-only ciphertext snapshot capture (prepared, not executed)
+
+A V1-scoped operator workflow now exists at
+`scripts/all230-capture-v1-restriction-source-encrypted.sh`.
+It runs **only on a trusted Linux/WSL workstation**, never CI or a production
+app worker, and deliberately does not share credentials with V2's
+`all12-capture-approved-logical-backup.mjs`.
+
+**Preconditions before any command is run:**
+
+- An explicitly approved V1 source extraction, independent acquisition reviewer,
+  restricted backup audience, encrypted offline storage directory (0700),
+  retention/destruction policy, and an `age` recipient public key whose private
+  key is held separately. The connected Supabase SQL tool cannot supply this
+  protected archive or prove the independent recipient's custody.
+- PostgreSQL 17 `pg_dump` and `age` installed, a verified TLS connection
+  to V1 `impulecgsgaruvniuttc`, and a trusted operator-provisioned
+  database password. Never paste passwords or a private encryption key into
+  chat, GitHub, CI configuration, issue comments, or shell command history.
+- Set `ALL230_V1_CAPTURE_APPROVED=YES`,
+  `ALL230_V1_SOURCE_PROJECT_REF=impulecgsgaruvniuttc`,
+  `ALL230_V1_SECURE_CUSTODY_APPROVED=YES`,
+  `ALL230_V1_ARCHIVE_DIRECTORY`, and
+  `ALL230_V1_AGE_RECIPIENT` in the operator's protected shell; also set
+  verified `PGHOST`, `PGUSER`, `PGDATABASE=postgres`,
+  `PGSSLMODE=verify-full`, and `PGPASSWORD` without logging its value.
+  Run `bash scripts/all230-capture-v1-restriction-source-encrypted.sh`.
+
+The script hard-pins **eleven known candidate source tables**, streams
+`pg_dump -Fc --data-only` directly to `age` without writing plaintext,
+atomically publishes the ciphertext and a separate redacted local receipt,
+and deletes incomplete outputs on failure. Neither archive nor receipt
+belongs in GitHub or the shared project files.
+
+**Independent verification after capture:** a separate authorized reviewer
+must inspect the encrypted file SHA-256, custody/recipient, PostgreSQL TOC
+*after decrypting only in a trusted private environment*, exact table
+inventory, actual row counts, full V1 scope including other historical
+tables/Storage/import providers, and the owner-authorized legacy limitation
+mapping. The resulting operator receipt says
+`scopeExhaustive:false`, `independentSourceCustodyAccepted:false`,
+`importHistoryComplete:false`, and
+`initialCertificationAuthorized:false`; it is **not** a provider-issued
+backup attestation or hosted restore acceptance.
+
+**Current result:** the script and negative CI controls are implemented;
+**no ciphertext archive has been acquired or independently reviewed**.
+Do not promote that engineering work into a PASS for source acquisition.
