@@ -102,7 +102,7 @@ WHERE pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_r
  IS NOT NULL
 AND (
   NOT EXISTS(SELECT 1 FROM pg_catalog.pg_class c
-    WHERE c.oid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+    WHERE c.oid=pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
      AND c.relkind='r' AND c.relrowsecurity)
   OR pg_catalog.has_table_privilege('anon',
       'allin_private.v2_privileged_storage_write_leases_review','SELECT,INSERT,UPDATE,DELETE')
@@ -113,7 +113,7 @@ AND (
   OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint k
       JOIN pg_catalog.pg_attribute a ON a.attrelid=k.conrelid
        AND a.attname='owner_id'
-      WHERE k.conrelid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+      WHERE k.conrelid=pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
        AND k.confrelid='auth.users'::pg_catalog.regclass
        AND k.contype='f' AND k.confdeltype='c'
        AND a.attnum=ANY(k.conkey))
