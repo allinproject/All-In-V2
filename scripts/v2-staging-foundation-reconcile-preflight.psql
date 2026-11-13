@@ -1,0 +1,77 @@
+\set ON_ERROR_STOP on
+-- ALL-222/243/246/251 hosted shared-staging reconciliation gate.
+-- READ ONLY. Run via psql against an explicitly verified staging database.
+-- Never call as a remote reset/migration; returns evidence then FAILS CLOSED.
+-- Snapshot the three existing domain contracts without reading user content.
+SELECT current_database() AS database_name,
+       current_setting('server_version') AS server_version;
+SELECT m.version,m.name FROM supabase_migrations.schema_migrations m
+ WHERE m.name LIKE 'all251_%' OR m.name LIKE 'all228_%'
+ OR m.name LIKE 'all225_%' OR m.name LIKE 'all217_%'
+ ORDER BY m.version;
+SELECT n.nspname||'.'||c.relname AS relation_name,
+ c.relrowsecurity AS rls_enabled,
+ count(*) FILTER(WHERE a.attname='user_id')>0 AS owner_column_present
+ FROM pg_catalog.pg_class c
+ JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+ LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+  AND a.attnum>0 AND NOT a.attisdropped
+ WHERE n.nspname IN ('public','allin_private') AND c.relkind='r'
+ AND (c.relname LIKE 'v2_coach_%' OR c.relname LIKE 'v2_food_log_%'
+  OR c.relname LIKE 'v2_ingredient_%' OR c.relname LIKE 'v2_account_%')
+ GROUP BY n.nspname,c.relname,c.relrowsecurity
+ ORDER BY relation_name;
+DO $reconcile$
+DECLARE
+ v_missing text[];
+ v_collisions text[];
+ v_missing_rls text[];
+BEGIN
+ -- These are needed by the approved canonical Training and account export
+ -- migration graph; staging-specific preview tables are not substitutes.
+ WITH needed(object_name,oid) AS (VALUES
+ ('public.v2_profiles',pg_catalog.to_regclass('public.v2_profiles')::oid),
+ ('public.v2_profile_settings',pg_catalog.to_regclass('public.v2_profile_settings')::oid),
+ ('public.v2_onboarding_progress',pg_catalog.to_regclass('public.v2_onboarding_progress')::oid),
+ ('public.v2_legal_documents',pg_catalog.to_regclass('public.v2_legal_documents')::oid),
+ ('public.v2_export_my_account_snapshot(uuid)',
+   pg_catalog.to_regprocedure('public.v2_export_my_account_snapshot(uuid)')::oid),
+ ('allin_private.v2_account_deletion_execution_audit',
+   pg_catalog.to_regclass('allin_private.v2_account_deletion_execution_audit')::oid)
+ )
+ SELECT pg_catalog.array_agg(object_name ORDER BY object_name) FILTER(WHERE oid IS NULL)
+ INTO v_missing FROM needed;
+ -- Existing lifecycle table has to be structurally reconciled, not replaced.
+ -- A simple IF NOT EXISTS is unsafe since the status/domain constraints differ.
+ WITH collision(object_name,oid) AS (VALUES
+ ('allin_private.v2_account_deletion_requests',
+   pg_catalog.to_regclass('allin_private.v2_account_deletion_requests')::oid),
+ ('allin_private.v2_account_export_requests_candidate',
+   pg_catalog.to_regclass('allin_private.v2_account_export_requests_candidate')::oid)
+ )
+ SELECT pg_catalog.array_agg(object_name ORDER BY object_name) FILTER(WHERE oid IS NOT NULL)
+ INTO v_collisions FROM collision;
+ SELECT pg_catalog.array_agg(n.nspname||'.'||c.relname
+ ORDER BY n.nspname,c.relname)
+ INTO v_missing_rls
+ FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n
+ ON n.oid=c.relnamespace
+ WHERE n.nspname IN ('public','allin_private') AND c.relkind='r'
+ AND (c.relname LIKE 'v2_coach_%' OR c.relname LIKE 'v2_food_log_%'
+  OR c.relname LIKE 'v2_ingredient_%' OR c.relname LIKE 'v2_account_%')
+ AND NOT c.relrowsecurity;
+ IF v_missing_rls IS NOT NULL THEN
+  RAISE EXCEPTION 'Existing staging domain RLS missing: %',v_missing_rls
+   USING ERRCODE='42501';
+ END IF;
+ IF v_missing IS NOT NULL OR v_collisions IS NOT NULL THEN
+  RAISE EXCEPTION 'BLOCK staging migration: missing canonical objects=%; existing lifecycle collisions=%; preserve current owner tables and reconcile exact DDL',
+    coalesce(v_missing,ARRAY[]::text[]),
+    coalesce(v_collisions,ARRAY[]::text[])
+    USING ERRCODE='42501';
+ END IF;
+ -- This gate is intentionally stricter than a table-present check; a
+ -- separate full contract, grant, function and migration-graph review is
+ -- mandatory before any hosted migration.
+ RAISE NOTICE 'Preflight structural checks clear; exact contract review still required';
+END $reconcile$;
