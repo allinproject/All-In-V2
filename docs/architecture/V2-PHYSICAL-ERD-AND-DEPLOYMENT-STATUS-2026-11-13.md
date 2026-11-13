@@ -2,6 +2,28 @@
 
 **Read-only catalog checkpoint:** 2026-11-13, Supabase project `xarhuczrtzuiljmtdaeu` (canonical V2). **Status:** verified schema/grants/policies, **not** full HTTP or device acceptance. Source of truth for physical deployment is the live database catalog and applied migration ledger; review-only source files are not deployment evidence.
 
+## 2026-11-13 verified staging-to-mobile contract handoff
+
+**Authoritative two-environment catalog refresh, 2026-11-13:** Canonical project `xarhuczrtzuiljmtdaeu` has **5 public + 7 private = 12** V2 application tables; temporary staging `fbtgknlxjyeqrxemskbl` has **35 public + 20 private = 55** V2 application tables. **RLS is enabled on every counted V2 table in both projects**. Both currently have **zero published legal-document versions** and **zero Auth users**. This supersedes older dated table inventories in this document, not the historical evidence below. Staging is an isolated test target, **not** permission to copy or deploy its experimental domains to canonical V2.
+
+**Real HTTP acceptance is now evidenced:** Protected GitHub Actions [run 43474309847 / job 132055665104](https://github.com/allinproject/All-In-V2/actions/runs/43474309847/job/132055665104) completed **SUCCESS** at the actual tested commit. The log proves genuine A/B GoTrue JWT sign-in; Profile, Onboarding, Training start/day readback, Settings and Health owner writes/reads; cross-account, anonymous and stale-screen denial; B's revoked bearer denied by Profile **and** Training readers; Food Log add/edit/move/delete, idempotency and competing-revision 200/409; guarded Storage upload denial; and cleanup of both synthetic Auth identities, with admin GET 404. Independent post-run staging readback showed **zero** test users/sessions, Training rows, Food Log entries and test-named Storage objects; deletion worker OFF. **Do not mistake this for a successful canonical-project HTTP test or installed iPhone test.**
+
+### Mobile/backend contract readiness — no duplicate stores
+
+| UI surface / owner | Canonical V2 physical availability | Staging availability / acceptance | Approved safe UI action |
+|---|---|---|---|
+| Authentication, Profile and six-step Onboarding — ALL-209/216 | Present: `v2_my_profile_state`, expected-owner `v2_patch_profile_settings_section`, `v2_set_onboarding_step` | Real A/B own/cross-owner and logout reader checks **passed** | Reuse existing `AuthProvider`, access gate, Profile/Onboarding clients; keep session-generation fencing and login-account cache clearing; device acceptance still pending |
+| Legal acceptance — ALL-209/219 | Writer physically present; **0 published legal versions** | Writer guarded; invalid/unpublished versions fail closed | Show legal missing/unavailable state; **never open signup, fabricate legal versions or silently skip acknowledgements** |
+| Private Health preferences/Coach consent — ALL-251/210 | Read/write RPCs present, private owner storage | Real A/B read/write and denial **passed**, Coach opt-in false by default | Wire through canonical existing Profile/consent owner; do not expose private table or infer consent |
+| Training / active workout — ALL-222/243/246 | **Not deployed** in canonical V2 | Review-candidate session/day RPCs have passed real A/B test, with strict live-session fence | Staging-only experimental client adapter behind explicit project/env guard; never silently call from canonical or claim production workout support |
+| Food Log — ALL-247 | **Not deployed** in canonical V2 | Add/read/mutate owner RPCs passed real A/B and race tests | Staging-only test adapter; hide or mark unavailable when canonical owner endpoint absent; do not build another Food Log ledger |
+| Coach conversation, Ingredient/Cookbook, Completed Activity, Indoor, Storage review scaffolding | Not deployed as the relevant V2 domain tables in canonical | Physical candidate tables exist for some domains; source/test maturity varies | Preserve each owning issue's status and release packet; availability in temporary staging is **not** release approval |
+| Data export — ALL-251 | `v2_export_my_account_snapshot` present but **intentionally incomplete/fail closed** | Same fail-closed contract verified; protected full download disabled | Do not label snapshot as complete portable account archive or expose enabled Export |
+| Account deletion — ALL-251 | Request/status/cancel authenticated RPCs physically granted, but release policy/workflow not fully accepted | Three matching signatures deliberately **not executable by authenticated role**, verified deny | Keep destructive entry point unavailable; **never add staging grants to satisfy a positive test**; worker remains OFF |
+| Community/Recovery/Progress/Billing/device integration | Review/design or source-only relative to canonical project | Not covered by this A/B RPC acceptance | Build UI against owning typed interface/fallback states only, no fabricated backend acceptance |
+
+**UI integration contract:** Preserve the existing five root tabs (Today, Fuel, Train, Community, Coach), Profile via header/avatar; enforce exact project identity, signed-in owner, session generation and athlete-local date on every adapter. Display honest unavailable/empty/error states. An unavailable canonical RPC must *not* silently fall back to staging or a shadow V1 data store. Any production promotion requires a versioned migration, reviewed RLS/grants, owner-domain acceptance, all relevant release gates and actual installed-device checks. The successful 2026-11-13 A/B staging test does not close ALL-222 as a whole.
+
 ## Actual deployed physical ERD
 
 ```mermaid
@@ -78,7 +100,7 @@ The actual PostgREST parameters have `p_` prefixes. All ten use `SECURITY DEFINE
 
 This deployment matrix does not invalidate later domain source implementations or test evidence, and does not authorize their DDL. Verify each against its owner-approved release packet before promotion.
 
-## Two-account SQL rehearsal and remaining test gate
+## Historical SQL rehearsal (superseded by hosted A/B evidence above)
 
 A rollback-only synthetic Auth A/B SQL smoke test on the canonical database succeeded: under `SET LOCAL ROLE authenticated` with simulated JWT subject B, `v2_my_profile_state()` returned B's owner identity, and `v2_my_health_considerations(expected=A)` raised authorization denial. **The expanded nine-owner-argument RPC matrix was blocked before execution, not passed**. `SET LOCAL ROLE` and `request.jwt.claim.sub` simulate an authenticated database context; they are not actual signed JWT, PostgREST, mobile session restoration or independently issued authentication. Do not mark all ten validated until each has A own success, B→A denial, A→B denial, anon denial, and post-switch stale-owner denial, plus invariant/readback and cleanup in isolated/staging and hosted HTTP.
 
