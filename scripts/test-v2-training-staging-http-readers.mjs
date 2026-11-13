@@ -24,7 +24,8 @@ function http(path,accessToken,body){
  const controller=new AbortController();
  const timeout=setTimeout(()=>controller.abort(),15000);
  return fetch(endpoint+path,{
-  method:'POST',headers:{'apikey':key,'Authorization':`Bearer ${accessToken||key}`,
+  method:'POST',headers:{'apikey':key,
+    ...(accessToken?{'Authorization':`Bearer ${accessToken}`}:{}),
     'Content-Type':'application/json'},
   body:JSON.stringify(body),signal:controller.signal,
  }).then(async res=>{
@@ -74,10 +75,10 @@ const tokenB=await login(b);
 await verifyOwner(a,b,tokenA);
 await verifyOwner(b,a,tokenB);
 // apikey alone must never qualify as authenticated Auth session.
-const anon=await rpc(key,'v2_training_day_read_candidate',
+const anon=await rpc(null,'v2_training_day_read_candidate',
  {p_expected_user_id:a.owner,p_athlete_date:date});
 deny(anon,'Anonymous Training read');
-const anonDetail=await rpc(key,'v2_completed_activity_detail_candidate',
+const anonDetail=await rpc(null,'v2_completed_activity_detail_candidate',
  {p_expected_user_id:a.owner,p_activity_id:a.activity});
 deny(anonDetail,'Anonymous Activity read');
 console.log('PASS isolated hosted staging Auth sign-in, two-owner canonical RPC readers, cross-owner and anonymous denial');
