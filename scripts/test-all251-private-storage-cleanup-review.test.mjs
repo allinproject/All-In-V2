@@ -96,3 +96,20 @@ test('bucket catalog changes before final release fails closed',async()=>{
  await assert.rejects(reviewPrivateStorageCleanup(f.opts),/catalog changed/);
  assert.equal(f.objects.has(B+'/leave-me.fit'),true);
 });
+
+test('late owner upload is detected by final inventory even with stale barrier assertion',async()=>{
+ const f=fixture();
+ const record=f.opts.recordCheckpoint;
+ let introduced=false;
+ f.opts.recordCheckpoint=async entry=>{
+  await record(entry);
+  if(!introduced){
+   introduced=true;
+   f.objects.add(A+'/late-upload.fit');
+  }
+ };
+ await assert.rejects(reviewPrivateStorageCleanup(f.opts),/inventory not empty/);
+ assert.equal(f.objects.has(B+'/leave-me.fit'),true);
+ assert.equal(f.objects.has(A+'/late-upload.fit'),true);
+ // Test demonstrates a listing guard, NOT a real upload freeze.
+});
