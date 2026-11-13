@@ -56,6 +56,26 @@ BEGIN
      WHERE p.request_id=p_expected_request_id
       AND NOT EXISTS(SELECT 1 FROM storage.buckets b WHERE b.id=p.bucket_id)
     )
+    -- Even if a privileged import bypasses the planning RPC, invalid,
+    -- duplicated, or foreign paths must fail aggregate completeness.
+    AND NOT EXISTS(
+     SELECT 1 FROM allin_private.v2_account_deletion_storage_plan_review p
+     WHERE p.request_id=p_expected_request_id AND (
+      p.planned_paths IS NULL
+      OR cardinality(p.planned_paths)>10000
+      OR (SELECT count(DISTINCT x.path) FROM unnest(p.planned_paths) AS x(path))
+          IS DISTINCT FROM cardinality(p.planned_paths)
+      OR EXISTS(
+       SELECT 1 FROM unnest(p.planned_paths) AS x(path)
+       WHERE x.path IS NULL OR length(x.path)>1024
+         OR left(x.path,length(p_expected_user_id::text)+1)
+            IS DISTINCT FROM p_expected_user_id::text||'/'
+         OR x.path ~ '[[:cntrl:]]'
+         OR position('/../' IN '/'||x.path||'/')>0
+         OR position('/./' IN '/'||x.path||'/')>0
+      )
+     )
+    )
     -- A rogue checkpoint (or checkpoint in another bucket) must never make
     -- missing planned-object evidence appear complete.
     AND NOT EXISTS(
