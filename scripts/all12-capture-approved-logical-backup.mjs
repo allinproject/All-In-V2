@@ -27,7 +27,7 @@ export function validateCaptureInputs({env,approved}) {
  // Supabase direct host is project-specific. Transaction/session poolers
  // identify the project by postgres.<project-ref> in PGUSER.
  const directHost=env.PGHOST==='db.xarhuczrtzuiljmtdaeu.supabase.co';
- const scopedPooler=/^[a-z0-9.-]+\\.pooler\\.supabase\\.com$/.test(env.PGHOST??'')&&
+ const scopedPooler=/^[a-z0-9.-]+\.pooler\.supabase\.com$/.test(env.PGHOST??'')&&
    env.PGUSER==='postgres.xarhuczrtzuiljmtdaeu';
  if(!directHost&&!scopedPooler)errors.push('unrecognized_project_bound_endpoint');
  if(env.PGDATABASE && env.PGDATABASE!=='postgres')errors.push('unexpected_source_database');
