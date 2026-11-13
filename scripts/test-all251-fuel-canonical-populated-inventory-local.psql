@@ -42,7 +42,7 @@ INSERT INTO public.v2_hydration_events
 VALUES
  ('f9999999-9999-4999-8999-999999999999','f1111111-1111-4111-8111-111111111111',
   '2026-11-12 17:00+00','2026-11-12','America/Chicago','refill',500,'ml',500,1,NULL),
- ('faaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','f1111111-1111-4111-8111-111111111111',
+ ('faaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','f1111111-1111-4111-8111-111111111111',
   '2026-11-12 18:00+00','2026-11-12','America/Chicago','drink',250,'ml',250,2,now()),
  ('fbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','f2222222-2222-4222-8222-222222222222',
   '2026-11-12 19:00+00','2026-11-12','America/Chicago','drink',450,'ml',450,1,NULL);
@@ -55,7 +55,7 @@ INSERT INTO allin_private.v2_hydration_actions
  (user_id,action_id,request_fingerprint,result_id,result_revision)
 VALUES('f1111111-1111-4111-8111-111111111111',
  'fddddddd-dddd-4ddd-8ddd-dddddddddddd','PRIVATE_HYDRATION_FINGERPRINT',
- 'faaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',2);
+ 'faaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',2);
 
 SET LOCAL ROLE service_role;
 DO $accept$
