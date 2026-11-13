@@ -27,7 +27,7 @@ BEGIN
   PERFORM allin_private.v2_account_export_authorize_session_candidate(a,sa);
   RAISE EXCEPTION 'Pending deletion permitted export';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
- UPDATE allin_private.v2_account_deletion_requests SET status='cancelled' WHERE user_id=a;
+ UPDATE allin_private.v2_account_deletion_requests SET status='cancelled',resolved_at=now() WHERE user_id=a;
  v:=allin_private.v2_account_export_authorize_session_candidate(a,sa);
  IF v->>'completeUserExport'<>'false' THEN
   RAISE EXCEPTION 'Incomplete account export incorrectly promoted'; END IF;
