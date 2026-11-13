@@ -143,23 +143,29 @@ function HomeOwnerScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.topBar}>
-          <View>
-            <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-            <Text accessibilityRole="header" style={styles.heading}>Today</Text>
-            <Text style={styles.dayLabel}>{localDay ? new Date(`${localDay}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : 'Current day unavailable'}</Text>
+          <View style={styles.identity}>
+            <Image accessibilityLabel="ALL IN 365 circular logo" source={require('../assets/all-in-365-circle.jpg')} style={styles.brandMark} resizeMode="contain" />
+            <View style={styles.identityText}>
+              <Text style={styles.kicker}>LIVE ALL IN.</Text>
+              <Text accessibilityRole="header" style={styles.heading}>Today</Text>
+            </View>
           </View>
-          <View style={styles.topActions}>
-            <Text style={styles.weather}>{weatherGlance.label}</Text>
-            <Link href="/profile" asChild>
-              <Pressable accessibilityRole="button" accessibilityLabel="Profile and settings" style={styles.profile}>
-                <Text style={styles.profileText}>Profile</Text>
-              </Pressable>
-            </Link>
-          </View>
+          <Link href="/profile" asChild>
+            <Pressable accessibilityRole="button" accessibilityLabel="Profile and settings" style={styles.profile}>
+              <Text style={styles.profileText}>Profile</Text>
+            </Pressable>
+          </Link>
+        </View>
+        <View style={styles.dayStrip}>
+          <Text style={styles.dayLabel}>{localDay ? new Date(`${localDay}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : 'Current day unavailable'}</Text>
+          <Text style={styles.weather}>{weatherGlance.label}</Text>
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.sectionLabel}>TODAY'S TRAINING</Text>
+          <View style={styles.heroTopLine}>
+            <View style={styles.heroGoldLine} />
+            <Text style={styles.sectionLabel}>TODAY'S TRAINING</Text>
+          </View>
           <Text style={styles.heroTitle}>{trainingCard.title}</Text>
           <Text style={styles.help}>{trainingCard.detail}</Text>
           <Link href={trainingDestination} asChild>
@@ -169,6 +175,7 @@ function HomeOwnerScreen() {
           </Link>
         </View>
 
+        <Text accessibilityRole="header" style={styles.groupHeading}>Quick actions</Text>
         <View style={styles.quickActions}>
           <Link href={trainingDestination} asChild>
             <Pressable accessibilityRole="button" accessibilityLabel="Open today's Train calendar to add a workout" style={styles.quickAction}>
@@ -184,6 +191,7 @@ function HomeOwnerScreen() {
           </Link>
         </View>
 
+        <Text accessibilityRole="header" style={styles.groupHeading}>Your day</Text>
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>Daily Energy</Text>
@@ -275,48 +283,49 @@ function HomeOwnerScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, gap: 16, paddingBottom: 40 },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  topActions: { alignItems: 'flex-end', gap: 8 },
-  brand: { color: colors.warmWhite, fontSize: 15, fontWeight: '800', letterSpacing: 1.2 },
-  gold: { color: colors.gold },
-  heading: { color: colors.warmWhite, fontSize: 30, fontWeight: '800', marginTop: 4 },
-  weather: { color: colors.mutedText, fontSize: 11 },
-  dayLabel: { color: colors.mutedText, fontSize: 13, marginTop: 5 },
-  quickActions: { flexDirection: 'row', gap: 10 },
-  quickAction: { flex: 1, minWidth: 0, minHeight: 64, borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.surface, padding: 12, justifyContent: 'center', gap: 5 },
-  quickActionText: { color: colors.goldSoft, fontSize: 14, fontWeight: '800' },
-  quickActionHint: { color: colors.mutedText, fontSize: 11 },
-  profile: { borderColor: colors.border, borderWidth: 1, paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 12 },
-  profileText: { color: colors.warmWhite, fontWeight: '700', fontSize: 12 },
-  hero: { backgroundColor: colors.surfaceRaised, borderColor: colors.gold, borderWidth: 1, borderRadius: 18, padding: 20, gap: 12 },
-  sectionLabel: { fontSize: 12, color: colors.goldSoft, fontWeight: '800', letterSpacing: 1 },
-  heroTitle: { fontSize: 21, color: colors.warmWhite, fontWeight: '800' },
-  help: { color: colors.mutedText, fontSize: 13, lineHeight: 20 },
-  primaryAction: { backgroundColor: colors.gold, borderRadius: 12, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  primaryActionText: { color: colors.background, fontWeight: '800' },
-  card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 18, padding: 16, gap: 12 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { color: colors.warmWhite, fontSize: 17, fontWeight: '800' },
-  inlineAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  actionText: { color: colors.goldSoft, fontSize: 13, fontWeight: '700' },
-  metricRow: { flexDirection: 'row', gap: 8 },
-  metric: { flex: 1, minWidth: 0, backgroundColor: colors.surfaceRaised, borderRadius: 12, padding: 10, gap: 5 },
-  metricLabel: { color: colors.mutedText, fontSize: 11 },
-  metricUnknown: { color: colors.warmWhite, fontSize: 22, fontWeight: '800' },
-  foodPhotoRow: { flexDirection: 'row', gap: 8 },
-  foodTile: { width: '22%', maxWidth: 88, minWidth: 0, gap: 4 },
-  foodPhoto: { width: '100%', aspectRatio: 1, borderRadius: 8, backgroundColor: colors.surfaceRaised },
-  foodPhotoFallback: {
-    width: '100%', aspectRatio: 1, borderRadius: 8,
-    backgroundColor: colors.surfaceRaised, borderColor: colors.border,
-    borderWidth: 1, alignItems: 'center', justifyContent: 'center', padding: 4,
-  },
-  foodFallbackText: { color: colors.mutedText, fontSize: 10, textAlign: 'center' },
-  foodTileLabel: { color: colors.warmWhite, fontSize: 10, textAlign: 'center' },
-  account: { color: colors.mutedText, fontSize: 12 },
-  error: { color: colors.danger, fontSize: 13 },
-  signOut: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
-  signOutText: { color: colors.mutedText, fontWeight: '700' },
+  safe: {flex: 1, backgroundColor: colors.background},
+  content: {paddingHorizontal: 20, paddingTop: 18, paddingBottom: 44, gap: 14, maxWidth: 620, width: '100%', alignSelf: 'center'},
+  topBar: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10},
+  identity: {flexDirection: 'row', alignItems: 'center', gap: 13, flexShrink: 1},
+  identityText: {gap: 3, flexShrink: 1},
+  brandMark: {width: 58, height: 58, borderRadius: 29},
+  kicker: {color: colors.goldSoft, fontSize: 11, fontWeight: '900', letterSpacing: 1.8},
+  heading: {color: colors.warmWhite, fontSize: 31, lineHeight: 36, fontWeight: '900'},
+  profile: {borderColor: colors.border, borderWidth: 1, paddingHorizontal: 15, minHeight: 44, justifyContent: 'center', borderRadius: 14, backgroundColor: colors.surface},
+  profileText: {color: colors.warmWhite, fontWeight: '700', fontSize: 13},
+  dayStrip: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', minHeight: 42, paddingHorizontal: 12, borderBottomColor: colors.border, borderBottomWidth: 1, gap: 6},
+  dayLabel: {color: colors.mutedText, fontSize: 13, fontWeight: '600'},
+  weather: {color: colors.mutedText, fontSize: 12},
+  hero: {backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 18, padding: 20, gap: 13, marginTop: 6},
+  heroTopLine: {flexDirection: 'row', alignItems: 'center', gap: 9},
+  heroGoldLine: {width: 4, height: 20, backgroundColor: colors.gold, borderRadius: 3},
+  sectionLabel: {fontSize: 11, color: colors.goldSoft, fontWeight: '900', letterSpacing: 1.2},
+  heroTitle: {fontSize: 23, lineHeight: 29, color: colors.warmWhite, fontWeight: '900'},
+  help: {color: colors.mutedText, fontSize: 13, lineHeight: 20},
+  primaryAction: {backgroundColor: colors.gold, borderRadius: 14, minHeight: 52, alignItems: 'center', justifyContent: 'center'},
+  primaryActionText: {color: colors.background, fontWeight: '900', fontSize: 15},
+  groupHeading: {color: colors.warmWhite, fontSize: 19, fontWeight: '800', marginTop: 10, marginBottom: 1},
+  quickActions: {flexDirection: 'row', gap: 10},
+  quickAction: {flex: 1, minWidth: 0, minHeight: 74, borderWidth: 1, borderColor: colors.border, borderRadius: 16, backgroundColor: colors.surface, padding: 14, justifyContent: 'center', gap: 6},
+  quickActionText: {color: colors.goldSoft, fontSize: 15, fontWeight: '800'},
+  quickActionHint: {color: colors.mutedText, fontSize: 11},
+  card: {backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 17, gap: 12},
+  sectionHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8},
+  sectionTitle: {color: colors.warmWhite, fontSize: 17, fontWeight: '800'},
+  inlineAction: {minHeight: 44, justifyContent: 'center', paddingHorizontal: 4},
+  actionText: {color: colors.goldSoft, fontSize: 13, fontWeight: '700'},
+  metricRow: {flexDirection: 'row', gap: 8},
+  metric: {flex: 1, minWidth: 0, backgroundColor: colors.background, borderRadius: 12, padding: 11, gap: 7, borderWidth: 1, borderColor: colors.border},
+  metricLabel: {color: colors.mutedText, fontSize: 11},
+  metricUnknown: {color: colors.warmWhite, fontSize: 21, fontWeight: '800'},
+  foodPhotoRow: {flexDirection: 'row', gap: 8},
+  foodTile: {width: '22%', maxWidth: 88, minWidth: 0, gap: 4},
+  foodPhoto: {width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: colors.surfaceRaised},
+  foodPhotoFallback: {width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center', padding: 4},
+  foodFallbackText: {color: colors.mutedText, fontSize: 10, textAlign: 'center'},
+  foodTileLabel: {color: colors.warmWhite, fontSize: 10, textAlign: 'center'},
+  account: {color: colors.mutedText, fontSize: 12},
+  error: {color: colors.danger, fontSize: 13},
+  signOut: {minHeight: 44, justifyContent: 'center', alignItems: 'center'},
+  signOutText: {color: colors.mutedText, fontWeight: '700'}
 });
