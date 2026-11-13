@@ -365,7 +365,7 @@ BEGIN
   -- The certification is portable owner data; no private source tokens.
   v_query:='SELECT pg_catalog.jsonb_build_object('||
     '''user_id'',t.user_id,''certified_revision'',t.certified_revision,'||
-    '''certified_at'',t.certified_at) '||
+    '''inventory_digest'',t.inventory_digest,''certified_at'',t.certified_at) '||
     'FROM allin_private.v2_training_restriction_certifications t '||
     'WHERE t.user_id=$1 ORDER BY t.certified_at,t.user_id LIMIT $2 OFFSET $3';
  ELSIF p_collection='allin_private.v2_training_restriction_action_receipts' THEN
