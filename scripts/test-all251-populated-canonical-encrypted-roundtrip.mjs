@@ -170,7 +170,7 @@ try{
  // An independently authenticated second owner must never open A's archive.
  const foreign={...baseServices(),authorizeExport:async()=>({
   ownerId:other,activeSession:true,exportPermitted:true,
- })};
+ }),getCanonicalInventory:async()=>({ownerId:other,requestId,snapshotId,collections,complete:true})};
  await assert.rejects(createLargeAccountDownloadResponse({
   requestId,collections,services:foreign
  }),/owner|inventory|mismatch|Unverified|export/i);
