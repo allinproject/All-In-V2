@@ -143,6 +143,13 @@ on:
       - 'scripts/test-v2-account-deletion-worker-off-local.psql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql'
+  pull_request:
+    branches: [integration/v2-foundation]
+    paths:
+      - '.github/workflows/v2-foundation-clean-replay.yml'
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
+      - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
   workflow_dispatch:
 
 permissions:
@@ -155,7 +162,9 @@ concurrency:
 jobs:
   clean-foundation:
     name: Clean local Supabase Auth/Storage/pg_cron foundation replay
-    if: github.ref == 'refs/heads/integration/v2-foundation'
+    # PR #16 is a REVIEW-ONLY, disposable Supabase acceptance exception.
+    # All other branch/manual release gates retain their original behavior.
+    if: github.ref == 'refs/heads/integration/v2-foundation' || (github.event_name == 'pull_request' && github.event.pull_request.number == 16 && github.base_ref == 'integration/v2-foundation')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
