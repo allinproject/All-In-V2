@@ -146,6 +146,22 @@ SELECT 'cleanup_complete';
 """
 
 
+def fixture_ownership_sql(login, digest):
+    # A lost COMMIT acknowledgement must not leave live credentials behind.
+    # Never clean an unrelated existing catalog role: ownership requires the
+    # fresh random login AND our exact fixture/source digest.
+    return f"""
+SELECT CASE WHEN to_regrole('{login}') IS NOT NULL
+ AND to_regrole('{READER}') IS NOT NULL
+ AND EXISTS(SELECT 1 FROM public.v2_ingredient_source_records
+   WHERE id='{S}' AND external_record_id='{FOOD_ID}'
+     AND payload_sha256='{digest}')
+ AND EXISTS(SELECT 1 FROM public.v2_ingredient_nutrition_profiles
+   WHERE id='{P}' AND review_status='candidate')
+ THEN 'owned' ELSE 'absent' END;
+"""
+
+
 def verify_clean_sql(login):
     return f"""
 SELECT CASE WHEN
@@ -180,12 +196,10 @@ def main():
         raise RuntimeError("Empty admin password refused")
     login = "allin_ing_catalog_reader_temp_" + secrets.token_hex(5)
     secret = secrets.token_hex(32)
-    prepared = False
     try:
         if "fixture_ready" not in db_call("postgres", admin, ca,
                                          prepare_sql(login, secret, digest)):
             raise RuntimeError("Hosted fixture could not be verified")
-        prepared = True
         result = db_call(login, secret, ca, reader_sql(login, digest))
         if "independent_reader_pass" not in result:
             raise RuntimeError("Independent hosted reader proof missing")
@@ -194,7 +208,9 @@ def main():
         # Recheck even on failure: SQL setup itself may have committed before an
         # acknowledgement was lost. Never publish credentials to diagnose.
         try:
-            if prepared:
+            owned = db_call("postgres", admin, ca,
+                            fixture_ownership_sql(login, digest)).strip()
+            if owned == "owned":
                 db_call("postgres", admin, ca, cleanup_sql(login))
             verified = db_call("postgres", admin, ca, verify_clean_sql(login))
             if "clean" not in verified.split():
