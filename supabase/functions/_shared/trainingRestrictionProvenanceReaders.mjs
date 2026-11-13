@@ -53,11 +53,12 @@ export async function readCanonicalImportedTrainingSource(args) {
  check(args);
  const rows=await scopedRead({...args,label:'Imported Training',
   sql:`SELECT user_id,kind,record FROM (
-   SELECT r.user_id,'imported_revision'::text AS kind,
+   SELECT r.user_id,
+    CASE WHEN r.source_kind='imported_template'
+     THEN 'imported_revision'::text ELSE 'approved_revision'::text END AS kind,
     pg_catalog.to_jsonb(r) AS record
    FROM public.v2_training_plan_revisions r
-   WHERE r.user_id=$1 AND r.source_kind='imported_template'
-    AND r.accepted_at IS NOT NULL
+   WHERE r.user_id=$1 AND r.accepted_at IS NOT NULL
     AND r.status IN ('accepted','superseded','archived')
    UNION ALL
    SELECT c.user_id,'linked_restriction'::text AS kind,
@@ -67,10 +68,14 @@ export async function readCanonicalImportedTrainingSource(args) {
   ) source
   ORDER BY kind,record->>'id' LIMIT 201`});
  const records=rows.map(r=>({user_id:r.user_id,kind:r.kind,record:r.record}));
- const revisions=new Set(records.filter(r=>r.kind==='imported_revision')
-  .map(r=>r.record.id));
+ // Approved-plan rules can originate from imported OR athlete-authored
+ // accepted revisions. Do not falsely classify a native approved-plan rule
+ // as an orphan import. Unknown/legacy references still require review.
+ const acceptedRevisions=new Map(records
+  .filter(r=>r.kind==='imported_revision'||r.kind==='approved_revision')
+  .map(r=>[r.record.id,r.kind]));
  const unresolved=records.filter(r=>r.kind==='linked_restriction'
-  &&(!r.record.source_ref||!revisions.has(r.record.source_ref)));
+  &&(!r.record.source_ref||!acceptedRevisions.has(r.record.source_ref)));
  return Object.freeze({
   ...result('imported_records',args.ownerId,args.snapshotVersion,records,
    'Import-job completeness and original mapping provenance not independently attested'),
