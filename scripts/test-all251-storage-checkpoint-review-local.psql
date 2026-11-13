@@ -1,0 +1,57 @@
+\set ON_ERROR_STOP on
+BEGIN;
+\i /tmp/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql
+
+DO $test$
+DECLARE
+ a uuid:='a1111111-a111-4111-8111-a11111111111';
+ b uuid:='b2222222-b222-4222-8222-b22222222222';
+ req uuid:='c3333333-c333-4333-8333-c33333333333';
+ denied boolean;
+BEGIN
+ IF has_function_privilege('service_role',
+  'allin_private.v2_deletion_checkpoint_absence_review(uuid,uuid,text,text)','EXECUTE')
+  OR has_table_privilege('authenticated',
+  'allin_private.v2_account_deletion_storage_checkpoint_review','SELECT')
+ THEN RAISE EXCEPTION 'Review checkpoint leaked API access'; END IF;
+ INSERT INTO allin_private.v2_account_deletion_execution_audit
+  (request_id,user_id,status) VALUES(req,a,'processing');
+ PERFORM allin_private.v2_deletion_checkpoint_absence_review(
+   a,req,'v2-private-workout-objects',a::text||'/sensor.fit');
+ PERFORM allin_private.v2_deletion_checkpoint_absence_review(
+   a,req,'v2-private-workout-objects',a::text||'/sensor.fit');
+ IF (SELECT count(*) FROM allin_private.v2_account_deletion_storage_checkpoint_review
+      WHERE request_id=req)<>1
+ THEN RAISE EXCEPTION 'Retry created duplicate checkpoint'; END IF;
+ denied:=false;
+ BEGIN
+   PERFORM allin_private.v2_deletion_checkpoint_absence_review(
+    a,req,'v2-private-workout-objects',b::text||'/foreign.fit');
+ EXCEPTION WHEN invalid_parameter_value THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Foreign owner checkpoint accepted'; END IF;
+ denied:=false;
+ BEGIN
+   PERFORM allin_private.v2_deletion_checkpoint_absence_review(
+    b,req,'v2-private-workout-objects',b::text||'/foreign.fit');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Different request owner checkpoint accepted'; END IF;
+ UPDATE allin_private.v2_account_deletion_execution_audit
+  SET status='completed',user_id=null,completed_at=now() WHERE request_id=req;
+ denied:=false;
+ BEGIN
+  PERFORM allin_private.v2_deletion_checkpoint_absence_review(
+   a,req,'v2-private-workout-objects',a::text||'/late.fit');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Completed deletion allowed checkpoint mutation'; END IF;
+ -- Review-only proposed retention policy: erase sensitive paths at completion.
+ DELETE FROM allin_private.v2_account_deletion_storage_checkpoint_review
+ WHERE request_id=req;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_storage_checkpoint_review
+  WHERE request_id=req)
+ THEN RAISE EXCEPTION 'Sensitive object paths remain after cleanup'; END IF;
+ RAISE NOTICE 'PASS ALL-251 checkpoint review: exact active audit, idempotent A, deny B and completed writes, paths purged';
+END $test$;
+ROLLBACK;
