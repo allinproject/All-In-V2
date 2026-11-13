@@ -24,13 +24,14 @@ export function RoutesRoutinesContent() {
         </Text></Pressable>
       ))}
     </View>
-    {selected === 'routes' ? (
-      <View style={styles.body}>
-        <Text accessibilityRole="header" style={styles.title}>Routes</Text>
-        <RouteBuilderContent />
-        <Text style={styles.muted}>Your existing saved routes have not been checked. Canonical route saving and provider-backed rerouting remain gated.</Text>
-      </View>
-    ) : (
+    <View style={[styles.body, selected !== 'routes' && styles.hidden]}
+      accessibilityElementsHidden={selected !== 'routes'}
+      importantForAccessibility={selected === 'routes' ? 'auto' : 'no-hide-descendants'}>
+      <Text accessibilityRole="header" style={styles.title}>Routes</Text>
+      <RouteBuilderContent />
+      <Text style={styles.muted}>Your existing saved routes have not been checked. Canonical route saving and provider-backed rerouting remain gated.</Text>
+    </View>
+    {selected === 'routines' ? (
       <View style={styles.body}>
         <Text accessibilityRole="header" style={styles.title}>Routines</Text>
         <Text style={styles.subheading}>Reusable workouts</Text>
@@ -42,6 +43,7 @@ export function RoutesRoutinesContent() {
 }
 const styles = StyleSheet.create({
   root: { gap: 16 },
+  hidden: { display: 'none' },
   tabs: { flexDirection: 'row', gap: 6 },
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: colors.border },
   selected: { borderBottomWidth: 2, borderBottomColor: colors.gold },
