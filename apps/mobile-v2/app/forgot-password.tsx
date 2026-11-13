@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
-import * as Linking from 'expo-linking';
+import { getV2EmailAuthRedirectUrl } from '../src/auth/emailAuthRedirectRuntime';
 import { supabase } from '../src/lib/supabase';
 import { colors } from '../src/theme/tokens';
 import { createV2AuthActionGuard } from '../src/auth/authRoute';
@@ -27,9 +27,7 @@ export default function ForgotPasswordScreen() {
     setError(null);
     setNotice(null);
     try {
-      const redirectTo = Linking.createURL('/auth/callback', {
-        queryParams: { type: 'recovery' },
-      });
+      const redirectTo = getV2EmailAuthRedirectUrl(true);
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo,
       });
