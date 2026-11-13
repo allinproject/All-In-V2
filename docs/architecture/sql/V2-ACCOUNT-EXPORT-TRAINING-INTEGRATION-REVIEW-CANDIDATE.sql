@@ -124,17 +124,17 @@ begin
    'allin_private.v2_privileged_storage_write_leases_review') IS NOT NULL THEN
   IF NOT EXISTS(
     SELECT 1 FROM pg_catalog.pg_class c
-    WHERE c.oid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+    WHERE c.oid=pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
       AND c.relkind='r' AND c.relrowsecurity
   ) OR NOT EXISTS(
     SELECT 1 FROM pg_catalog.pg_attribute a
-    WHERE a.attrelid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+    WHERE a.attrelid=pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
       AND a.attname='owner_id' AND a.attnum>0 AND NOT a.attisdropped
   ) OR NOT EXISTS(
     SELECT 1 FROM pg_catalog.pg_constraint fk
     JOIN pg_catalog.pg_attribute col
       ON col.attrelid=fk.conrelid AND col.attname='owner_id'
-    WHERE fk.conrelid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+    WHERE fk.conrelid=pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
       AND fk.confrelid='auth.users'::pg_catalog.regclass
       AND fk.contype='f' AND fk.confdeltype='c'
       AND col.attnum=ANY(fk.conkey)
