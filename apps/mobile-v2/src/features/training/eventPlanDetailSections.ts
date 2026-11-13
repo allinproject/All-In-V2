@@ -64,7 +64,9 @@ export function certifiedEventPlanSectionText(
   const output:Partial<Record<EventPlanSectionId,string>>={};
   if(!Array.isArray(evidence))return output;
   const seen=new Set<EventPlanSectionId>();
-  for(const item of evidence) {
+  // Array.isArray checks runtime shape but widens readonly arrays to any[].
+  // Retain the declared owner-scoped evidence type during section projection.
+  for(const item of evidence as readonly EventPlanSectionEvidence[]) {
     if(!item||!visible.has(item.sectionId)||seen.has(item.sectionId)||
        item.ownerId!==event.ownerId||item.eventId!==event.eventId||
        item.editionId!==event.editionId||item.eventVersion!==event.eventVersion||
