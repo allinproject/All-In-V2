@@ -106,6 +106,10 @@ jobs:
           supabase start
       - name: Verify real private bytes and durable DB deletion plan/checkpoints
         run: node scripts/test-all251-storage-durable-checkpoint-real-api-local.mjs
+      - name: Verify real local authenticated A/B Storage restore and denial
+        run: node scripts/test-all12-private-storage-two-auth-local.mjs
+      - name: Verify encrypted archive media export, byte recovery and tamper denial
+        run: node scripts/test-v2-account-export-real-local-storage.mjs
       - name: Shut down disposable Supabase without retaining data
         if: always()
         run: supabase stop --no-backup
