@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createLocalDeletionStorageTransport} from '../supabase/functions/_shared/trainingDeletionLocalStorageTransport.mjs';
 import {createPrivilegedStorageWriter} from '../supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs';
+import {validateOperatorConfig,isConfirmedStorageAbsence} from './all251-staging-operator-trusted-writer.mjs';
 
 const A='a1111111-a111-4111-8111-a11111111111';
 const B='b2222222-b222-4222-8222-b22222222222';
@@ -150,4 +151,44 @@ test('hosted writer strict mode rejects unsigned lease fallback before any Stora
  assert.throws(()=>createPrivilegedStorageWriter({
   supabase,requireAttestedLease:'true',
  }),/Invalid privileged Storage lease enforcement mode/);
+});
+
+test('operator-only attested staging signer rejects CI, missing approval and malformed secrets',()=>{
+ const valid={
+  CI:'false',ALL251_OPERATOR_APPROVED:'true',
+  ALL251_TEMP_STAGING_SECRET_KEY:'sb_secret_staging_test_only',
+  ALL251_TEMP_STAGING_PUBLISHABLE_KEY:'sb_publishable_staging_test_only',
+  ALL251_OPERATOR_SIGNER_BASE64:Buffer.alloc(32,7).toString('base64'),
+ };
+ assert.equal(validateOperatorConfig(valid),true);
+ for(const bad of [
+  {...valid,CI:'true'},
+  {...valid,ALL251_OPERATOR_APPROVED:'false'},
+  {...valid,ALL251_OPERATOR_SIGNER_BASE64:'incorrect'},
+  {...valid,ALL251_TEMP_STAGING_SECRET_KEY:'sb_publishable_wrong'},
+  {...valid,ALL251_TEMP_STAGING_PUBLISHABLE_KEY:valid.ALL251_TEMP_STAGING_SECRET_KEY},
+ ]){
+  assert.throws(()=>validateOperatorConfig(bad));
+ }
+});
+
+test('operator staging cleanup never mistakes arbitrary 400/403 for byte absence',async()=>{
+ const r=(status,body)=>new Response(JSON.stringify(body),{
+  status,headers:{'content-type':'application/json'},
+ });
+ assert.equal(await isConfirmedStorageAbsence(r(400,{
+  code:'NoSuchKey',message:'Object not found',
+ })),true);
+ assert.equal(await isConfirmedStorageAbsence(r(404,{
+  error:'not_found',message:'Object not found',
+ })),true);
+ for(const bad of [
+  r(400,{code:'AccessDenied',message:'Object not found'}),
+  r(400,{code:'NoSuchKey',message:'Access denied'}),
+  r(403,{code:'NoSuchKey',message:'Object not found'}),
+  r(404,{error:'Other',message:'Object not found'}),
+  new Response('malformed',{status:400}),
+ ]){
+  assert.equal(await isConfirmedStorageAbsence(bad),false);
+ }
 });
