@@ -1,6 +1,7 @@
 
 import assert from 'node:assert/strict';
 import {randomUUID,randomBytes,createHash} from 'node:crypto';
+import {verifyAccountExportDownload} from '../supabase/functions/_shared/trainingExportDownloadVerifier.mjs';
 // ALL-251 only: create and remove two staging-only Auth users. Never log secrets.
 const ref='fbtgknlxjyeqrxemskbl';
 const base='https://'+ref+'.supabase.co';
@@ -52,6 +53,7 @@ async function login(u){
  return data.access_token;
 }
 let failed=false;
+let approvedRequestId=null;
 // Fixed checkpoint names reveal the failing assertion without tokens, IDs or bodies.
 let acceptanceStep='setup';
 try{
@@ -122,6 +124,7 @@ try{
   const opened=await beginA.json();
   assert.equal(opened.ownerId,a.id);
   assert.equal(opened.status,'requested');
+  approvedRequestId=opened.requestId;
   assert(/^[a-f0-9-]{36}$/i.test(opened.requestId??''));
   const again=await rpc('v2_begin_account_export_candidate',
     {p_expected_user_id:a.id},aToken,anon);
@@ -343,20 +346,65 @@ try{
   process.stdout.write('PASS: hosted Food Log add/edit/move/delete; revisions, replay, both days and owner isolation\n');
  }
 
- acceptanceStep='ALL251 disabled download route';
- for(const token of [aToken,bToken]){
-  const res=await request('/functions/v1/v2-account-export-download',{
+ // The same ephemeral JWTs are used for the eventual approved positive
+ // download. No persistent token secrets, parallel export store or synthetic
+ // complete=true inventory. This switch MUST stay OFF until the actual KMS
+ // lease, canonical pinned source inventory and private archive are accepted.
+ const positive=env.ALL251_TEST_REAL_HTTP_DOWNLOAD==='true';
+ if(positive&&(!approvedRequestId||env.ALL251_TEST_REAL_APPROVAL!=='true'))
+  throw Error('Real HTTP acceptance requires a durably approved owner request');
+ const download=token=>request('/functions/v1/v2-account-export-download',{
+  method:'POST',userJwt:token,apiKey:anon,
+  body:{request_id:approvedRequestId??randomUUID()},
+ });
+ if(positive){
+  acceptanceStep='ALL251 B cross-owner download denial';
+  const foreign=await download(bToken);
+  assert([400,401,403].includes(foreign.status),
+   'Foreign Auth session reached owner export');
+  assert(/no-store/i.test(foreign.headers.get('cache-control')??''));
+  acceptanceStep='ALL251 approved owner download';
+  const ownerResponse=await download(aToken);
+  assert.equal(ownerResponse.status,200,'Approved owner did not receive export');
+  assert(/^application\/x-ndjson/i.test(ownerResponse.headers.get('content-type')??''));
+  assert(/no-store/i.test(ownerResponse.headers.get('cache-control')??''));
+  assert.equal(ownerResponse.headers.get('access-control-allow-origin'),null);
+  assert(ownerResponse.body,'No owner archive stream');
+  const expected=JSON.parse(env.ALL251_EXPECTED_COLLECTIONS_JSON??'null');
+  assert(Array.isArray(expected)&&expected.length>0&&expected.length<=64
+   &&new Set(expected).size===expected.length
+   &&expected.every(x=>typeof x==='string'&&/^[a-z][a-z0-9_.]{0,63}$/.test(x)),
+   'Missing reviewed canonical collection list');
+  const verified=await verifyAccountExportDownload({
+   stream:ownerResponse.body,expectedOwnerId:a.id,expectedCollections:expected,
+  });
+  assert.equal(verified.verified,true,'Owner export stream integrity rejected');
+  assert(verified.recordCount>0,'Representative owner archive is empty');
+  process.stdout.write('PASS: real authenticated owner HTTP archive digest and collection scope\\n');
+ }else{
+  acceptanceStep='ALL251 disabled download route';
+  for(const token of [aToken,bToken]){
+   const res=await request('/functions/v1/v2-account-export-download',{
     method:'POST',userJwt:token,apiKey:anon,body:{request_id:randomUUID()}});
-  assert.equal(res.status,503,'Expected disabled staging export handler');
-  const body=await res.json();
-  assert.equal(body.code,'account_export_disabled');
-  assert(/no-store/i.test(res.headers.get('cache-control')??''));
+   assert.equal(res.status,503,'Expected disabled staging export handler');
+   const body=await res.json();
+   assert.equal(body.code,'account_export_disabled');
+   assert(/no-store/i.test(res.headers.get('cache-control')??''));
+  }
+  process.stdout.write('PASS: authenticated HTTP route rejects export while worker disabled\\n');
  }
- process.stdout.write('PASS: authenticated HTTP route rejects export while worker disabled\\n');
  acceptanceStep='synthetic Auth logout';
  const logout=await request('/auth/v1/logout',{method:'POST',userJwt:bToken,apiKey:anon});
  assert([200,204].includes(logout.status),'Auth logout failed');
  process.stdout.write('PASS: synthetic Auth session revoked\\n');
+ if(positive){
+  acceptanceStep='ALL251 revoked session download denial';
+  const revoked=await download(bToken);
+  assert([400,401,403].includes(revoked.status),
+   'Revoked Auth session reached owner export');
+  assert(/no-store/i.test(revoked.headers.get('cache-control')??''));
+  process.stdout.write('PASS: active B and revoked B denied owner archive\\n');
+ }
 }catch{
  failed=true;
  process.stderr.write('FAIL staging checkpoint: '+acceptanceStep+' (no credentials or response data disclosed)\\n');
