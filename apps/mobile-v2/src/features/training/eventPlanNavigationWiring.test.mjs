@@ -51,3 +51,15 @@ test('mounted Event detail selection is tied to the original certified snapshot'
  assert.match(list,/editionId:e\.editionId,eventVersion:e\.eventVersion/);
  assert.match(list,/setSelection\(null\)/);
 });
+
+
+test('Train Calendar exposes the founder-approved Month / Week segmented control',()=>{
+ const train=source('../../../app/train.tsx');
+ assert.match(train,/\['month', 'Month'\], \['week', 'Week'\]/);
+ assert.match(train,/accessibilityLabel=\{label \+ ' calendar'\}/);
+ assert.match(train,/accessibilityState=\{\{ selected: level === choice \}\}/);
+ assert.match(train,/setLevel\(choice\)/);
+ assert.match(train,/setMonth\(firstOfMonth\(day\) \?\? month\)/);
+ assert.doesNotMatch(train,/<Text style=\{styles\.muted\}>‹ Month view<\/Text>/);
+ assert.match(train,/week\.map\(\(date, i\) =>/);
+});
