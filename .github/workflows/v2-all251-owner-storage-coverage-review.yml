@@ -7,6 +7,7 @@ on:
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
       - 'scripts/fixtures/all251-staging-lease-coverage.pgsql'
       - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
+      - 'scripts/test-all251-storage-durable-checkpoint-real-api-local.mjs'
       - 'scripts/test-all251-authoritative-export-deletion-lease-classification.mjs'
       - 'scripts/generate-all251-exact-export-owner-child-guard.mjs'
       - 'scripts/test-all251-exact-export-join-only-candidate.psql'
@@ -17,6 +18,7 @@ on:
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
       - 'scripts/fixtures/all251-staging-lease-coverage.pgsql'
       - 'scripts/test-all251-existing-deletion-graph-lease-contract.psql'
+      - 'scripts/test-all251-storage-durable-checkpoint-real-api-local.mjs'
       - 'scripts/test-all251-authoritative-export-deletion-lease-classification.mjs'
       - '.github/workflows/v2-all251-owner-storage-coverage-review.yml'
 permissions:
@@ -83,3 +85,27 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f /tmp/all251-exact-export-owner-child-guard.psql
       - name: Refuse omitted owner descendants and preserve reviewed Billing exception
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-all251-exact-export-join-only-candidate.psql
+
+  real-local-storage-checkpoints:
+    name: Verify real local Storage API bytes against durable PostgreSQL checkpoints
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: supabase/setup-cli@v3
+        with:
+          version: v2.stable
+      - name: Start disposable local Supabase Auth, PostgreSQL, and Storage
+        run: |
+          set -euo pipefail
+          supabase start
+      - name: Verify real private bytes and durable DB deletion plan/checkpoints
+        run: node scripts/test-all251-storage-durable-checkpoint-real-api-local.mjs
+      - name: Shut down disposable Supabase without retaining data
+        if: always()
+        run: supabase stop --no-backup
