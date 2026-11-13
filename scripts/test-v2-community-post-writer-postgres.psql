@@ -161,6 +161,75 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $other$;
 
+-- Comments must use the parent post's CURRENT audience and block boundary.
+-- User 1 is not a follower of user 2's followers-only post.
+DO $comment_denied$
+BEGIN
+ BEGIN
+  PERFORM public.v2_community_create_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000001',
+   '80000000-0000-0000-0000-000000000001',NULL,'Not a follower',true);
+  RAISE EXCEPTION 'Unapproved follower commented';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $comment_denied$;
+INSERT INTO allin_private.v2_community_follows
+ (follower_id,followed_id,state,approved_at)
+VALUES('00000000-0000-0000-0000-000000000001',
+ '00000000-0000-0000-0000-000000000002','approved',now())
+ON CONFLICT (follower_id,followed_id) DO UPDATE SET
+ state='approved',approved_at=now();
+DO $comment_approved$
+DECLARE r jsonb;
+BEGIN
+ BEGIN
+  PERFORM public.v2_community_create_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000001',
+   '80000000-0000-0000-0000-000000000001',NULL,'No consent',false);
+  RAISE EXCEPTION 'Comment lacking explicit intent persisted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ r:=public.v2_community_create_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000001',
+   '80000000-0000-0000-0000-000000000001',NULL,'Approved comment',true);
+ IF r->>'created'<>'true' THEN RAISE EXCEPTION 'Approved comment was not created'; END IF;
+ r:=public.v2_community_create_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000001',
+   '80000000-0000-0000-0000-000000000001',NULL,'Approved comment',true);
+ IF r->>'created'<>'false' THEN RAISE EXCEPTION 'Exact comment retry was not idempotent'; END IF;
+ BEGIN
+  PERFORM public.v2_community_create_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000001',
+   '80000000-0000-0000-0000-000000000001',NULL,'Changed comment',true);
+  RAISE EXCEPTION 'Changed retry accepted existing comment id';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ r:=public.v2_community_create_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000002',
+   '80000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000001','Author reply',true);
+ IF r->>'created'<>'true' THEN RAISE EXCEPTION 'Same-post reply was not created'; END IF;
+END $comment_approved$;
+INSERT INTO allin_private.v2_community_blocks(blocker_id,blocked_id)
+VALUES ('00000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000001');
+DO $comment_blocked$
+BEGIN
+ BEGIN
+  PERFORM public.v2_community_create_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000003',
+   '80000000-0000-0000-0000-000000000001',NULL,'Blocked',true);
+  RAISE EXCEPTION 'Blocked user commented on post';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $comment_blocked$;
+DELETE FROM allin_private.v2_community_blocks
+ WHERE blocker_id='00000000-0000-0000-0000-000000000002'
+   AND blocked_id='00000000-0000-0000-0000-000000000001';
+
 DELETE FROM auth.users WHERE id='00000000-0000-0000-0000-000000000002';
 DO $deleted$
 BEGIN
