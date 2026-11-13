@@ -31,6 +31,8 @@ on:
       - 'scripts/all12-recovery-domain-manifest.test.mjs'
       - 'scripts/all230-assess-v1-restriction-manifest.mjs'
       - 'scripts/all230-assess-v1-restriction-manifest.test.mjs'
+      - 'scripts/all230-capture-v1-restriction-source-encrypted.sh'
+      - 'scripts/all230-capture-v1-restriction-source-encrypted.test.mjs'
       - 'supabase/tests/all12_hosted_restore_readonly_fingerprint.sql'
       - 'scripts/test-v2-coach-budget-postgres.psql'
       - 'scripts/test-v2-coach-sql-postgres.psql'
@@ -122,6 +124,8 @@ on:
       - 'scripts/all12-recovery-domain-manifest.test.mjs'
       - 'scripts/all230-assess-v1-restriction-manifest.mjs'
       - 'scripts/all230-assess-v1-restriction-manifest.test.mjs'
+      - 'scripts/all230-capture-v1-restriction-source-encrypted.sh'
+      - 'scripts/all230-capture-v1-restriction-source-encrypted.test.mjs'
       - 'supabase/tests/all12_hosted_restore_readonly_fingerprint.sql'
       - 'scripts/test-v2-coach-budget-postgres.psql'
       - 'scripts/test-v2-coach-sql-postgres.psql'
@@ -221,6 +225,8 @@ jobs:
         run: node ../../scripts/check-v2-applied-migration-integrity.mjs
       - name: Test migration integrity rejection cases
         run: node --test ../../scripts/check-v2-applied-migration-integrity.test.mjs
+      - name: Guard independent encrypted V1 capture (no source credentials or export in CI)
+        run: node --test ../../scripts/all230-capture-v1-restriction-source-encrypted.test.mjs
       - name: Validate independent legacy, limitation and import manifest gate (synthetic only)
         run: node --test ../../scripts/all230-assess-v1-restriction-manifest.test.mjs
       - name: Verify ALL-12 recovery inventory and restriction hosted fingerprint gates (metadata only)
