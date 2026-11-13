@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {colors} from '../../theme/tokens';
 import {EventPlanDetailContent} from './EventPlanDetailContent';
-import type {EventPlanOwnerProjection} from './eventPlanOwnerPresentation';
+import {resolveSelectedEventPlan,type EventPlanOwnerProjection,type EventPlanSelection} from './eventPlanOwnerPresentation';
 
 /**
  * Read-only rendering of an already-certified Event owner projection.
@@ -14,13 +14,14 @@ export function EventPlanListContent({projection,ownerId,sessionGeneration}:{
   ownerId:string;
   sessionGeneration:number;
 }){
-  const [selectedId,setSelectedId]=useState<string|null>(null);
+  const [selection,setSelection]=useState<EventPlanSelection|null>(null);
   const current=projection.status==='ready'&&projection.ownerId===ownerId&&
     projection.authSessionGeneration===sessionGeneration&&!!ownerId.trim()&&
     Number.isSafeInteger(sessionGeneration)&&sessionGeneration>=0&&
     projection.events.every(e=>e.ownerId===ownerId);
   const snapshotVersion=current&&projection.status==='ready'?projection.snapshotVersion:null;
-  useEffect(()=>setSelectedId(null),[snapshotVersion]);
+  const identityKey=JSON.stringify([ownerId,sessionGeneration,snapshotVersion]);
+  useEffect(()=>setSelection(null),[identityKey]);
   if(!current||projection.status!=='ready')return (
     <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.title}>Event Plan</Text>
@@ -28,10 +29,10 @@ export function EventPlanListContent({projection,ownerId,sessionGeneration}:{
       <Text style={styles.muted}>Event website import, Coach strategy refresh and event editing are not active in this screen.</Text>
     </View>
   );
-  const selected=projection.events.find(e=>e.eventId===selectedId)??null;
+  const selected=resolveSelectedEventPlan(projection,ownerId,sessionGeneration,selection);
   if(selected)return (
     <View style={styles.container}>
-      <Pressable accessibilityRole="button" onPress={()=>setSelectedId(null)}
+      <Pressable accessibilityRole="button" onPress={()=>setSelection(null)}
         style={styles.back}>
         <Text style={styles.action}>‹ All Events</Text>
       </Pressable>
@@ -51,7 +52,11 @@ export function EventPlanListContent({projection,ownerId,sessionGeneration}:{
     ):projection.events.map(e=>(
       <Pressable key={e.eventId} accessibilityRole="button"
         accessibilityLabel={e.name+', '+e.eventDate+', open Event Plan'}
-        onPress={()=>setSelectedId(e.eventId)} style={styles.card}>
+        onPress={()=>setSelection({
+          ownerId,authSessionGeneration:sessionGeneration,
+          snapshotVersion:projection.snapshotVersion,
+          eventId:e.eventId,editionId:e.editionId,eventVersion:e.eventVersion,
+        })} style={styles.card}>
         <Text style={styles.heading}>{e.name}</Text>
         <Text style={styles.muted}>{e.eventDate} · {e.discipline}</Text>
         {e.priority!==null&&<Text style={styles.muted}>Event priority: {e.priority}</Text>}
