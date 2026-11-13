@@ -1,0 +1,42 @@
+name: ALL-251 temporary hosted privileged writer acceptance (two synthetic accounts)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - integration/v2-foundation
+    paths:
+      - .github/workflows/v2-all251-hosted-privileged-writer.yml
+      - scripts/test-all251-hosted-privileged-storage-writer.mjs
+permissions:
+  contents: read
+concurrency:
+  group: all251-hosted-privileged-writer-synthetic
+  cancel-in-progress: false
+jobs:
+  disposable-staging-only:
+    name: Real hosted owner leases, byte readback and direct bypass detection
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: all251-temporary-staging
+    env:
+      CI: 'true'
+      ALL251_HOSTED_PRIVILEGED_ALLOW: 'true'
+      ALL251_HOSTED_PRIVILEGED_REF: fbtgknlxjyeqrxemskbl
+      ALL251_HOSTED_PRIVILEGED_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
+      ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
+      ALL251_TEMP_STAGING_PUBLISHABLE_KEY: ${{ secrets.ALL251_TEMP_STAGING_PUBLISHABLE_KEY || 'sb_publishable_KxiqTVkZkWh1NUQhEMq_3A_594QKycX' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Require protected staging-only secret, never log keys
+        run: |
+          test -n "$ALL251_TEMP_STAGING_SECRET_KEY"
+          test "$ALL251_HOSTED_PRIVILEGED_REF" = fbtgknlxjyeqrxemskbl
+      - name: Exercise real two-user Storage, durable leases, deletion race and bypass
+        run: node scripts/test-all251-hosted-privileged-storage-writer.mjs
+# Acceptance MUST FAIL while a direct privileged service credential can
+# bypass the centralized writer. DO NOT enable account deletion from this job.
+# No Auth/Storage objects outside this run's two disposable accounts.
