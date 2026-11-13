@@ -22,9 +22,9 @@ docker exec -i "$db" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<SQL
 INSERT INTO auth.users(id) VALUES('$owner');
 INSERT INTO auth.sessions(id,user_id)
 VALUES('$session_a','$owner'),('$session_b','$owner');
-INSERT INTO public.v2_events(id,name,sport,event_kind,
+INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind,
   start_local_date,event_timezone,source_verification)
-VALUES('$event','Race with an EventHub group','running','race',
+VALUES('$event','10000000-0000-4000-8000-000000000004','Race with an EventHub group','running','race',
  DATE '2027-04-10','America/Chicago','organizer_verified');
 INSERT INTO public.v2_event_groups(id,event_id,state) VALUES('$group','$event','active');
 INSERT INTO public.v2_event_url_aliases(
