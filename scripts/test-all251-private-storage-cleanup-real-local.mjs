@@ -8,6 +8,7 @@ import {execFileSync} from 'node:child_process';
 import {randomBytes,createHash} from 'node:crypto';
 import {createLocalDeletionStorageTransport} from '../supabase/functions/_shared/trainingDeletionLocalStorageTransport.mjs';
 import {reviewPrivateStorageCleanup} from '../supabase/functions/_shared/trainingDeletionPrivateStorageReview.mjs';
+import {verifyPrivateStorageByteAbsenceReview} from '../supabase/functions/_shared/trainingDeletionStorageByteAbsenceReview.mjs';
 
 assert.equal(process.env.CI,'1','Disposable CI only');
 const vars=Object.fromEntries(execFileSync('supabase',['status','-o','env'],{
@@ -86,6 +87,21 @@ try {
  for(const path of [a1,a2])
   assert.equal(await transport.objectExists({ownerId:A,requestId:R,bucketId:bucket,path}),false);
  assert.equal((await transport.listOwnerStorageObjects({ownerId:A,requestId:R,bucketId:bucket})).totalCount,0);
+ const absence=await verifyPrivateStorageByteAbsenceReview({
+  ownerId:A,requestId:R,approvedBucketIds:[bucket],
+  ...transport,
+  readExistingObjectPlan:async({ownerId,requestId,bucketId})=>{
+   const paths=durablePlanFixture.get(ownerId+':'+requestId+':'+bucketId);
+   if(!paths)throw Error('Immutable plan missing');
+   return {ownerId,requestId,bucketId,durable:true,paths:[...paths]};
+  },
+  verifyBucketCheckpoints:opts.verifyBucketCheckpoints,
+  assertOwnerWritesQuiesced:opts.assertOwnerWritesQuiesced,
+ });
+ assert.equal(absence.storageApiAbsenceVerified,true);
+ assert.equal(absence.plannedObjectCount,2);
+ assert.equal(absence.reviewOnly,true);
+ assert.equal(absence.uploadBarrierEnforced,undefined);
  const bAfter=await storage('GET','/object/authenticated/'+bucket+'/'+enc(b1));
  assert.ok(bAfter.ok,'Other owner object remains');
  assert.equal(hash(Buffer.from(await bAfter.arrayBuffer())),hash(files.get(b1)));
