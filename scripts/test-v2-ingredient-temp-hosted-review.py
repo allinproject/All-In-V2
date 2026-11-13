@@ -207,7 +207,8 @@ def main():
                 "DELETE FROM public.v2_ingredient_source_records WHERE id=" + literal(source_id) + ";\n"
                 "DELETE FROM public.v2_ingredient_nutrition_profiles WHERE id=" + literal(profile) + ";\n"
                 "DELETE FROM public.v2_ingredients WHERE id=" + literal(ident) + ";\n"
-                # Never delete shared nutrient definitions.\n            )
+                # Never delete shared nutrient definitions.
+            )
         cleanup += "COMMIT;\n"
         try:
             db_call("postgres", admin_pw, ca, cleanup)
