@@ -38,7 +38,8 @@ function fixture(config={}) {
  };
  let leases=0;
  const adapter=createSupabasePrivateArchivePersistence({
-  serviceClient,readApprovedRequestExpiry:async()=>{
+  serviceClient,withOwnerStorageWriteBarrier:config.barrier??(async({write})=>write()),
+  readApprovedRequestExpiry:async()=>{
    leases++;return Object.prototype.hasOwnProperty.call(config,'lease')?config.lease:lease();
   },
  });
@@ -167,6 +168,7 @@ test('paged account archive uses fixed private bucket, owner/request paths, mani
  };
  const adapter=createSupabasePagedAccountExportStorage({
   serviceClient:store,readApprovedRequestExpiry:async()=>lease(),
+  withOwnerStorageWriteBarrier:async({write})=>write(),
  });
  const sealed={ciphertext:'encrypted',iv:'nonce',tag:'tag',plaintextSha256:'a'.repeat(64),plaintextLength:5};
  assert.equal((await adapter.writePrivatePage({ownerId:owner,requestId,collection:'coach_messages',index:0,sealed})).stored,true);
@@ -186,10 +188,52 @@ test('paged archive requires approved owner lease and never reads public bucket'
   from:()=>({upload:async()=>{throw Error('should not upload');}}),
  }};
  const adapter=createSupabasePagedAccountExportStorage({serviceClient:client,
-  readApprovedRequestExpiry:async()=>lease()});
+  readApprovedRequestExpiry:async()=>lease(),
+  withOwnerStorageWriteBarrier:async({write})=>write()});
  await assert.rejects(adapter.writePrivatePage({
   ownerId:owner,requestId,collection:'messages',index:0,sealed:{ciphertext:'opaque'}
  }),/not private/);
  assert.equal(reads,1);
  await assert.rejects(adapter.readPrivatePage({ownerId:'not-owner',requestId,collection:'messages',index:0}),/Exact owner/);
+});
+
+test('privileged archive uploads refuse missing or denying barrier instead of bypassing',async()=>{
+ const {adapter:normal,events}=fixture({barrier:async()=>{throw Error('Deletion barrier rejected');}});
+ await assert.rejects(normal.persistPrivateEnvelope({
+  ownerId:owner,requestId,envelope:envelope(),
+ }),/Deletion barrier rejected/);
+ assert.equal(events.some(e=>e[0]==='upload'),false);
+ const store={storage:{
+  getBucket:async id=>({data:{id,public:false},error:null}),
+  from:()=>({upload:async()=>{throw Error('Storage write must not be reached');}}),
+ }};
+ assert.throws(()=>createSupabasePrivateArchivePersistence({
+  serviceClient:store,readApprovedRequestExpiry:async()=>lease(),
+ }),/dependencies/);
+ assert.throws(()=>createSupabasePagedAccountExportStorage({
+  serviceClient:store,readApprovedRequestExpiry:async()=>lease(),
+ }),/write barrier/);
+ const page=createSupabasePagedAccountExportStorage({
+  serviceClient:store,readApprovedRequestExpiry:async()=>lease(),
+  withOwnerStorageWriteBarrier:async()=>{throw Error('Deletion barrier rejected');},
+ });
+ await assert.rejects(page.writePrivatePage({
+  ownerId:owner,requestId,collection:'coach',index:0,sealed:{ciphertext:'opaque'},
+ }),/Deletion barrier rejected/);
+});
+test('archive write barrier gets immutable bucket owner path and exact one write',async()=>{
+ const observed=[];
+ const f=fixture({barrier:async({ownerId,requestId,bucketId,objectPath,operation,write})=>{
+  observed.push({ownerId,requestId,bucketId,objectPath,operation});
+  return write();
+ }});
+ await f.adapter.persistPrivateEnvelope({ownerId:owner,requestId,envelope:envelope()});
+ assert.deepEqual(observed,[{ownerId:owner,requestId,bucketId:PRIVATE_ACCOUNT_EXPORT_BUCKET,
+  objectPath:path,operation:'insert'}]);
+ assert.equal(f.events.filter(e=>e[0]==='upload').length,1);
+ const bypass=fixture({barrier:async()=>({data:{path},error:null})});
+ await assert.rejects(bypass.adapter.persistPrivateEnvelope({
+  ownerId:owner,requestId,envelope:envelope(),
+ }),/did not execute write/);
+ assert.equal(bypass.events.some(e=>e[0]==='upload'),false);
 });
