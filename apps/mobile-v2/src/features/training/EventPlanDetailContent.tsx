@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {colors} from '../../theme/tokens';
 import {certifyEventPlanDetailIdentity,certifiedEventPlanSectionText,eventPlanSections,type EventPlanDetailIdentity,type EventPlanSectionId,type EventPlanSectionEvidence} from './eventPlanDetailSections';
@@ -16,6 +16,8 @@ export function EventPlanDetailContent(props:{
   const [open,setOpen]=useState<EventPlanSectionId[]>(['overview']);
   const event=certifyEventPlanDetailIdentity(props.event,props.expected);
   const sectionText=event?certifiedEventPlanSectionText(event,props.sectionEvidence):{};
+  const identityKey=`${props.expected.ownerId}:${props.expected.eventId}:${props.expected.editionId}:${props.expected.eventVersion}`;
+  useEffect(()=>setOpen(['overview']),[identityKey]);
   if(!event)return (
     <View style={styles.card}>
       <Text style={styles.muted}>Event detail is unavailable until its exact athlete, event edition and version are verified.</Text>
