@@ -227,6 +227,16 @@ async function runRoutedHostedAutomaticQualification({
   uniqueIndex(candidates,candidateByKey,'candidate');
   uniqueIndex(documents,documentByKey,'normalized document');
   uniqueIndex(canonicalMappings,mappingByKey,'canonical mapping');
+  // A canonical profile cannot be claimed by two distinct USDA source keys.
+  // Reject the batch before BEGIN to avoid partial or cross-form promotion.
+  const profileOwners=new Map();
+  for(const mapping of canonicalMappings){
+    if(!UUID.test(mapping?.profileId||''))continue;
+    const profile=mapping.profileId.toLowerCase();
+    if(profileOwners.has(profile)&&profileOwners.get(profile)!==mapping.source_profile_key)
+      throw Error('Conflicting canonical profile mapping; batch blocked');
+    profileOwners.set(profile,mapping.source_profile_key);
+  }
   const exceptions=[],eligible=[];
   for(const route of assessment.qualificationQueue||[]) {
     const key=route.source_profile_key;
@@ -262,7 +272,8 @@ async function runRoutedHostedAutomaticQualification({
         });
         if(originalNutrients.issues.length||normalizedNutrients.issues.length||
            originalNutrients.chosenEnergyNutrientId!==normalizedNutrients.chosenEnergyNutrientId||
-           JSON.stringify(originalNutrients.facts)!==JSON.stringify(normalizedNutrients.facts))
+           JSON.stringify(originalNutrients.facts)!==JSON.stringify(normalizedNutrients.facts)||
+           parsed.source_description!==undefined&&parsed.source_description!==source.source_description)
           throw Error('normalized_and_official_source_nutrients_disagree');
         const canonicalDigest=source.payload_sha256;
         const plan={...normalizedPlan,sourceDigest:canonicalDigest,
