@@ -3,6 +3,8 @@ import { Redirect } from 'expo-router';
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -171,43 +173,6 @@ function toggleValue(current: string[], value: string, exclusiveValue?: string):
   return withoutExclusive.includes(value)
     ? withoutExclusive.filter(item => item !== value)
     : [...withoutExclusive, value];
-}
-
-function ChoiceButton({
-  option,
-  selected,
-  onPress,
-  disabled,
-  compact = false,
-}: {
-  option: Choice;
-  selected: boolean;
-  onPress: () => void;
-  disabled: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected, disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={[
-        styles.choice,
-        compact && styles.choiceCompact,
-        selected && styles.choiceSelected,
-        disabled && styles.disabled,
-      ]}
-    >
-      <View style={styles.choiceCopy}>
-        <Text style={[styles.choiceLabel, selected && styles.choiceLabelSelected]}>{option.label}</Text>
-        {option.description ? <Text style={styles.choiceDescription}>{option.description}</Text> : null}
-      </View>
-      <View style={[styles.choiceIndicator, selected && styles.choiceIndicatorSelected]}>
-        {selected ? <View style={styles.choiceIndicatorDot} /> : null}
-      </View>
-    </Pressable>
-  );
 }
 
 export default function OnboardingRequiredScreen() {
@@ -384,126 +349,45 @@ function OnboardingOwnerFlow() {
     }
   };
 
-  const renderBody = () => {
-    if (!activeStep) return null;
+  const stepOptions: readonly Choice[] = activeStep === 'focus' ? V2_ONBOARDING_FOCUS_OPTIONS
+    : activeStep === 'training_pattern' ? TRAINING_OPTIONS
+    : activeStep === 'availability' ? DAY_OPTIONS
+    : activeStep === 'coach' ? COACH_OPTIONS
+    : activeStep === 'food_safety' ? FOOD_OPTIONS
+    : activeStep === 'proactivity' ? PROACTIVITY_OPTIONS
+    : [];
 
+  const isChoiceSelected = (value: string) => {
     switch (activeStep) {
-      case 'focus':
-        return (
-          <View style={styles.options}>
-            {V2_ONBOARDING_FOCUS_OPTIONS.map(option => (
-              <ChoiceButton
-                key={option.value}
-                option={option}
-                selected={answers.primaryFocus === option.value}
-                disabled={saving}
-                onPress={() => updateAnswers(current => ({ ...current, primaryFocus: option.value }))}
-              />
-            ))}
-          </View>
-        );
-      case 'training_pattern':
-        return (
-          <View style={styles.options}>
-            <Text style={styles.helper}>Choose one or more. If you are new to training, select the last option.</Text>
-            {TRAINING_OPTIONS.map(option => (
-              <ChoiceButton
-                key={option.value}
-                option={option}
-                selected={answers.currentSports.includes(option.value)}
-                disabled={saving}
-                onPress={() => updateAnswers(current => ({
-                  ...current,
-                  currentSports: toggleValue(current.currentSports, option.value, 'not_currently_training'),
-                }))}
-              />
-            ))}
-          </View>
-        );
-      case 'availability':
-        return (
-          <View style={styles.options}>
-            <Text style={styles.helper}>Select the days that tend to work. This will not block you from training on other days.</Text>
-            <View style={styles.dayGrid}>
-              {DAY_OPTIONS.map(option => (
-                <View key={option.value} style={styles.dayGridItem}>
-                  <ChoiceButton
-                    option={option}
-                    compact
-                    selected={answers.availableDays.includes(option.value)}
-                    disabled={saving}
-                    onPress={() => updateAnswers(current => ({
-                      ...current,
-                      availableDays: toggleValue(current.availableDays, option.value, 'flexible'),
-                    }))}
-                  />
-                </View>
-              ))}
-            </View>
-          </View>
-        );
-      case 'coach':
-        return (
-          <View style={styles.options}>
-            {COACH_OPTIONS.map(option => (
-              <ChoiceButton
-                key={option.value}
-                option={option}
-                selected={answers.coachGuidance === option.value}
-                disabled={saving}
-                onPress={() => updateAnswers(current => ({ ...current, coachGuidance: option.value }))}
-              />
-            ))}
-          </View>
-        );
-      case 'food_safety':
-        return (
-          <View style={styles.options}>
-            {FOOD_OPTIONS.map(option => (
-              <ChoiceButton
-                key={option.value}
-                option={option}
-                selected={answers.foodSafety === option.value}
-                disabled={saving}
-                onPress={() => updateAnswers(current => ({
-                  ...current,
-                  foodSafety: option.value,
-                  foodSafetyNotes: option.value === 'none' ? '' : current.foodSafetyNotes,
-                }))}
-              />
-            ))}
-            {answers.foodSafety && answers.foodSafety !== 'none' ? (
-              <View style={styles.notesBlock}>
-                <Text style={styles.helper}>Optional details</Text>
-                <TextInput
-                  accessibilityLabel="Food allergies, sensitivities or preferences"
-                  editable={!saving}
-                  multiline
-                  onChangeText={value => updateAnswers(current => ({ ...current, foodSafetyNotes: value }))}
-                  placeholder="Add only what you want Coach to consider"
-                  placeholderTextColor={colors.mutedText}
-                  style={styles.input}
-                  value={answers.foodSafetyNotes}
-                />
-              </View>
-            ) : null}
-          </View>
-        );
-      case 'proactivity':
-        return (
-          <View style={styles.options}>
-            {PROACTIVITY_OPTIONS.map(option => (
-              <ChoiceButton
-                key={option.value}
-                option={option}
-                selected={answers.proactivity === option.value}
-                disabled={saving}
-                onPress={() => updateAnswers(current => ({ ...current, proactivity: option.value }))}
-              />
-            ))}
-          </View>
-        );
+      case 'focus': return answers.primaryFocus === value;
+      case 'training_pattern': return answers.currentSports.includes(value);
+      case 'availability': return answers.availableDays.includes(value);
+      case 'coach': return answers.coachGuidance === value;
+      case 'food_safety': return answers.foodSafety === value;
+      case 'proactivity': return answers.proactivity === value;
+      default: return false;
     }
+  };
+
+  const selectChoice = (value: string) => updateAnswers(current => {
+    switch (activeStep) {
+      case 'focus': return { ...current, primaryFocus: value };
+      case 'training_pattern': return { ...current, currentSports: toggleValue(current.currentSports, value, 'not_currently_training') };
+      case 'availability': return { ...current, availableDays: toggleValue(current.availableDays, value, 'flexible') };
+      case 'coach': return { ...current, coachGuidance: value };
+      case 'food_safety': return { ...current, foodSafety: value, foodSafetyNotes: value === 'none' ? '' : current.foodSafetyNotes };
+      case 'proactivity': return { ...current, proactivity: value };
+      default: return current;
+    }
+  });
+
+  const stepPresentation: Record<OnboardingStep, { heading: string; subtitle: string; intro: string }> = {
+    focus: { heading: "What's your focus?", subtitle: "Pick where you'd like to start. You can do it all.", intro: "LET'S GET YOU STARTED" },
+    training_pattern: { heading: 'How do you move?', subtitle: 'Choose all that apply. New to fitness? Start where you are.', intro: 'YOUR TRAINING' },
+    availability: { heading: 'When can you train?', subtitle: 'Pick your usual days or choose a flexible schedule.', intro: 'YOUR SCHEDULE' },
+    coach: { heading: 'Meet your Coach.', subtitle: 'How much guidance would you like? You stay in control.', intro: 'YOUR PERSONAL COACH' },
+    food_safety: { heading: 'Food, your way.', subtitle: 'Tell Coach what to consider. Details are optional.', intro: 'YOUR NUTRITION' },
+    proactivity: { heading: 'Set your pace.', subtitle: 'Choose how often ALL IN 365 should offer suggestions.', intro: 'YOUR EXPERIENCE' },
   };
 
   if (!authLoading && !user) return <Redirect href="/sign-in" />;
@@ -536,105 +420,115 @@ function OnboardingOwnerFlow() {
     );
   }
 
-  if (activeStep === 'focus') {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={[styles.focusScreen, compactDevice && styles.focusScreenCompact]}>
-          <View style={styles.focusBrand}>
-            <Image source={require('../assets/all-in-365-circle.jpg')} style={[styles.focusLogo, compactDevice && styles.focusLogoCompact]} resizeMode="contain" accessibilityLabel="ALL IN 365 logo" />
-            <Text style={styles.focusSlogan}>LIVE ALL IN.</Text>
-          </View>
-          <View style={styles.focusProgress}>
-            <View style={styles.stepRow}>
-              <Text style={styles.stepLabel}>LET'S GET YOU STARTED</Text>
-              <Text style={styles.stepLabel}>01 / 06</Text>
+  const presentation = stepPresentation[activeStep];
+  const isDenseStep = activeStep === 'focus' || activeStep === 'training_pattern' || activeStep === 'availability';
+  const hasNotes = activeStep === 'food_safety' && answers.foodSafety !== '' && answers.foodSafety !== 'none';
+  const isCompact = compactDevice || (windowHeight < 790 && isDenseStep);
+  const chooser = (
+    <View style={[styles.focusGrid, !isDenseStep && styles.stackedChoices]}>
+      {stepOptions.map(option => {
+        const selected = isChoiceSelected(option.value);
+        return (
+          <Pressable
+            key={option.value}
+            accessibilityRole={activeStep === 'training_pattern' || activeStep === 'availability' ? 'checkbox' : 'radio'}
+            accessibilityState={{ selected, checked: selected, disabled: saving }}
+            disabled={saving}
+            onPress={() => selectChoice(option.value)}
+            style={[
+              styles.focusOption,
+              !isDenseStep && styles.fullWidthOption,
+              isCompact && styles.focusOptionCompact,
+              selected && styles.focusOptionSelected,
+            ]}
+          >
+            <View style={styles.choiceCopy}>
+              <Text numberOfLines={2} style={[styles.focusOptionText, selected && styles.focusOptionTextSelected]}>{option.label}</Text>
+              {option.description ? <Text numberOfLines={2} style={styles.optionDescription}>{option.description}</Text> : null}
             </View>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: '16.6667%' }]} />
-            </View>
-          </View>
-          <View style={styles.focusHeading}>
-            <Text accessibilityRole="header" style={[styles.focusTitle, compactDevice && styles.focusTitleCompact]}>What's your focus?</Text>
-            <Text style={styles.focusDescription}>Pick where you'd like to start. You can do it all.</Text>
-          </View>
-          <View style={styles.focusGrid}>
-            {V2_ONBOARDING_FOCUS_OPTIONS.map(option => {
-              const selected = answers.primaryFocus === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected, disabled: saving }}
-                  disabled={saving}
-                  onPress={() => updateAnswers(current => ({ ...current, primaryFocus: option.value }))}
-                  style={[styles.focusOption, compactDevice && styles.focusOptionCompact, selected && styles.focusOptionSelected]}
-                >
-                  <Text numberOfLines={2} style={[styles.focusOptionText, selected && styles.focusOptionTextSelected]}>{option.label}</Text>
-                  {selected ? <Text style={styles.focusCheck}>✓</Text> : null}
-                </Pressable>
-              );
-            })}
-          </View>
-          <View style={styles.focusBottom}>
-            {actionError ? <Text accessibilityRole="alert" style={styles.error}>{actionError}</Text> : null}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ disabled: saving || !canComplete, busy: saving }}
-              disabled={saving || !canComplete}
-              onPress={() => void saveStep('complete')}
-              style={[styles.focusContinue, (saving || !canComplete) && styles.disabled]}
-            >
-              {saving ? <ActivityIndicator color={colors.background} /> : <Text style={styles.focusContinueText}>Continue</Text>}
-            </Pressable>
-            <Pressable accessibilityRole="button" disabled={saving} onPress={() => void saveStep('skip')} style={styles.focusSkip}>
-              <Text style={styles.skipButtonText}>I'll decide later</Text>
-            </Pressable>
-          </View>
+            {selected ? <Text style={styles.focusCheck}>✓</Text> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  const mainContent = (
+    <View style={[styles.focusScreen, isCompact && styles.focusScreenCompact]}>
+      <View style={styles.focusBrand}>
+        <Image source={require('../assets/all-in-365-circle.jpg')} style={[styles.focusLogo, isCompact && styles.focusLogoCompact]} resizeMode="contain" accessibilityLabel="ALL IN 365 logo" />
+        <Text style={styles.focusSlogan}>LIVE ALL IN.</Text>
+      </View>
+      <View style={styles.focusProgress}>
+        <View style={styles.stepRow}>
+          <Text style={styles.stepLabel}>{presentation.intro}</Text>
+          <Text style={styles.stepLabel}>{String(stepNumber).padStart(2, '0')} / 06</Text>
         </View>
-      </SafeAreaView>
-    );
-  }
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${(stepNumber / REQUIRED_V2_ONBOARDING_STEPS.length) * 100}%` }]} />
+        </View>
+      </View>
+      <View style={styles.focusHeading}>
+        <Text accessibilityRole="header" style={[styles.focusTitle, isCompact && styles.focusTitleCompact]}>{presentation.heading}</Text>
+        <Text style={styles.focusDescription}>{presentation.subtitle}</Text>
+      </View>
+      {chooser}
+      {hasNotes ? (
+        <View style={styles.compactNotes}>
+          <Text style={styles.fieldLabel}>Anything else? (Optional)</Text>
+          <TextInput
+            accessibilityLabel="Food allergies, sensitivities or preferences"
+            editable={!saving}
+            multiline
+            onChangeText={value => updateAnswers(current => ({ ...current, foodSafetyNotes: value }))}
+            placeholder="Only share what you want Coach to know"
+            placeholderTextColor={colors.mutedText}
+            style={styles.compactInput}
+            value={answers.foodSafetyNotes}
+          />
+        </View>
+      ) : null}
+      <View style={styles.focusBottom}>
+        {actionError ? <Text accessibilityRole="alert" style={styles.error}>{actionError}</Text> : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: saving || !canComplete, busy: saving }}
+          disabled={saving || !canComplete}
+          onPress={() => void saveStep('complete')}
+          style={[styles.focusContinue, (saving || !canComplete) && styles.disabled]}
+        >
+          {saving ? <ActivityIndicator color={colors.background} /> : <Text style={styles.focusContinueText}>{stepNumber === 6 ? 'Finish setup' : 'Continue'}</Text>}
+        </Pressable>
+        <View style={styles.bottomLinks}>
+          {activeStepIndex > 0 ? (
+            <Pressable accessibilityRole="button" disabled={saving} onPress={() => { if (saveGuard.current.isBusy()) return; setActionError(null); setActiveStepIndex(index => Math.max(0, index - 1)); }} style={styles.smallBack}>
+              <Text style={styles.skipButtonText}>Back</Text>
+            </Pressable>
+          ) : <View style={styles.smallBack} />}
+          <Pressable accessibilityRole="button" disabled={saving} onPress={() => void saveStep('skip')} style={styles.smallSkip}>
+            <Text style={styles.skipButtonText}>I'll decide later</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.content}>
-          <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-          <View style={styles.stepRow}>
-            <Text style={styles.stepLabel}>STEP {stepNumber} OF {REQUIRED_V2_ONBOARDING_STEPS.length}</Text>
-            <Text style={styles.stepLabel}>{completedSteps.length + skippedSteps.length} SAVED</Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: (stepNumber / REQUIRED_V2_ONBOARDING_STEPS.length) * 100 + '%' }]} />
-          </View>
-          <Text accessibilityRole="header" style={styles.title}>{stepCopy?.title}</Text>
-          <Text style={styles.body}>{stepCopy?.description}</Text>
-          <View style={styles.card}>
-            {renderBody()}
-          </View>
-          <Text style={styles.privacyNote}>Your answers are saved to your V2 profile and can be changed later. Skipping leaves that information unknown.</Text>
-          {actionError ? <Text accessibilityRole="alert" style={styles.error}>{actionError}</Text> : null}
-          <View style={styles.actions}>
-            {activeStepIndex > 0 ? (
-              <Pressable accessibilityRole="button" disabled={saving} onPress={() => { if (saveGuard.current.isBusy()) return; setActionError(null); setActiveStepIndex(index => Math.max(0, index - 1)); }} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Back</Text>
-              </Pressable>
-            ) : <View style={styles.secondarySpacer} />}
-            <Pressable accessibilityRole="button" disabled={saving} onPress={() => void saveStep('skip')} style={styles.skipButton}>
-              <Text style={styles.skipButtonText}>Skip for now</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" disabled={saving || !canComplete} onPress={() => void saveStep('complete')} style={[styles.primaryButton, (saving || !canComplete) && styles.disabled]}>
-              {saving ? <ActivityIndicator color={colors.background} /> : <Text style={styles.primaryButtonText}>Continue</Text>}
-            </Pressable>
-          </View>
-          <Text style={styles.footer}>Start where you are. Go as far as you want.</Text>
-        </View>
-      </ScrollView>
+      {hasNotes ? (
+        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.notesScrollContent} keyboardShouldPersistTaps="handled">
+            {mainContent}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      ) : mainContent}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {flex: 1, backgroundColor: colors.background},
+  flex: {flex: 1},
   focusScreen: {flex: 1, paddingHorizontal: 22, paddingTop: 8, paddingBottom: 4, justifyContent: 'space-between', gap: 8},
   focusScreenCompact: {paddingHorizontal: 18, paddingTop: 2, gap: 4},
   focusBrand: {alignItems: 'center', gap: 1},
@@ -642,60 +536,42 @@ const styles = StyleSheet.create({
   focusLogoCompact: {width: 58, height: 58, borderRadius: 29},
   focusSlogan: {color: colors.gold, letterSpacing: 2.1, fontSize: 11, fontWeight: '900'},
   focusProgress: {gap: 8},
+  stepRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  stepLabel: {color: colors.goldSoft, fontSize: 11, fontWeight: '800', letterSpacing: 1.1},
+  progressTrack: {height: 4, backgroundColor: colors.surfaceRaised, borderRadius: 4, overflow: 'hidden'},
+  progressFill: {height: 4, backgroundColor: colors.gold, borderRadius: 4},
   focusHeading: {gap: 4},
   focusTitle: {fontSize: 31, fontWeight: '900', lineHeight: 36, color: colors.warmWhite},
   focusTitleCompact: {fontSize: 27, lineHeight: 31},
   focusDescription: {color: colors.mutedText, fontSize: 13, lineHeight: 19},
   focusGrid: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8},
+  stackedChoices: {gap: 9},
   focusOption: {width: '48.6%', minHeight: 52, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 11, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 3},
+  fullWidthOption: {width: '100%', minHeight: 68, paddingHorizontal: 16},
   focusOptionCompact: {minHeight: 43, paddingVertical: 4, paddingHorizontal: 9},
   focusOptionSelected: {borderColor: colors.gold, backgroundColor: '#252117'},
+  choiceCopy: {flex: 1, gap: 3},
   focusOptionText: {color: colors.warmWhite, fontSize: 13, lineHeight: 17, fontWeight: '700', flexShrink: 1},
   focusOptionTextSelected: {color: colors.goldSoft},
+  optionDescription: {color: colors.mutedText, fontSize: 12, lineHeight: 17},
   focusCheck: {color: colors.gold, fontWeight: '900', fontSize: 16},
+  fieldLabel: {fontSize: 12, fontWeight: '700', color: colors.warmWhite},
+  compactNotes: {gap: 5},
+  compactInput: {minHeight: 65, maxHeight: 100, color: colors.warmWhite, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, padding: 11, textAlignVertical: 'top', fontSize: 13},
+  notesScrollContent: {flexGrow: 1},
   focusBottom: {gap: 6},
   focusContinue: {minHeight: 49, borderRadius: radius.control, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center'},
   focusContinueText: {fontSize: 16, fontWeight: '900', color: colors.background},
-  focusSkip: {minHeight: 37, alignItems: 'center', justifyContent: 'center'},
-footer: { color: colors.mutedText, fontSize: 12, textAlign: 'center', marginTop: spacing.md },
-  safe: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { flexGrow: 1 },
-  content: { flex: 1, padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md },
-  brand: { color: colors.warmWhite, fontSize: 18, fontWeight: '800', letterSpacing: 1.4, marginBottom: spacing.sm },
-  gold: { color: colors.gold },
-  stepRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  stepLabel: { color: colors.goldSoft, fontSize: 11, fontWeight: '800', letterSpacing: 1.1 },
-  progressTrack: { height: 4, backgroundColor: colors.surfaceRaised, borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: 4, backgroundColor: colors.gold, borderRadius: 4 },
-  title: { color: colors.warmWhite, fontSize: 28, fontWeight: '800', lineHeight: 34, marginTop: spacing.sm },
-  body: { color: colors.mutedText, fontSize: 15, lineHeight: 23 },
-  helper: { color: colors.mutedText, fontSize: 13, lineHeight: 20 },
-  card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.card, padding: spacing.md, marginTop: spacing.sm },
-  options: { gap: spacing.sm },
-  choice: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, padding: spacing.md, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: radius.control },
-  choiceCompact: { minHeight: 48, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
-  choiceSelected: { borderColor: colors.gold, backgroundColor: '#252117' },
-  choiceCopy: { flex: 1, gap: 3 },
-  choiceLabel: { color: colors.warmWhite, fontSize: 14, fontWeight: '700' },
-  choiceLabelSelected: { color: colors.goldSoft },
-  choiceDescription: { color: colors.mutedText, fontSize: 12, lineHeight: 17 },
-  choiceIndicator: { width: 20, height: 20, borderRadius: 10, borderColor: colors.mutedText, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  choiceIndicatorSelected: { borderColor: colors.gold, backgroundColor: colors.gold },
-  choiceIndicatorDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.background },
-  dayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  dayGridItem: { width: '48%' },
-  notesBlock: { gap: spacing.xs, marginTop: spacing.sm },
-  input: { minHeight: 88, color: colors.warmWhite, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: radius.control, padding: spacing.md, textAlignVertical: 'top' },
-  privacyNote: { color: colors.mutedText, fontSize: 12, lineHeight: 18, marginTop: spacing.xs },
-  error: { color: colors.danger, fontSize: 13, lineHeight: 19 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
-  primaryButton: { minHeight: 48, paddingHorizontal: spacing.md, backgroundColor: colors.gold, borderRadius: radius.control, alignItems: 'center', justifyContent: 'center', flex: 1 },
-  primaryButtonText: { color: colors.background, fontWeight: '800', fontSize: 14 },
-  secondaryButton: { minHeight: 48, paddingHorizontal: spacing.sm, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: radius.control, alignItems: 'center', justifyContent: 'center' },
-  secondaryButtonText: { color: colors.warmWhite, fontWeight: '700', fontSize: 13 },
-  secondarySpacer: { width: 1 },
-  skipButton: { minHeight: 48, paddingHorizontal: spacing.sm, alignItems: 'center', justifyContent: 'center' },
-  skipButtonText: { color: colors.mutedText, fontWeight: '700', fontSize: 12 },
-  disabled: { opacity: 0.45 },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.md },
+  bottomLinks: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  smallBack: {minHeight: 36, minWidth: 82, alignItems: 'flex-start', justifyContent: 'center'},
+  smallSkip: {minHeight: 36, minWidth: 110, alignItems: 'flex-end', justifyContent: 'center'},
+  skipButtonText: {color: colors.mutedText, fontWeight: '700', fontSize: 12},
+  disabled: {opacity: 0.45},
+  error: {color: colors.danger, fontSize: 13, lineHeight: 19},
+  loading: {flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.md},
+  title: {color: colors.warmWhite, fontSize: 28, fontWeight: '800'},
+  body: {color: colors.mutedText, fontSize: 15, lineHeight: 22},
+  primaryButton: {minHeight: 48, paddingHorizontal: spacing.md, backgroundColor: colors.gold, borderRadius: radius.control, alignItems: 'center', justifyContent: 'center'},
+  primaryButtonText: {color: colors.background, fontWeight: '800', fontSize: 14},
+  helper: {color: colors.mutedText, fontSize: 13, lineHeight: 20},
 });
