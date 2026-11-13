@@ -9,6 +9,7 @@
  */
 import {createTrainingExportAuthServices} from '../supabase/functions/_shared/trainingExportAuthServices.mjs';
 import {createTrainingSupabaseEvidenceAdapter} from '../supabase/functions/_shared/trainingExportSupabaseStorage.mjs';
+import {createPrivilegedStorageWriter} from '../supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs';
 import {createTrainingEncryptedArchiveSink} from './v2-training-export-archive-writer.mjs';
 import {createSupabasePrivateArchivePersistence,createSupabasePagedAccountExportStorage} from '../supabase/functions/_shared/trainingExportSupabaseArchive.mjs';
 import {stageLargeAccountExport,createLargeAccountDownloadResponse} from '../supabase/functions/_shared/trainingExportLargeArchive.mjs';
@@ -19,11 +20,29 @@ import {auditPrivateMediaExportCoverage,createSupabaseTrainingMediaAuditAdapters
 export function createTrainingAccountExportWorkerCandidate({
   bearerToken,authClient,serviceClient,resolveEncryptionKey,
   persistPrivateEnvelope,deletePrivateRequest,readApprovedRequestExpiry,
-  withOwnerStorageWriteBarrier,canonicalPageReader,
+  canonicalPageReader,
 }) {
   if(!serviceClient?.storage?.getBucket||!serviceClient?.from||!serviceClient?.rpc)
     throw new Error('Trusted Supabase service client missing');
   const storageAdapter=createTrainingSupabaseEvidenceAdapter({supabase:serviceClient});
+  // The existing canonical privileged Storage writer issues a durable,
+  // non-expiring owner lease before the HTTP upload, verifies actual bytes,
+  // and settles only after successful readback. No stand-alone preflight.
+  const privilegedWriter=createPrivilegedStorageWriter({supabase:serviceClient});
+  const withOwnerStorageWriteBarrier=async({
+    ownerId,bucketId,objectPath,operation,bytes,contentType,write,
+  })=>{
+    if(operation!=='insert'||typeof write!=='function')
+      throw Error('Unreviewed privileged archive operation');
+    const proof=await privilegedWriter.writeWithBarrier({
+      verifiedOwnerId:ownerId,bucketId,path:objectPath,bytes,
+      operation:'create',contentType,upload:write,
+    });
+    if(proof?.verified!==true||proof.path!==objectPath||proof.bucketId!==bucketId)
+      throw Error('Canonical privileged Storage lease did not verify write');
+    return {data:{path:proof.path},error:null};
+  };
+
   // One owning ALL-251 flow: either explicit trusted persistence adapters,
   // or the fixed Supabase private archive adapter with an independently
   // approved owner/session/request lease. Never use an anonymous fallback.
