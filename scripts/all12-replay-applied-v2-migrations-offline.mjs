@@ -40,7 +40,8 @@ export function canonicalSql(sql){
 }
 export function validateInventory(names,read){
  // Windows Git can check out unchanged .sql with CRLF. Pin the canonical LF
- // bytes already recorded in the authoritative immutable digest ledger.\n const result=auditAppliedMigrations(names,n=>canonicalSql(read(n)));
+ // bytes already recorded in the authoritative immutable digest ledger.
+ const result=auditAppliedMigrations(names,n=>canonicalSql(read(n)));
  assert(result.ok,result.problems.join('; '));
  assert(result.appliedCount===18,'expected 18 canonical migrations');
  const observed=names.filter(n=>/^\d{14}_.*\.sql$/.test(n));
