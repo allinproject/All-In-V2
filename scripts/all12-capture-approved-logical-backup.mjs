@@ -58,6 +58,15 @@ export function assessCurrentV2TableCoverage({actualTables,approvedTables}) {
  for(const t of criticalAuth)if(!approved.has(t))reasons.push('missing_core_auth_table:'+t);
  return {valid:reasons.length===0,reasons};
 }
+export function compareCaptureInventories(before,after) {
+ if(!Array.isArray(before)||!Array.isArray(after)||
+    !before.length||!after.length||
+    new Set(before).size!==before.length||new Set(after).size!==after.length)
+  return {stable:false,reason:'invalid_capture_inventory'};
+ const a=[...before].sort(),b=[...after].sort();
+ return a.length===b.length&&a.every((t,i)=>t===b[i])
+  ?{stable:true,reason:null}:{stable:false,reason:'live_table_inventory_changed_during_capture'};
+}
 function queryLiveV2Tables() {
  const query="SELECT n.nspname||'.'||c.relname FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p') AND left(c.relname,3)='v2_' ORDER BY 1;";
  const checked=spawnSync('psql',['-X','-qAt','-v','ON_ERROR_STOP=1','-c',query],{
@@ -103,10 +112,13 @@ async function main() {
  try {
   // Reserve the destination as owner-only; pg_dump creates/truncates it.
   fd=openSync(archive,'wx',0o600);closeSync(fd);fd=undefined;
-  const dump=spawnSync('pg_dump',argv,{env:process.env,encoding:'utf8',
+  const dump=spawnSync('pg_dump',argv,{env:{...process.env,PGOPTIONS:'-c default_transaction_read_only=on'},encoding:'utf8',
    stdio:['ignore','pipe','pipe'],timeout:600000,maxBuffer:1024*1024});
   if(dump.error||dump.status!==0)throw Error('pg_dump_failed; inspect tool availability, table privileges and trusted TLS settings locally');
   if(statSync(archive).size<=0)throw Error('empty_backup_artifact');
+  const afterV2=queryLiveV2Tables();
+  const stable=compareCaptureInventories(currentV2,afterV2);
+  if(!stable.stable)throw Error('ALL-12 capture refused: '+stable.reason);
   const digest=await sha256(archive);
   const completed=new Date().toISOString();
   const result={
@@ -119,6 +131,8 @@ async function main() {
    // manufacture an exact cutoff time or an RPO from local clock alone.
    backupCutoffWindowUtc:{notBefore:started,notAfter:completed},
    tables:inventory.tables,
+   catalogPreflightAndPostflightMatch:true,
+   deployedV2TableCount:currentV2.length,
    sequenceInventoryStatus:'unreviewed',
    nextStep:'independently verify pg_restore TOC and archived sequence list; then an isolated safe restore with owner/Auth/Storage/config verification',
    operationalRecoveryAccepted:false
