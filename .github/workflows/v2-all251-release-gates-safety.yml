@@ -42,6 +42,11 @@ jobs:
             exit 1
           fi
           grep -q 'explicit operator and cost approval' /tmp/all251-kms-refusal.log
+      - name: Audit all current client/server Storage upload writers and denied deletion readiness
+        run: |
+          node --test \
+            scripts/test-all251-runtime-storage-writer-inventory.mjs \
+            supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.test.mjs
       - name: Mobile pre-release native export cache and session tests
         run: |
           node --experimental-strip-types --test \
