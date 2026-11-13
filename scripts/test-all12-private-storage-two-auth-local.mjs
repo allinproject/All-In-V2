@@ -164,7 +164,7 @@ try{
  assert.ok([400,401,403].includes(replay.status),'logged-out refresh token remained reusable');
  // Access JWTs may remain valid until expiration: logout revokes refresh
  // credentials, not necessarily already-issued bearer JWTs.
- console.log('PASS ALL-12: persisted fixture bytes restored; valid second Auth session denied private bytes; owner SHA-256 verified');
+ // Final PASS is emitted only after fixture cleanup has succeeded.
 }finally{
  const cleanupErrors=[];
  if(policy){
@@ -189,3 +189,4 @@ try{
  }
  assert.deepEqual(cleanupErrors,[],'ALL-12 fixture cleanup must complete');
 }
+console.log('PASS ALL-12: persisted Storage bytes restored; cross-owner denial, SHA-256 and cleanup verified');
