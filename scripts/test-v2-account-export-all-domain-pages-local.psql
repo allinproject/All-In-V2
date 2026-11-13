@@ -73,8 +73,10 @@ VALUES
  ('e9111111-9111-4111-8111-911111111111','app_store','sandbox','private-event-A',1),
  ('e9222222-9222-4222-8222-922222222222','google_play','sandbox','private-event-B',1);
 
-INSERT INTO public.v2_events(id,name,sport,event_kind)
- VALUES ('c9111111-9111-4111-8111-911111111111','Representative race','running','race');
+INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind)
+ VALUES ('c9111111-9111-4111-8111-911111111111',
+         'c9333333-9333-4333-8333-933333333333',
+         'Representative race','running','race');
 INSERT INTO public.v2_event_participations
  (user_id,event_id,state,source_kind,source_note) VALUES
  ('91111111-9111-4111-8111-911111111111',
