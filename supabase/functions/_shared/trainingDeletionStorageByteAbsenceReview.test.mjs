@@ -49,6 +49,17 @@ test('late upload, unverified existence, stale barrier, unplanned bucket all den
   await assert.rejects(verifyPrivateStorageByteAbsenceReview(f.state));
  }
 });
+test('canonical five-group owner/request UUIDs pass and malformed IDs fail',async()=>{
+ const f=fixture();
+ assert.equal((await verifyPrivateStorageByteAbsenceReview(f.state)).ownerId,A);
+ for(const malformed of [A.replace(/-/g,''),'a1111111-a111-4111-a11111111111',
+  'zz111111-a111-4111-8111-a11111111111']) {
+  await assert.rejects(verifyPrivateStorageByteAbsenceReview({...f.state,ownerId:malformed}),
+   /dependencies required/);
+ }
+ await assert.rejects(verifyPrivateStorageByteAbsenceReview({...f.state,
+  requestId:'not-an-id'}),/dependencies required/);
+});
 test('read-only source cannot create new manifest and must be supplied',async()=>{
  const f=fixture();delete f.state.readExistingObjectPlan;
  await assert.rejects(verifyPrivateStorageByteAbsenceReview(f.state),/dependencies required/);
