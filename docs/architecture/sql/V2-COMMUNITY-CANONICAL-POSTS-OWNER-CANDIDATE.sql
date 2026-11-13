@@ -146,3 +146,79 @@ REVOKE ALL ON FUNCTION public.v2_community_posts_read(uuid)
 -- is explicitly incomplete, and the client must reject it rather than imply
 -- the extra posts do not exist. A reviewed owner-cursor contract is required
 -- before granting API access.
+
+-- Review-only comment reader: one post, one server-side ACL. Never fetch
+-- unreviewed comment bytes and filter in the mobile app afterward. The
+-- parent post owner controls audience; each comment author independently
+-- controls blocks in both directions. No direct client EXECUTE is granted.
+CREATE OR REPLACE FUNCTION public.v2_community_comments_read(
+ p_post_id uuid
+) RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $comments_read$
+WITH viewer AS (
+ SELECT auth.uid() AS uid
+), post AS (
+ SELECT p.id,p.owner_id,p.audience
+ FROM allin_private.v2_community_posts p WHERE p.id=p_post_id
+), permission AS (
+ SELECT v.uid,p.id,p.owner_id,
+  (v.uid IS NOT NULL AND EXISTS(
+    SELECT 1 FROM auth.users u JOIN public.v2_profiles pr
+      ON pr.user_id=u.id WHERE u.id=v.uid
+  )) AS viewer_active,
+  EXISTS(SELECT 1 FROM auth.users u JOIN public.v2_profiles pr
+    ON pr.user_id=u.id WHERE u.id=p.owner_id) AS owner_active,
+  EXISTS(SELECT 1 FROM allin_private.v2_community_blocks b
+    WHERE (b.blocker_id=v.uid AND b.blocked_id=p.owner_id)
+       OR (b.blocker_id=p.owner_id AND b.blocked_id=v.uid)) AS blocked,
+  (v.uid=p.owner_id OR
+    (p.audience<>'private' AND (
+      EXISTS(SELECT 1 FROM allin_private.v2_community_follows f
+        WHERE f.follower_id=v.uid AND f.followed_id=p.owner_id
+          AND f.state='approved')
+      OR (p.audience='public' AND
+        COALESCE((SELECT profile_visibility
+          FROM allin_private.v2_community_visibility
+          WHERE user_id=p.owner_id),'private')='public')
+    ))) AS can_view
+ FROM viewer v CROSS JOIN post p
+), allowed AS (
+ SELECT c.id,c.author_id,c.parent_comment_id,c.body,
+   c.revision,c.created_at,c.updated_at
+ FROM allin_private.v2_community_comments c CROSS JOIN permission perm
+ WHERE c.post_id=p_post_id AND c.deleted_at IS NULL
+   AND perm.viewer_active AND perm.owner_active
+   AND NOT perm.blocked AND perm.can_view
+   AND NOT EXISTS(
+     SELECT 1 FROM allin_private.v2_community_blocks b
+     WHERE (b.blocker_id=perm.uid AND b.blocked_id=c.author_id)
+        OR (b.blocker_id=c.author_id AND b.blocked_id=perm.uid)
+   )
+), sorted AS (
+ SELECT *,row_number() OVER(ORDER BY created_at,id) AS ordinal
+ FROM allowed ORDER BY created_at,id LIMIT 101
+)
+SELECT pg_catalog.jsonb_build_object(
+ 'postId',p_post_id,'viewerId',perm.uid,
+ 'complete',(SELECT count(*)<=100 FROM sorted),
+ 'nextCursor',CASE WHEN (SELECT count(*)>100 FROM sorted)
+   THEN 'additional-page-required' ELSE NULL END,
+ 'comments',COALESCE((
+   SELECT pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+     'id',s.id,'authorId',s.author_id,'parentCommentId',s.parent_comment_id,
+     'body',s.body,'revision',s.revision,'createdAt',s.created_at,
+     'updatedAt',s.updated_at
+   ) ORDER BY s.created_at,s.id) FROM sorted s WHERE s.ordinal<=100
+ ),'[]'::jsonb)
+)
+FROM permission perm
+WHERE perm.viewer_active AND perm.owner_active
+ AND NOT perm.blocked AND perm.can_view
+$comments_read$;
+REVOKE ALL ON FUNCTION public.v2_community_comments_read(uuid)
+ FROM PUBLIC,anon,authenticated,service_role;
+
+-- This 100-comment cap is intentionally an incomplete-preview marker.
+-- A reviewed cursor and moderation/rate-limited writer are required before
+-- any client grant or production launch.
