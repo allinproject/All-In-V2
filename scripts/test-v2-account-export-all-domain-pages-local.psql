@@ -361,6 +361,13 @@ BEGIN
    v_owner,v_session,v_request,'allin_private.v2_community_pair_revisions',NULL,25);
   RAISE EXCEPTION 'Pair revision records unexpectedly exported';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- Comments have no approved canonical author/counterparty source contract.
+ -- Never infer comments from parent posts or disclose another athlete's text.
+ BEGIN
+  PERFORM public.v2_account_export_page_review_candidate(
+   v_owner,v_session,v_request,'community.my_comments',NULL,25);
+  RAISE EXCEPTION 'Unapproved Community comments unexpectedly exported';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN
   PERFORM public.v2_account_export_page_review_candidate(
    v_owner,v_session,v_request,'public.v2_coach_messages',NULL,100);
