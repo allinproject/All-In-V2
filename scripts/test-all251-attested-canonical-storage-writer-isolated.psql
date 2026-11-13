@@ -41,7 +41,7 @@ BEGIN
  THEN RAISE EXCEPTION 'Restricted service-only attested begin unavailable'; END IF;
  INSERT INTO auth.users(id) VALUES(a),(b);
  INSERT INTO storage.buckets(id,public) VALUES('v2-private-workout-objects',false);
- expiry:=pg_catalog.extract(epoch FROM pg_catalog.clock_timestamp())::bigint+60;
+ expiry:=EXTRACT(epoch FROM pg_catalog.clock_timestamp())::bigint+60;
  denied:=false;
  BEGIN
   PERFORM public.v2_begin_attested_privileged_storage_write_review(
