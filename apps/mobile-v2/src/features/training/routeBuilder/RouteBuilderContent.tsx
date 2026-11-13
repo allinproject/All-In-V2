@@ -5,7 +5,7 @@ import { RouteMapCanvas } from './RouteMapCanvas';
 import {
   addRouteWaypoint, createManualRouteEditor, deleteRouteWaypoint,
   moveRouteWaypoint, redoRouteEdit, renameRoute, reorderRouteWaypoint,
-  setRouteEndpoint, setRouteShape, shapeRouteWithFreehand, undoRouteEdit,
+  setRouteEndpoint, setRouteShape, setRouteSport, shapeRouteWithFreehand, undoRouteEdit,
   type RoutePoint,
 } from './trainingRouteEditor';
 import type { RouteShape, RouteSport } from './trainingRouteTypes';
@@ -51,7 +51,7 @@ export function RouteBuilderContent() {
     <View style={styles.row}>
       {sports.map(s=><Pressable key={s.key} accessibilityRole="button"
         accessibilityState={{selected:draft.sport===s.key}}
-        onPress={()=>setState(createManualRouteEditor({sport:s.key,name:draft.name}))}
+        onPress={()=>setState(current=>setRouteSport(current,s.key))}
         style={[styles.chip,draft.sport===s.key&&styles.active]}>
         <Text style={styles.buttonText}>{s.label}</Text>
       </Pressable>)}
