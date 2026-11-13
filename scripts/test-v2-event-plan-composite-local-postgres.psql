@@ -1,0 +1,96 @@
+\set ON_ERROR_STOP on
+-- ALL-239/244/246: isolated Auth + Goal + Event owner composite read.
+-- Requires existing reviewed identity, link and private owner reader candidates.
+-- No hosted database changes: all fixtures are rolled back.
+BEGIN;
+DO $composite_qa$
+DECLARE
+ a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+ sa uuid:='33333333-3333-4333-8333-333333333333';
+ sb uuid:='44444444-4444-4444-8444-444444444444';
+ e1 uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ e2 uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ d1 uuid:='10000000-0000-4000-8000-000000000001';
+ d2 uuid:='10000000-0000-4000-8000-000000000002';
+ g1 uuid:='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ g2 uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+ r1 uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ r2 uuid:='ffffffff-ffff-4fff-8fff-ffffffffffff';
+ v jsonb;
+BEGIN
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO auth.sessions(id,user_id) VALUES(sa,a),(sb,b);
+ INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind,
+   start_local_date,event_timezone,source_verification,source_revision)
+ VALUES(e1,d1,'Trail Ultra','running','ultra',DATE '2027-04-10',
+   'America/Chicago','organizer_verified','official-v1'),
+       (e2,d2,'Cycling Race','cycling','road',DATE '2027-05-10',
+   'America/Chicago','organizer_verified','official-v1');
+ INSERT INTO public.v2_event_participations(user_id,event_id,state,source_kind)
+ VALUES(a,e1,'interested','athlete_confirmed'),
+       (a,e2,'registered','athlete_confirmed');
+ INSERT INTO public.v2_goals(id,user_id,goal_kind,title,status)
+ VALUES(g1,a,'race_event','Ultra primary','active'),
+       (g2,a,'race_event','Cycling primary','active');
+ INSERT INTO public.v2_goal_revisions(
+   id,goal_id,user_id,revision_number,status,source_kind,priority_role,accepted_at)
+ VALUES(r1,g1,a,1,'accepted','athlete_authored','primary',now()),
+       (r2,g2,a,1,'accepted','athlete_authored','primary',now());
+ UPDATE public.v2_goals SET active_revision_id=r1 WHERE id=g1;
+ UPDATE public.v2_goals SET active_revision_id=r2 WHERE id=g2;
+ INSERT INTO public.v2_goal_event_edition_links(
+   goal_id,goal_revision_id,user_id,event_id,edition_id,event_version)
+ VALUES(g1,r1,a,e1,d1,1),(g2,r2,a,e2,d2,1);
+ PERFORM pg_catalog.set_config('request.jwt.claim.sub',a::text,true);
+ PERFORM pg_catalog.set_config('request.jwt.claim.session_id',sa::text,true);
+ v:=allin_private.v2_event_plan_composite_owner_candidate(a);
+ IF v->>'status'<>'owner_sources_complete' OR v->>'ownerId'<>a::text
+   OR v->>'complete'<>'true'
+   OR pg_catalog.jsonb_array_length(v->'events')<>2
+   OR pg_catalog.jsonb_array_length(v->'goals')<>2
+   OR (v->>'eventRegistrationInferred')<>'false'
+   OR (v->>'trainingPlanApproved')<>'false'
+ THEN RAISE EXCEPTION 'Composite owner snapshot invalid: %',v; END IF;
+ IF (SELECT count(*) FROM pg_catalog.jsonb_array_elements(v->'goals') x(value)
+     WHERE x.value->>'priorityRole'='primary')<>2
+ THEN RAISE EXCEPTION 'Two accepted primary Goal priorities were lost'; END IF;
+ IF NOT EXISTS(
+   SELECT 1 FROM pg_catalog.jsonb_array_elements(v->'events') x(value)
+   WHERE x.value->>'eventId'=e1::text
+     AND x.value->>'editionId'=d1::text
+     AND x.value->>'participation'='interested'
+ ) THEN RAISE EXCEPTION 'Event owner evidence lost explicit interest state'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_event_plan_composite_owner_candidate(b);
+  RAISE EXCEPTION 'Foreign owner composite access was permitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM pg_catalog.set_config('request.jwt.claim.session_id',sb::text,true);
+ BEGIN
+  PERFORM allin_private.v2_event_plan_composite_owner_candidate(a);
+  RAISE EXCEPTION 'Foreign session composite access was permitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM pg_catalog.set_config('request.jwt.claim.session_id',sa::text,true);
+ BEGIN
+  PERFORM allin_private.v2_event_plan_composite_owner_candidate(a,1,64);
+  RAISE EXCEPTION 'Truncated event snapshot was accepted';
+ EXCEPTION WHEN program_limit_exceeded THEN NULL; END;
+ -- A verified postponement requires an Event version increment. The
+ -- previously accepted Goal binding must then require review, never auto-apply.
+ UPDATE public.v2_events
+   SET start_local_date=DATE '2027-04-17',
+       source_revision='official-v2',event_version=2
+ WHERE id=e1 AND event_version=1;
+ v:=allin_private.v2_event_plan_composite_owner_candidate(a);
+ IF v->>'status'<>'review_required'
+ THEN RAISE EXCEPTION 'Stale accepted Goal edition-version was treated as current: %',v; END IF;
+ IF pg_catalog.has_function_privilege('authenticated',
+   'allin_private.v2_event_plan_composite_owner_candidate(uuid,integer,integer)',
+   'EXECUTE')
+   OR pg_catalog.has_function_privilege('anon',
+   'allin_private.v2_event_plan_composite_owner_candidate(uuid,integer,integer)',
+   'EXECUTE')
+ THEN RAISE EXCEPTION 'Composite private reader leaked app execute permission'; END IF;
+ RAISE NOTICE 'PASS ALL-246: two primary goals, authenticated owner/session, bounded and stale Event composite review';
+END $composite_qa$;
+ROLLBACK;
