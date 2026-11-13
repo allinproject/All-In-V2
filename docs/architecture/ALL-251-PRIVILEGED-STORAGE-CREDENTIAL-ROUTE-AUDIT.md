@@ -198,3 +198,60 @@ before dependent hosted tests finish, or to delete other chats' active fixtures.
 A read-only staging DB check during this audit showed **two Auth users, zero
 objects and zero open write leases**, indicating active concurrent staging
 test work; no account cleanup was performed.
+
+
+## 2026-11-13 — Current deployed Storage boundary and alternate-route evidence reconciliation
+
+This is a later **read-only evidence update**, not a release approval. Keep earlier
+historical bypass observations as historical; do not interpret them as the
+latest outcome or erase the failure that motivated containment.
+
+- Current staging project `fbtgknlxjyeqrxemskbl`: 0 Auth users, 0 Storage
+  objects, and 0 unsettled leases at this read; no concurrent fixtures to
+  delete. `storage.objects` has no ordinary custom RLS policies, but the
+  enabled `v2_privileged_storage_metadata_write_fence_review` trigger checks
+  INSERT and selected UPDATE metadata fields. This trigger is an experimental
+  deployed *review* safeguard in Supabase-managed Storage schema, not proof
+  of provider-supported lifecycle enforcement. Do not disable or change it
+  opportunistically.
+- Later real hosted [two-account acceptance run 43427895858](https://github.com/allinproject/All-In-V2/actions/runs/43427895858)
+  at SHA `70bb8c4b45fcb18ed4e1b5eceb539fd86d3de3ce` completed green:
+  owner leases, positive private POST/PUT + SHA-256 byte readbacks, pending
+  deletion lease fence, B account independence, and **the tested raw
+  privileged Storage POST rejection**. This supersedes the older *outcome for
+  that particular tested direct REST route only*. It does not negate the
+  earlier observed bypass on a previous configuration; do not generalize to
+  all credentials, S3, signed URL or TUS routes, nor to a newly deployed
+  configuration. The separate current Auth smoke run 43433891934 passed the
+  negative unleased POST guard and verified cleanup.
+- Alternate-route inventory remains: raw modern `sb_secret_`/legacy
+  `service_role` REST clients; generated S3 credentials and user-JWT S3;
+  signed upload issuance/outstanding URLs (separate Storage signing key);
+  TUS/resumable and multipart/signed completion after deletion; Studio,
+  CLI, additional Edge backends, external credential holders and GitHub
+  runners. The repository runtime scanner and current provider metadata
+  do not supply **live negative acceptance for each route**. Previously
+  user-reviewed dashboard screenshots showed S3 protocol enabled with
+  **zero generated S3 key pairs**, and **one active ES256 Storage URL-signing
+  key** with unknown outstanding URLs; these facts do not prove all S3 or
+  signed upload paths are closed. Never silently rotate or revoke an
+  in-use signing key.
+- GitHub environment protection remains a separate hard gate. The latest
+  owner-provided environment screenshot documented **no required reviewers,
+  no deployment-branch restriction, and admin bypass allowed** for
+  `all251-temporary-staging`. This review found no authoritative evidence
+  that those settings have been remediated; connected GitHub repository
+  reads cannot inspect those protected settings. Do **not** trigger another
+  privileged staging workflow merely because the database is empty.
+- The deployed `v2-private-storage-writer` Edge Function is absent, and
+  operational account deletion/complete export remain OFF. Only the scoped
+  lease-aware test has positive hosted evidence. **Release stays NOT
+  ACCEPTED** until an operator can verify credential custody, GitHub
+  environment protection, and explicit route-by-route negative acceptance.
+
+For ALL-12, these Storage service tests measure no recovery data-loss window
+and no recovery time from a snapshot cutoff: **RPO/RTO remain unmeasured**.
+An isolated outbound-disabled restore target, consistent source snapshot
+cutoff, finished data/Auth/Storage restore and owner-integrity readback are
+required before a credible RPO or RTO can be reported. Do not convert CI
+job duration or simple sign-in latency into disaster-recovery RTO.
