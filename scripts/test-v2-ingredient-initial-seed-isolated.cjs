@@ -5,7 +5,7 @@ const read=n=>fs.readFileSync(path.join(__dirname,'../docs/architecture/sql',n),
 const SOURCE='0b8fc2d591a88381aa11cf0e3041f3b3f30ef4a660d68f74e3f483214f6d8b51';
 const ARCHIVE='dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579';
 const core={energy_kcal:44,protein_g:0.94,carbohydrate_g:9.93,total_fat_g:0.1,sodium_mg:1};
-const reviewer='usda_seed_worker_test',issuer='usda_seed_issuer_test';
+const reviewer='allin_ing_workload_seed_test',issuer='usda_seed_issuer_test';
 const release='SELECT allin_private.v2_release_ingredient_source_core($1,$2,$3,$4::jsonb) AS r';
 const insert='SELECT allin_private.v2_seed_ingredient_candidate($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5,$6,$7,$8,$9,$10,$11,$12::jsonb) AS r';
 const args=x=>['ffffffff-ffff-4fff-8fff-ffffffffffff','11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333','red_onion_raw','Red Onion - Raw','raw','790577','Onions, red, raw',SOURCE,ARCHIVE,JSON.stringify(x)];
