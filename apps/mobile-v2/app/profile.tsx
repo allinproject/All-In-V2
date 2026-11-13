@@ -154,7 +154,7 @@ function OwnedProfileScreen() {
             <View onLayout={onGuideAnchorLayout("personalize")} style={styles.card}>
               <Text style={styles.section}>Training</Text>
               <Link href="/profile/sports" asChild>
-                <Pressable onLayout={onPersonalizeChildLayout("sports")} accessibilityRole="button" style={[styles.button, highlightedTarget==="sports" && styles.guideTarget]}>
+                <Pressable onLayout={onPersonalizeChildLayout("sports")} accessibilityRole="button" style={StyleSheet.flatten([styles.button, highlightedTarget==="sports" && styles.guideTarget])}>
                   <Text style={styles.buttonText}>Sports & Training Focus</Text>
                 </Pressable>
               </Link>
@@ -166,7 +166,7 @@ function OwnedProfileScreen() {
                 <Pressable accessibilityRole="button" style={styles.button}><Text style={styles.buttonText}>Weekly Routine</Text></Pressable>
               </Link>
               <Link href="/profile/coach-preferences" asChild>
-                <Pressable onLayout={onPersonalizeChildLayout("coach")} accessibilityRole="button" style={[styles.button, highlightedTarget==="coach" && styles.guideTarget]}>
+                <Pressable onLayout={onPersonalizeChildLayout("coach")} accessibilityRole="button" style={StyleSheet.flatten([styles.button, highlightedTarget==="coach" && styles.guideTarget])}>
                   <Text style={styles.buttonText}>Coach Preferences</Text>
                 </Pressable>
               </Link>
