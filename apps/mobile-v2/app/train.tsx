@@ -248,7 +248,8 @@ function TrainingCalendarOwnerScreen() {
                 <Text style={styles.muted}>Training preparation, progression, weekly structure, recovery and taper belong here. The accepted Training Plan reader and review/apply writer are not connected yet; no plan can be shown or changed from this screen.</Text>
               </View>
             ) : (
-              <EventPlanListContent projection={projectEventPlanOwnerSnapshot({
+              <EventPlanListContent ownerId={user.id} sessionGeneration={sessionGeneration}
+                projection={projectEventPlanOwnerSnapshot({
                 expectedOwnerId:user.id,
                 authenticatedOwnerId:user.id,
                 sessionGeneration,
