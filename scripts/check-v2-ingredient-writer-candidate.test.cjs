@@ -161,10 +161,10 @@ test('thirteen scoped exact aliases do not broaden source food forms',()=>{
  const exact=new Map();
  for(const record of policy.records){
   assert(record.exact_alias_candidates.length>0);
-  const searchOnly=new Set(record.search_only_not_exact_aliases.map(a=>a.value.toLowerCase().trim().replace(/\\s+/g,' ')));
-  const excluded=new Set((record.excluded_incompatible_queries??[]).map(a=>a.value.toLowerCase().trim().replace(/\\s+/g,' ')));
+  const searchOnly=new Set(record.search_only_not_exact_aliases.map(a=>a.value.toLowerCase().trim().replace(/\s+/g,' ')));
+  const excluded=new Set((record.excluded_incompatible_queries??[]).map(a=>a.value.toLowerCase().trim().replace(/\s+/g,' ')));
   for(const alias of record.exact_alias_candidates){
-   const normalized=alias.value.toLowerCase().trim().replace(/\\s+/g,' ');
+   const normalized=alias.value.toLowerCase().trim().replace(/\s+/g,' ');
    const key=[record.locale,record.preparation_state,normalized].join('|');
    assert(!exact.has(key),'ambiguous exact alias '+key);
    exact.set(key,record.source_fdc_id);
