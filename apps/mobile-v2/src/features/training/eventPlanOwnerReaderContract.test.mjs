@@ -51,3 +51,15 @@ test('canonical Event edition and Goal revision references remain stable and pri
  assert.match(binding,/FROM PUBLIC,anon,authenticated,service_role/);
  assert.doesNotMatch(binding,/CREATE POLICY.*USING.*true/);
 });
+
+test('Goal owner snapshot exposes only an explicitly accepted, revision-bound Event link',()=>{
+ const sql=source('../../../../../docs/architecture/sql/V2-GOALS-OWNER-SNAPSHOT-READER-CANDIDATE.sql');
+ assert.match(sql,/'eventId',l\.event_id/);
+ assert.match(sql,/'editionId',l\.edition_id/);
+ assert.match(sql,/'boundEventVersion',l\.event_version/);
+ assert.match(sql,/l\.goal_revision_id=r\.id AND l\.goal_id=g\.id AND l\.user_id=g\.user_id/);
+ assert.match(sql,/r\.id=g\.active_revision_id/);
+ assert.match(sql,/r\.status='accepted'/);
+ assert.match(sql,/coalesce\(l\.edition_id::text,'none'\)/);
+ assert.match(sql,/REVOKE ALL ON FUNCTION/);
+});
