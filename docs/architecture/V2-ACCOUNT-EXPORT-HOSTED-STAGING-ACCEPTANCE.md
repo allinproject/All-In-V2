@@ -65,3 +65,18 @@ Target was **only** the founder-approved temporary staging project `fbtgknlxjyeq
 **Still blocked, not marked complete:** positive owner-authorized private byte access; production-like authenticated owner export request plus approved canonical inventory; genuine KMS key lease and ciphertext archive/download integrity; device byte-for-byte save on iOS/Android; encrypted retention/deletion workers; mandatory upload barrier across all Storage writers (including privileged service/Admin paths) with concurrency proof; formal Community and legal/privacy acceptance; provider-side backup/restore gate ALL-12. Do not mark the canonical full export `complete=true`, turn on deletion, grant public access or ship a native file save based on this smoke.
 
 **Lifecycle/cost:** Temporary staging is an approved extra-cost project. Its reminder remains scheduled; project deletion has NOT been executed or verified, and must not be claimed. Keep this record to preserve what was tested before staging cleanup.
+
+
+## 2026-11-13 — privileged Storage writer closure, release still BLOCKED
+
+The established `supabase/functions/_shared/trainingExportSupabaseArchive.mjs` contains the existing **privileged** account-export uploads to `v2-private-account-exports`: single encrypted envelope, encrypted paginated collection pages and final manifest. They use the server Storage client and **are not protected by ordinary Storage RLS**. Existing user-facing source-media uploads and every Admin/service/S3 path must also be inventoried before claiming a complete barrier.
+
+The two archive adapter factories now **require** a server-supplied `withOwnerStorageWriteBarrier({ownerId,requestId,bucketId,objectPath,operation,write})`; without it construction fails closed. Both archive paths execute Storage `upload` only through the callback and require exactly one invocation. Tests cover missing/denying/forged barrier callbacks. This prevents accidental *direct* use of these adapters, but a caller-provided no-op wrapper is **not** independently trusted: acceptance must prove the provider uses a real durable DB-backed lease or equivalent gate that serializes with deletion claims across an HTTP upload. The existing `readApprovedRequestExpiry` check is not itself an atomic deletion gate. See commits `722081c`, `c66eb70`.
+
+**Mandatory all-writer gate before release:**
+1. Inventory every upload entrypoint and credential: authenticated client INSERT/UPDATE/upsert, trusted archive writers, activity/source-media writers, service/Admin paths, signed uploads, S3/multipart and any future buckets. Disable or fail close unknown privileged paths.
+2. Make the actual Storage write and deletion-request transition mutually exclusive using a **durable lease/claim fence covering the whole external HTTP write** (transactional preflight is insufficient after its transaction commits). Deletion must not enter destructive processing while any active writer lease exists, and stale lease/writer failures must require reconciliation rather than silent expiry.
+3. Assert exact authenticated owner/session, bucket/path, lease request identity, operation including overwrite/multipart, and post-write byte/catalog checks. Do not grant service credentials to mobile or expose lease creation as a public bypass.
+4. Prove **real concurrent hosted** upload-versus-request/claim, privileged bypass attempts, revoked session, cancelled/resumed owner, race retries and object-byte absence after deletion. Only then consider controlled rollout; keep deletion worker default OFF and `completeUserExport=false` until separate export acceptance.
+
+**No production migration, staging gate activation, broad Storage RLS grant or deletion-worker enablement occurred in this implementation.**
