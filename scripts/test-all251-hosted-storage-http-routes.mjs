@@ -99,11 +99,20 @@ async function redeemSigned(p,token){
  return request(url,{method:'PUT',key:publishable,body:randomBytes(46),
   headers:{'content-type':'application/octet-stream'}});
 }
-async function deletionRequest(owner){
- const res=await json('/rest/v1/rpc/v2_all251_temporary_request_deletion_probe',
-  {p_owner_id:owner.id,p_request_id:randomUUID()});
- assert.equal(res.status,200,'Temporary deletion probe RPC unavailable');
- assert.equal(await res.json(),true,'Canonical deletion request not confirmed');
+async function deletionRequest(owner,otherOwner){
+ // Dedicated staging-only fixture verifies a real signed-in synthetic owner.
+ // Never grant service_role execution or recreate the removed privileged probe.
+ const endpoint='/rest/v1/rpc/v2_all251_http_matrix_request_deletion';
+ const body={p_expected_user_id:owner.id,p_confirmation:'DELETE MY ACCOUNT'};
+ const cross=await json(endpoint,body,{key:publishable,jwt:otherOwner.jwt});
+ assert(denied(cross.status),'Other real Auth session could request owner deletion');
+ mark('cross-owner synthetic deletion request denied','PASS','HTTP '+cross.status);
+ const elevated=await json(endpoint,body);
+ assert(denied(elevated.status),'Unrestricted service role reached synthetic deletion fixture');
+ mark('service-role synthetic deletion fixture denied','PASS','HTTP '+elevated.status);
+ const res=await json(endpoint,body,{key:publishable,jwt:owner.jwt});
+ assert.equal(res.status,200,'Owner-scoped synthetic deletion request denied');
+ assert.equal(await res.json(),true,'Synthetic deletion request not confirmed');
 }
 async function tusCreate(p,{key=privileged,jwt=null}={}){
  const m=[['bucketName',BUCKET],['objectName',p],['contentType','application/octet-stream']]
@@ -137,7 +146,7 @@ try{
   else mark('pre-deletion signed URL minted','OBSERVED');
  }else mark('pre-deletion signed URL minting',denied(minted.status)?'PASS':'FAIL','HTTP '+minted.status);
 
- await deletionRequest(a);
+ await deletionRequest(a,b);
  mark('canonical synthetic deletion request','PASS');
 
  const restPath=addObject(a.id,'privileged-rest-late');
