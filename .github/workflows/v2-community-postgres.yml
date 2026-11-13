@@ -18,6 +18,7 @@ on:
       - 'docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-community-posts-postgres.psql'
       - 'docs/architecture/sql/V2-COMMUNITY-POST-UPDATE-WRITER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-COMMUNITY-MODERATION-WORKFLOW-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-community-post-writer-postgres.psql'
       - 'docs/architecture/sql/V2-COMMUNITY-RELATIONSHIP-READER-CANDIDATE.sql'
       - '.github/workflows/v2-community-postgres.yml'
@@ -98,5 +99,6 @@ jobs:
         run: |
           docker exec "$PG_CONTAINER" createdb -U "$PGUSER" community_post_writes
           docker cp docs/architecture/sql/V2-COMMUNITY-POST-UPDATE-WRITER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-POST-UPDATE-WRITER-CANDIDATE.sql"
+          docker cp docs/architecture/sql/V2-COMMUNITY-MODERATION-WORKFLOW-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-MODERATION-WORKFLOW-REVIEW-CANDIDATE.sql"
           docker cp scripts/test-v2-community-post-writer-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-community-post-writer-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d community_post_writes -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-post-writer-postgres.psql
