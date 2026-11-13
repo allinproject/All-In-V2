@@ -30,3 +30,61 @@ The account archive still contains the athlete's user-visible actions. The omitt
 - Production migration/deployment and deletion-worker activation still require separate approval.
 
 No live policy, bucket, account, or retention schedule is modified by this review.
+
+## 2026-11-13 implementation decision — export minimization and deletion boundaries
+
+**Approved technical direction for review; not a substitute for ALL-219
+privacy/legal acceptance or permission to activate hosted deletion.**
+
+- **Posts:** Export the athlete-authored `community.my_posts` collection
+  (including private and followers-only posts) *only* through the approved
+  private, server-side, session- and request-bound owner archive; the normal
+  Community feed is not an export source. Preserve content, source ID, edit
+  version and timestamps. An arbitrary viewer must never receive this owner
+  archive. Post source/media references require their own byte-coverage check.
+- **Comments/replies/reactions:** There is **no approved canonical comment or
+  reaction owner table in the current V2 Community source contract**. Do not
+  create an export collection or declare content completeness from post rows
+  alone. If Community comments are introduced, the canonical writer must
+  capture both author and target/post ownership, parent-post audience, block
+  state, moderation/retention policy, edit/tombstone history, and referenced
+  media. A comment authored by one athlete on another's post is authored
+  content for the first athlete, **not unrestricted content owned by the post
+  owner**. Any private third-party text or moderation decision stays
+  restricted. Export and deletion gates fail closed until independently tested.
+- **Relationships:** The athlete may export **outgoing** follow states and
+  outgoing blocks. Incoming *pending* or *approved* requests are only
+  recipient-visible where neither direction has blocked the pair. Never export
+  incoming blocks or raw counterpart CAS state. Use field-allowlisted
+  projections, not `to_jsonb` of the entire relationship row. Owner-specific
+  action receipts expose only action, target, ID and time.
+- **Deletion:** The established cascade erases the deleting athlete's own
+  posts, directed follows and blocks, pair revisions involving the athlete,
+  and action receipts where the athlete is either actor or target. The
+  survivor's unrelated posts and unrelated relationship histories remain
+  intact. A comment authored by a deleting athlete must be deleted or
+  irreversibly de-identified pursuant to an approved author/counterparty
+  policy—**never** left with an identifying author ID or readable original
+  private body by default. Do not purge shared CAS rows by age while both
+  accounts are active. Do not execute a production delete until external
+  media, Auth sessions, retention holds and backups are reconciled.
+- **Retention:** Active Community content and necessary relationship CAS
+  state remain only for the life of the corresponding account/relationship
+  under the existing privacy design; no automatic age-based purge of active
+  CAS. Deleted-account content must be absent from active owner tables and
+  accessible private Storage after authorized deletion completion. Backup,
+  abuse-report/moderation, deletion execution audit and legal-hold records
+  remain **separate, least-privilege retention domains** pending a legally
+  approved purpose and duration; none may be silently reused as the Community
+  feed or user export. No arbitrary retention-day count is authorized here.
+
+**Validation evidence/remaining gate:** Existing isolated two-account
+post-export replay validates paginated owner A content, foreign owner and
+session denial, unknown graph detection, and Auth→profile→post cascade. The
+existing relationship privacy replay validates both block directions, actor
+receipts, and Auth cascade. The canonical paginated reader now returns
+explicit allowlisted outgoing follow/block fields rather than raw table rows;
+its full-domain populated replay must pass before acceptance. **Comments
+remain unimplemented and therefore not validated.** Legal sign-off for
+post-deletion audit/backups/holds remains pending. The whole account export
+must continue reporting `complete=false`.
