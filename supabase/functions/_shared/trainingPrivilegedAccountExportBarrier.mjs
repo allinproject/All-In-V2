@@ -10,8 +10,8 @@
  */
 import {createPrivilegedStorageWriter} from './trainingPrivilegedStorageWriter.mjs';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-export function createPrivilegedAccountExportBarrier({serviceClient}){
- const writer=createPrivilegedStorageWriter({supabase:serviceClient});
+export function createPrivilegedAccountExportBarrier({serviceClient,leaseAuthority=null}){
+ const writer=createPrivilegedStorageWriter({supabase:serviceClient,leaseAuthority});
  return async function withOwnerStorageWriteBarrier({
   ownerId,requestId,bucketId,objectPath,operation,bytes,contentType,write,
  }){
