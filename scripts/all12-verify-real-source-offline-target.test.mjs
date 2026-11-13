@@ -11,10 +11,11 @@ const input={capture,toc,digest:'a'.repeat(64),networkMode:'none',database:'all1
 test('offline preflight allows exact archive and isolated target',()=>{
  const x=assessOfflineTarget(input);
  assert.equal(x.safeToInspect,true);assert.equal(x.tables.length,16);
+ assert.equal(assessOfflineTarget({...input,database:'postgres'}).safeToInspect,true);
 });
 test('reject mismatched digest, network and ambiguous target',()=>{
  const x=assessOfflineTarget({...input,digest:'b'.repeat(64),
-  networkMode:'bridge',database:'postgres'});
+  networkMode:'bridge',database:'template1'});
  assert.equal(x.safeToInspect,false);
  for(const b of ['digest_mismatch','target_has_network','unsafe_restore_database'])
   assert.ok(x.blockers.includes(b));
