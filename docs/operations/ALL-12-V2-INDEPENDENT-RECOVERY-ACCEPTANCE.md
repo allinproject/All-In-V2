@@ -215,3 +215,10 @@ The local operator capture now runs a **read-only `psql` catalog query** against
 The operator must reconcile the *entire* V2 table inventory, not just the sample `auth.users` and `public.v2_profiles` listed above. That example is intentionally incomplete and will be refused. This check is a point-in-time preflight; a migration between catalog inspection and the dump still requires independently comparing the archive cutoff with the source and migration state. Additional Auth provider configuration and Storage metadata/object bytes require separately reviewed recovery plans; the core Auth table list is a minimum, not the whole service-state contract.
 
 The backup archive is never handled by ChatGPT or GitHub Actions. It must remain in an independently secured, encrypted operator-controlled location; the workflow only tests that stale/incomplete inventory is rejected.
+
+
+### Capture window catalog-drift guard
+
+The operator capture performs the same read-only V2 schema inventory query both **before and after** `pg_dump`. If the deployed V2 table set changes or either catalog readback is malformed, it deletes the untrusted archive and metadata rather than accepting them. The dump connection itself sets `default_transaction_read_only=on`; capture never applies migrations or writes to production. The local report records the deployed table count and the matched pre/post check.
+
+**Limit:** Matching pre/post table names does not establish a single PostgreSQL snapshot across catalog queries and dump, prove row-content consistency, or recover Auth/Storage configuration and object bytes. A migration can theoretically occur and reverse between checks, and row mutations are not detected by table names. Independently attested source cutoff, archive TOC, data integrity, isolated restore and explicit release review remain required.
