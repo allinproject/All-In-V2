@@ -16,6 +16,8 @@ import { validAthleteLocalDate } from '../src/features/training/manualActivityDr
 import { combineCalendarReads, calendarDaySections } from '../src/features/training/trainingCalendarReadModel';
 import {projectEventPlanOwnerSnapshot} from '../src/features/training/eventPlanOwnerPresentation';
 import {EventPlanListContent} from '../src/features/training/EventPlanListContent';
+import {TrainingPlanContent} from '../src/features/training/TrainingPlanContent';
+import {RoutesRoutinesContent} from '../src/features/training/RoutesRoutinesContent';
 
 function todayOnDevice(): string {
   const now = new Date();
@@ -228,10 +230,7 @@ function TrainingCalendarOwnerScreen() {
               ))}
             </View>
             {plansTab === 'training' ? (
-              <View style={styles.card}>
-                <Text style={styles.section}>Training Plan</Text>
-                <Text style={styles.muted}>Training preparation, progression, weekly structure, recovery and taper belong here. The accepted Training Plan reader and review/apply writer are not connected yet; no plan can be shown or changed from this screen.</Text>
-              </View>
+              <TrainingPlanContent ownerId={user.id} evidence={{ status: 'unavailable' }} />
             ) : (
               <EventPlanListContent ownerId={user.id} sessionGeneration={sessionGeneration}
                 projection={projectEventPlanOwnerSnapshot({
@@ -247,10 +246,7 @@ function TrainingCalendarOwnerScreen() {
             )}
           </>
         ) : (
-          <View style={styles.card}>
-            <Text style={styles.section}>Routes/Routines</Text>
-            <Text style={styles.muted}>Route editing and reusable workout routines are not mounted in this V2 screen yet. Your saved routes and routines have not been checked; they are not being reported as empty.</Text>
-          </View>
+          <RoutesRoutinesContent />
         )}
       </ScrollView>
       <V2BottomNavigation />
