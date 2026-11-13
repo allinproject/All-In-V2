@@ -47,7 +47,7 @@ function fixture(changes={}){
   version:'allin-v2-training-encrypted-export-v1',
   algorithm:'AES-256-GCM',completeUserExport:false,
   downloadAuthorized:false,ciphertext:'encrypted'};
- return {archive,barrier,envelope,calls};
+ return {archive,barrier,envelope,calls,serviceClient};
 }
 test('canonical encrypted archive calls lease + Storage + byte readback + settlement',async()=>{
  const f=fixture();
@@ -82,4 +82,36 @@ test('export barrier rejects cross-request and arbitrary bucket before lease',as
   operation:'insert',bytes:new Uint8Array([1]),
   contentType:'application/octet-stream',write:async()=>({})}));
  assert.deepEqual(f.calls,[]);
+});
+
+test('canonical encrypted export can use the same attested begin/settle lease authority',async()=>{
+ const f=fixture(),events=[];
+ const leaseAuthority={
+  begin:async({ownerId,bucketId,path:writePath,operation,bytes})=>{
+   events.push(['begin',ownerId,bucketId,writePath,operation,bytes.length]);
+   return {data:leaseId,error:null};
+  },
+  settle:async({ownerId,leaseId:received,bucketId,path:writePath,bytes})=>{
+   events.push(['settle',ownerId,received,bucketId,writePath,bytes.length]);
+   return {data:true,error:null};
+  },
+ };
+ const barrier=createPrivilegedAccountExportBarrier({
+  serviceClient:f.serviceClient,leaseAuthority,
+ });
+ const archive=createSupabasePrivateArchivePersistence({
+  serviceClient:f.serviceClient,withOwnerStorageWriteBarrier:barrier,
+  readApprovedRequestExpiry:async()=>({ownerId:owner,requestId,
+   status:'approved',cancelled:false,
+   expiresAt:new Date(Date.now()+3600000).toISOString()}),
+ });
+ const receipt=await archive.persistPrivateEnvelope({
+  ownerId:owner,requestId,envelope:f.envelope});
+ assert.equal(receipt.archiveId,path);
+ assert.deepEqual(events.map(e=>e[0]),['begin','settle']);
+ assert.equal(events[0][1],owner);
+ assert.equal(events[1][2],leaseId);
+ assert.equal(events[0][5],events[1][5]);
+ assert.equal(f.calls.includes('v2_begin_privileged_storage_write_review'),false);
+ assert.equal(f.calls.includes('v2_settle_privileged_storage_write_review'),false);
 });
