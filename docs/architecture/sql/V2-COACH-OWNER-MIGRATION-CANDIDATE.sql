@@ -117,7 +117,8 @@ create table allin_private.v2_coach_turn_claims (
 );
 alter table allin_private.v2_coach_turn_claims enable row level security;
 revoke all on allin_private.v2_coach_turn_claims from public,anon,authenticated,service_role;
-grant select,insert,update on allin_private.v2_coach_turn_claims to service_role;
+-- SECURITY DEFINER RPCs own all claim mutations. service_role has EXECUTE only;
+-- direct claim-ledger table DML would bypass the canonical fenced writer.
 create index v2_coach_claims_owner_created on allin_private.v2_coach_turn_claims(user_id,created_at desc);
 
 -- The model-spend path is disabled until a deliberate reviewed release.
@@ -134,7 +135,8 @@ insert into allin_private.v2_coach_request_policy(singleton,enabled)
  values(true,false);
 alter table allin_private.v2_coach_request_policy enable row level security;
 revoke all on allin_private.v2_coach_request_policy from public,anon,authenticated,service_role;
-grant select on allin_private.v2_coach_request_policy to service_role;
+-- Policy reads are performed inside the guarded claim RPC. No direct
+-- service_role table SELECT is required or granted.
 
 -- Caller MUST be a trusted JWT-verifying Edge host; never expose service key.
 -- A claimed lease is a pre-model-spend gate; exhausted limits must be checked
