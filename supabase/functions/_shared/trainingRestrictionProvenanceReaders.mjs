@@ -5,6 +5,7 @@
  * observations into first-certification evidence without independently proven
  * source inventories and an accepted ALL-12 restoration receipt.
  */
+import {readCanonicalCurrentRestrictionSource} from './trainingRestrictionSourceReader.mjs';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SELECT_LIMIT=201;
 function check({client,ownerId,snapshotVersion}) {
@@ -123,4 +124,40 @@ export function reconcileObservedRestrictionSources({ownerId,currentRules,histor
   observedRetired:retired.size,
   observedImported:imports.records.filter(r=>r.kind==='imported_revision').length,
   firstCertificationAuthorized:false};
+}
+
+/**
+ * Single pinned-transaction inspection of all three remaining source
+ * categories, reconciled with actual canonical rules. This is NOT a writer:
+ * ALL-12 restore proof is independent, so the report must always be blocked
+ * until that evidence is verified and a complete legacy/import inventory
+ * is accepted. Do not turn 'no observations' into 'no restrictions'.
+ */
+export async function inspectCanonicalRestrictionProvenance(args) {
+ check(args);
+ const [current,history,imports]=await Promise.all([
+  readCanonicalCurrentRestrictionSource(args),
+  readCanonicalHistoricalRestrictionSource(args),
+  readCanonicalImportedTrainingSource(args),
+ ]);
+ const assessment=reconcileObservedRestrictionSources({
+  ownerId:args.ownerId,currentRules:current.records,history,imports,
+ });
+ let restoration='unverified';
+ try {
+  await readCanonicalRestoredRestrictionSource(args);
+ }catch(e) {
+  if(!String(e?.message).includes('independent restriction restoration proof unavailable'))
+   throw e;
+ }
+ return Object.freeze({
+  ownerId:args.ownerId,snapshotVersion:args.snapshotVersion,
+  canonicalRuleCount:assessment.recordedRules,
+  retiredCount:assessment.observedRetired,
+  observedImportedRevisions:assessment.observedImported,
+  missingOrConflictingMappings:assessment.reasons,
+  restoration,
+  historicalComplete:false,importComplete:false,restorationComplete:false,
+  status:'blocked',initialCertificationAuthorized:false,
+ });
 }
