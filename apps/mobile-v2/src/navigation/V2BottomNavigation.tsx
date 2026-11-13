@@ -17,7 +17,7 @@ export function V2BottomNavigation() {
               accessibilityRole="tab"
               accessibilityLabel={label}
               accessibilityState={{ selected: active }}
-              style={[styles.tab, active && styles.selected]}
+              style={StyleSheet.flatten([styles.tab, active && styles.selected])}
             >
               <Text style={[styles.label, active && styles.activeLabel]}>{label}</Text>
             </Pressable>
