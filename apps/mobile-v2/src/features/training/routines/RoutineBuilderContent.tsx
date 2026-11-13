@@ -7,6 +7,7 @@ import {
  moveRoutineBlock,newRoutineDraft,renameRoutineDraft,setRoutineNotes,updateRoutineBlock,
  type RoutineBlock,type RoutineIntervalBlock,type RoutineStrengthBlock,
 } from './routineDraftEditor';
+import {applyRoutineDraftEdit,createRoutineDraftHistory,redoRoutineDraftEdit,undoRoutineDraftEdit} from './routineDraftHistory';
 
 const choices:{sport:TrainingSport;label:string}[]=[
  {sport:'strength',label:'Strength'},{sport:'running',label:'Run'},{sport:'walking',label:'Walk'},
@@ -57,7 +58,11 @@ function BlockActions({position,count,onMove,onDuplicate,onDelete}:{position:num
  * Canonical owner/versioned persistence, Coach Apply and Start Workout are NOT connected.
  */
 export function RoutineBuilderContent(){
- const [draft,setDraft]=useState(()=>newRoutineDraft());
+ const [history,setHistory]=useState(()=>createRoutineDraftHistory(newRoutineDraft()));
+ const draft=history.present;
+ const setDraft=(operation:(current:typeof draft)=>typeof draft)=>{
+  setHistory(current=>applyRoutineDraftEdit(current,operation(current.present)));
+ };
  const [sportConfirm,setSportConfirm]=useState<TrainingSport|null>(null);
  const review=useMemo(()=>inspectRoutineDraft(draft),[draft]);
  const update=(block:RoutineBlock)=>setDraft(current=>updateRoutineBlock(current,block));
@@ -67,7 +72,25 @@ export function RoutineBuilderContent(){
   setDraft(current=>changeRoutineSport(current,sport));
  }
  return <View style={styles.root}>
-  <Text accessibilityRole="header" style={styles.title}>Create a Routine</Text>
+  <View style={styles.header}>
+    <Text accessibilityRole="header" style={styles.title}>Create a Routine</Text>
+    <View style={styles.choiceRow}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Undo routine edit"
+        accessibilityState={{disabled:history.undo.length===0}}
+        disabled={history.undo.length===0}
+        onPress={()=>{setSportConfirm(null);setHistory(undoRoutineDraftEdit);}}
+        style={[styles.chip,history.undo.length===0&&styles.disabled]}>
+        <Text style={styles.gold}>Undo</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Redo routine edit"
+        accessibilityState={{disabled:history.redo.length===0}}
+        disabled={history.redo.length===0}
+        onPress={()=>{setSportConfirm(null);setHistory(redoRoutineDraftEdit);}}
+        style={[styles.chip,history.redo.length===0&&styles.disabled]}>
+        <Text style={styles.gold}>Redo</Text>
+      </Pressable>
+    </View>
+  </View>
   <Text style={styles.note}>Build repeatable workout structure without recording a completed session. This draft stays in the open Train screen only. Saving, starting and scheduling require the approved private V2 Routine and Training services.</Text>
   <EditorInput label="Routine name" value={draft.name} onChange={value=>setDraft(s=>renameRoutineDraft(s,value))}/>
   <Text style={styles.heading}>Sport</Text>
@@ -178,6 +201,7 @@ const styles=StyleSheet.create({
  sports:{flexDirection:'row',gap:6,paddingVertical:3},header:{flexDirection:'row',gap:8,flexWrap:'wrap',alignItems:'center',justifyContent:'space-between'},
  choiceRow:{flexDirection:'row',gap:6,flexWrap:'wrap',alignItems:'center'},
  chip:{borderWidth:1,borderColor:colors.border,borderRadius:8,paddingHorizontal:10,minHeight:44,justifyContent:'center'},
+ disabled:{opacity:0.4},
  active:{borderColor:colors.gold,backgroundColor:colors.surfaceRaised},
  chipText:{color:colors.mutedText,fontWeight:'700',fontSize:12},gold:{color:colors.goldSoft,fontWeight:'800',fontSize:12},
  field:{gap:4,flex:1},fieldLabel:{color:colors.mutedText,fontSize:12,fontWeight:'700'},
