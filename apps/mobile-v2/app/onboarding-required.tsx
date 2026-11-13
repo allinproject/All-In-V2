@@ -36,7 +36,6 @@ import {
 } from '../src/auth/onboardingFlow';
 import { supabase } from '../src/lib/supabase';
 import { colors, radius, spacing } from '../src/theme/tokens';
-import type { Json } from '../src/types/database.types';
 
 type Choice = { value: string; label: string; description?: string };
 
@@ -56,33 +55,6 @@ type ProfileStatePayload = {
     settings?: unknown;
     version?: number;
   } | null;
-};
-
-const STEP_COPY: Record<OnboardingStep, { title: string; description: string }> = {
-  focus: {
-    title: 'What would you like to focus on first?',
-    description: 'Choose where you would like to start—not your only goal. You can pursue multiple goals at once and change this later.',
-  },
-  training_pattern: {
-    title: 'What kinds of training do you do now?',
-    description: 'Select everything that is already part of your life. Starting from zero is completely fine.',
-  },
-  availability: {
-    title: 'When are you usually available to train?',
-    description: 'This is a starting preference, not a fixed schedule. You can change it any time.',
-  },
-  coach: {
-    title: 'How would you like Coach to help?',
-    description: 'Choose the style of guidance that feels useful. You stay in control of every plan change.',
-  },
-  food_safety: {
-    title: 'Anything Coach should know about food safety?',
-    description: 'Share only food allergies, sensitivities or preferences you want ALL IN 365 to consider. You can leave this unknown.',
-  },
-  proactivity: {
-    title: 'How proactive should ALL IN 365 be?',
-    description: 'Set the level of in-app guidance and reminders. Device permissions are requested later, only when a feature needs them.',
-  },
 };
 
 const TRAINING_OPTIONS: Choice[] = [
@@ -195,8 +167,8 @@ function OnboardingOwnerFlow() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
-  const [skippedSteps, setSkippedSteps] = useState<string[]>([]);
+  const [, setCompletedSteps] = useState<string[]>([]);
+  const [, setSkippedSteps] = useState<string[]>([]);
   const [settingsVersion, setSettingsVersion] = useState<number | null>(null);
   const [progressVersion, setProgressVersion] = useState<number | null>(null);
   const [answers, setAnswers] = useState<OnboardingAnswers>({ ...EMPTY_ONBOARDING_ANSWERS });
@@ -254,7 +226,6 @@ function OnboardingOwnerFlow() {
 
   const activeStep = REQUIRED_V2_ONBOARDING_STEPS[activeStepIndex] ?? null;
   const stepNumber = activeStep ? activeStepIndex + 1 : REQUIRED_V2_ONBOARDING_STEPS.length;
-  const stepCopy = activeStep ? STEP_COPY[activeStep] : null;
   const canComplete = activeStep ? isOnboardingAnswerComplete(activeStep, answers) : false;
 
   const updateAnswers = (update: (current: OnboardingAnswers) => OnboardingAnswers) => {
