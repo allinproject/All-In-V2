@@ -67,12 +67,28 @@ BEGIN
   PERFORM public.v2_training_active_restrictions_read_candidate(a);
   RAISE EXCEPTION 'Uncertified inventory trusted after denied request';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
- -- A user can still register a real restriction as the first reviewed action.
+ -- Even adding one real restriction cannot certify the entire inventory.
+ BEGIN
+  PERFORM public.v2_training_restriction_write_candidate(a,act1,
+   'activate',rule,'exercise','lying leg curl',0);
+  RAISE EXCEPTION 'Unreconciled first-time activation self-certified owner';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_training_restriction_certifications
+  WHERE user_id=a) OR EXISTS(SELECT 1 FROM public.v2_training_athlete_restrictions
+  WHERE user_id=a) THEN
+  RAISE EXCEPTION 'Denied first-time activation persisted a false certification'; END IF;
+ -- Synthetic test setup represents an OUT-OF-BAND trusted Training owner
+ -- reconciliation, NOT a public RPC or user-callable production shortcut.
+ INSERT INTO allin_private.v2_training_restriction_certifications
+  (user_id,certified_revision) VALUES(a,1);
+ j:=public.v2_training_active_restrictions_read_candidate(a);
+ IF j->>'verified'<>'true' OR pg_catalog.jsonb_array_length(j->'restrictions')<>0 THEN
+  RAISE EXCEPTION 'Trusted fixture baseline is not certified'; END IF;
  j:=public.v2_training_restriction_write_candidate(a,act1,
-  'activate',rule,'exercise','lying leg curl',0);
- IF (j->>'certifiedRevision')::integer<>1 THEN RAISE EXCEPTION 'Initial restriction activation failed'; END IF;
+  'activate',rule,'exercise','lying leg curl',1);
+ IF (j->>'certifiedRevision')::integer<>2 THEN RAISE EXCEPTION 'Restriction activation failed'; END IF;
  j:=public.v2_training_restriction_write_candidate(a,act1,
-  'activate',rule,'exercise','lying leg curl',0);
+  'activate',rule,'exercise','lying leg curl',1);
  IF j->>'replayed'<>'true' THEN RAISE EXCEPTION 'Exact retry failed'; END IF;
  j:=public.v2_training_active_restrictions_read_candidate(a);
  IF pg_catalog.jsonb_array_length(j->'restrictions')<>1 OR
@@ -80,7 +96,7 @@ BEGIN
   RAISE EXCEPTION 'Saved restriction missing from fresh read'; END IF;
  BEGIN
   PERFORM public.v2_training_restriction_write_candidate(a,act1,
-   'activate',rule,'exercise','wrong rule',0);
+   'activate',rule,'exercise','wrong rule',1);
   RAISE EXCEPTION 'Changed action ID reused';
  EXCEPTION WHEN unique_violation THEN NULL; END;
  BEGIN
@@ -90,12 +106,12 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN
   PERFORM public.v2_training_restriction_write_candidate(a,act2,
-   'retire',rule,null,null,0);
+   'retire',rule,null,null,1);
   RAISE EXCEPTION 'Stale revision accepted';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
  j:=public.v2_training_restriction_write_candidate(a,act2,
-  'retire',rule,null,null,1);
- IF (j->>'certifiedRevision')::integer<>2 THEN RAISE EXCEPTION 'Retirement failed'; END IF;
+  'retire',rule,null,null,2);
+ IF (j->>'certifiedRevision')::integer<>3 THEN RAISE EXCEPTION 'Retirement failed'; END IF;
  j:=public.v2_training_active_restrictions_read_candidate(a);
  IF pg_catalog.jsonb_array_length(j->'restrictions')<>0 THEN
   RAISE EXCEPTION 'Retired restriction remains active'; END IF;
