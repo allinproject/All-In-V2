@@ -9,13 +9,19 @@ import type {EventPlanOwnerProjection} from './eventPlanOwnerPresentation';
  * Never treats a missing server reader as a verified empty Event list.
  * Selection is local UI state, not an Event/Training mutation.
  */
-export function EventPlanListContent({projection}:{
+export function EventPlanListContent({projection,ownerId,sessionGeneration}:{
   projection:EventPlanOwnerProjection;
+  ownerId:string;
+  sessionGeneration:number;
 }){
   const [selectedId,setSelectedId]=useState<string|null>(null);
-  const snapshotVersion=projection.status==='ready'?projection.snapshotVersion:null;
+  const current=projection.status==='ready'&&projection.ownerId===ownerId&&
+    projection.authSessionGeneration===sessionGeneration&&!!ownerId.trim()&&
+    Number.isSafeInteger(sessionGeneration)&&sessionGeneration>=0&&
+    projection.events.every(e=>e.ownerId===ownerId);
+  const snapshotVersion=current&&projection.status==='ready'?projection.snapshotVersion:null;
   useEffect(()=>setSelectedId(null),[snapshotVersion]);
-  if(projection.status!=='ready')return (
+  if(!current||projection.status!=='ready')return (
     <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.title}>Event Plan</Text>
       <Text style={styles.muted}>Your private Event Plans are not available yet because the certified Event reader is not connected. Existing events have not been checked and are not being reported as empty.</Text>
