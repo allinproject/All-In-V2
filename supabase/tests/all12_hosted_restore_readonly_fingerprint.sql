@@ -51,6 +51,30 @@ counts AS (
   (SELECT count(*) FROM cron.job WHERE active) AS active_cron
 )
 SELECT jsonb_build_object(
+ 'training_restriction_domain',(
+  SELECT jsonb_build_object(
+   'metadata_only',true,
+   'provider_restoration_proven',false,
+   'verified_owner_data',false,
+   'all_four_tables_present',count(*) FILTER(WHERE deployed)=4,
+   'source_evidence_is_complete',false,
+   'tables',jsonb_agg(jsonb_build_object(
+     'table',qualified_name,'deployed',deployed,
+     'schema_fingerprint_available',deployed AND EXISTS(
+       SELECT 1 FROM details d WHERE d.qualified_name=expected.qualified_name))
+    ORDER BY qualified_name)
+  )
+  FROM (
+   SELECT t.qualified_name,
+    pg_catalog.to_regclass(t.qualified_name) IS NOT NULL AS deployed
+   FROM (VALUES
+    ('public.v2_training_athlete_restrictions'),
+    ('allin_private.v2_training_restriction_certifications'),
+    ('allin_private.v2_training_restriction_action_receipts'),
+    ('allin_private.v2_training_restriction_source_evidence')
+   ) AS t(qualified_name)
+  ) expected
+ ),
  'postgres_version',current_setting('server_version'),
  'application_table_count',(SELECT count(*) FROM app),
  'application_schema_fingerprint',(
