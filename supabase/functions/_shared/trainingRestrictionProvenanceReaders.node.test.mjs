@@ -191,3 +191,38 @@ test('approved athlete-authored plan restriction is not mislabeled as missing im
  assert.equal(assessed.observedImported,1);
  assert.equal(assessed.firstCertificationAuthorized,false);
 });
+
+test('approved-plan source rows must match canonical rules, including retired history and duplicates',()=>{
+ const history={ownerId:a,exhaustive:false,records:[{user_id:a,record:retired}]};
+ const reference={user_id:a,kind:'imported_revision',record:importedRevision};
+ const sourceRow=rule=>({user_id:a,kind:'linked_restriction',record:rule});
+ const checks=[
+  {rows:[reference],reason:'missing_observed_approved_rule'},
+  {rows:[reference,sourceRow({...approved,subject:'tampered'})],
+   reason:'unmatched_or_duplicate_approved_rule'},
+  {rows:[reference,sourceRow(approved),sourceRow(approved)],
+   reason:'unmatched_or_duplicate_approved_rule'},
+  {rows:[reference,sourceRow({...approved,user_id:b})],
+   reason:'unmatched_or_duplicate_approved_rule'},
+  {rows:[reference,sourceRow({...approved,source_ref:'unknown-revision'})],
+   reason:'unresolved_imported_restriction_mapping'},
+  {rows:[reference,sourceRow({...approved,status:'retired'})],
+   reason:'unmatched_or_duplicate_approved_rule'},
+ ];
+ for(const {rows,reason} of checks){
+  const result=reconcileObservedRestrictionSources({
+   ownerId:a,currentRules:[retired,approved],history,
+   imports:{ownerId:a,exhaustive:false,records:rows,observedUnresolvedMappings:[]},
+  });
+  assert(result.reasons.includes(reason),reason);
+  assert.equal(result.status,'blocked');
+  assert.equal(result.firstCertificationAuthorized,false);
+ }
+ const correct=reconcileObservedRestrictionSources({
+  ownerId:a,currentRules:[retired,approved],history,
+  imports:{ownerId:a,exhaustive:false,records:[reference,sourceRow(approved)],
+   observedUnresolvedMappings:[]},
+ });
+ assert.deepEqual(correct.reasons,['independent_source_completeness_unverified']);
+ assert.equal(correct.firstCertificationAuthorized,false);
+});
