@@ -63,6 +63,15 @@ BEGIN
  IF FOUND THEN
   IF v_existing.request_hash<>v_hash THEN
    RAISE EXCEPTION 'Conflicting restriction action replay' USING ERRCODE='23505'; END IF;
+  -- An action receipt may survive a partial backup/restore while its owner
+  -- certification is absent or stale. It cannot independently authorize a
+  -- success reply or certify the full imported restriction inventory.
+  SELECT certified_revision INTO v_current
+  FROM allin_private.v2_training_restriction_certifications
+  WHERE user_id=v_user FOR UPDATE;
+  IF v_current IS NULL OR v_current<v_existing.result_revision THEN
+   RAISE EXCEPTION 'Restriction receipt lacks current owner certification'
+    USING ERRCODE='42501'; END IF;
   RETURN pg_catalog.jsonb_build_object('ownerId',v_user,
    'certifiedRevision',v_existing.result_revision,'replayed',true);
  END IF;
