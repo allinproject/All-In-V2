@@ -57,7 +57,10 @@ try {
  const opts={
   ownerId:A,requestId:R,approvedBucketIds:[bucket],
   ...transport,
-  recordCheckpoint:async row=>{checkpoints.push(row);},
+  recordCheckpoint:async row=>{checkpoints.push(row);return {persisted:true};},
+  // Local fixture readback, NOT proof of durable database persistence.
+  readCheckpoint:async({ownerId,requestId,bucketId,path})=>checkpoints.find(row=>
+   row.ownerId===ownerId&&row.requestId===requestId&&row.bucketId===bucketId&&row.path===path),
   // TEST-ONLY stub: no real Storage write barrier is claimed by this test.
   assertOwnerWritesQuiesced:async()=>true,
  };
