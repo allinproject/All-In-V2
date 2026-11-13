@@ -517,7 +517,8 @@ BEGIN
  SELECT * INTO v_case FROM allin_private.v2_community_moderation_reports
  WHERE id=p_report_id;
  IF v_case.id IS NULL OR
-   v_case.status<>CASE WHEN p_permission='initial_review' THEN 'reported' ELSE 'appealed' END
+   ((p_permission='initial_review' AND v_case.status<>'reported') OR
+    (p_permission='appeal_review' AND v_case.status<>'appealed'))
    OR v_case.reporter_id=v_actor OR
    (p_permission='appeal_review' AND v_case.initial_reviewer_id=v_actor)
  THEN RAISE EXCEPTION 'community_case_unavailable' USING ERRCODE='42501'; END IF;
