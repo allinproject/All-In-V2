@@ -146,6 +146,7 @@ function HomeOwnerScreen() {
           <View>
             <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
             <Text accessibilityRole="header" style={styles.heading}>Today</Text>
+            <Text style={styles.dayLabel}>{localDay ? new Date(`${localDay}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : 'Current day unavailable'}</Text>
           </View>
           <View style={styles.topActions}>
             <Text style={styles.weather}>{weatherGlance.label}</Text>
@@ -168,9 +169,24 @@ function HomeOwnerScreen() {
           </Link>
         </View>
 
+        <View style={styles.quickActions}>
+          <Link href={trainingDestination} asChild>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open today's Train calendar to add a workout" style={styles.quickAction}>
+              <Text style={styles.quickActionText}>+ Add Workout</Text>
+              <Text style={styles.quickActionHint}>Via Train calendar</Text>
+            </Pressable>
+          </Link>
+          <Link href="/coach" asChild>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open Coach conversation" style={styles.quickAction}>
+              <Text style={styles.quickActionText}>Ask Coach</Text>
+              <Text style={styles.quickActionHint}>One conversation</Text>
+            </Pressable>
+          </Link>
+        </View>
+
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>Daily Extended</Text>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>Daily Energy</Text>
             <Link href={dailyDestination} asChild>
               <Pressable accessibilityRole="button" accessibilityLabel="View daily nutrition details" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View more ›</Text>
@@ -267,6 +283,11 @@ const styles = StyleSheet.create({
   gold: { color: colors.gold },
   heading: { color: colors.warmWhite, fontSize: 30, fontWeight: '800', marginTop: 4 },
   weather: { color: colors.mutedText, fontSize: 11 },
+  dayLabel: { color: colors.mutedText, fontSize: 13, marginTop: 5 },
+  quickActions: { flexDirection: 'row', gap: 10 },
+  quickAction: { flex: 1, minWidth: 0, minHeight: 64, borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.surface, padding: 12, justifyContent: 'center', gap: 5 },
+  quickActionText: { color: colors.goldSoft, fontSize: 14, fontWeight: '800' },
+  quickActionHint: { color: colors.mutedText, fontSize: 11 },
   profile: { borderColor: colors.border, borderWidth: 1, paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 12 },
   profileText: { color: colors.warmWhite, fontWeight: '700', fontSize: 12 },
   hero: { backgroundColor: colors.surfaceRaised, borderColor: colors.gold, borderWidth: 1, borderRadius: 18, padding: 20, gap: 12 },
