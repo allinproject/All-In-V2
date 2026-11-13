@@ -35,14 +35,14 @@ function validateInventory(inventory,ownerId,bucketId) {
  */
 export async function reviewPrivateStorageCleanup({
  ownerId,requestId,approvedBucketIds,listBucketCatalog,listOwnerStorageObjects,
- deleteObject,objectExists,recordCheckpoint,assertOwnerWritesQuiesced,
+ deleteObject,objectExists,recordCheckpoint,readCheckpoint,assertOwnerWritesQuiesced,
 }) {
  if(!UUID.test(ownerId??'')||!UUID.test(requestId??'') ||
     !Array.isArray(approvedBucketIds) || !approvedBucketIds.length ||
     new Set(approvedBucketIds).size!==approvedBucketIds.length ||
     approvedBucketIds.some(id=>typeof id!=='string'||!/^[a-z0-9][a-z0-9-]{1,80}$/.test(id)) ||
     [listBucketCatalog,listOwnerStorageObjects,deleteObject,objectExists,recordCheckpoint,
-     assertOwnerWritesQuiesced]
+     readCheckpoint,assertOwnerWritesQuiesced]
       .some(fn=>typeof fn!=='function'))
    throw Error('Approved server-only cleanup dependencies required');
  // Only an authoritative server-side writer barrier can establish this.
@@ -74,7 +74,14 @@ export async function reviewPrivateStorageCleanup({
      }
      const remaining=await objectExists({ownerId,requestId,bucketId,path});
      if(remaining!==false)throw Error('Storage object still exists after delete');
-     await recordCheckpoint({ownerId,requestId,bucketId,path,state:'absent_verified'});
+     const scope={ownerId,requestId,bucketId,path};
+     const saved=await recordCheckpoint({...scope,state:'absent_verified'});
+     if(saved?.persisted!==true)throw Error('Storage checkpoint not persisted');
+     const verified=await readCheckpoint(scope);
+     if(verified?.ownerId!==ownerId || verified?.requestId!==requestId ||
+        verified?.bucketId!==bucketId || verified?.path!==path ||
+        verified?.state!=='absent_verified')
+       throw Error('Storage checkpoint readback not verified');
      receipt.push({bucketId,path,state:'absent_verified'});
    }
    if(await assertOwnerWritesQuiesced({ownerId,requestId})!==true)
