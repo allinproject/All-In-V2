@@ -556,6 +556,207 @@ BEGIN
 END $second_independent_appeal$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
 SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000004',false);
+-- Independently bootstrapped operator is a separate trust anchor. No user
+-- endpoint grants the operator capability itself; this is synthetic CI SQL.
+INSERT INTO auth.users(id) VALUES('00000000-0000-0000-0000-000000000006');
+INSERT INTO public.v2_profiles(user_id)
+ VALUES('00000000-0000-0000-0000-000000000006');
+INSERT INTO auth.sessions(id,user_id)
+ VALUES('83000000-0000-4000-8000-000000000006',
+        '00000000-0000-0000-0000-000000000006');
+INSERT INTO allin_private.v2_community_moderation_operators
+ (operator_id,enabled)
+ VALUES('00000000-0000-0000-0000-000000000006',true);
+DO $operator_acl$
+DECLARE v_table text;
+BEGIN
+ FOREACH v_table IN ARRAY ARRAY[
+  'v2_community_moderation_operators',
+  'v2_community_moderation_grant_events',
+  'v2_community_moderation_evidence_access'] LOOP
+  IF NOT (SELECT c.relrowsecurity FROM pg_class c
+    JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='allin_private' AND c.relname=v_table)
+   OR has_table_privilege('authenticated',('allin_private.'||v_table)::regclass,'SELECT')
+   OR has_table_privilege('service_role',('allin_private.'||v_table)::regclass,'INSERT')
+  THEN RAISE EXCEPTION 'Private moderation operator/access table exposed: %',v_table; END IF;
+ END LOOP;
+ IF has_function_privilege('authenticated',
+   'allin_private.v2_community_operator_set_reviewer(uuid,uuid,text,boolean,bigint)','EXECUTE')
+  OR has_function_privilege('authenticated',
+   'allin_private.v2_community_moderation_queue(text,timestamptz,uuid)','EXECUTE')
+  OR has_function_privilege('authenticated',
+   'allin_private.v2_community_moderation_case_detail(uuid,uuid,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Moderator queue or operator provision API exposed'; END IF;
+END $operator_acl$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000002',false);
+DO $unauthorized_grant$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_operator_set_reviewer(
+   '86000000-0000-4000-8000-000000000099',
+   '00000000-0000-0000-0000-000000000003',
+   'initial_review',true,1);
+  RAISE EXCEPTION 'Ordinary user provisioned reviewer';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_community_moderation_queue('initial_review',NULL,NULL);
+  RAISE EXCEPTION 'Ordinary user read reviewer queue';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $unauthorized_grant$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000006',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000006',false);
+DO $trusted_provision$
+DECLARE r jsonb;
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_operator_set_reviewer(
+   '86000000-0000-4000-8000-000000000097',
+   '00000000-0000-0000-0000-000000000006','initial_review',true,0);
+  RAISE EXCEPTION 'Operator self-granted reviewer access';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ r:=allin_private.v2_community_operator_set_reviewer(
+  '86000000-0000-4000-8000-000000000001',
+  '00000000-0000-0000-0000-000000000003','initial_review',true,1);
+ IF r->>'version'<>'2' OR r->>'enabled'<>'true'
+ THEN RAISE EXCEPTION 'Trusted reviewer enable failed'; END IF;
+ r:=allin_private.v2_community_operator_set_reviewer(
+  '86000000-0000-4000-8000-000000000001',
+  '00000000-0000-0000-0000-000000000003','initial_review',true,1);
+ IF r->>'retry'<>'true' THEN RAISE EXCEPTION 'Provision retry duplicated'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_community_operator_set_reviewer(
+   '86000000-0000-4000-8000-000000000001',
+   '00000000-0000-0000-0000-000000000003','initial_review',false,2);
+  RAISE EXCEPTION 'Changed action replay accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_community_operator_set_reviewer(
+   '86000000-0000-4000-8000-000000000098',
+   '00000000-0000-0000-0000-000000000003','initial_review',false,1);
+  RAISE EXCEPTION 'Stale reviewer grant overwrite';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ IF (SELECT count(*) FROM allin_private.v2_community_moderation_grant_events
+  WHERE reviewer_id='00000000-0000-0000-0000-000000000003')<>1
+ THEN RAISE EXCEPTION 'Provisioning audit duplicated or absent'; END IF;
+END $trusted_provision$;
+
+-- Queue and evidence access should not duplicate private contents.
+-- Create fresh case independent of earlier closed reports.
+INSERT INTO allin_private.v2_community_comments(
+ id,post_id,author_id,body)
+VALUES('82000000-0000-4000-8000-000000000006',
+ '80000000-0000-0000-0000-000000000001',
+ '00000000-0000-0000-0000-000000000001',
+ 'REPORT_ONLY_PRIVATE_COMMENT_006');
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000002',false);
+DO $pending_queue_case$
+BEGIN
+ PERFORM allin_private.v2_community_report_comment(
+  '84000000-0000-4000-8000-000000000006',
+  '82000000-0000-4000-8000-000000000006','privacy','Bounded evidence reason');
+END $pending_queue_case$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000003',false);
+DO $private_initial_queue$
+DECLARE r jsonb; detail jsonb;
+BEGIN
+ r:=allin_private.v2_community_moderation_queue('initial_review',NULL,NULL);
+ IF pg_catalog.jsonb_array_length(r->'cases')<>1 OR
+    r::text NOT LIKE '%84000000-0000-4000-8000-000000000006%'
+    OR r::text LIKE '%REPORT_ONLY_PRIVATE_COMMENT_006%'
+    OR r::text LIKE '%Bounded evidence reason%'
+    OR r->>'complete'<>'true'
+ THEN RAISE EXCEPTION 'Private queue leaked data or omitted eligible case: %',r; END IF;
+ detail:=allin_private.v2_community_moderation_case_detail(
+  '87000000-0000-4000-8000-000000000001',
+  '84000000-0000-4000-8000-000000000006','initial_review');
+ IF detail->>'body'<>'REPORT_ONLY_PRIVATE_COMMENT_006'
+ OR detail->>'reasonDetail'<>'Bounded evidence reason'
+ THEN RAISE EXCEPTION 'Access-audited evidence reader incomplete'; END IF;
+ IF (SELECT count(*) FROM allin_private.v2_community_moderation_evidence_access
+  WHERE reviewer_id='00000000-0000-0000-0000-000000000003')<>1
+ THEN RAISE EXCEPTION 'Evidence access was not audited'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_community_moderation_case_detail(
+   '87000000-0000-4000-8000-000000000001',
+   '84000000-0000-4000-8000-000000000001','initial_review');
+  RAISE EXCEPTION 'Evidence access ID reused against a second case';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $private_initial_queue$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000006',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000006',false);
+DO $operator_revokes$
+DECLARE r jsonb;
+BEGIN
+ r:=allin_private.v2_community_operator_set_reviewer(
+  '86000000-0000-4000-8000-000000000002',
+  '00000000-0000-0000-0000-000000000003','initial_review',false,2);
+ IF r->>'version'<>'3' OR r->>'enabled'<>'false'
+ THEN RAISE EXCEPTION 'Operator revocation failed'; END IF;
+END $operator_revokes$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000003',false);
+DO $revoked_queue_denial$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_moderation_queue('initial_review',NULL,NULL);
+  RAISE EXCEPTION 'Revoked reviewer still queried queue';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_community_moderation_case_detail(
+   '87000000-0000-4000-8000-000000000002',
+   '84000000-0000-4000-8000-000000000006','initial_review');
+  RAISE EXCEPTION 'Revoked reviewer still read evidence';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $revoked_queue_denial$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000004',false);
+DO $initial_case_to_appeal$
+BEGIN
+ PERFORM allin_private.v2_community_decide_report(
+  '84000000-0000-4000-8000-000000000006',1,'hide');
+END $initial_case_to_appeal$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000001',false);
+DO $appeal_private_queue$
+BEGIN
+ PERFORM allin_private.v2_community_appeal_report(
+  '84000000-0000-4000-8000-000000000006',2,'Please reconsider');
+END $appeal_private_queue$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000005',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000005',false);
+DO $appeal_queue_only$
+DECLARE r jsonb;d jsonb;
+BEGIN
+ r:=allin_private.v2_community_moderation_queue('appeal_review',NULL,NULL);
+ IF pg_catalog.jsonb_array_length(r->'cases')<>1 OR
+ r::text NOT LIKE '%84000000-0000-4000-8000-000000000006%'
+ OR r::text LIKE '%Please reconsider%'
+ THEN RAISE EXCEPTION 'Appeal queue missing or exposed private statement'; END IF;
+ d:=allin_private.v2_community_moderation_case_detail(
+  '87000000-0000-4000-8000-000000000003',
+  '84000000-0000-4000-8000-000000000006','appeal_review');
+ IF d->>'appealStatement'<>'Please reconsider'
+ THEN RAISE EXCEPTION 'Trusted appeal evidence missing'; END IF;
+END $appeal_queue_only$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000004',false);
+DO $initial_reviewer_no_appeal_evidence$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_moderation_case_detail(
+   '87000000-0000-4000-8000-000000000004',
+   '84000000-0000-4000-8000-000000000006','appeal_review');
+  RAISE EXCEPTION 'Initial reviewer accessed own appeal';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $initial_reviewer_no_appeal_evidence$;
+SELECT set_config('request.jwt.claim.session_id','',false);
+SELECT set_config('request.jwt.claim.sub','',false);
+\echo PASS: Private moderator queue, case evidence access audit, separate operator CAS provisioning and instant revocation.
+
 DELETE FROM auth.sessions WHERE id='83000000-0000-4000-8000-000000000004';
 DO $revoked_reviewer_session$
 BEGIN
