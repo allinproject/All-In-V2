@@ -75,19 +75,29 @@ BEGIN
  OR j->>'initialCertificationAuthorized'<>'false'
  OR j->>'sourceAuthenticityEstablished'<>'false'
  THEN RAISE EXCEPTION 'Review ledger falsely certified'; END IF;
- -- Deliberately stale source evidence must not pass even if all five
- -- source kinds are present and every count reconciles.
- UPDATE allin_private.v2_training_restriction_source_evidence
- SET canonical_inventory_digest=repeat('f',32)
- WHERE user_id=a AND snapshot_version='one' AND source_kind='restored_records';
+ -- Updating a reviewed source digest, even by a privileged SQL caller,
+ -- cannot silently launder old evidence into a newly matching snapshot.
  BEGIN
-  PERFORM allin_private.v2_training_restriction_source_coverage_review(a,'one');
+  UPDATE allin_private.v2_training_restriction_source_evidence
+  SET canonical_inventory_digest=repeat('f',32)
+  WHERE user_id=a AND snapshot_version='one' AND source_kind='restored_records';
+  RAISE EXCEPTION 'Immutable source evidence was rewritten';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- An independently collected, but incorrect, new snapshot must also
+ -- fail; do not mutate or repair the prior evidence rows in place.
+ INSERT INTO allin_private.v2_training_restriction_source_evidence
+  (user_id,snapshot_version,source_kind,evidence_ref,source_digest,
+   canonical_inventory_digest,inspected_count,reconciled_count,unresolved_count,complete)
+ SELECT a,'mismatch',kind,'reader:mismatch:'||kind,repeat('c',64),
+  CASE WHEN kind='restored_records' THEN repeat('f',32)
+   ELSE allin_private.v2_training_restriction_inventory_digest_candidate(a) END,
+  0,0,0,true
+ FROM unnest(ARRAY['current_restrictions','approved_plans','historical_records',
+   'imported_records','restored_records']) kind;
+ BEGIN
+  PERFORM allin_private.v2_training_restriction_source_coverage_review(a,'mismatch');
   RAISE EXCEPTION 'Mismatched canonical evidence accepted';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
- UPDATE allin_private.v2_training_restriction_source_evidence
- SET canonical_inventory_digest=
-  allin_private.v2_training_restriction_inventory_digest_candidate(a)
- WHERE user_id=a AND snapshot_version='one' AND source_kind='restored_records';
  INSERT INTO public.v2_training_athlete_restrictions
  (id,user_id,category,subject,source,status,revision)
  VALUES('eeeeeeee-1111-4111-8111-eeeeeeeeeeee',a,'exercise',
