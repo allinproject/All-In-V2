@@ -2,7 +2,7 @@ name: V2 foundation clean Supabase replay (manual, local only)
 
 on:
   push:
-    branches: [integration/v2-foundation]
+    branches: [integration/v2-foundation, review/all251-canonical-export-deletion-coverage-20261113]
     paths:
       - '.github/workflows/v2-foundation-clean-replay.yml'
       - 'docs/architecture/sql/V2-GOALS-IDENTITY-REVISION-OWNER-CANDIDATE.sql'
@@ -96,6 +96,7 @@ on:
       - 'scripts/check-v2-coach-sql-candidate.mjs'
       - 'scripts/test-v2-coach-account-export-local.psql'
       - 'scripts/test-v2-account-export-all-domain-pages-local.psql'
+      - 'scripts/test-all251-populated-canonical-encrypted-roundtrip.mjs'
       - 'scripts/test-all251-community-post-export-projection-local.psql'
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-OWNER-GRAPH-PREFLIGHT-REVIEW.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-CLAIM-COMPLETION-GRAPH-GATE-REVIEW.sql'
@@ -164,7 +165,7 @@ jobs:
     name: Clean local Supabase Auth/Storage/pg_cron foundation replay
     # PR #16 is a REVIEW-ONLY, disposable Supabase acceptance exception.
     # All other branch/manual release gates retain their original behavior.
-    if: github.ref == 'refs/heads/integration/v2-foundation' || (github.event_name == 'pull_request' && github.event.pull_request.number == 16 && github.base_ref == 'integration/v2-foundation')
+    if: github.ref == 'refs/heads/integration/v2-foundation' || github.ref == 'refs/heads/review/all251-canonical-export-deletion-coverage-20261113' || (github.event_name == 'pull_request' && github.event.pull_request.number == 16 && github.base_ref == 'integration/v2-foundation')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -698,6 +699,20 @@ jobs:
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
           done
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-all251-food-log-export-projection-local.psql
+      - name: Archive and restore actual 50-source populated canonical SQL pages
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
+          test -n "$db_container"
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          docker cp scripts/test-v2-account-export-all-domain-pages-local.psql "$db_container:/tmp/all251-canonical-50-sources.psql"
+          docker exec "$db_container" psql -X -q -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -v all251_capture_roundtrip=1 -f /tmp/all251-canonical-50-sources.psql
+          docker cp "$db_container:/tmp/all251-full-domain-capture.jsonl" "$work/all251-full-domain-capture.jsonl"
+          node scripts/test-all251-populated-canonical-encrypted-roundtrip.mjs \
+            "$work/all251-full-domain-capture.jsonl"
       - name: ALL-251 review-only Storage checkpoint versus canonical deletion audit
         run: |
           set -euo pipefail
