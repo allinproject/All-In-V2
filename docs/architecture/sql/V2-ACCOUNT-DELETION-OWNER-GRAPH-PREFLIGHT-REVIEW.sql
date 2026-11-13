@@ -47,6 +47,44 @@ WHERE rc.owner_column=ANY(ARRAY[
    'lower_user_id','upper_user_id','target_id'])
  OR NOT EXISTS(SELECT 1 FROM cascade_reachable r WHERE r.relid=rc.relid)
 UNION ALL
+-- Join-only receipts/events may have no user_id or owner_id column of their
+-- own: if they reference an athlete-owned V2 parent but are NOT reachable
+-- through ON DELETE CASCADE from auth.users, Auth deletion could strand them.
+-- Global ingredient/reference tables lacking such owner-parent links are
+-- not classified as athlete data by this check.
+SELECT n.nspname::text,c.relname::text,'foreign_key'::text,
+ 'join_only_owner_child_without_verified_auth_cascade'::text
+FROM pg_catalog.pg_class c
+JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p')
+ AND c.relname LIKE 'v2_%'
+ AND NOT EXISTS(SELECT 1 FROM cascade_reachable r WHERE r.relid=c.oid)
+ AND NOT EXISTS(
+   SELECT 1 FROM pg_catalog.pg_attribute self_owner
+   WHERE self_owner.attrelid=c.oid AND self_owner.attnum>0
+    AND NOT self_owner.attisdropped
+    AND self_owner.attname=ANY(ARRAY[
+      'user_id','owner_id','athlete_id','actor_id',
+      'created_by_user_id','athlete_user_id','follower_id','followed_id',
+      'blocker_id','blocked_id','lower_user_id','upper_user_id',
+      'target_id','account_id','profile_id'
+    ])
+ )
+ AND EXISTS(
+   SELECT 1 FROM pg_catalog.pg_constraint link
+   JOIN pg_catalog.pg_class parent ON parent.oid=link.confrelid
+   JOIN pg_catalog.pg_namespace pn ON pn.oid=parent.relnamespace
+   JOIN pg_catalog.pg_attribute parent_owner
+    ON parent_owner.attrelid=parent.oid AND parent_owner.attnum>0
+     AND NOT parent_owner.attisdropped
+   WHERE link.conrelid=c.oid AND link.contype='f'
+    AND pn.nspname IN ('public','allin_private')
+    AND parent.relname LIKE 'v2_%'
+    AND parent_owner.attname=ANY(ARRAY[
+      'user_id','owner_id','athlete_id','athlete_user_id','account_id'
+    ])
+ )
+UNION ALL
 -- A bucket can retain orphan private bytes even with perfect DB cascades.
 -- No Storage cleanup has been accepted. A name here is a blocker, not a
 -- permission to list or download its contents.
