@@ -27,7 +27,8 @@ test('deletion scanner includes the same durable Storage fences and refuses unap
   'missing_or_unsecured_privileged_write_lease_ledger',
   'missing_privileged_storage_deletion_or_auth_fence',
   'missing_privileged_storage_metadata_write_fence',
-  'unreviewed_storage_bucket_cleanup'
+  'unreviewed_storage_bucket_cleanup',
+  'join_only_owner_child_without_verified_auth_cascade'
  ])assert.ok(sourceOwner.includes(term),'Missing deletion coverage fail-closed reason '+term);
  assert.match(sourceOwner,/no_verified_auth_cascade_path/);
  assert.match(sourceOwner,/audit_retention_policy_required/);
