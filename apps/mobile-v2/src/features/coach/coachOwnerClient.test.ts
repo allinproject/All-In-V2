@@ -44,17 +44,27 @@ test('canonical first-open, transcript and exact save receipt require verified s
  if(sent.status==='saved')assert.equal(sent.receipt.assistantMessageId,assistantMessage);
  assert.equal(x.calls(),3);
 });
-test('owner switch or session-token rotation before readback blocks response',async()=>{
- for(const kind of ['owner','token']){
-  const x=fixture();let currentCalls=0;
-  x.services.request=async()=>{
-   currentCalls++;if(kind==='owner')x.swap();else x.rotate();
-   return {status:'ok',threadId:thread};
-  };
-  const client=createCoachOwnerClient(x.services,owner,()=>true,true,true);
-  assert.equal((await client.open(thread)).status,'unavailable');
-  assert.equal(currentCalls,1);
- }
+test('owner switch before readback blocks response',async()=>{
+ const x=fixture();let calls=0;
+ x.services.request=async()=>{calls++;x.swap();return {status:'ok',threadId:thread};};
+ const client=createCoachOwnerClient(x.services,owner,()=>true,true,true);
+ assert.equal((await client.open(thread)).status,'unavailable');
+ assert.equal(calls,1);
+});
+test('token refresh for the same owner preserves conversation continuity',async()=>{
+ const x=fixture();
+ x.services.request=async()=>{x.rotate();return {status:'ok',threadId:thread};};
+ const client=createCoachOwnerClient(x.services,owner,()=>true,true,true);
+ assert.deepEqual(await client.open(thread),{status:'ready',threadId:thread});
+ assert.deepEqual(await client.open(thread),{status:'ready',threadId:thread});
+});
+test('same-owner reauthentication invalidates an in-flight Coach response',async()=>{
+ const x=fixture();let generation=4;
+ x.services.request=async()=>{generation++;x.rotate();return {status:'ok',threadId:thread};};
+ const launchedGeneration=generation;
+ const client=createCoachOwnerClient(x.services,owner,
+  ()=>generation===launchedGeneration,true,true);
+ assert.equal((await client.open(thread)).status,'unavailable');
 });
 test('cross-owner and invented model replies are never treated as saved',async()=>{
  const x=fixture();x.services.request=async()=>({status:'ok',message:'generated',
