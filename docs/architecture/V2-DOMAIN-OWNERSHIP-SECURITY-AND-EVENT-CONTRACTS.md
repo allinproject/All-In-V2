@@ -10,6 +10,8 @@
 
 > This is an ownership and security contract, not a claim that the listed workspaces or tables have already been implemented. Only the explicitly listed foundation tables/functions currently exist. All future schemas require a separate migration, focused tests and domain-owner approval.
 
+> **2026-11-13 verified physical deployment checkpoint:** [V2 physical ERD, actual grants/RLS/RPCs and deployed-vs-review domain matrix](./V2-PHYSICAL-ERD-AND-DEPLOYMENT-STATUS-2026-11-13.md). The older 2026-11-10 eight-table and 2026-11-11 12-table evidence below is historical, not current deployment authority. As of this checkpoint, the canonical V2 project has 12 application tables and 18 applied migrations; later source/staging/review-only schemas are **not deployed**. Only a two-account rollback-only Profile/Health RPC smoke passed; the expanded ten-RPC matrix and real signed-session acceptance remain open. Account deletion stays OFF.
+
 ## Live security evidence refresh — 2026-11-11 (ALL-222)
 
 The original foundation ERD covered eight tables at its audit date. The V2
