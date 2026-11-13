@@ -43,7 +43,7 @@ def preview_source_release_evidence(verified, evidence, pinned, *, archive_sha):
     selected = {str(row["fdcId"]): row for row in pinned["records"]}
     foods = {str(row["fdcId"]): row for row in evidence["records"]}
     if (archive_sha != pinned["archiveSha256"] or archive_sha != evidence["archiveSha256"]
-        or len(verified) != len(observed) or len(selected) != len(foods) != 8
+        or len(verified) != 8 or len(observed) != 8 or len(selected) != 8 or len(foods) != 8
         or set(observed) != set(selected) or set(selected) != set(foods)):
         raise ValueError("Controlled source-release membership or archive mismatch")
     records = []
@@ -53,8 +53,7 @@ def preview_source_release_evidence(verified, evidence, pinned, *, archive_sha):
             or raw_proof.get("preparationStateDescriptionVerified") is not True
             or len(raw_proof.get("nutrients", {})) != 5
             or raw_proof["nutrients"]["energy_kcal"]["nutrientId"] != selection["selectedFdcNutrientId"]
-            or str(raw_proof["nutrients"]["energy_kcal"]["amount"]) != str(food["energy"]["kcal"])
-            and float(raw_proof["nutrients"]["energy_kcal"]["amount"]) != float(food["energy"]["kcal"])):
+            or float(raw_proof["nutrients"]["energy_kcal"]["amount"]) != float(food["energy"]["kcal"])):
             raise ValueError("Source-release requires original per-food nutrient verification")
         digest = selection["sourcePayloadSha256"]
         if not isinstance(digest, str) or len(digest) != 64:
