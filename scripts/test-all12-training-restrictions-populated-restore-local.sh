@@ -6,8 +6,10 @@
 set -euo pipefail
 test "${CI:-}" = "1"
 db="${1:?isolated PostgreSQL service container required}"
-[[ "$db" == "$(docker ps --filter id="$db" --format '{{.ID}}' | head -n 1)" ]] || {
- echo 'Refusing unknown PostgreSQL container' >&2; exit 1;
+actual="$(docker inspect --format '{{.Id}}' "$db" 2>/dev/null || true)"
+image="$(docker inspect --format '{{.Config.Image}}' "$db" 2>/dev/null || true)"
+[[ -n "$actual" && "$actual" == "$db"* && "$image" == 'postgres:17' ]] || {
+ echo 'Refusing unknown/nonisolated PostgreSQL service container' >&2; exit 1;
 }
 name=allin_restrictions_restore_test
 psql_local() {
