@@ -13,6 +13,13 @@ BEGIN
  OR pg_catalog.to_regclass('public.v2_legal_acceptances') IS NOT NULL
  THEN RAISE EXCEPTION 'Canonical profile foundation already present; do not replay bridge'
   USING ERRCODE='42501'; END IF;
+ IF EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+  JOIN pg_catalog.pg_class c ON c.oid=t.tgrelid
+  WHERE c.oid='auth.users'::pg_catalog.regclass
+    AND t.tgname='v2_on_auth_user_created' AND NOT t.tgisinternal)
+ OR pg_catalog.to_regprocedure('public.v2_handle_new_user()') IS NOT NULL
+ THEN RAISE EXCEPTION 'Auth signup trigger/function already exists; reconcile instead of replacing'
+  USING ERRCODE='42501'; END IF;
  IF pg_catalog.to_regclass('allin_private.v2_account_deletion_requests') IS NULL
  OR pg_catalog.to_regclass('allin_private.v2_account_export_requests_candidate') IS NULL
  OR pg_catalog.to_regclass('public.v2_coach_threads') IS NULL
@@ -673,6 +680,19 @@ revoke all on function public.v2_accept_legal_documents(text, text, text, boolea
 grant execute on function public.v2_accept_legal_documents(text, text, text, boolean, text) to authenticated;
 
 -- END CANONICAL SOURCE supabase/migrations/20261110022457_v2_tighten_profile_privileges_and_legal_versions.sql
+
+-- Preserve preexisting Auth accounts: the canonical trigger applies only to
+-- future inserts. Backfill only the three new canonical owner tables, never
+-- rewrite Coach, Nutrition, Storage, deletion, or export records.
+INSERT INTO public.v2_profiles(user_id,display_name)
+ SELECT u.id,nullif(pg_catalog.btrim(pg_catalog.coalesce(
+  u.raw_user_meta_data->>'display_name',u.raw_user_meta_data->>'name','')),'')
+ FROM auth.users u
+ ON CONFLICT(user_id) DO NOTHING;
+INSERT INTO public.v2_profile_settings(user_id)
+ SELECT u.id FROM auth.users u ON CONFLICT(user_id) DO NOTHING;
+INSERT INTO public.v2_onboarding_progress(user_id)
+ SELECT u.id FROM auth.users u ON CONFLICT(user_id) DO NOTHING;
 
 -- Do not silently alter any original Coach/Nutrition/account-lifecycle
 -- table definition, ACL, RLS, or function while installing canonical owners.
