@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {previewSourceFoods}=require('./preview-v2-usda-archive-admission.cjs');
+const {previewSourceFoods,previewVerifiedSeedPlan}=require('./preview-v2-usda-archive-admission.cjs');
 const evidence=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'),'utf8'));
 const digest=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-225-USDA-EIGHT-PER-FOOD-ENERGY-DIGESTS-2026-11-12.json'),'utf8'));
 const n=(id,amount,unitName='g')=>({nutrient:{id,unitName},amount});
@@ -57,4 +57,37 @@ test('missing source, repeated source or altered form cannot pass admission',()=
   assert.equal(r.status,'review_required');
   assert.equal(r.passedPreflight,7);
   assert.equal(r.publicationApproved,false);
+});
+
+test('dry-run plan uses canonical seed reconciler and is stable across exact replay',async()=>{
+  const first=await previewVerifiedSeedPlan(sample());
+  assert.equal(first.seedPlanStatus,'dry_run_only');
+  assert.equal(first.seedCounts.candidate_insert,8);
+  assert.equal(first.seedCounts.unchanged,0);
+  assert.equal(first.seedCounts.conflict,0);
+  assert.equal(first.canonicalIdsAssigned,false);
+  assert.equal(first.writerAuthorized,false);
+  assert.equal(first.publicationApproved,false);
+  const existing=sample().map(f=>({
+    provider:'usda_fdc',source_data_type:'Foundation',
+    external_record_id:String(f.fdcId),payload_sha256:f.payload_sha256,
+    ingredient_id:null,
+  }));
+  const repeat=await previewVerifiedSeedPlan(sample(),{existing});
+  assert.equal(repeat.seedCounts.unchanged,8);
+  assert.equal(repeat.seedCounts.candidate_insert,0);
+  const changed=existing.map(f=>({...f}));
+  changed[0].payload_sha256='f'.repeat(64);
+  const drift=await previewVerifiedSeedPlan(sample(),{existing:changed});
+  assert.equal(drift.seedCounts.review_changed_source,1);
+  assert.equal(drift.seedCounts.unchanged,7);
+  assert.equal(drift.writerAuthorized,false);
+});
+test('rejected source cannot produce a seed plan',async()=>{
+  const food=sample();
+  food[0].payload_sha256='0'.repeat(64);
+  const result=await previewVerifiedSeedPlan(food);
+  assert.equal(result.seedPlanStatus,'blocked_by_source_review');
+  assert.equal(result.seedCounts,null);
+  assert.equal(result.writerAuthorized,false);
 });
