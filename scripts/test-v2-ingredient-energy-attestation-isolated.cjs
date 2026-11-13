@@ -11,12 +11,17 @@ const lifecycle=read('V2-INGREDIENT-OPERATOR-CREDENTIAL-LIFECYCLE-CANDIDATE.sql'
 const attestSql=read('V2-INGREDIENT-USDA-ENERGY-ATTESTATION-CANDIDATE.sql');
 const evidence=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json'),'utf8'));
 const aliasPolicy=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json'),'utf8'));
+const digestEvidence=JSON.parse(fs.readFileSync(path.join(__dirname,'../docs/evidence/ALL-225-USDA-EIGHT-PER-FOOD-ENERGY-DIGESTS-2026-11-12.json'),'utf8'));
+const pinnedDigestByFdc=new Map(digestEvidence.records.map(r=>[r.fdcId,r]));
+if(digestEvidence.records.length!==8 || pinnedDigestByFdc.size!==8 ||
+   digestEvidence.archiveSha256!==evidence.archiveSha256)
+ throw Error('Pinned official USDA per-food energy/digest inventory drift');
+
 const states=new Map(aliasPolicy.records.map(r=>[r.source_profile_key,r.preparation_state]));
 const uu=(head,i)=>head+String(i).padStart(12,'0').replace(/^(.{4})(.{4})(.{4})$/,'$1-$2-$3'); // unused outside fixtures
 const uuid=(i,group)=>String(group).repeat(8)+'-'+String(group).repeat(4)+'-4'+String(i).padStart(3,'0')+'-8'+String(i).padStart(3,'0')+'-'+String(group).repeat(12);
 const literal=v=>"'"+String(v).replaceAll("'","''")+"'";
 const idp="test-idp.example";
-const shaFor=i=>String(i).padStart(64,'a');
 const query=(id,sha,rev=3)=>"SELECT allin_private.v2_attest_ingredient_energy("+literal(id)+","+rev+","+literal(sha)+",'Verified official Foundation archive and source energy') AS out";
 async function setup(options={}){
  const db=new PGlite();await db.waitReady;
@@ -27,7 +32,13 @@ async function setup(options={}){
  await db.exec("INSERT INTO public.v2_nutrient_definitions(code,display_name,canonical_unit,launch_core,is_published) VALUES('energy_kcal','Energy','kcal',true,true),('protein_g','Protein','g',true,true),('carbohydrate_g','Carbs','g',true,true),('total_fat_g','Total fat','g',true,true),('sodium_mg','Sodium','mg',false,true)");
  let rows=[];
  for(let i=0;i<evidence.records.length;i++){
-   const r=evidence.records[i],key=r.profile,identity=uuid(i+1,'1'),profile=uuid(i+1,'2'),source=uuid(i+1,'3'),digest=String(i+1).repeat(64);
+   const r=evidence.records[i],key=r.profile,identity=uuid(i+1,'1'),profile=uuid(i+1,'2'),source=uuid(i+1,'3');
+   const verified=pinnedDigestByFdc.get(r.fdcId);
+   if(!verified || verified.selectedFdcNutrientId!==Number(r.energy.code) ||
+      verified.selectedEnergyKcal!==r.energy.kcal ||
+      !/^[a-f0-9]{64}$/.test(verified.sourcePayloadSha256))
+     throw Error('USDA pinned per-food energy/digest mismatch for FDC '+r.fdcId);
+   const digest=verified.sourcePayloadSha256;
    const state=states.get(key);assert(state,'missing accepted preparation state');
    await db.exec("INSERT INTO public.v2_ingredients(id,canonical_key,canonical_name,normalized_name,identity_kind,status) VALUES("+[identity,key,r.v1,key,'generic_food','active'].map(literal).join(',')+")");
    await db.exec("INSERT INTO public.v2_ingredient_nutrition_profiles(id,ingredient_id,preparation_state,basis_unit,basis_quantity,basis_label,coverage_status,review_status,source_quality,profile_revision,required_nutrient_set_version,is_default) VALUES("+[profile,identity,state,'g',100,'100 g','launch_core_complete','reviewed','Foundation',3,'cookbook-launch-macros-v1',false].map(v=>typeof v==='boolean'?String(v):typeof v==='number'?String(v):literal(v)).join(',')+")");
