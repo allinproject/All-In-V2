@@ -3,7 +3,10 @@
  * persistence for the EXISTING export workflow. NOT deployed; no bucket created.
  *
  * A trusted server must provide a service-role Supabase client and a live
- * owner/session/request-validated expiry lookup. No arbitrary bucket/path,
+ * owner/session/request-validated expiry lookup and a trusted write barrier.
+ * The callback contract alone does NOT establish DB/Storage atomicity;
+ * release requires independently proven durable leases and claim fencing.
+ * No arbitrary bucket/path,
  * user-supplied URL, signed link or direct client Storage access.
  */
 export const PRIVATE_ACCOUNT_EXPORT_BUCKET='v2-private-account-exports';
@@ -16,11 +19,12 @@ function archivePath(ownerId,requestId) {
  return ownerId+'/'+requestId+'/archive.aesgcm.json';
 }
 export function createSupabasePrivateArchivePersistence({
- serviceClient,readApprovedRequestExpiry,
+ serviceClient,readApprovedRequestExpiry,withOwnerStorageWriteBarrier,
 }) {
  if(typeof serviceClient?.storage?.getBucket!=='function'
     ||typeof serviceClient?.storage?.from!=='function'
-    ||typeof readApprovedRequestExpiry!=='function') {
+    ||typeof readApprovedRequestExpiry!=='function'
+    ||typeof withOwnerStorageWriteBarrier!=='function') {
    throw new Error('Trusted private archive persistence dependencies required');
  }
  async function checkBucket(){
@@ -55,10 +59,23 @@ export function createSupabasePrivateArchivePersistence({
    if(bytes.byteLength===0||bytes.byteLength>MAX_ENVELOPE_BYTES)
      throw new Error('Encrypted archive exceeds persistence bound');
    // Never upsert another archive or downgrade bucket privacy.
-   const {data,error}=await serviceClient.storage.from(PRIVATE_ACCOUNT_EXPORT_BUCKET)
-     .upload(path,new Blob([bytes],{type:'application/octet-stream'}),{
-       upsert:false,contentType:'application/octet-stream',cacheControl:'0',
-     });
+   // Privileged uploads bypass Storage RLS. The trusted server must
+   // surround the HTTP write with its durable deletion/write barrier.
+   // A standalone DB preflight is not an atomic barrier.
+   let writes=0;
+   const result=await withOwnerStorageWriteBarrier({
+     ownerId,requestId,bucketId:PRIVATE_ACCOUNT_EXPORT_BUCKET,objectPath:path,
+     operation:'insert',write:async()=>{
+       writes++;
+       if(writes!==1)throw Error('Private archive write called more than once');
+       return serviceClient.storage.from(PRIVATE_ACCOUNT_EXPORT_BUCKET)
+         .upload(path,new Blob([bytes],{type:'application/octet-stream'}),{
+           upsert:false,contentType:'application/octet-stream',cacheControl:'0',
+         });
+     },
+   });
+   if(writes!==1)throw Error('Private archive barrier did not execute write');
+   const {data,error}=result??{};
    if(error||data?.path!==path)
      throw new Error('Private encrypted archive upload was not confirmed');
    return {ownerId,requestId,archiveId:path,encrypted:true,private:true,
@@ -140,12 +157,13 @@ export async function purgeExpiredAccountExportArchives({
  * for every streamed page; this adapter additionally checks the request lease.
  */
 export function createSupabasePagedAccountExportStorage({
- serviceClient,readApprovedRequestExpiry,
+ serviceClient,readApprovedRequestExpiry,withOwnerStorageWriteBarrier,
 }) {
  if(typeof serviceClient?.storage?.getBucket!=='function'
   ||typeof serviceClient?.storage?.from!=='function'
-  ||typeof readApprovedRequestExpiry!=='function')
-  throw Error('Trusted paged account archive services required');
+  ||typeof readApprovedRequestExpiry!=='function'
+  ||typeof withOwnerStorageWriteBarrier!=='function')
+  throw Error('Trusted paged account archive services and write barrier required');
  const part=(ownerId,requestId)=>{
   if(!UUID.test(ownerId??'')||!UUID.test(requestId??''))
    throw Error('Exact owner and request required');
@@ -173,10 +191,20 @@ export function createSupabasePagedAccountExportStorage({
   const raw=new TextEncoder().encode(JSON.stringify(obj));
   if(raw.byteLength===0||raw.byteLength>MAX_ENVELOPE_BYTES)
    throw Error('Oversized private export object');
-  const {data,error}=await serviceClient.storage.from(PRIVATE_ACCOUNT_EXPORT_BUCKET)
-   .upload(path,new Blob([raw],{type:'application/octet-stream'}),{
-    upsert:false,contentType:'application/octet-stream',cacheControl:'0',
-   });
+  let writes=0;
+  const result=await withOwnerStorageWriteBarrier({
+   ownerId,requestId,bucketId:PRIVATE_ACCOUNT_EXPORT_BUCKET,objectPath:path,
+   operation:'insert',write:async()=>{
+    writes++;
+    if(writes!==1)throw Error('Private page write called more than once');
+    return serviceClient.storage.from(PRIVATE_ACCOUNT_EXPORT_BUCKET)
+     .upload(path,new Blob([raw],{type:'application/octet-stream'}),{
+      upsert:false,contentType:'application/octet-stream',cacheControl:'0',
+     });
+   },
+  });
+  if(writes!==1)throw Error('Private page barrier did not execute write');
+  const {data,error}=result??{};
   if(error||data?.path!==path)throw Error('Private account export write unconfirmed');
  }
  async function read(ownerId,requestId,path){
