@@ -277,3 +277,46 @@ no private action internals, and explicitly verify that NONE of the four
 candidate tables enters the canonical owner inventory before owner schema,
 media and retention approval. Actual PostgreSQL and CI acceptance results
 remain distinct from documenting this intended contract.
+
+
+## 2026-11-13 — Live/staging source classification reconciliation (ALL-251 step 1)
+
+This is an evidence-backed classification checkpoint, **not approval of a
+complete account export**. Read-only catalog checks observed 12 `v2_*`
+application tables in live V2 `xarhuczrtzuiljmtdaeu` and 28 in the
+approved temporary staging project `fbtgknlxjyeqrxemskbl`. These are
+distinct deployment snapshots; neither may be assumed to represent the
+full intended canonical Training/Completed Activity/Fuel/Community schema.
+The paginated candidate still requires its own exact reviewed owner-table
+registry, approved Auth/session/request, and repeatable-read snapshot.
+
+| Existing source class | Current observed tables | ALL-251 export treatment |
+| --- | --- | --- |
+| Owner Profile, onboarding, legal | `public.v2_profiles`, `v2_profile_settings`, `v2_onboarding_progress`, `v2_legal_acceptances` and associated private owner action rows | Preserve owner-only redacted projections in the existing canonical reader |
+| Coach owner content | Staging `public.v2_coach_threads`, `public.v2_coach_messages`, `allin_private.v2_coach_turn_claims` | Owner-visible conversations only with complete history and provenance; internal request fingerprints/turn-claim credentials are not raw exportable fields |
+| Consumed Food Log | Staging `public.v2_food_log_entries`, `allin_private.v2_food_log_write_actions` | User consumption records, exact quantities, source and tombstone history require the already-drafted ALL-247 projection; redact replay fingerprints and do **not** classify internal action rows as absent. Hydration is not yet installed in staging |
+| Ingredient/nutrient catalog | Staging `public.v2_ingredients`, `v2_ingredient_*`, `v2_nutrient_definitions` plus private independent review/attestation tables | **Reference/operational candidate** only. Catalog rows are not implicitly an athlete's personal log; independent source-officer identities, review payloads, USDA evidence, and hashes may not be dumped into athlete archives. Must formally review personal user additions or overrides if introduced |
+| Coach request limits and operational claims | Staging `allin_private.v2_coach_request_policy` and turn-claim ledger | Policy constants are not personal history. Verify each account-bound operational receipt's privacy/redaction/retention before release |
+| Storage/upload safety | Staging `allin_private.v2_privileged_storage_write_leases_review`, two private buckets | **Operational restriction ledger** only. Must be accounted for during deletion/retention, never misrepresented as exported file bytes; account export requires exact private source paths and actual checksummed object bytes through the existing Storage adapter |
+| Account export/deletion | Staging `allin_private.v2_account_export_requests_candidate`, `v2_account_deletion_requests` | Redacted owner request/status/time metadata only; never expose `session_id`, key leases, internal audit tokens or service credentials |
+| Training/Completed Activity, Events/Goals, Community, Progress, future Nutrition | Candidate contracts exist in source, but the complete production-like source graph is not installed in this staging snapshot | Remain **unapproved for complete export** until all relevant owner relations, alternate-key/counterparty relationships, storage objects, source provenance and replay history are reviewed and exercised together |
+
+The **same additional fail-closed domain guard** now appears in both the
+inline and paginated canonical SQL review candidates for
+`v2_ingredient_%`, `v2_nutrient_%`, `v2_coach_request_%`, and
+`v2_privileged_storage_%`. Existing Food/Progress, alternate-owner and
+Community guards remain intact; source-level catalog alignment regression
+checks enforce equality. These guards are intentionally conservative: a
+legitimate shared reference catalog should be added to an **explicit
+reviewed classification** rather than switching complete to true or
+silently excluding a new owner-bearing table.
+
+**Release gate:** The canonical inventory reports `complete=false`.
+Before a complete archive can be authorized, reconcile and register the
+actual deployed owner/counterparty tables (including Food Log/Hydration,
+Training and Community) in the existing source registry; review projections
+against the owning privacy/retention policy; prove private media bytes,
+owner isolation, redaction, cursor consistency and recovery on a
+representative populated database. No production migration, new table,
+client permission, export-download switch or AWS KMS resource is approved
+by this classification checkpoint.
