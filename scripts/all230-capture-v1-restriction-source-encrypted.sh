@@ -68,7 +68,11 @@ receipt="$dir/$prefix.capture.json"
 temp="$encrypted.part"
 [[ ! -e "$encrypted" && ! -e "$receipt" && ! -e "$temp" ]] ||
  { echo 'Refusing archive overwrite' >&2; exit 1; }
-cleanup() { rm -f -- "$temp" "$receipt.part"; }
+success=NO
+cleanup() {
+ rm -f -- "$temp" "$receipt.part"
+ if [[ "$success" != YES ]]; then rm -f -- "$encrypted" "$receipt"; fi
+}
 trap cleanup EXIT
 start="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # pg_dump produces plaintext only in the PRIVATE PIPE; age writes ciphertext
@@ -83,7 +87,8 @@ digest="$(sha256sum "$temp" | cut -d ' ' -f 1)"
 [[ "$digest" =~ ^[a-f0-9]{64}$ ]] ||
  { echo 'Encrypted archive digest invalid' >&2; exit 1; }
 end="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-mv -n -- "$temp" "$encrypted"
+ln -- "$temp" "$encrypted"
+rm -f -- "$temp"
 # Metadata is deliberately NOT a trusted acquisition / import manifest.
 # It cannot establish a precise snapshot cutoff or complete V1 source scope.
 (
@@ -91,7 +96,9 @@ mv -n -- "$temp" "$encrypted"
  printf '{"sourceProjectRef":"impulecgsgaruvniuttc","captureMethod":"restricted_v1_logical_pg_dump_age","ciphertextSha256":"%s","captureStartedUtc":"%s","captureCompletedUtc":"%s","tableCount":11,"scopeExhaustive":false,"snapshotCutoffPreciselyProven":false,"independentSourceCustodyAccepted":false,"importHistoryComplete":false,"ownerLimitationMapped":false,"initialCertificationAuthorized":false}\n' \
  "$digest" "$start" "$end" > "$receipt.part"
 )
-mv -n -- "$receipt.part" "$receipt"
+ln -- "$receipt.part" "$receipt"
+rm -f -- "$receipt.part"
+success=YES
 trap - EXIT
 # Printing artifact paths on a private operator terminal is safe; never log
 # them to CI or transmit the encrypted archive to GitHub.
