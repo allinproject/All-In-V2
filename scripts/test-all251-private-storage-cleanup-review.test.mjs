@@ -27,6 +27,7 @@ function fixture() {
     objects.delete(path);return {deleted:true};
    },
    recordCheckpoint:async(entry)=>{checkpoints.push(entry);},
+   assertOwnerWritesQuiesced:async({ownerId,requestId})=>ownerId===A&&requestId===R,
   },
  };
 }
@@ -70,4 +71,28 @@ test('invalid owner and missing durable checkpoint dependency fail',async()=>{
  await assert.rejects(reviewPrivateStorageCleanup(f.opts),/dependencies required/);
  delete f.opts.recordCheckpoint;
  await assert.rejects(reviewPrivateStorageCleanup(f.opts),/dependencies required/);
+});
+
+test('write barrier missing, false or expired blocks acceptance',async()=>{
+ const absent=fixture();
+ delete absent.opts.assertOwnerWritesQuiesced;
+ await assert.rejects(reviewPrivateStorageCleanup(absent.opts),/dependencies required/);
+ assert.equal(absent.objects.size,3);
+ const denied=fixture();
+ denied.opts.assertOwnerWritesQuiesced=async()=>false;
+ await assert.rejects(reviewPrivateStorageCleanup(denied.opts),/not authoritatively quiesced/);
+ assert.equal(denied.objects.size,3);
+ const expires=fixture();
+ let calls=0;
+ expires.opts.assertOwnerWritesQuiesced=async()=>++calls<3;
+ await assert.rejects(reviewPrivateStorageCleanup(expires.opts),/barrier expired/);
+ assert.equal(expires.objects.has(B+'/leave-me.fit'),true);
+});
+test('bucket catalog changes before final release fails closed',async()=>{
+ const f=fixture();let count=0;
+ f.opts.listBucketCatalog=async()=>++count===1?
+  [{id:bucketId,public:false}]:
+  [{id:bucketId,public:false},{id:'unexpected-private',public:false}];
+ await assert.rejects(reviewPrivateStorageCleanup(f.opts),/catalog changed/);
+ assert.equal(f.objects.has(B+'/leave-me.fit'),true);
 });
