@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 -- ALL-251 isolated ONLY. Actual ALL-247 candidate schema, real approved
--- request gate, synthetic A/B identities. Test-only inventory permission
--- override is always reverted by the transaction ROLLBACK.
+-- request gate, synthetic A/B identities. The real canonical inventory is
+-- exercised without any test-only RPC override; all fixtures ROLLBACK.
 BEGIN ISOLATION LEVEL REPEATABLE READ;
 INSERT INTO auth.users(id) VALUES
  ('a6111111-1111-4111-8111-111111111111'),
@@ -36,39 +36,29 @@ VALUES
   '2026-11-12 12:00:00+00','2026-11-12','America/Chicago',
   'snack','OWNER_B_FOOD_SECRET',1,'each',300,'user_entered');
 
--- Current inventory blocks the new ALL-247 owner table before release.
+-- Food/Hydration have since joined the actual canonical inventory when
+-- all four owner tables pass strict FK, RLS, and role-grant preflight.
+-- Never substitute a mock inventory or infer a complete export.
 SET LOCAL ROLE service_role;
-DO $unapproved$
+DO $canonical_fuel_inventory$
+DECLARE
+ v jsonb;
 BEGIN
- BEGIN
-  PERFORM public.v2_account_export_page_review_candidate(
-   'a6111111-1111-4111-8111-111111111111',
-   'a6333333-3333-4333-8333-333333333333',
-   'a6555555-5555-4555-8555-555555555555','public.v2_food_log_entries',NULL,25);
-  RAISE EXCEPTION 'Unapproved food log exported by live canonical registry';
- EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-END $unapproved$;
+ v:=public.v2_account_export_inventory_review_candidate(
+  'a6111111-1111-4111-8111-111111111111',
+  'a6333333-3333-4333-8333-333333333333',
+  'a6555555-5555-4555-8555-555555555555');
+ IF v->>'complete'<>'false'
+   OR v->>'ownerTableCount'<>'47'
+   OR NOT (v->'collections' ?& ARRAY[
+    'public.v2_food_log_entries',
+    'allin_private.v2_food_log_write_actions',
+    'public.v2_hydration_events',
+    'allin_private.v2_hydration_actions'])
+ THEN RAISE EXCEPTION 'Canonical Fuel inventory incomplete or prematurely released: %',v; END IF;
+ RAISE NOTICE 'PASS ALL-251: real canonical 43+4 owner inventory, incomplete release';
+END $canonical_fuel_inventory$;
 RESET ROLE;
--- This stub does NOT approve production; it exercises the post-gate exact
--- projection under the real Auth session/request authorizer, then ROLLBACK.
-CREATE OR REPLACE FUNCTION public.v2_account_export_inventory_review_candidate(
- p_owner uuid,p_session uuid,p_request uuid
-) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
-AS $test_only_inventory$
-BEGIN
- PERFORM allin_private.v2_account_export_authorize_request_candidate(
-  p_owner,p_session,p_request);
- IF pg_catalog.current_setting('transaction_isolation') <> 'repeatable read'
- THEN RAISE EXCEPTION 'Snapshot required' USING ERRCODE='42501'; END IF;
- RETURN pg_catalog.jsonb_build_object(
-  'ownerId',p_owner,'requestId',p_request,'snapshotId',p_request,
-  'collections',pg_catalog.jsonb_build_array(
-   'public.v2_food_log_entries',
-   'allin_private.v2_food_log_write_actions',
-   'public.v2_hydration_events',
-   'allin_private.v2_hydration_actions'),
-  'complete',false);
-END $test_only_inventory$;
 
 SET LOCAL ROLE service_role;
 DO $food_two_owner$
