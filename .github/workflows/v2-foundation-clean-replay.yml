@@ -162,6 +162,7 @@ jobs:
           node --test scripts/all12-recovery-domain-manifest.test.mjs
           node --test scripts/all12-verify-logical-archive.test.mjs
           node --test scripts/all12-capture-approved-logical-backup.test.mjs
+          node --test scripts/all12-verify-real-source-offline-target.test.mjs
       - name: Verify applied foundation SQL has not drifted
         run: |
           node --test scripts/check-v2-applied-migration-integrity.test.mjs
