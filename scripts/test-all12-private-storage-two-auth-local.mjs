@@ -164,9 +164,26 @@ try{
  // credentials, not necessarily already-issued bearer JWTs.
  console.log('PASS ALL-12: persisted fixture bytes restored; valid second Auth session denied private bytes; owner SHA-256 verified');
 }finally{
- if(backupDir)rmSync(backupDir,{recursive:true,force:true});
- if(policy)sql(`DROP POLICY IF EXISTS "all12_${nonce}" ON storage.objects`);
- for(const path of paths.reverse())await req('DELETE','/storage/v1/object/'+bucket+'/'+path,admin,null);
- if(createdBucket)await req('DELETE','/storage/v1/bucket/'+bucket,admin,null);
- for(const {id} of users.reverse())await req('DELETE','/auth/v1/admin/users/'+id,admin,null);
+ const cleanupErrors=[];
+ if(policy){
+  try{sql(`DROP POLICY IF EXISTS "all12_${nonce}" ON storage.objects`);}
+  catch(e){cleanupErrors.push('policy: '+e.message);}
+ }
+ for(const path of paths.reverse()){
+  try{const r=await req('DELETE','/storage/v1/object/'+bucket+'/'+path,admin,null);if(!r.ok)cleanupErrors.push('file HTTP '+r.status);}
+  catch(e){cleanupErrors.push('file: '+e.message);}
+ }
+ if(createdBucket){
+  try{const r=await req('DELETE','/storage/v1/bucket/'+bucket,admin,null);if(!r.ok)cleanupErrors.push('bucket HTTP '+r.status);}
+  catch(e){cleanupErrors.push('bucket: '+e.message);}
+ }
+ for(const {id} of users.reverse()){
+  try{const r=await req('DELETE','/auth/v1/admin/users/'+id,admin,null);if(!r.ok)cleanupErrors.push('user HTTP '+r.status);}
+  catch(e){cleanupErrors.push('user: '+e.message);}
+ }
+ if(backupDir){
+  try{rmSync(backupDir,{recursive:true,force:true});}
+  catch(e){cleanupErrors.push('backup artifact: '+e.message);}
+ }
+ assert.deepEqual(cleanupErrors,[],'ALL-12 fixture cleanup must complete');
 }
