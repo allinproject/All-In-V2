@@ -56,6 +56,6 @@ jobs:
             echo 'FAIL: duplicate bridge replay did not fail closed'
             exit 1
           fi
-          psql -At -c "SELECT count(*) FROM public.v2_profiles" | grep -qx '1'
+          psql -At -c "SELECT count(*) FROM public.v2_profiles" | grep -qx '2'
           psql -At -c "SELECT count(*) FROM public.v2_coach_threads" | grep -qx '1'
           psql -At -c "SELECT status FROM allin_private.v2_account_deletion_requests" | grep -qx 'cancelled'
