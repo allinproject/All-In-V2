@@ -21,6 +21,8 @@ function todayOnDevice(): string {
 }
 const weekdayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 type CalendarLevel = 'month' | 'week';
+type TrainTab = 'calendar' | 'plans' | 'routes_routines';
+type PlansTab = 'training' | 'event';
 // Canonical Training/Completed Activity readers are not yet approved or connected.
 // The mounted view consumes the shared verified read model, never synthetic workouts.
 const markerSymbols: Record<CalendarWorkoutMarker['kind'], string> = {
@@ -50,6 +52,8 @@ function TrainingCalendarOwnerScreen() {
   const [day, setDay] = useState(initialDay);
   const [month, setMonth] = useState(firstOfMonth(initialDay) ?? initialDay);
   const [level, setLevel] = useState<CalendarLevel>('week');
+  const [activeTab, setActiveTab] = useState<TrainTab>('calendar');
+  const [plansTab, setPlansTab] = useState<PlansTab>('training');
   // A mounted Train route can receive a new date after Add Workout returns.
   // Only a valid explicit route-date change should select a different day.
   useEffect(() => {
@@ -102,7 +106,20 @@ function TrainingCalendarOwnerScreen() {
           </Pressable>
         </Link>
         <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-        <Text accessibilityRole="header" style={styles.title}>Training Calendar</Text>
+        <Text accessibilityRole="header" style={styles.title}>Train</Text>
+        <View style={styles.compactTabs} accessibilityRole="tablist">
+          {([
+            ['calendar', 'Calendar'], ['plans', 'Plans'], ['routes_routines', 'Routes/Routines'],
+          ] as const).map(([tab, label]) => (
+            <Pressable key={tab} accessibilityRole="tab" accessibilityState={{selected: activeTab === tab}}
+              accessibilityLabel={label} onPress={() => setActiveTab(tab)}
+              style={[styles.compactTab, activeTab === tab && styles.activeCompactTab]}>
+              <Text style={[styles.compactTabText, activeTab === tab && styles.activeCompactTabText]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {activeTab === 'calendar' ? (
+          <>
         <Link href="/goals" asChild>
           <Pressable accessibilityRole="button" accessibilityLabel="Review your goals"
             style={styles.card}>
@@ -210,6 +227,39 @@ function TrainingCalendarOwnerScreen() {
           </>
         )}
         <Text style={styles.note}>Dates currently follow this device's local timezone. Athlete-profile timezone and real workout records remain pending.</Text>
+          </>
+        ) : activeTab === 'plans' ? (
+          <>
+            <View style={styles.compactTabs} accessibilityRole="tablist">
+              {([['training', 'Training Plan'], ['event', 'Event Plan']] as const).map(([tab, label]) => (
+                <Pressable key={tab} accessibilityRole="tab"
+                  accessibilityState={{selected: plansTab === tab}}
+                  onPress={() => setPlansTab(tab)}
+                  style={[styles.compactTab, plansTab === tab && styles.activeCompactTab]}>
+                  <Text style={[styles.compactTabText, plansTab === tab && styles.activeCompactTabText]}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+            {plansTab === 'training' ? (
+              <View style={styles.card}>
+                <Text style={styles.section}>Training Plan</Text>
+                <Text style={styles.muted}>Training preparation, progression, weekly structure, recovery and taper belong here. The accepted Training Plan reader and review/apply writer are not connected yet; no plan can be shown or changed from this screen.</Text>
+              </View>
+            ) : (
+              <View style={styles.card}>
+                <Text style={styles.section}>Event Plan</Text>
+                <Text style={styles.muted}>Your upcoming events and event-specific Coach strategies will appear here after the private, owner-certified Event reader is connected. We cannot verify whether you have events yet.</Text>
+                <Text style={styles.muted}>Event overview, strategy, course or sport-specific logistics, fueling when relevant, and event-day execution will share one expandable detail page. Training preparation stays in Training Plan.</Text>
+                <Text style={styles.note}>Event creation, website import, event details and automatic strategy refresh are not active in this V2 screen yet.</Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <View style={styles.card}>
+            <Text style={styles.section}>Routes/Routines</Text>
+            <Text style={styles.muted}>Route editing and reusable workout routines are not mounted in this V2 screen yet. Your saved routes and routines have not been checked; they are not being reported as empty.</Text>
+          </View>
+        )}
       </ScrollView>
       <V2BottomNavigation />
     </SafeAreaView>
@@ -244,4 +294,9 @@ const styles = StyleSheet.create({
   addButton:{minHeight:48,borderColor:colors.gold,borderWidth:1,borderRadius:14,justifyContent:'center',alignItems:'center',backgroundColor:colors.surfaceRaised},
   addText:{color:colors.goldSoft,fontSize:16,fontWeight:'800'},
   note:{color:colors.mutedText,fontSize:12,lineHeight:18},
+  compactTabs:{flexDirection:'row',gap:4,alignItems:'stretch'},
+  compactTab:{flex:1,minWidth:0,minHeight:44,alignItems:'center',justifyContent:'center',borderRadius:10,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface,paddingHorizontal:3},
+  activeCompactTab:{borderColor:colors.gold,backgroundColor:colors.surfaceRaised},
+  compactTabText:{fontSize:12,fontWeight:'600',color:colors.mutedText,textAlign:'center'},
+  activeCompactTabText:{color:colors.goldSoft,fontWeight:'800'},
 });
