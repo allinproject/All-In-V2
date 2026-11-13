@@ -14,7 +14,7 @@ export function assessOfflineTarget({capture,toc,digest,networkMode,database}){
     capture.archiveSha256?.toLowerCase()!==digest?.toLowerCase())blockers.push('digest_mismatch');
  if(capture?.catalogPreflightAndPostflightMatch!==true)blockers.push('unverified_source_inventory');
  if(networkMode!=='none')blockers.push('target_has_network');
- if(!/^all12_[a-z0-9_]+$/.test(database??''))blockers.push('unsafe_restore_database');
+ if(!(/^(?:postgres|all12_[a-z0-9_]+)$/.test(database??'')))blockers.push('unsafe_restore_database');
  const items=parsePgRestoreToc(toc??'');
  const tables=items.filter(x=>x.kind==='table').map(x=>x.name);
  const seq=items.filter(x=>x.kind==='sequence').map(x=>x.name);
@@ -57,6 +57,12 @@ async function main(){
   const count=psql('SELECT count(*) FROM "'+schema+'"."'+name+'";');
   assert(/^\d+$/.test(count),'invalid table count');
   tableCounts.push({table,rows:Number(count)});
+ }
+ // The captured actual source had one disabled processor singleton, and zero
+ // rows in the other 15 scoped tables. Reject synthetic two-athlete targets.
+ for(const entry of tableCounts){
+  const expected=entry.table==='allin_private.v2_account_deletion_processor_config'?1:0;
+  if(entry.rows!==expected)throw Error('restored table count does not match the reported real-source cutoff: '+entry.table);
  }
  const sequence=psql("SELECT last_value::text||','||is_called::text FROM auth.refresh_tokens_id_seq;");
  const rls=psql("SELECT count(*)::text||','||(count(*) FILTER (WHERE c.relrowsecurity))::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p') AND c.relname LIKE 'v2_%';");
