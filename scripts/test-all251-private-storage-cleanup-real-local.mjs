@@ -74,6 +74,10 @@ try {
    row.ownerId===ownerId&&row.requestId===requestId&&row.bucketId===bucketId&&row.path===path),
   // TEST-ONLY stub: no real Storage write barrier is claimed by this test.
   assertOwnerWritesQuiesced:async()=>true,
+  // TEST-ONLY memory check, NOT durable Postgres proof.
+  verifyBucketCheckpoints:async({ownerId,requestId,bucketId,plannedCount})=>
+   checkpoints.filter(c=>c.ownerId===ownerId&&c.requestId===requestId&&
+    c.bucketId===bucketId&&c.state==='absent_verified').length===plannedCount,
  };
  const first=await reviewPrivateStorageCleanup(opts);
  assert.equal(first.reviewOnly,true);
