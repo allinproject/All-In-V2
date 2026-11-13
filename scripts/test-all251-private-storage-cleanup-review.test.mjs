@@ -41,6 +41,9 @@ function fixture() {
    readCheckpoint:async({ownerId,requestId,bucketId,path})=>checkpoints.find(c=>
     c.ownerId===ownerId&&c.requestId===requestId&&c.bucketId===bucketId&&c.path===path),
    assertOwnerWritesQuiesced:async({ownerId,requestId})=>ownerId===A&&requestId===R,
+   verifyBucketCheckpoints:async({ownerId,requestId,bucketId,plannedCount})=>
+    checkpoints.filter(c=>c.ownerId===ownerId&&c.requestId===requestId&&
+     c.bucketId===bucketId&&c.state==='absent_verified').length===plannedCount,
   },
  };
 }
@@ -182,4 +185,18 @@ test('barrier loss before checkpoint refuses false success',async()=>{
  await assert.rejects(reviewPrivateStorageCleanup(f.opts),/expired before checkpoint/);
  assert.equal(f.checkpoints.length,0);
  assert.equal(f.objects.has(B+'/leave-me.fit'),true);
+});
+
+test('incomplete database-wide checkpoint coverage blocks receipt',async()=>{
+ const f=fixture();
+ f.opts.verifyBucketCheckpoints=async()=>false;
+ await assert.rejects(reviewPrivateStorageCleanup(f.opts),/checkpoint coverage incomplete/);
+ assert.equal(f.objects.has(B+'/leave-me.fit'),true);
+ assert.equal(f.checkpoints.length,2);
+});
+test('missing checkpoint coverage verifier is not silently skipped',async()=>{
+ const f=fixture();
+ delete f.opts.verifyBucketCheckpoints;
+ await assert.rejects(reviewPrivateStorageCleanup(f.opts),/dependencies required/);
+ assert.equal(f.objects.size,3);
 });
