@@ -20,6 +20,8 @@ on:
       - 'scripts/test-v2-usda-source-release-preview.py'
       - 'scripts/run-v2-ingredient-auto-qualification.cjs'
       - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-READER-CANDIDATE.sql'
+      - 'scripts/test-v2-ingredient-catalog-reader-isolated.cjs'
       - 'scripts/test-v2-ingredient-auto-qualification-isolated.cjs'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'
@@ -63,6 +65,8 @@ on:
       - 'scripts/test-v2-usda-source-release-preview.py'
       - 'scripts/run-v2-ingredient-auto-qualification.cjs'
       - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-READER-CANDIDATE.sql'
+      - 'scripts/test-v2-ingredient-catalog-reader-isolated.cjs'
       - 'scripts/test-v2-ingredient-auto-qualification-isolated.cjs'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-SCHEMA-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-REVIEW-WRITER-CANDIDATE.sql'
@@ -127,6 +131,8 @@ jobs:
         run: |
           npm install --prefix /tmp/allin-pglite --no-save --ignore-scripts --package-lock=false @electric-sql/pglite@0.3.16
           PGLITE_MODULE=/tmp/allin-pglite/node_modules/@electric-sql/pglite/dist/index.cjs node --test scripts/test-v2-ingredient-auto-qualification-isolated.cjs
+      - name: Prove least-privilege catalog reader RLS with unqualified profiles in disposable PostgreSQL
+        run: PGLITE_MODULE=/tmp/allin-pglite/node_modules/@electric-sql/pglite/dist/index.cjs node --test scripts/test-v2-ingredient-catalog-reader-isolated.cjs
       - name: Exercise eight pinned USDA energy attestations and fail-closed replay in disposable PGlite
         run: PGLITE_MODULE=/tmp/allin-pglite/node_modules/@electric-sql/pglite/dist/index.cjs node --test scripts/test-v2-ingredient-energy-attestation-isolated.cjs
       - name: Verify canonical ingredient SQL writer guards without deployment
