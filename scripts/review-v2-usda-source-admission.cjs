@@ -30,6 +30,16 @@ function reviewUsdaAdmission(input){
        food.source_description!==ref.source_food_description||
        food.archive_sha256!==input.sourceEvidence.archiveSha256)
        flag('source_provenance_mismatch:'+key);
+    // Raw archive bytes are verified separately by the pinned USDA verifier.
+    // This review-only join must still reject a missing or drifted per-food
+    // digest. Comparing two manifest fields is not itself archive verification.
+    const reviewedDigest=binding.nutrition_evidence?.source_payload_sha256_verified;
+    if(typeof food.payload_sha256!=='string'||
+       !/^[a-f0-9]{64}$/.test(food.payload_sha256)||
+       typeof reviewedDigest!=='string'||
+       !/^[a-f0-9]{64}$/.test(reviewedDigest)||
+       food.payload_sha256!==reviewedDigest)
+      flag('source_digest_reference_mismatch:'+key);
     // Scope sodium to the reviewed food form rather than arbitrary caller input.
     const normalized=validateFdcNutrients({
       provider:food.provider,dataType:food.dataType,fdcId:food.fdcId,
