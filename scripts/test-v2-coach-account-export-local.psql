@@ -76,6 +76,12 @@ INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind)
          'Shared test race','running','race');
 INSERT INTO public.v2_event_groups(id,event_id,state)
  VALUES ('72222222-6222-4222-8222-622222222222','71111111-6111-4111-8111-611111111111','active');
+-- Exact accepted revision/Event edition links must round-trip per owner.
+INSERT INTO public.v2_goal_event_edition_links
+ (goal_id,goal_revision_id,user_id,event_id,edition_id,event_version)
+VALUES
+ ('d1111111-6111-4111-8111-611111111111','e1111111-6111-4111-8111-611111111111','61111111-6111-4111-8111-611111111111','71111111-6111-4111-8111-611111111111','73333333-6333-4333-8333-633333333333',1),
+ ('d2222222-6222-4222-8222-622222222222','e2222222-6222-4222-8222-622222222222','62222222-6222-4222-8222-622222222222','71111111-6111-4111-8111-611111111111','73333333-6333-4333-8333-633333333333',1);
 INSERT INTO public.v2_event_group_memberships(user_id,event_id,group_id)
  VALUES
  ('61111111-6111-4111-8111-611111111111','71111111-6111-4111-8111-611111111111','72222222-6222-4222-8222-622222222222'),
@@ -139,7 +145,10 @@ DECLARE
  v_part jsonb;
 BEGIN
  v_data := public.v2_export_my_account_snapshot('61111111-6111-4111-8111-611111111111');
- IF v_data->'goals'->'goals'->0->>'title' <> 'Owner A private goal'
+ IF v_data->'goals'->'event_edition_links'->0->>'goal_revision_id' <> 'e1111111-6111-4111-8111-611111111111'
+    OR jsonb_array_length(v_data->'goals'->'event_edition_links')<>1
+    OR v_data::text LIKE '%e2222222-6222-4222-8222-622222222222%'
+    OR v_data->'goals'->'goals'->0->>'title' <> 'Owner A private goal'
     OR jsonb_array_length(v_data->'goals'->'revisions') <> 1
     OR jsonb_array_length(v_data->'goals'->'behavior_targets') <> 1
     OR jsonb_array_length(v_data->'goals'->'acceptance_actions') <> 1
@@ -183,7 +192,10 @@ DECLARE v_data jsonb;
 BEGIN
  v_data := public.v2_export_my_account_snapshot('62222222-6222-4222-8222-622222222222');
  v_part := v_data->'coach_conversation';
- IF v_data->'goals'->'goals'->0->>'title' <> 'Owner B private goal'
+ IF v_data->'goals'->'event_edition_links'->0->>'goal_revision_id' <> 'e2222222-6222-4222-8222-622222222222'
+    OR jsonb_array_length(v_data->'goals'->'event_edition_links')<>1
+    OR v_data::text LIKE '%e1111111-6111-4111-8111-611111111111%'
+    OR v_data->'goals'->'goals'->0->>'title' <> 'Owner B private goal'
     OR jsonb_array_length(v_data->'goals'->'revisions') <> 1
     OR jsonb_array_length(v_data->'goals'->'behavior_targets') <> 1
     OR jsonb_array_length(v_data->'goals'->'acceptance_actions') <> 1
