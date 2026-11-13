@@ -257,9 +257,14 @@ function TrainingCalendarOwnerScreen() {
               })}/>
             )}
           </>
-        ) : (
+        ) : null}
+        {/* Keep the unsaved interactive draft mounted across Train tabs. Hidden
+            content is excluded from accessibility and does not alter Calendar/Plans. */}
+        <View style={{display:activeTab === 'routes_routines' ? 'flex' : 'none'}}
+          accessibilityElementsHidden={activeTab !== 'routes_routines'}
+          importantForAccessibility={activeTab === 'routes_routines' ? 'auto' : 'no-hide-descendants'}>
           <RoutesRoutinesContent />
-        )}
+        </View>
       </ScrollView>
       <V2BottomNavigation />
     </SafeAreaView>
