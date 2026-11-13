@@ -1,7 +1,9 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createHash}=require('node:crypto');
-const {planAutomaticQualification,runAutomaticQualification,runHostedAutomaticQualification,runRoutedHostedAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,HOSTED_READINESS_SQL,checkHostedIngestReadiness}=
+const {planAutomaticQualification,runAutomaticQualification,runHostedAutomaticQualification,runRoutedHostedAutomaticQualification,
+  readCanonicalMappingsFromDatabase,runRoutedHostedAutomaticQualificationFromDatabase,
+  CANONICAL_MAPPING_READER_SQL,CANONICAL_READER_IDENTITY_SQL,requestKey,WRITER,ENERGY_WRITER,HOSTED_READINESS_SQL,checkHostedIngestReadiness}=
   require('./run-v2-ingredient-auto-qualification.cjs');
 const PROFILE='a4b12c65-9fe7-4a89-8c7b-2357656ac134';
 const nutrient=(id,amount,unitName='g')=>({nutrient:{id,unitName},amount});
@@ -379,4 +381,105 @@ test('explicit routed energy mode invokes only canonical private attestation wri
  assert.equal(result.qualified.every(row=>row.energyAttestation?.status==='attested'),true);
  assert.equal(result.calculationReady,false);
  assert.equal(result.publicationApproved,false);
+});
+
+function canonicalReader(batch,{alter,unsafe=false,duplicate=false}={}){
+ const calls=[];
+ const byFdc=new Map(batch.sourceFoods.map((food,i)=>{
+   const p=batch.canonicalMappings[i],state=batch.aliasPolicy.records.find(
+     x=>x.source_profile_key===food.source_profile_key).preparation_state;
+   const identity='12345678-1234-4234-8234-'+String(i+21).padStart(12,'0');
+   const row={provider:'usda_fdc',source_data_type:'Foundation',
+     external_record_id:String(food.fdcId),
+     source_description:food.source_description,payload_sha256:food.payload_sha256,
+     mapping_status:'mapped',source_ingredient_id:identity,
+     source_record_id:'12345678-1234-4234-8234-'+String(i+41).padStart(12,'0'),
+     evidence_role:'primary',profile_id:p.profileId,
+     profile_ingredient_id:identity,canonical_ingredient_id:identity,
+     preparation_state:state,basis_unit:'g',basis_quantity:'100',
+     review_status:'candidate',profile_revision:1,ingredient_status:'active'};
+   return [String(food.fdcId),alter&&i===0?alter(row):row];
+ }));
+ return {calls,async query(sql,args){
+   calls.push({sql,args});
+   if(sql===CANONICAL_READER_IDENTITY_SQL)return {rows:[{
+     login:unsafe?'postgres':'allin_ing_catalog_reader_test_v1',
+     effective_role:unsafe?'postgres':'allin_v2_ingredient_catalog_reader',
+     least_privileged:!unsafe,source_select:true,link_select:true,
+     profile_select:true,ingredient_select:true,
+     source_update:false,profile_update:false
+   }]};
+   if(sql===CANONICAL_MAPPING_READER_SQL){
+     const rows=args[0].filter(id=>byFdc.has(id)).map(id=>byFdc.get(id));
+     return {rows:duplicate?[...rows,rows[0]]:rows};
+   }
+   throw Error('unrecognized catalog reader SQL');
+ }};
+}
+test('authoritative catalog mapping reader joins verified source to candidate profile without writes',async()=>{
+ const batch=batchFixture(),reader=canonicalReader(batch);
+ const rows=await readCanonicalMappingsFromDatabase({reader,
+   sourceFoods:batch.sourceFoods.map(food=>({...food,
+     proposed_preparation_state:batch.aliasPolicy.records.find(x=>
+       x.source_profile_key===food.source_profile_key).preparation_state}))
+ });
+ assert.equal(rows.canonicalMappings.length,8);
+ assert.equal(rows.exceptions.length,0);
+ assert.deepEqual(reader.calls.map(x=>x.sql),
+   [CANONICAL_READER_IDENTITY_SQL,CANONICAL_MAPPING_READER_SQL]);
+ assert.equal(reader.calls[1].args[0].length,8);
+});
+test('database-backed route uses authoritative mapping and existing canonical writer',async()=>{
+ const batch=batchFixture(),reader=canonicalReader(batch),client=routedClient();
+ const out=await runRoutedHostedAutomaticQualificationFromDatabase({
+   reader,client,...batch
+ });
+ assert.equal(out.qualified.length,8);
+ assert.equal(out.exceptions.length,0);
+ assert.equal(out.canonicalMappingsReadFromDatabase,true);
+ assert.equal(client.calls.filter(x=>x.sql===WRITER).length,16);
+ assert.equal(client.calls.filter(x=>x.sql===ENERGY_WRITER).length,0);
+ assert.equal(out.calculationReady,false);
+});
+test('untrusted catalog-reader login fails before a single write',async()=>{
+ const batch=batchFixture(),reader=canonicalReader(batch,{unsafe:true}),client=routedClient();
+ await assert.rejects(runRoutedHostedAutomaticQualificationFromDatabase({
+   reader,client,...batch
+ }),/identity\/permission gate denied/);
+ assert.equal(client.calls.length,0);
+ assert.equal(reader.calls.length,1);
+});
+test('stale digest, wrong form, duplicate primary source and incomplete mapping fail closed',async()=>{
+ for(const options of [
+   {alter:r=>({...r,payload_sha256:'f'.repeat(64)})},
+   {alter:r=>({...r,preparation_state:'cooked'})},
+   {alter:r=>({...r,review_status:'calculation_ready'})},
+   {alter:r=>({...r,profile_ingredient_id:'00000000-0000-4000-8000-000000000000'})},
+   {duplicate:true}
+ ]){
+   const batch=batchFixture(),reader=canonicalReader(batch,options),client=routedClient();
+   const result=await runRoutedHostedAutomaticQualificationFromDatabase({
+     reader,client,...batch
+   });
+   assert.equal(result.qualified.length,7);
+   assert.equal(result.exceptions.length,1);
+   assert.equal(result.exceptions[0].source_profile_key,'milk_cottage_2pct');
+   assert.equal(client.calls.filter(x=>x.sql===WRITER).length,14);
+ }
+});
+test('no catalog mapping -> exception, never invent a canonical profile ID',async()=>{
+ const batch=batchFixture(),reader=canonicalReader(batch),client=routedClient();
+ const original=reader.query;
+ reader.query=async(sql,args)=>{
+   const response=await original(sql,args);
+   if(sql===CANONICAL_MAPPING_READER_SQL)
+     return {rows:response.rows.filter(x=>x.external_record_id!=='328841')};
+   return response;
+ };
+ const result=await runRoutedHostedAutomaticQualificationFromDatabase({
+   reader,client,...batch
+ });
+ assert.equal(result.qualified.length,7);
+ assert.equal(result.exceptions[0].source_profile_key,'milk_cottage_2pct');
+ assert.equal(result.exceptions[0].reasons[0],'canonical_source_or_primary_mapping_missing_or_ambiguous');
 });
