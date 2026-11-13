@@ -75,10 +75,8 @@ def fixtures(zip_path):
     for row in evidence["records"]:
         info=approved[row["profile"]]
         d=digests[row["fdcId"]]
-        if info["source_fdc_id"]!=str(row["fdcId"]) or info["canonical_identity_approved"]:
-            # Approved *product form* is not a founder per-food publication approval.
-            if info["source_fdc_id"]!=str(row["fdcId"]):
-                raise RuntimeError("Source-form mapping drift")
+        if info["source_fdc_id"]!=str(row["fdcId"]):
+            raise RuntimeError("Source-form mapping drift")
         fdc=str(row["fdcId"])
         facts={"energy_kcal":row["energy"]["kcal"],"protein_g":row["protein"],
                "carbohydrate_g":row["carbs"],"total_fat_g":row["fat"],"sodium_mg":row["sodiumMg"]}
@@ -170,7 +168,7 @@ def acceptance_sql(foods,officer,worker):
 WITH expected(profile_id,fdc_id,payload_sha,energy_kcal,protein_g,carbohydrate_g,total_fat_g,sodium_mg) AS
  (VALUES """+expected+"""),
 actual AS (
- SELECT e.profile_id,e.fdc_id,e.payload_sha,
+ SELECT e.profile_id::text AS profile_id,e.fdc_id,e.payload_sha,
         MAX(n.amount) FILTER(WHERE n.nutrient_code='energy_kcal') energy_kcal,
         MAX(n.amount) FILTER(WHERE n.nutrient_code='protein_g') protein_g,
         MAX(n.amount) FILTER(WHERE n.nutrient_code='carbohydrate_g') carbohydrate_g,
