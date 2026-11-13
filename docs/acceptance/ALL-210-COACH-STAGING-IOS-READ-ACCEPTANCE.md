@@ -1,5 +1,15 @@
 # ALL-210 / ALL-217 — Isolated iOS staging Coach read acceptance
 
+## 2026-11-13 full mobile CI and iPhone handoff
+
+**Validated source-level mobile engineering:** GitHub [V2 Engineering run 43479555488](https://github.com/allinproject/All-In-V2/actions/runs/43479555488), checkout commit `c6313eaa55433bb22460c23133e4fbc2d7f1fa25`, completed **SUCCESS**. Full clean `npm ci`, security/source lint, `npm run test:auth`, Cookbook and Training regression suites, strict `npm run typecheck`, Expo public config, and **both iOS + Android JavaScript exports** finished successfully. Initial run [43479053997](https://github.com/allinproject/All-In-V2/actions/runs/43479053997) exposed four strict TypeScript errors in existing Coach/Kitchen/Apple Watch/Event Plan code; these were each corrected narrowly before the passing SHA, without disabling typechecks. The build-profile config-only check also passed. The output is **not** a signed EAS IPA or installed-phone acceptance.
+
+**Existing project identity recovered from previous verified Expo account setup:** `@durben-ventures/all-in-365-v2`, project UUID `169f85ef-4372-4b8b-bc63-9850335bf517`. The existing signed staging profile is `coach-staging-ios-device`, using the staging Supabase URL and Coach send OFF. That UUID is project metadata, **not** evidence that a registered physical iPhone or Apple provisioning profile exists.
+
+**Hard remaining blockers, independently checked:** An earlier EAS `device:list` returned “Couldn't find any teams for the account durben-ventures” and no iPhone UDID, signing certificate, provision profile or installed build has been confirmed. No new potentially billable EAS build was authorized or started. Live temporary staging `fbtgknlxjyeqrxemskbl` currently has **0 published legal versions** and **0 Auth users**; real legal review/publication and actual signup/consent/onboarding remain prerequisites for any signed-in Coach UI acceptance. Operational account deletion remains OFF.
+
+**Correct next acceptance path:** verify the existing Expo project and Apple Developer team/device registration with the founder, recover existing remote signing credentials (do not create guessed identities), verify EAS preview public key is for temporary staging, obtain explicit build cost authorization, then issue **one** internal iPhone EAS staging build. Install it on a registered iPhone and verify startup target lock, real signup/legal/consent gate, session restore, foreground/background, account switching, Coach read-only history, and strict no paid sends. Record real build ID, provisioning/device metadata, actual screen/device checks, and eventual test fixture cleanup. If legal remains unpublished, fail closed and report the installed build as **legal-blocked**, not accepted.
+
 ## Status
 
 **Source prepared, no signed device build executed or installed.** Existing approved
