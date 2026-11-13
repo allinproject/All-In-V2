@@ -139,6 +139,29 @@ export function reconcileObservedRestrictionSources({ownerId,currentRules,histor
  for(const rule of rules.values())
   if(rule.status==='retired'&&!retired.has(rule.id))
    reasons.push('missing_observed_retired_rule');
+ // An accepted revision reference alone is insufficient. Every observed
+ // approved-plan rule must match the exact canonical rule, including status
+ // and timestamps, and every canonical approved-plan rule must be observed.
+ // Duplicate source records must not conceal a dropped or changed rule.
+ const observedApproved=new Set();
+ const acceptedRevisionIds=new Set(imports.records
+  .filter(row=>row?.kind==='imported_revision'||row?.kind==='approved_revision')
+  .map(row=>row?.record?.id));
+ for(const row of imports.records) {
+  if(row?.kind!=='linked_restriction')continue;
+  const rule=row.record;
+  if(row.user_id!==ownerId||rule?.user_id!==ownerId
+    ||rule?.source!=='approved_plan'||typeof rule.id!=='string'
+    ||observedApproved.has(rule.id)||!rules.has(rule.id)
+    ||!matchingRow(rule,rules.get(rule.id))) {
+   reasons.push('unmatched_or_duplicate_approved_rule');
+  } else observedApproved.add(rule.id);
+  if(!rule?.source_ref||!acceptedRevisionIds.has(rule.source_ref))
+   reasons.push('unresolved_imported_restriction_mapping');
+ }
+ for(const rule of rules.values())
+  if(rule.source==='approved_plan'&&!observedApproved.has(rule.id))
+   reasons.push('missing_observed_approved_rule');
  if(imports.observedUnresolvedMappings?.length)
   reasons.push('unresolved_imported_restriction_mapping');
  if(history.exhaustive!==true||imports.exhaustive!==true)
