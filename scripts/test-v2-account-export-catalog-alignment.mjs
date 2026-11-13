@@ -19,9 +19,11 @@ function candidateTables(text){
  return [...fragment.matchAll(/\('(public|allin_private)','(v2_[a-z0-9_]+)'\)/g)]
   .map(m=>m[1]+'.'+m[2]).sort();
 }
-test('all 42 authoritative owner tables match the canonical snapshot allowlist exactly',()=>{
+test('all 43 authoritative owner tables match the canonical snapshot allowlist exactly',()=>{
  const owned=sourceTables(source),candidate=candidateTables(reader);
- assert.equal(owned.length,42);
+ assert.equal(owned.length,43);
+ assert(owned.includes('public.v2_goal_event_edition_links'),
+  'Event edition links must remain part of explicit owner export review');
  assert.equal(new Set(candidate).size,candidate.length);
  assert.deepEqual(candidate,owned,'any added owner table must be explicitly reviewed and paginated');
 });
