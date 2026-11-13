@@ -13,7 +13,8 @@ const env={
 const approved={
  sourceProjectRef:'xarhuczrtzuiljmtdaeu',
  approvedForLogicalBackup:true,
- tables:['auth.users','allin_private.v2_account_deletion_requests','public.v2_profiles']
+ tables:['auth.users','auth.identities','auth.sessions','auth.refresh_tokens',
+  'allin_private.v2_account_deletion_requests','public.v2_profiles']
 };
 test('guarded local capture accepts only explicitly approved isolated operator configuration',()=>{
  assert.deepEqual(validateCaptureInputs({env,approved}),{valid:true,errors:[]});
@@ -71,7 +72,8 @@ test('live V2 preflight blocks newly deployed or omitted tables before backup',(
 });
 test('live V2 preflight requires core Auth tables and rejects malformed catalog results',()=>{
  const a=assessCurrentV2TableCoverage({
-   actualTables:['public.v2_profiles'],approvedTables:approved.tables
+   actualTables:['public.v2_profiles'],
+   approvedTables:approved.tables.filter(t=>t!=='auth.identities')
  });
  assert.equal(a.valid,false);
  assert(a.reasons.includes('missing_core_auth_table:auth.identities'));
