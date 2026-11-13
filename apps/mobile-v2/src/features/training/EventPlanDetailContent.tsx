@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {colors} from '../../theme/tokens';
-import {certifyEventPlanDetailIdentity,eventPlanSections,type EventPlanDetailIdentity,type EventPlanSectionId} from './eventPlanDetailSections';
+import {certifyEventPlanDetailIdentity,certifiedEventPlanSectionText,eventPlanSections,type EventPlanDetailIdentity,type EventPlanSectionId,type EventPlanSectionEvidence} from './eventPlanDetailSections';
 
 /**
  * Read-only presentation for a future certified Event owner reader.
@@ -11,16 +11,17 @@ import {certifyEventPlanDetailIdentity,eventPlanSections,type EventPlanDetailIde
 export function EventPlanDetailContent(props:{
   event:EventPlanDetailIdentity|null;
   expected:{ownerId:string;eventId:string;editionId:string;eventVersion:number};
-  sectionText?:Partial<Record<EventPlanSectionId,string>>;
+  sectionEvidence?:readonly EventPlanSectionEvidence[];
 }) {
   const [open,setOpen]=useState<EventPlanSectionId[]>(['overview']);
   const event=certifyEventPlanDetailIdentity(props.event,props.expected);
+  const sectionText=event?certifiedEventPlanSectionText(event,props.sectionEvidence):{};
   if(!event)return (
     <View style={styles.card}>
       <Text style={styles.muted}>Event detail is unavailable until its exact athlete, event edition and version are verified.</Text>
     </View>
   );
-  return <View style={styles.container}>
+  return <View key={`${event.ownerId}:${event.eventId}:${event.editionId}:${event.eventVersion}`} style={styles.container}>
     <Text accessibilityRole="header" style={styles.title}>{event.name}</Text>
     <Text style={styles.muted}>{event.eventDate} · {event.discipline}</Text>
     {eventPlanSections(event.discipline).map(section=>{
@@ -36,7 +37,7 @@ export function EventPlanDetailContent(props:{
           <Text style={styles.heading}>{expanded?'−':'+'}</Text>
         </Pressable>
         {expanded&&<Text style={styles.muted}>
-          {props.sectionText?.[section.id]??'Verified section information is not available yet.'}
+          {sectionText[section.id]??'Verified section information is not available yet.'}
         </Text>}
       </View>;
     })}
