@@ -205,6 +205,26 @@ BEGIN
  j:=public.v2_training_active_restrictions_read_candidate(a);
  IF pg_catalog.jsonb_array_length(j->'restrictions')<>0 THEN
   RAISE EXCEPTION 'Retired restriction remains active'; END IF;
+ -- An inactive restriction is still owner history: a partial restore that
+ -- drops it must invalidate the exact certified inventory, not look empty.
+ DELETE FROM public.v2_training_athlete_restrictions
+  WHERE id=rule AND user_id=a AND status='retired';
+ BEGIN
+  PERFORM public.v2_training_active_restrictions_read_candidate(a);
+  RAISE EXCEPTION 'Missing retired history passed old certification digest';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ -- Restore synthetic historical row to the certified state and verify.
+ INSERT INTO public.v2_training_athlete_restrictions
+  (id,user_id,category,subject,source,status,revision,created_at,updated_at)
+ SELECT rule,a,'exercise','lying leg curl','explicit_user','retired',3,
+  pg_catalog.now(),c.certified_at
+ FROM allin_private.v2_training_restriction_certifications c WHERE c.user_id=a;
+ -- The original record's created_at is part of the fingerprint; a reinsert
+ -- cannot reproduce it, so this synthetic restore must remain blocked.
+ BEGIN
+  PERFORM public.v2_training_active_restrictions_read_candidate(a);
+  RAISE EXCEPTION 'Reconstructed retired history was falsely trusted';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
  -- A revoked/expired authenticated session cannot read or mutate rules.
  UPDATE auth.sessions SET not_after=now()-interval '1 second'
   WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
