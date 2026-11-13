@@ -32,6 +32,13 @@ DO $acl$ BEGIN
  OR has_function_privilege('anon',
   'public.v2_training_restriction_write_candidate(uuid,uuid,text,uuid,text,text,bigint)','EXECUTE') THEN
   RAISE EXCEPTION 'Unreviewed restriction writer is exposed to clients'; END IF;
+ IF has_function_privilege('authenticated',
+  'allin_private.v2_training_restriction_reconciliation_status_candidate(uuid)','EXECUTE')
+ OR has_function_privilege('anon',
+  'allin_private.v2_training_restriction_reconciliation_status_candidate(uuid)','EXECUTE')
+ OR has_function_privilege('service_role',
+  'allin_private.v2_training_restriction_reconciliation_status_candidate(uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'Reconciliation diagnostic escaped restricted Training owner'; END IF;
  IF NOT (SELECT bool_and(relrowsecurity) FROM pg_class WHERE oid IN (
  'public.v2_training_athlete_restrictions'::regclass,
  'allin_private.v2_training_restriction_certifications'::regclass,
@@ -54,7 +61,17 @@ VALUES(
 );
 DO $unreconciled_restore$
 DECLARE b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ diagnostic jsonb;
 BEGIN
+ diagnostic:=allin_private.v2_training_restriction_reconciliation_status_candidate(b);
+ IF (diagnostic->>'recordedRows')::int<>1 OR
+    (diagnostic->>'recordedActive')::int<>1 OR
+    diagnostic->'recordedBySource'->>'approved_plan'<>'1' OR
+    diagnostic->>'certificationPresent'<>'false' OR
+    diagnostic->>'certificationMatchesRecordedRows'<>'false' OR
+    diagnostic->>'historicalSourceCoverageVerified'<>'false' OR
+    diagnostic->>'firstCertificationAuthorized'<>'false' THEN
+   RAISE EXCEPTION 'Unreconciled restored owner was reported ready'; END IF;
  PERFORM pg_catalog.set_config('request.jwt.claim.sub',b::text,true);
  PERFORM pg_catalog.set_config('request.jwt.claim.session_id',
   'dddddddd-dddd-4ddd-8ddd-dddddddddddd',true);
@@ -140,6 +157,13 @@ BEGIN
  j:=public.v2_training_active_restrictions_read_candidate(a);
  IF j->>'verified'<>'true' OR pg_catalog.jsonb_array_length(j->'restrictions')<>0 THEN
   RAISE EXCEPTION 'Trusted fixture baseline is not certified'; END IF;
+ j:=allin_private.v2_training_restriction_reconciliation_status_candidate(a);
+ IF j->>'certificationPresent'<>'true' OR
+    j->>'certificationMatchesRecordedRows'<>'true' OR
+    (j->>'recordedRows')::int<>0 OR
+    j->>'firstCertificationAuthorized'<>'false' OR
+    j->>'historicalSourceCoverageVerified'<>'false' THEN
+  RAISE EXCEPTION 'Diagnostic confused existing certification with source coverage'; END IF;
  j:=public.v2_training_restriction_write_candidate(a,act1,
   'activate',rule,'exercise','lying leg curl',1);
  IF (j->>'certifiedRevision')::integer<>2 THEN RAISE EXCEPTION 'Restriction activation failed'; END IF;
@@ -170,6 +194,10 @@ BEGIN
   PERFORM public.v2_training_active_restrictions_read_candidate(a);
   RAISE EXCEPTION 'Backdated changed exercise bypassed certified owner digest';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
+ j:=allin_private.v2_training_restriction_reconciliation_status_candidate(a);
+ IF j->>'certificationPresent'<>'true' OR
+    j->>'certificationMatchesRecordedRows'<>'false' THEN
+  RAISE EXCEPTION 'Reconciliation diagnostic ignored corrupted owner snapshot'; END IF;
  BEGIN
   PERFORM public.v2_training_restriction_write_candidate(a,act1,
    'activate',rule,'exercise','lying leg curl',1);
