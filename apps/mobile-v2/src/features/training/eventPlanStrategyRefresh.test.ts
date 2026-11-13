@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {reviewEventStrategySourceRefresh,reviewEventStrategyGenerationReceipt,type StrategyEventRef,type EventStrategySnapshot,type StrategySourceRevision} from './eventPlanStrategyRefresh.ts';
+import {reviewEventStrategySourceRefresh,reviewEventStrategyGenerationReceipt,prepareEventStrategyRefreshIntent,type StrategyEventRef,type EventStrategySnapshot,type StrategySourceRevision} from './eventPlanStrategyRefresh.ts';
 const expected:StrategyEventRef={ownerId:'owner-1',eventId:'race-1',editionId:'race-2027',eventVersion:2};
 const current:EventStrategySnapshot={...expected,strategyRevision:3,sourceRevision:5,courseVersion:'course-v1'};
 const incoming:StrategySourceRevision={...expected,sourceRevision:6,courseVersion:'course-v1',evidenceState:'verified'};
@@ -75,4 +75,56 @@ test('unverified source or empty advice is never review ready',()=>{
   assert.equal(reviewEventStrategyGenerationReceipt({
     expected,current,latestSource:incoming,receipt:{...receipt,adviceText:' '},
   }).status,'unavailable');
+});
+
+test('certified new source prepares a stable authenticated Coach refresh intent',()=>{
+ const input={expected,authenticatedOwnerId:'owner-1',authSessionGeneration:7,
+   accessGateReady:true,current,incoming};
+ const first=prepareEventStrategyRefreshIntent(input);
+ const retry=prepareEventStrategyRefreshIntent(input);
+ assert.deepEqual(first,retry);
+ assert.equal(first.status,'ready');
+ if(first.status!=='ready')return;
+ assert.equal(first.intent.expectedStrategyRevision,3);
+ assert.equal(first.intent.sourceRevision,6);
+ assert.equal(first.intent.authSessionGeneration,7);
+ assert.equal(first.intent.requiresTrainingApproval,true);
+ assert.equal(first.intent.invalidateCourseDependentAdvice,false);
+ const changed=prepareEventStrategyRefreshIntent({
+   ...input,incoming:{...incoming,courseVersion:'course-v2'},
+ });
+ assert.equal(changed.status,'ready');
+ if(changed.status==='ready'){
+   assert.notEqual(changed.intent.requestKey,first.intent.requestKey);
+   assert.equal(changed.intent.invalidateCourseDependentAdvice,true);
+ }
+});
+test('refresh is never requested for unauthorized, stale or unverified source',()=>{
+ const input={expected,authenticatedOwnerId:'owner-1',authSessionGeneration:7,
+   accessGateReady:true,current,incoming};
+ for(const changes of [
+   {authenticatedOwnerId:'other'}, {authenticatedOwnerId:null},
+   {accessGateReady:false},
+ ]) assert.equal(prepareEventStrategyRefreshIntent({...input,...changes}).status,'unavailable');
+ assert.deepEqual(prepareEventStrategyRefreshIntent({...input,authSessionGeneration:-1}),{
+   status:'unavailable',reason:'invalid_session',
+ });
+ for(const newSource of [
+   {...incoming,sourceRevision:5},
+   {...incoming,sourceRevision:4},
+   {...incoming,evidenceState:'partial' as const},
+   {...incoming,eventId:'other'},
+ ]) assert.equal(prepareEventStrategyRefreshIntent({...input,incoming:newSource}).status,'not_requested');
+});
+test('refresh requests are account-session and strategy-revision scoped',()=>{
+ const input={expected,authenticatedOwnerId:'owner-1',authSessionGeneration:7,
+   accessGateReady:true,current,incoming};
+ const a=prepareEventStrategyRefreshIntent(input);
+ const b=prepareEventStrategyRefreshIntent({...input,authSessionGeneration:8});
+ const c=prepareEventStrategyRefreshIntent({...input,current:{...current,strategyRevision:4}});
+ assert.equal(a.status,'ready');assert.equal(b.status,'ready');assert.equal(c.status,'ready');
+ if(a.status==='ready'&&b.status==='ready'&&c.status==='ready'){
+   assert.notEqual(a.intent.requestKey,b.intent.requestKey);
+   assert.notEqual(a.intent.requestKey,c.intent.requestKey);
+ }
 });
