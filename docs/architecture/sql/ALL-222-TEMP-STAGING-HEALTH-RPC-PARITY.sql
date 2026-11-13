@@ -19,7 +19,7 @@ begin
  if not found then return jsonb_build_object('conditions','[]'::jsonb,'limitations','[]'::jsonb,'coach_opt_in',false,'version',0); end if;
  return jsonb_build_object('conditions',v_row.conditions,'limitations',v_row.limitations,
   'coach_opt_in',v_row.coach_opt_in,'version',v_row.version);
-end;$function$
+end;$function$;
 
 REVOKE ALL ON FUNCTION public.v2_my_health_considerations(p_expected_user_id uuid) FROM PUBLIC, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.v2_my_health_considerations(p_expected_user_id uuid) TO authenticated;
@@ -80,7 +80,7 @@ begin
    where user_id=v_user returning version into v_next;
  end if;
  return v_next;
-end;$function$
+end;$function$;
 
 REVOKE ALL ON FUNCTION public.v2_save_health_considerations(p_expected_user_id uuid, p_conditions jsonb, p_limitations jsonb, p_coach_opt_in boolean, p_expected_version bigint) FROM PUBLIC, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.v2_save_health_considerations(p_expected_user_id uuid, p_conditions jsonb, p_limitations jsonb, p_coach_opt_in boolean, p_expected_version bigint) TO authenticated;
