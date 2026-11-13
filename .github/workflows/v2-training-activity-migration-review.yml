@@ -76,6 +76,86 @@ jobs:
             SELECT count(*) FROM supabase_migrations.schema_migrations
             WHERE version IN ('20261113035500','20261113035501','20261113035502',
               '20261113035503','20261113035504');" | grep -qx '5'
+      - name: Audit entire canonical graph and ALL-251 account lifecycle gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          container="$(docker ps --filter name=supabase_db_ --format '{{.ID}}' | head -n 1)"
+          test -n "$container"
+          docker exec -i "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          DO $audit$
+          DECLARE
+            row record;
+            total_tables integer := 0;
+            total_functions integer := 0;
+          BEGIN
+            FOR row IN
+              SELECT c.oid, n.nspname, c.relname, c.relrowsecurity
+              FROM pg_catalog.pg_class c
+              JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+              WHERE c.relkind IN ('r','p')
+                AND n.nspname IN ('public','allin_private')
+                AND (c.relname LIKE 'v2_training%' OR
+                     c.relname LIKE 'v2_completed%' OR
+                     c.relname LIKE 'v2_activity_%' OR
+                     c.relname LIKE 'v2_indoor_weekly%')
+            LOOP
+              total_tables := total_tables + 1;
+              IF NOT row.relrowsecurity OR
+                 pg_catalog.has_table_privilege('anon',row.oid,'SELECT,INSERT,UPDATE,DELETE') OR
+                 pg_catalog.has_table_privilege('authenticated',row.oid,'SELECT,INSERT,UPDATE,DELETE')
+              THEN
+                RAISE EXCEPTION 'Unapproved table RLS/grant: %.%',row.nspname,row.relname;
+              END IF;
+            END LOOP;
+            FOR row IN
+              SELECT p.oid,n.nspname,p.proname
+              FROM pg_catalog.pg_proc p
+              JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+              WHERE n.nspname IN ('public','allin_private')
+                AND (p.proname LIKE 'v2_training%' OR
+                     p.proname LIKE 'v2_completed%' OR
+                     p.proname LIKE 'v2_activity_%' OR
+                     p.proname LIKE 'v2_indoor_weekly%')
+            LOOP
+              total_functions := total_functions + 1;
+              IF pg_catalog.has_function_privilege('anon',row.oid,'EXECUTE') OR
+                 pg_catalog.has_function_privilege('authenticated',row.oid,'EXECUTE')
+              THEN
+                RAISE EXCEPTION 'Unapproved function grant: %.%',row.nspname,row.proname;
+              END IF;
+            END LOOP;
+            IF total_tables < 15 OR total_functions < 5 THEN
+              RAISE EXCEPTION 'Incomplete canonical owner graph: % tables, % functions',total_tables,total_functions;
+            END IF;
+            IF pg_catalog.to_regprocedure('public.v2_export_my_account_snapshot(uuid)') IS NULL
+               OR pg_catalog.to_regprocedure('allin_private.v2_training_account_export_fragment_candidate(uuid)') IS NULL
+               OR NOT pg_catalog.has_function_privilege('authenticated','public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+               OR pg_catalog.has_function_privilege('anon','public.v2_export_my_account_snapshot(uuid)','EXECUTE')
+            THEN
+              RAISE EXCEPTION 'ALL-251 export integration missing or public export grant changed';
+            END IF;
+            IF EXISTS (
+              SELECT 1
+              FROM pg_catalog.pg_class c
+              JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+              JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid AND a.attname='user_id'
+              WHERE c.relkind='r' AND n.nspname IN ('public','allin_private')
+                AND (c.relname LIKE 'v2_training%' OR c.relname LIKE 'v2_completed%'
+                     OR c.relname LIKE 'v2_activity_%' OR c.relname LIKE 'v2_indoor_weekly%')
+                AND NOT EXISTS (
+                  SELECT 1 FROM pg_catalog.pg_constraint con
+                  WHERE con.conrelid=c.oid AND con.contype='f'
+                    AND con.confrelid='auth.users'::pg_catalog.regclass
+                    AND con.confdeltype='c'
+                    AND a.attnum=ANY(con.conkey)
+                )
+            ) THEN
+              RAISE EXCEPTION 'ALL-251 direct owner Auth cascade missing';
+            END IF;
+            RAISE NOTICE 'PASS release review: % RLS owner tables, % denied client functions, export and Auth cascade gates',total_tables,total_functions;
+          END $audit$;
+          SQL
       - name: Stop disposable database
         if: always()
         run: supabase stop --no-backup || true
