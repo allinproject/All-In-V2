@@ -115,10 +115,11 @@ message bodies, source JSON or raw source fingerprints retrieved):
   zero at the observation time. These counts do not prove absence in other
   providers, snapshots, or unexamined V1 tables.
 - **Two of 16 Coach messages** match broad restriction/recovery-related
-  keywords. These are *possible review candidates*, NOT confirmed injury or
-  movement restrictions. No message text was retrieved. The two matches
-  require private owner-scoped review; do not infer or publish restrictions
-  solely from keyword hits.
+  keywords, both Coach-authored (none athlete-authored). The founder subsequently
+  privately reviewed both and classified both as general advice, **zero V2
+  restrictions from those messages**. No message text was retrieved through
+  connected tools. The classification is operator/founder-reported, not an
+  independently signed review attestation.
 - The single `allin_training.preferences.limitation` field is a string
   containing the literal normalized **`none` sentinel**, with zero
   non-sentinel string values at this observation. The owner previously
@@ -138,8 +139,9 @@ message bodies, source JSON or raw source fingerprints retrieved):
 **Release gates:** keep `fullHistoricalCoverageEstablished=false`,
 `externalImportJobHistoryVerified=false`,
 `initialCertificationAuthorized=false`, and the hosted restriction restore
-blocked. Source message review must happen in a protected operator workflow
-without sending content to GitHub/Linear/ChatGPT. Do not transplant Coach
+blocked. Preserve founder's private message-review disposition in an independently
+verifiable, privacy-preserving receipt before external source certification;
+do not send message contents to GitHub/Linear/ChatGPT. Do not transplant Coach
 free-text into a V2 medical restriction automatically. The V2 Training
 restriction schema remains a review candidate.
 
@@ -147,3 +149,56 @@ restriction schema remains a review candidate.
 table definitions plus three V1 validation functions. It did **not** recover
 the full `auth.users`/profile-goal FK graph, post-data constraints, private
 Storage, full V1 history or a provider-managed hosted physical recovery.
+
+
+## 2026-11-13 — External-import signals and V1 relational dependency audit
+
+New repeatable read-only original-V1 query:
+`supabase/tests/all230_v1_import_relational_recovery_inventory_readonly.sql`.
+**Executed** on `impulecgsgaruvniuttc` at **2026-11-13 16:55:00 UTC**.
+Metadata/aggregate evidence, no account identifiers or private row contents:
+
+| Source or dependency | V1 result |
+|---|---:|
+| Original scoped Training/Coach tables | 11 |
+| Original scoped foreign keys | 17 |
+| Foreign keys pointing outside the scoped 11-table archive | 11 |
+| Referenced external tables | `auth.users`, `public.allin_profile_goals` |
+| `auth.users` | 1 |
+| `allin_profile_goals` | 0 |
+| `allin_workout_sync_sources` | 0 |
+| `allin_race_provider_results` | 0 |
+| `allin_race_result_provider_mappings` | 0 |
+| `allin_backup_restore_drills` | 0 |
+| `allin_integration_health` | 15 |
+| `allin_ai_model_route_history` | 3 |
+
+Read-only source catalog independently confirms **all 17 V1 FK constraints
+were validated in the original V1 database**; this does **not** verify
+that they were re-created or enforced in the isolated restore. The local
+restore has a verified single Training row and zero other scoped rows,
+but did not restore `auth.users`, `public.allin_profile_goals`,
+post-data constraints, Auth identity/session machinery, or Storage.
+
+No provider-issued import job list or historical provider-side activity
+inventory was obtained. Zero current rows in named import sink/source
+tables is **not** independent proof that no previous import jobs
+occurred: historical jobs can have been deleted, moved, or stored by
+external providers. Do not set `negativeZeroJobProofVerified=true`.
+Original V1 has 183 `allin_*` public tables (61 JSON-bearing), of
+which the independently encrypted subset contains 11. A full inventory
+of historical restriction-bearing records and imported-source provenance
+is **still missing**; this cannot be accepted from scoped backup counts.
+
+Note the founder's explicit, separately tracked ALL-230 **lying-leg-curl
+exercise restriction**: the legacy V1 `limitation='none'` sentinel
+means only that *one legacy field* contains no recorded limitation.
+It cannot overwrite or retire the later explicit V2/ALL-230 workout
+restriction. Never mint or erase rules from a generic `none` sentinel.
+
+**Provider backup/restore:** the live-source FK audit, local encrypted
+scope restore and existing offline ALL-12 acceptance scripts are not a
+Supabase-managed restore. No provider snapshot ID, verified separate
+restored project, full Auth+Storage recovery evidence, RPO/RTO or
+approvals were established this turn. Hosted recovery gate remains
+blocked and no paid project was provisioned.
