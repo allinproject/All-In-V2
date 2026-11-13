@@ -16,6 +16,7 @@ function fixture(options={}) {
       ||sql==='COMMIT'||sql==='ROLLBACK'||sql.includes('set_config('))
     return {rows:[]};
    if(sql.includes('inventory_digest_candidate'))return {rows:[{digest:fingerprint}]};
+   if(sql.startsWith('SELECT * FROM public.v2_training_athlete_restrictions'))return {rows:[]};
    if(sql.includes('ingest_restriction_source_evidence_candidate')) {
     const sources=JSON.parse(args[2]);
     assert.equal(sources.length,5);
@@ -34,7 +35,7 @@ function fixture(options={}) {
    throw Error('Unexpected SQL: '+sql);
   },release(){released=true;},
  };
- const sourceReaders=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.map(kind=>[kind,async args=>{
+ const sourceReaders=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(1).map(kind=>[kind,async args=>{
   readers++;
   assert.equal(args.client,client);
   const rows=options.foreignKind===kind?[{id:'x',user_id:other}]:
@@ -64,7 +65,7 @@ test('server reader binds all five exact sources to same serializable Auth sessi
  const receipt=await f.instance().ingestReviewedSources({bearerToken:'verified',snapshotVersion:version});
  assert.equal(receipt.status,'review_required');
  assert.equal(f.authReads,1);
- assert.equal(f.readers,5);
+ assert.equal(f.readers,4);
  assert.equal(f.reconciled,5);
  assert.equal(f.calls[0].sql,'BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
  assert(f.calls.some(c=>c.sql.includes('request.jwt.claim.sub')&&c.args[0]===owner));
@@ -93,7 +94,7 @@ test('partial, cross-owner and unreconciled source records roll back with no ing
 });
 test('unverified owner/session refused before acquiring private pool',async()=>{
  let connected=false;
- const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.map(kind=>[kind,async()=>{}]));
+ const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(1).map(kind=>[kind,async()=>{}]));
  const r=createTrainingRestrictionSourceReaderCandidate({
   pool:{connect:async()=>{connected=true;throw Error('should not connect');}},
   sourceReaders:readers,reconcileSource:async()=>{},
@@ -111,6 +112,7 @@ test('stale or unexpectedly certified DB receipts roll back',async()=>{
   if(sql.startsWith('BEGIN')||sql.startsWith('SET LOCAL')||sql==='ROLLBACK'
      ||sql.includes('set_config('))return {rows:[]};
   if(sql.includes('inventory_digest_candidate'))return {rows:[{digest:fingerprint}]};
+  if(sql.startsWith('SELECT * FROM public.v2_training_athlete_restrictions'))return {rows:[]};
   if(sql.includes('ingest_restriction_source_evidence_candidate'))return {rows:[{
    payload:{ownerId:owner,snapshotVersion:version,status:'certified',
     initialCertificationAuthorized:true,sourceAuthenticityEstablished:true,
@@ -118,7 +120,7 @@ test('stale or unexpectedly certified DB receipts roll back',async()=>{
   }]};
   throw Error('Unexpected SQL');
  },release:()=>{released=true;}};
- const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.map(kind=>[kind,async()=>({
+ const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(1).map(kind=>[kind,async()=>({
   ownerId:owner,snapshotVersion:version,exhaustive:true,nextCursor:null,
   evidenceRef:'trusted:'+kind,records:[],
  })]));
