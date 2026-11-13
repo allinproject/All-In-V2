@@ -525,4 +525,64 @@ BEGIN
  RAISE NOTICE 'PASS ALL-251: unknown owner/directional tables block export and incoming blocks stay private';
 END $hidden_block$;
 RESET ROLE;
+
+-- Optional ISOLATED CI bridge: capture exactly the authoritative 50-source
+-- paginated RPC output from this same real populated owner snapshot. Never
+-- publish/mark the catalog complete: complete=false is asserted in SQL and
+-- the consuming Node archive harness has a separate test-only release.
+\if :{?all251_capture_roundtrip}
+CREATE TEMP TABLE all251_roundtrip_source (
+ position bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ payload jsonb NOT NULL
+);
+GRANT INSERT,SELECT ON all251_roundtrip_source TO service_role;
+GRANT USAGE,SELECT ON SEQUENCE all251_roundtrip_source_position_seq TO service_role;
+SET LOCAL ROLE service_role;
+DO $capture$
+DECLARE
+ v_owner uuid:='91111111-9111-4111-8111-911111111111';
+ v_session uuid:='93333333-9333-4333-8333-933333333333';
+ v_request uuid:='95555555-9555-4555-8555-955555555555';
+ v_inventory jsonb;v_page jsonb;v_source text;v_cursor text;
+ v_snapshot text;v_count integer:=0;v_pages integer:=0;
+BEGIN
+ v_inventory:=public.v2_account_export_inventory_review_candidate(
+   v_owner,v_session,v_request);
+ IF v_inventory->>'complete'<>'false'
+ OR v_inventory->>'paginationReady'<>'true'
+ OR pg_catalog.jsonb_array_length(v_inventory->'collections')<>50
+ THEN RAISE EXCEPTION 'Fixture cannot promote canonical incomplete owner export'; END IF;
+ v_snapshot:=v_inventory->>'snapshotId';
+ INSERT INTO pg_temp.all251_roundtrip_source(payload)
+ VALUES(pg_catalog.jsonb_build_object('kind','inventory','payload',v_inventory));
+ FOR v_source IN SELECT pg_catalog.jsonb_array_elements_text(v_inventory->'collections') LOOP
+  v_cursor:=NULL;
+  LOOP
+   v_page:=public.v2_account_export_page_review_candidate(
+     v_owner,v_session,v_request,v_source,v_cursor,25);
+   IF v_page->>'ownerId'<>v_owner::text
+    OR v_page->>'snapshotId'<>v_snapshot
+    OR v_page->>'ownerVerified'<>'true'
+    OR v_page->>'completeUserExport'<>'false'
+    OR v_page->>'collection'<>v_source
+    OR pg_catalog.jsonb_array_length(v_page->'rows')>25
+   THEN RAISE EXCEPTION 'Canonical owner page mismatch during export capture %',v_source; END IF;
+   INSERT INTO pg_temp.all251_roundtrip_source(payload)
+    VALUES(pg_catalog.jsonb_build_object('kind','page','payload',v_page));
+   v_pages:=v_pages+1;
+   IF v_pages>512 THEN RAISE EXCEPTION 'Unbounded real owner source capture'; END IF;
+   IF v_page->>'done'='true' THEN EXIT; END IF;
+   IF v_page->>'nextCursor' IS NULL OR v_page->>'nextCursor'=v_cursor
+   THEN RAISE EXCEPTION 'Missing or stalled canonical cursor'; END IF;
+   v_cursor:=v_page->>'nextCursor';
+  END LOOP;
+  v_count:=v_count+1;
+ END LOOP;
+ IF v_count<>50 OR v_pages<53 THEN
+  RAISE EXCEPTION 'Canonical populated owner source capture truncated'; END IF;
+ RAISE NOTICE 'ALL-251 captured % canonical collections in % real owner RPC pages (review-only)',v_count,v_pages;
+END $capture$;
+RESET ROLE;
+\copy (SELECT payload::text FROM pg_temp.all251_roundtrip_source ORDER BY position) TO '/tmp/all251-full-domain-capture.jsonl'
+\endif
 ROLLBACK;
