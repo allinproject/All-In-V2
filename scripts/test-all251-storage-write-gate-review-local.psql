@@ -8,9 +8,9 @@ VALUES
 INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
 VALUES
 ('a8111111-8111-4111-8111-811111111111','c8333333-8333-4333-8333-833333333333','requested'),
-('b8222222-8222-4222-8222-822222222222','d8444444-8444-4444-8444-844444444444','cancelled');
+('b8222222-8222-4222-8222-822222222222','d8444444-8444-4444-8444-844444444444','requested');
 -- Cancellation is a resolved state and requires timestamp.
-UPDATE allin_private.v2_account_deletion_requests SET resolved_at=now()
+UPDATE allin_private.v2_account_deletion_requests SET status='cancelled',resolved_at=now()
  WHERE user_id='b8222222-8222-4222-8222-822222222222';
 
 SELECT pg_catalog.set_config('request.jwt.claim.sub','a8111111-8111-4111-8111-811111111111',true);
