@@ -134,7 +134,9 @@ BEGIN
  -- Synthetic test setup represents an OUT-OF-BAND trusted Training owner
  -- reconciliation, NOT a public RPC or user-callable production shortcut.
  INSERT INTO allin_private.v2_training_restriction_certifications
-  (user_id,certified_revision) VALUES(a,1);
+  (user_id,certified_revision,inventory_digest)
+ VALUES(a,1,
+  allin_private.v2_training_restriction_inventory_digest_candidate(a));
  j:=public.v2_training_active_restrictions_read_candidate(a);
  IF j->>'verified'<>'true' OR pg_catalog.jsonb_array_length(j->'restrictions')<>0 THEN
   RAISE EXCEPTION 'Trusted fixture baseline is not certified'; END IF;
@@ -158,6 +160,21 @@ BEGIN
   PERFORM public.v2_training_active_restrictions_read_candidate(a);
   RAISE EXCEPTION 'Changed rule passed old certification without revision';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
+ -- Even if a corrupted row backdates its timestamp and retains the same
+ -- revision, the owner inventory checksum must reject the changed movement.
+ UPDATE public.v2_training_athlete_restrictions
+  SET updated_at=(SELECT certified_at
+    FROM allin_private.v2_training_restriction_certifications WHERE user_id=a)
+  WHERE id=rule AND user_id=a;
+ BEGIN
+  PERFORM public.v2_training_active_restrictions_read_candidate(a);
+  RAISE EXCEPTION 'Backdated changed exercise bypassed certified owner digest';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_training_restriction_write_candidate(a,act1,
+   'activate',rule,'exercise','lying leg curl',1);
+  RAISE EXCEPTION 'Old action receipt replayed over changed rule inventory';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  -- Restore the synthetic canonical row to its exact certified version.
  UPDATE public.v2_training_athlete_restrictions
   SET subject='lying leg curl',
