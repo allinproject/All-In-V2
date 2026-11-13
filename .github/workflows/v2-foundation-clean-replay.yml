@@ -102,6 +102,9 @@ on:
       - 'scripts/test-all251-deletion-claim-graph-gate-local.psql'
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql'
       - 'scripts/test-all251-storage-checkpoint-review-local.psql'
+      - 'scripts/test-all251-checkpoint-db-verifier-review.test.mjs'
+      - 'scripts/test-all251-checkpoint-db-verifier-real-local.mjs'
+      - 'supabase/functions/_shared/trainingDeletionCheckpointDbVerifierReview.mjs'
       - 'docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-WRITE-GATE-REVIEW.sql'
       - 'scripts/test-all251-storage-write-gate-review-local.psql'
       - 'scripts/test-all251-food-log-export-projection-local.psql'
@@ -632,6 +635,12 @@ jobs:
           docker cp docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql "$db_container:/tmp/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql"
           docker cp scripts/test-all251-storage-checkpoint-review-local.psql "$db_container:/tmp/test-all251-storage-checkpoint-review-local.psql"
           docker exec "$db_container" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-all251-storage-checkpoint-review-local.psql
+      - name: ALL-251 real service-only PostgreSQL checkpoint verifier RPC
+        run: |
+          set -euo pipefail
+          test "${CI}" = "1"
+          node --test scripts/test-all251-checkpoint-db-verifier-review.test.mjs
+          node scripts/test-all251-checkpoint-db-verifier-real-local.mjs
       - name: ALL-251 review-only Storage upload gate against canonical request state
         run: |
           set -euo pipefail
