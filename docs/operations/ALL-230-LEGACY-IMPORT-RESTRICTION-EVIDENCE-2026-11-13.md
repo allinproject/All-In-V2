@@ -26,6 +26,8 @@ Additional source-only JSON-key observation at **2026-11-13 13:01 UTC** found `p
 
 The single `allin_training` record has JSONB `preferences`, `draft`, and `accepted` fields. **One row can encode multiple preferences, plans, injuries, avoided movements, limitations, or other restrictions.** Counts cannot prove their absence or whether other V1 tables, messages, providers, private Storage, or previous snapshots contain relevant information.
 
+A further read-only V1 catalog search for `import`, `sync`, `provider`, `template`, `legacy`, `source`, and `restore` identified `public.allin_workout_sync_sources` and `public.allin_backup_restore_drills` as relevant owner/source-evidence candidates. Exact counts on **2026-11-13** were **zero rows in both**. No separate restriction import-job ledger was identified in this database catalog. This does **not** prove that provider-side or past import jobs never ran; no independently authenticated external import manifest was obtained.
+
 ## Acceptance blockers — must stay closed
 
 1. **V1 full source inventory:** Independently inventory every potential legacy restriction-bearing table and JSON path, plus older source snapshots and source-of-record mapping. Capture a pinned encrypted source archive and separately review its complete TOC, owners, row counts, row digests and source acquisition metadata. Do not publish any private artifacts.
