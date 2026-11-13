@@ -41,6 +41,34 @@ export function validateCaptureInputs({env,approved}) {
  return {valid:errors.length===0,errors};
 }
 
+// A reviewed allowlist can become stale after a live migration. Before any
+// capture, inspect the actual deployed V2 table inventory over the SAME
+// project-bound connection. Fail closed for new/omitted V2 owner tables.
+export function assessCurrentV2TableCoverage({actualTables,approvedTables}) {
+ const reasons=[];
+ if(!Array.isArray(actualTables)||actualTables.length===0||
+    actualTables.some(t=>typeof t!=='string'||!allowed.test(t))||
+    new Set(actualTables).size!==actualTables.length)
+  reasons.push('invalid_live_v2_inventory');
+ if(!Array.isArray(approvedTables))reasons.push('invalid_approved_tables');
+ const approved=new Set(Array.isArray(approvedTables)?approvedTables:[]);
+ const live=new Set(Array.isArray(actualTables)?actualTables:[]);
+ for(const t of live)if(!approved.has(t))reasons.push('unapproved_live_v2_table:'+t);
+ const criticalAuth=['auth.users','auth.identities','auth.sessions','auth.refresh_tokens'];
+ for(const t of criticalAuth)if(!approved.has(t))reasons.push('missing_core_auth_table:'+t);
+ return {valid:reasons.length===0,reasons};
+}
+function queryLiveV2Tables() {
+ const query="SELECT n.nspname||'.'||c.relname FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p') AND left(c.relname,3)='v2_' ORDER BY 1;";
+ const checked=spawnSync('psql',['-X','-qAt','-v','ON_ERROR_STOP=1','-c',query],{
+  env:{...process.env,PGOPTIONS:'-c default_transaction_read_only=on'},
+  encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:30000,maxBuffer:1024*1024
+ });
+ if(checked.error||checked.status!==0)
+  throw Error('ALL-12 read-only live inventory query failed; no archive was created');
+ return checked.stdout.trim().split(/\\r?\\n/).filter(Boolean);
+}
+
 async function sha256(path) {
  const hash=createHash('sha256');
  for await(const chunk of createReadStream(path))hash.update(chunk);
@@ -54,6 +82,11 @@ async function main() {
  const inventory=JSON.parse(readFileSync(resolve(args[1]),'utf8'));
  const check=validateCaptureInputs({env:process.env,approved:inventory});
  if(!check.valid)throw Error('ALL-12 capture refused: '+check.errors.join(', '));
+ const currentV2=queryLiveV2Tables();
+ const covered=assessCurrentV2TableCoverage({
+  actualTables:currentV2,approvedTables:inventory.tables
+ });
+ if(!covered.valid)throw Error('ALL-12 capture blocked: '+covered.reasons.join(', '));
  const dir=resolve(process.env.ALL12_BACKUP_DIRECTORY);
  assert(!dir.includes('/.git/')&&!dir.endsWith('/.git')&&!dir.includes('\\.git\\'),
   'Never write private recovery archives into Git');
