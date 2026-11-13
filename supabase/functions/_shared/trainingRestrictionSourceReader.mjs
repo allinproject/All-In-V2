@@ -117,3 +117,29 @@ export function createTrainingRestrictionSourceReaderCandidate({
   },
  });
 }
+
+/**
+ * Concrete canonical Training-owned current restriction source. It reads
+ * active AND retired rows from the SAME transaction used by the ingest RPC.
+ * The bound LIMIT + 1 is a fail-closed cap, not silently truncated coverage.
+ * The remaining four source kinds still need their authoritative readers.
+ */
+export async function readCanonicalCurrentRestrictionSource({
+ client,ownerId,snapshotVersion,
+}) {
+ if(typeof client?.query!=='function'||!UUID.test(ownerId??'')
+   ||typeof snapshotVersion!=='string'||!snapshotVersion.trim())
+  throw Error('Pinned canonical Training source transaction required');
+ const response=await client.query(
+  'SELECT * FROM public.v2_training_athlete_restrictions WHERE user_id=$1 ORDER BY id LIMIT 201',
+  [ownerId]);
+ if(!Array.isArray(response?.rows)||response.rows.length>200)
+  throw Error('Canonical restriction source is unbounded or unavailable');
+ if(response.rows.some(row=>row?.user_id!==ownerId))
+  throw Error('Canonical restriction query returned foreign owner');
+ return {
+  ownerId,snapshotVersion,exhaustive:true,nextCursor:null,
+  evidenceRef:'training-canonical:'+snapshotVersion+':current',
+  records:response.rows,
+ };
+}
