@@ -66,6 +66,28 @@ test('private relationship policies remain explicit and incoming blocks are not 
  assert(reader.includes('v2_account_export_authorize_request_candidate'),
   'session and exact request gate is required');
 });
+test('both inline and paginated Community follow/block exports minimize fields',()=>{
+ const inlineStart=source.indexOf("'outgoing_follows',coalesce(");
+ const inlineEnd=source.indexOf("'my_action_receipts',coalesce(",inlineStart);
+ assert(inlineStart>0&&inlineEnd>inlineStart);
+ const inline=source.slice(inlineStart,inlineEnd);
+ assert(!inline.includes('to_jsonb(f)')&&!inline.includes('to_jsonb(b)'),
+  'Inline Community export still discloses raw directed relationship rows');
+ for(const expected of [
+  "'followed_id',f.followed_id","'state',f.state",
+  "'requested_at',f.requested_at","'approved_at',f.approved_at",
+  "'blocked_id',b.blocked_id","'created_at',b.created_at",
+ ])assert(inline.includes(expected),'Inline export missing reviewed field '+expected);
+ const pagedStart=reader.indexOf("ELSIF p_collection LIKE 'community.%' THEN");
+ const pagedEnd=reader.indexOf(" ELSIF p_collection='public.v2_training_athlete_restrictions' THEN",pagedStart);
+ const paged=reader.slice(pagedStart,pagedEnd);
+ assert(!paged.includes('pg_catalog.to_jsonb(t)'),
+  'Paginated Community export still discloses raw relationship rows');
+ assert(paged.includes('WHERE t.follower_id=$1')
+  &&paged.includes('WHERE t.blocker_id=$1')
+  &&paged.includes("RAISE EXCEPTION 'Unreviewed Community export projection'"));
+});
+
 test('Community relation exports use explicit owner-scoped redaction, never raw relation rows',()=>{
  const start=reader.indexOf("ELSIF p_collection LIKE 'community.%' THEN");
  const end=reader.indexOf(" ELSIF p_collection='public.v2_training_athlete_restrictions' THEN",start);
