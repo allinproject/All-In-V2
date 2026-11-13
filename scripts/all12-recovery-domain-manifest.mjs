@@ -66,6 +66,12 @@ export function assessIndependentRecoveryEvidence(evidence={}) {
   ['authConfigurationRecovered', v=>v===true],
   ['privateStorageBytesAndMetadataRecovered', v=>v===true],
   ['liveSchemaDomainInventoryReconciled', v=>v===true],
+  // A generic schema fingerprint or synthetic local restore cannot cover
+  // active/retired restrictions, immutable receipts, legacy limitations or
+  // an independently acquired provider snapshot.
+  ['restrictionHostedSchemaFingerprintsMatch',v=>v===true],
+  ['restrictionOwnerDataAndEvidenceReceiptsRestored',v=>v===true],
+  ['restrictionLegacyAndImportSourceProvenanceReconciled',v=>v===true],
   ['reviewedReleaseAuthorization', v=>v===true],
  ];
  const missing=required.filter(([field,valid])=>!valid(evidence[field])).map(([field])=>field);
