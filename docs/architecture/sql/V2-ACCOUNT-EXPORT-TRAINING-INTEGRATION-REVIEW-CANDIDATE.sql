@@ -80,10 +80,25 @@ begin
        OR (c.relname LIKE 'v2_hydration_%'
           AND c.relname <> 'v2_hydration_events'
           AND c.relname <> 'v2_hydration_actions')
-       OR c.relname LIKE 'v2_ingredient_%'
-       OR c.relname LIKE 'v2_nutrient_%'
-       OR c.relname LIKE 'v2_coach_request_%'
-       OR c.relname LIKE 'v2_privileged_storage_%'
+       -- Reviewed reference and internal-only relations are classified
+       -- explicitly; any NEW table in the same domain still fails closed.
+       OR (c.relname LIKE 'v2_ingredient_%' AND NOT (
+          (n.nspname='public' AND c.relname=ANY(ARRAY[
+            'v2_ingredient_aliases','v2_ingredient_measure_conversions',
+            'v2_ingredient_nutrition_profiles','v2_ingredient_profile_nutrients',
+            'v2_ingredient_profile_sources','v2_ingredient_source_records']))
+          OR (n.nspname='allin_private' AND c.relname=ANY(ARRAY[
+            'v2_ingredient_energy_attestations',
+            'v2_ingredient_operator_credential_events',
+            'v2_ingredient_review_events','v2_ingredient_review_operators',
+            'v2_ingredient_source_energy_evidence']))))
+       OR (c.relname LIKE 'v2_nutrient_%' AND NOT (
+          n.nspname='public' AND c.relname='v2_nutrient_definitions'))
+       OR (c.relname LIKE 'v2_coach_request_%' AND NOT (
+          n.nspname='allin_private' AND c.relname='v2_coach_request_policy'))
+       OR (c.relname LIKE 'v2_privileged_storage_%' AND NOT (
+          n.nspname='allin_private'
+          AND c.relname='v2_privileged_storage_write_leases_review'))
        OR c.relname LIKE 'v2_recipe_%'
        OR c.relname LIKE 'v2_cookbook_%'
        OR c.relname LIKE 'v2_gear_%'
