@@ -1,0 +1,25 @@
+{
+  "sourceProjectRef": "xarhuczrtzuiljmtdaeu",
+  "approvedForLogicalBackup": false,
+  "reviewStatus": "DRAFT_NOT_AUTHORIZED",
+  "sourceInventoryObservation": "2026-11-12 read-only live SQL; must refresh and independently review at capture time",
+  "limitations": "Only 12 current deployed v2_* app tables plus four core Auth tables; does not cover every Auth internal table, Storage bytes/configuration, object ACLs, provider configuration, cron or non-table state. Data-only archive cannot build fresh database schema. No backup has been taken.",
+  "tables": [
+    "allin_private.v2_account_deletion_execution_audit",
+    "allin_private.v2_account_deletion_processor_config",
+    "allin_private.v2_account_deletion_requests",
+    "allin_private.v2_health_considerations",
+    "allin_private.v2_onboarding_actions",
+    "allin_private.v2_profile_settings_actions",
+    "allin_private.v2_provider_cache",
+    "auth.users",
+    "auth.identities",
+    "auth.sessions",
+    "auth.refresh_tokens",
+    "public.v2_legal_acceptances",
+    "public.v2_legal_documents",
+    "public.v2_onboarding_progress",
+    "public.v2_profile_settings",
+    "public.v2_profiles"
+  ]
+}
