@@ -82,6 +82,27 @@ BEGIN
  IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM true
  THEN RAISE EXCEPTION 'Valid checkpoints did not restore DB-only coverage'; END IF;
 
+ -- Database plan readback must also reject corruption introduced by a
+ -- privileged import which bypassed the only supported immutable plan RPC.
+ UPDATE allin_private.v2_account_deletion_storage_plan_review
+ SET planned_paths=ARRAY[a::text||'/one.fit',a::text||'/one.fit']
+ WHERE request_id=req AND bucket_id='v2-private-workout-objects';
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Duplicate privileged plan unexpectedly accepted'; END IF;
+ UPDATE allin_private.v2_account_deletion_storage_plan_review
+ SET planned_paths=ARRAY[a::text||'/one.fit',b::text||'/foreign.fit']
+ WHERE request_id=req AND bucket_id='v2-private-workout-objects';
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Foreign privileged plan unexpectedly accepted'; END IF;
+ UPDATE allin_private.v2_account_deletion_storage_plan_review
+ SET planned_paths=ARRAY[a::text||'/one.fit',a::text||'/nested/two.fit']
+ WHERE request_id=req AND bucket_id='v2-private-workout-objects';
+ v:=public.v2_verify_account_deletion_storage_readiness(a,req);
+ IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM true
+ THEN RAISE EXCEPTION 'Canonical immutable plan not restored'; END IF;
+
  denied:=false;
  BEGIN
   PERFORM public.v2_verify_account_deletion_storage_readiness(b,req);
