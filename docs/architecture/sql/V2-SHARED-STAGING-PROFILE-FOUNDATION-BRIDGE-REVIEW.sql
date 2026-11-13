@@ -685,7 +685,7 @@ grant execute on function public.v2_accept_legal_documents(text, text, text, boo
 -- future inserts. Backfill only the three new canonical owner tables, never
 -- rewrite Coach, Nutrition, Storage, deletion, or export records.
 INSERT INTO public.v2_profiles(user_id,display_name)
- SELECT u.id,nullif(pg_catalog.btrim(pg_catalog.coalesce(
+ SELECT u.id,nullif(pg_catalog.btrim(coalesce(
   u.raw_user_meta_data->>'display_name',u.raw_user_meta_data->>'name','')),'')
  FROM auth.users u
  ON CONFLICT(user_id) DO NOTHING;
