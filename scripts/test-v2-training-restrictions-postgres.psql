@@ -227,6 +227,22 @@ BEGIN
   PERFORM public.v2_training_active_restrictions_read_candidate(a);
   RAISE EXCEPTION 'Missing retired history passed old certification digest';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
+ -- A new, correctly authenticated owner write also cannot launder missing
+ -- retired history back into a newly trusted inventory.
+ BEGIN
+  PERFORM public.v2_training_restriction_write_candidate(a,
+   '77777777-7777-4777-8777-777777777772','activate',
+   '88888888-8888-4888-8888-888888888882',
+   'exercise','unrelated movement',3);
+  RAISE EXCEPTION 'Partial restore recertified through a new owner action';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_training_restriction_action_receipts
+   WHERE user_id=a AND action_id='77777777-7777-4777-8777-777777777772')
+ OR EXISTS(SELECT 1 FROM public.v2_training_athlete_restrictions
+   WHERE user_id=a AND id='88888888-8888-4888-8888-888888888882') OR
+ (SELECT certified_revision
+  FROM allin_private.v2_training_restriction_certifications WHERE user_id=a)<>3
+ THEN RAISE EXCEPTION 'Rejected partial-restore action changed owner state'; END IF;
  -- Restore synthetic historical row to the certified state and verify.
  INSERT INTO public.v2_training_athlete_restrictions
   (id,user_id,category,subject,source,status,revision,created_at,updated_at)
