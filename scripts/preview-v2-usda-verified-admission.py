@@ -32,6 +32,51 @@ def module_verifier():
     return module
 
 
+def preview_source_release_evidence(verified, evidence, pinned, *, archive_sha):
+    """Read-only evidence proposal, not a source-release writer or authorization.
+
+    Source-record UUIDs can only be assigned and linked inside the canonical
+    controlled importer. Both selected and alternate kcal observations remain
+    distinct, with the same source payload digest and archive provenance.
+    """
+    observed = {str(row["fdcId"]): row for row in verified}
+    selected = {str(row["fdcId"]): row for row in pinned["records"]}
+    foods = {str(row["fdcId"]): row for row in evidence["records"]}
+    if (archive_sha != pinned["archiveSha256"] or archive_sha != evidence["archiveSha256"]
+        or len(verified) != len(observed) or len(selected) != len(foods) != 8
+        or set(observed) != set(selected) or set(selected) != set(foods)):
+        raise ValueError("Controlled source-release membership or archive mismatch")
+    records = []
+    for fdc in sorted(foods, key=int):
+        food, selection, raw_proof = foods[fdc], selected[fdc], observed[fdc]
+        if (raw_proof.get("sourceDigestVerified") is not True
+            or raw_proof.get("preparationStateDescriptionVerified") is not True
+            or len(raw_proof.get("nutrients", {})) != 5
+            or raw_proof["nutrients"]["energy_kcal"]["nutrientId"] != selection["selectedFdcNutrientId"]
+            or str(raw_proof["nutrients"]["energy_kcal"]["amount"]) != str(food["energy"]["kcal"])
+            and float(raw_proof["nutrients"]["energy_kcal"]["amount"]) != float(food["energy"]["kcal"])):
+            raise ValueError("Source-release requires original per-food nutrient verification")
+        digest = selection["sourcePayloadSha256"]
+        if not isinstance(digest, str) or len(digest) != 64:
+            raise ValueError("Missing pinned source SHA-256")
+        for energy in [food["energy"], *([food["energy"]["alternative"]] if food["energy"].get("alternative") else [])]:
+            records.append({
+                "fdcId": int(fdc), "sourcePayloadSha256": digest,
+                "archiveSha256": archive_sha,
+                "fdcNutrientId": int(energy["code"]),
+                "energyKcalPer100g": energy["kcal"],
+                "sourceRecordUuid": None,
+                "releaseAuthorized": False
+            })
+    if len(records) != 14 or len({(r["fdcId"], r["fdcNutrientId"]) for r in records}) != 14:
+        raise ValueError("Unexpected USDA energy-method evidence coverage")
+    return {"status": "verified_evidence_proposal_only",
+            "recordCount": len(records), "sourceFoodCount": 8, "records": records,
+            "requiresControlledImmutableSourceRelease": True,
+            "authorizedToWrite": False, "calculationReady": False,
+            "publicationApproved": False}
+
+
 def preview_archive(path, *, runner=subprocess.run):
     verifier = module_verifier()
     # This verifies complete official ZIP bytes, all eight raw per-food SHA256
@@ -88,6 +133,9 @@ def preview_archive(path, *, runner=subprocess.run):
         output.get("calculationReady") is not False or
         output.get("passedPreflight") != 8):
         raise ValueError("USDA verified review-only admission incomplete")
+    output["sourceReleaseEvidenceProposal"] = preview_source_release_evidence(
+        verified, evidence, pinned, archive_sha=verifier.ARCHIVE_SHA
+    )
     return output
 
 
