@@ -24,7 +24,7 @@ export type WatchPairingServer={
  request(payload:Readonly<Record<string,unknown>>):Promise<unknown>;
 };
 type Session={ownerId:string;sessionId:string;attestedPhoneKeyId:string};
-const validUUID=(s:unknown)=>typeof s==='string'&&
+const validUUID=(s:unknown):s is string=>typeof s==='string'&&
  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 const deviceRefPattern=/^watch-key:[0-9a-f]{64}$/;
 
