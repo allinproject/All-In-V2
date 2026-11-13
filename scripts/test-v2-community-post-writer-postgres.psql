@@ -271,6 +271,18 @@ SELECT set_config('request.jwt.claim.sub',
 UPDATE allin_private.v2_community_comments SET moderation_state='held',
  moderation_updated_at=now()
 WHERE id='82000000-0000-4000-8000-000000000002';
+DO $held_parent_reply$
+BEGIN
+ BEGIN
+  PERFORM public.v2_community_create_comment(
+   '00000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000004',
+   '80000000-0000-0000-0000-000000000001',
+   '82000000-0000-4000-8000-000000000002',
+   'Reply to moderated parent',true);
+  RAISE EXCEPTION 'Moderation-held parent allowed a reply';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $held_parent_reply$;
 DO $held_comment$
 DECLARE r jsonb;
 BEGIN
@@ -298,6 +310,17 @@ BEGIN
   RAISE EXCEPTION 'Blocked user commented on post';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $comment_blocked$;
+-- Permanent deletes remain unreadable in server-side comment views.
+DO $deleted_body_read$
+DECLARE r jsonb;
+BEGIN
+ r:=public.v2_community_comments_read(
+  '80000000-0000-0000-0000-000000000001');
+ IF r::text LIKE '%Edited authored body%'
+ OR r::text LIKE '%Approved comment%'
+ OR r::text LIKE '%Author reply%'
+ THEN RAISE EXCEPTION 'Deleted or held comment body leaked'; END IF;
+END $deleted_body_read$;
 DELETE FROM allin_private.v2_community_blocks
  WHERE blocker_id='00000000-0000-0000-0000-000000000002'
    AND blocked_id='00000000-0000-0000-0000-000000000001';
