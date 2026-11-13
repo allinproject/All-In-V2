@@ -138,3 +138,30 @@ test('single pinned snapshot reconciles observed history/import against canonica
  assert.equal(calls.length,3);
  assert(calls.every(q=>q.args?.[0]===a));
 });
+
+test('identical retired row with raw pg Date and JSONB timezone string reconciles',()=>{
+ const raw={...retired,created_at:new Date('2026-11-11T12:00:00.000Z'),
+  updated_at:new Date('2026-11-12T12:30:00.000Z')};
+ const jsonb={updated_at:'2026-11-12T12:30:00+00:00',
+  created_at:'2026-11-11T12:00:00+00:00',
+  revision:raw.revision,source_ref:raw.source_ref,source:raw.source,
+  subject:raw.subject,category:raw.category,status:raw.status,
+  user_id:raw.user_id,id:raw.id};
+ const imports={ownerId:a,exhaustive:false,records:[],observedUnresolvedMappings:[]};
+ const consistent=reconcileObservedRestrictionSources({
+  ownerId:a,currentRules:[raw],
+  history:{ownerId:a,exhaustive:false,records:[{user_id:a,record:jsonb}]},
+  imports,
+ });
+ assert.equal(consistent.observedRetired,1);
+ assert.deepEqual(consistent.reasons,['independent_source_completeness_unverified']);
+ const altered=reconcileObservedRestrictionSources({
+  ownerId:a,currentRules:[raw],
+  history:{ownerId:a,exhaustive:false,records:[{
+   user_id:a,record:{...jsonb,updated_at:'2026-11-12T13:30:00+00:00'},
+  }]},
+  imports,
+ });
+ assert(altered.reasons.includes('unmatched_historical_rule'));
+ assert.equal(altered.status,'blocked');
+});
