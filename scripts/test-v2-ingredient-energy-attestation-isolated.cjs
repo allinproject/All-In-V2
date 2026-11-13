@@ -184,7 +184,7 @@ test('source officer rejects wrong digest, energy, unauthorized login and source
   await assert.rejects(()=>db.query(release(row,methodsFor(row))),e=>e.code==='42501');
   await db.exec('SET SESSION AUTHORIZATION source_release_officer_b');
   await db.exec('SET ROLE allin_v2_ingredient_source_releaser');
-  await assert.rejects(()=>db.query(release(row,methodsFor(row).map(x=>({...x,kcal:999}))),e=>e.code==='23514');
+  await assert.rejects(()=>db.query(release(row,methodsFor(row).map(x=>({...x,kcal:999})))),e=>e.code==='23514');
   await assert.rejects(()=>db.query(release({...row,digest:'f'.repeat(64)},methodsFor(row))),e=>e.code==='23514');
   await assert.rejects(()=>db.query(release(row,[{nutrientId:2047,kcal:31.4}])),e=>e.code==='23514');
   await db.exec('SET SESSION AUTHORIZATION postgres');
