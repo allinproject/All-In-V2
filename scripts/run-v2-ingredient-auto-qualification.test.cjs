@@ -196,3 +196,13 @@ test('hosted entrypoint aborts before BEGIN when reviewer connection is untruste
    /Hosted ingest readiness denied/);
  assert.deepEqual(statements,[HOSTED_READINESS_SQL]);
 });
+
+test('hosted qualifier requires explicit energy-evidence intent before any host query',async()=>{
+ const calls=[];
+ const client={async query(sql){calls.push(sql);throw Error('host should not be queried');}};
+ for(const attestEnergy of [undefined,null,'false',0,1]){
+  await assert.rejects(runHostedAutomaticQualification({client,...fixture(),attestEnergy}),
+   /Hosted energy attestation intent must be an explicit boolean/);
+ }
+ assert.deepEqual(calls,[]);
+});
