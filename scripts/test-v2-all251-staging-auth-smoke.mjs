@@ -1,6 +1,6 @@
 
 import assert from 'node:assert/strict';
-import {randomUUID,randomBytes,createHash} from 'node:crypto';
+import {randomUUID} from 'node:crypto';
 import {verifyAccountExportDownload} from '../supabase/functions/_shared/trainingExportDownloadVerifier.mjs';
 // ALL-251 only: create and remove two staging-only Auth users. Never log secrets.
 const ref='fbtgknlxjyeqrxemskbl';
@@ -72,35 +72,30 @@ try{
  }
  process.stdout.write('PASS: invalid passwords rejected for both synthetic owners\\n');
  process.stdout.write('PASS: two real isolated synthetic GoTrue sessions\\n');
- // Hosted byte-level security probe on the APPROVED temporary project only.
- // The buckets have no ordinary authenticated Storage policies. Test a real
- // service-created private object and require both owner JWTs to be denied;
- // authorized user uploads/downloads and any deletion upload barrier remain
- // separate, unpassed release gates.
- acceptanceStep='hosted private Storage byte isolation';
+ // Storage byte upload/readback belongs to the separately guarded,
+ // lease-aware ALL-251 acceptance. This general Auth smoke must instead
+ // prove that even the protected staging secret cannot upload without a
+ // durable owner-scoped write lease. Never weaken the existing fence.
+ acceptanceStep='hosted private Storage unleased upload denial';
  const bucket='v2-private-workout-objects';
- const objectPath=a.id+'/all251-hosted-'+randomUUID()+'.bin';
- const bytes=randomBytes(65536);
+ const objectPath=a.id+'/all251-unleased-'+randomUUID()+'.bin';
  const storagePath='/storage/v1/object/'+bucket+'/'+objectPath;
- const storageHeaders={apikey:key,'content-type':'application/octet-stream'};
- const upload=await fetch(base+storagePath,{method:'POST',headers:storageHeaders,
-   body:bytes,redirect:'manual',signal:AbortSignal.timeout(30000)});
- assert([200,201].includes(upload.status),'Staging private Storage upload failed');
- temporaryStoragePaths.push(storagePath);
- const privateRead=await fetch(base+'/storage/v1/object/authenticated/'+bucket+'/'+objectPath,{
-   method:'GET',headers:{apikey:key},redirect:'manual',signal:AbortSignal.timeout(30000)});
- assert.equal(privateRead.status,200,'Server readback of stored bytes failed');
- const readBytes=Buffer.from(await privateRead.arrayBuffer());
- assert.equal(createHash('sha256').update(readBytes).digest('hex'),
-   createHash('sha256').update(bytes).digest('hex'),'Hosted private Storage bytes changed');
- for(const jwt of [aToken,bToken]){
-   const denied=await fetch(base+'/storage/v1/object/authenticated/'+bucket+'/'+objectPath,{
-     method:'GET',headers:{apikey:anon,authorization:'Bearer '+jwt},
-     redirect:'manual',signal:AbortSignal.timeout(30000)});
-   assert([400,401,403,404].includes(denied.status),
-     'Owner or cross-owner JWT bypassed disabled private Storage access policy');
- }
- process.stdout.write('PASS: hosted Storage service byte SHA-256 and both real JWT read denials\\n');
+ const upload=await fetch(base+storagePath,{
+   method:'POST',headers:{apikey:key,'content-type':'application/octet-stream'},
+   body:Buffer.from('ALL251 unauthorized synthetic upload probe'),
+   redirect:'manual',signal:AbortSignal.timeout(30000),
+ });
+ // Protect cleanup if a regression unexpectedly allows creation.
+ if([200,201].includes(upload.status))temporaryStoragePaths.push(storagePath);
+ assert([400,403].includes(upload.status),
+   'Unleased privileged Storage upload was not denied');
+ const readback=await fetch(base+'/storage/v1/object/authenticated/'+bucket+'/'+objectPath,{
+   method:'GET',headers:{apikey:key},
+   redirect:'manual',signal:AbortSignal.timeout(30000),
+ });
+ assert([400,404].includes(readback.status),
+   'Unleased upload unexpectedly left readable private Storage bytes');
+ process.stdout.write('PASS: hosted unleased privileged Storage upload denied; no object readable\\n');
  // The canonical restricted RPC bridges must never trust a signed-in user
  // directly or authorize an unapproved request, even through a secret-key
  // backend. Verify against real hosted Auth user and session identifiers.
