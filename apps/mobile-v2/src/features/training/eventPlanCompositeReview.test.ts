@@ -41,7 +41,7 @@ test('wrong owner, access gate or incomplete source is unavailable',()=>{
    {composite:null},{composite:{...composite(),complete:false}},
    {composite:{...composite(),ownerId:'athlete-b'}},
    {composite:{...composite(),nextCursor:'later'}},
- ]) assert.equal(reviewCanonicalEventGoalComposite({...ctx(),...changes} as Parameters<typeof ctx>[0] & ReturnType<typeof ctx>).status,'unavailable');
+ ]) assert.equal(reviewCanonicalEventGoalComposite({...ctx(),...changes} as Parameters<typeof reviewCanonicalEventGoalComposite>[0]).status,'unavailable');
 });
 test('stale Goal to Event edition/version and missing participation are review-only',()=>{
  for(const goals of [
