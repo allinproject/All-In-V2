@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { Link, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +16,6 @@ export function V2CoachAccessHost() {
   const gate = useAccessGate();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const opening = useRef(false);
   const coachOpen = pathname === '/coach' || pathname.endsWith('/coach');
   if (loading || !user || gate.status !== 'ready' || coachOpen) return null;
   return (
@@ -27,8 +25,6 @@ export function V2CoachAccessHost() {
           accessibilityRole="button"
           accessibilityLabel="Open Coach"
           accessibilityHint="Opens your existing Coach conversation"
-          onPressIn={() => { opening.current = true; }}
-          onPressOut={() => { opening.current = false; }}
           style={styles.button}
         >
           <Text style={styles.mark}>✦</Text>
