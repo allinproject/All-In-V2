@@ -1,0 +1,76 @@
+\set ON_ERROR_STOP on
+-- ALL-251: all rows, buckets, functions and triggers roll back locally.
+BEGIN;
+\i /tmp/V2-ACCOUNT-DELETION-PRIVILEGED-STORAGE-WRITER-REVIEW.sql
+DO $review$
+DECLARE
+ a uuid:='a8111111-8111-4111-8111-811111111111';
+ b uuid:='b8222222-8222-4222-8222-822222222222';
+ req uuid:='c8333333-8333-4333-8333-833333333333';
+ lease uuid;
+ denied boolean;
+BEGIN
+ IF has_table_privilege('authenticated',
+  'allin_private.v2_privileged_storage_write_leases_review','SELECT')
+ OR has_function_privilege('authenticated',
+  'public.v2_begin_privileged_storage_write_review(uuid,text,text,text)','EXECUTE')
+ OR has_function_privilege('authenticated',
+  'public.v2_settle_privileged_storage_write_review(uuid,uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Privileged lease API leaked to clients'; END IF;
+ IF NOT has_function_privilege('service_role',
+  'public.v2_begin_privileged_storage_write_review(uuid,text,text,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Service-only lease API unavailable'; END IF;
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO storage.buckets(id,name,public)
+ VALUES('v2-private-workout-objects','v2-private-workout-objects',false);
+ lease:=public.v2_begin_privileged_storage_write_review(
+  a,'v2-private-workout-objects',a::text||'/one.fit','create');
+ IF lease IS NULL THEN RAISE EXCEPTION 'Lease not created'; END IF;
+ denied:=false;
+ BEGIN
+  INSERT INTO allin_private.v2_account_deletion_requests
+   (user_id,request_id,status) VALUES(a,req,'requested');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Deletion started with unresolved upload'; END IF;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_requests
+  WHERE user_id=a) THEN RAISE EXCEPTION 'Rejected request wrote state'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_privileged_storage_write_leases_review
+  WHERE owner_id=a AND lease_id=lease AND settled_at IS NULL)
+ THEN RAISE EXCEPTION 'Rejected deletion unexpectedly settled write lease'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_settle_privileged_storage_write_review(b,lease);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Foreign owner settled lease'; END IF;
+ IF public.v2_settle_privileged_storage_write_review(a,lease) IS DISTINCT FROM true
+ THEN RAISE EXCEPTION 'Verified owner could not settle lease'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_settle_privileged_storage_write_review(a,lease);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Lease was reusable'; END IF;
+ INSERT INTO allin_private.v2_account_deletion_requests
+  (user_id,request_id,status) VALUES(a,req,'requested');
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_privileged_storage_write_review(
+   a,'v2-private-workout-objects',a::text||'/late.fit','replace');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Late privileged upload accepted'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_privileged_storage_write_review(
+   b,'v2-private-workout-objects',a::text||'/foreign.fit','create');
+ EXCEPTION WHEN invalid_parameter_value THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Foreign Storage key accepted'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_account_deletion_requests
+  WHERE user_id=a AND status='requested')
+ THEN RAISE EXCEPTION 'Canonical request lost after write settlement'; END IF;
+ RAISE NOTICE 'PASS ALL-251 privileged writer: unresolved durable lease blocks deletion, owner isolation, one-time settlement, late write denied';
+END $review$;
+ROLLBACK;
