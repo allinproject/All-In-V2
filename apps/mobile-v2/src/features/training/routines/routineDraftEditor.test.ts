@@ -81,3 +81,14 @@ test('routine sport selection derives from canonical V2 activity registry',async
   assert.equal(newRoutineDraft(sport).sport,sport);
  }
 });
+
+test('controlled text editing retains spaces and treats blank names as incomplete',()=>{
+ let draft=newRoutineDraft('strength');
+ draft=renameRoutineDraft(draft,'Full ');
+ assert.equal(draft.name,'Full ');
+ draft=renameRoutineDraft(draft,'Full Body');
+ assert.equal(draft.name,'Full Body');
+ draft=renameRoutineDraft(draft,'');
+ assert.equal(draft.name,'');
+ assert.equal(inspectRoutineDraft(draft).ready,false);
+});
