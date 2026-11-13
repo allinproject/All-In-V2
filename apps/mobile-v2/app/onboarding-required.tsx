@@ -81,6 +81,26 @@ const DAY_OPTIONS: Choice[] = [
   { value: 'flexible', label: 'My schedule changes' },
 ];
 
+const ACCESS_OPTIONS: Choice[] = [
+  {value: 'home', label: 'At home'}, {value: 'gym', label: 'Gym'}, {value: 'outdoors', label: 'Outdoors'}, {value: 'mixed', label: 'A mix / depends'},
+];
+
+const FREQUENCY_OPTIONS: Choice[] = [
+  {value: '1_2', label: '1–2 days/week'}, {value: '3_4', label: '3–4 days/week'}, {value: '5_plus', label: '5+ days/week'}, {value: 'varies', label: 'It varies'},
+];
+const TIME_OPTIONS: Choice[] = [
+  {value: 'morning', label: 'Morning'}, {value: 'midday', label: 'Midday'}, {value: 'evening', label: 'Evening'}, {value: 'flexible', label: 'Flexible'},
+];
+const DURATION_OPTIONS: Choice[] = [
+  {value: 'under_30', label: '< 30 min'}, {value: '30_60', label: '30–60 min'}, {value: '60_90', label: '60–90 min'}, {value: '90_plus', label: '90+ min'}, {value: 'varies', label: 'Varies'},
+];
+const DETAIL_OPTIONS: Choice[] = [
+  {value: 'concise',label: 'Concise'}, {value: 'normal',label: 'Normal'}, {value: 'detailed',label: 'Detailed'},
+];
+const TONE_OPTIONS: Choice[] = [
+  {value: 'supportive',label: 'Supportive'}, {value: 'neutral',label: 'Balanced'}, {value: 'direct',label: 'Direct'},
+];
+
 const COACH_OPTIONS: Choice[] = [
   { value: 'only_when_asked', label: 'When I ask', description: 'Keep Coach available, but let me lead.' },
   { value: 'balanced', label: 'Balanced', description: 'Offer useful guidance without crowding my day.' },
@@ -126,12 +146,25 @@ function readAnswersFromSettings(value: unknown): OnboardingAnswers {
 
   return {
     primaryFocus: asString(training.primary_focus),
+    eventGoal: asString(training.event_goal),
+    trainingFrequency: asString(training.training_frequency),
+    trainingVolume: asString(training.weekly_volume),
+    preferredTime: asString(training.preferred_time),
+    sessionLength: asString(training.session_length),
+    scheduleNotes: asString(training.schedule_notes),
+    trainingAccess: asString(training.training_access),
+    constraintNotes: asString(training.constraint_notes),
+    foodPreferences: asString(nutrition.food_preferences),
+    fuelingNotes: asString(nutrition.fueling_notes),
+    mealPrep: nutrition.meal_prep === true ? 'yes' : nutrition.meal_prep === false ? 'no' : '',
+    coachDetail: asString(coach.detail_level) || 'normal',
+    coachTone: asString(coach.tone) || 'neutral',
     currentSports: asStringArray(training.current_sports),
     availableDays: asStringArray(training.available_days),
     coachGuidance: asString(coach.guidance_style),
     foodSafety: asString(safety.selection),
     foodSafetyNotes: asString(safety.selection) === 'none' ? '' : asString(safety.notes),
-    proactivity: asString(notifications.proactivity_level),
+    proactivity: asString(coach.guidance_style) || asString(notifications.proactivity_level),
   };
 }
 
@@ -323,7 +356,7 @@ function OnboardingOwnerFlow() {
   const stepOptions: readonly Choice[] = activeStep === 'focus' ? V2_ONBOARDING_FOCUS_OPTIONS
     : activeStep === 'training_pattern' ? TRAINING_OPTIONS
     : activeStep === 'availability' ? DAY_OPTIONS
-    : activeStep === 'coach' ? COACH_OPTIONS
+    : activeStep === 'coach' ? ACCESS_OPTIONS
     : activeStep === 'food_safety' ? FOOD_OPTIONS
     : activeStep === 'proactivity' ? PROACTIVITY_OPTIONS
     : [];
@@ -333,7 +366,7 @@ function OnboardingOwnerFlow() {
       case 'focus': return answers.primaryFocus === value;
       case 'training_pattern': return answers.currentSports.includes(value);
       case 'availability': return answers.availableDays.includes(value);
-      case 'coach': return answers.coachGuidance === value;
+      case 'coach': return answers.trainingAccess === value;
       case 'food_safety': return answers.foodSafety === value;
       case 'proactivity': return answers.proactivity === value;
       default: return false;
@@ -345,7 +378,7 @@ function OnboardingOwnerFlow() {
       case 'focus': return { ...current, primaryFocus: value };
       case 'training_pattern': return { ...current, currentSports: toggleValue(current.currentSports, value, 'not_currently_training') };
       case 'availability': return { ...current, availableDays: toggleValue(current.availableDays, value, 'flexible') };
-      case 'coach': return { ...current, coachGuidance: value };
+      case 'coach': return { ...current, trainingAccess: value };
       case 'food_safety': return { ...current, foodSafety: value, foodSafetyNotes: value === 'none' ? '' : current.foodSafetyNotes };
       case 'proactivity': return { ...current, proactivity: value };
       default: return current;
@@ -353,12 +386,12 @@ function OnboardingOwnerFlow() {
   });
 
   const stepPresentation: Record<OnboardingStep, { heading: string; subtitle: string; intro: string }> = {
-    focus: { heading: "What's your focus?", subtitle: "Pick where you'd like to start. You can do it all.", intro: "LET'S GET YOU STARTED" },
-    training_pattern: { heading: 'How do you move?', subtitle: 'Choose all that apply. New to fitness? Start where you are.', intro: 'YOUR TRAINING' },
-    availability: { heading: 'When can you train?', subtitle: 'Pick your usual days or choose a flexible schedule.', intro: 'YOUR SCHEDULE' },
-    coach: { heading: 'Meet your Coach.', subtitle: 'How much guidance would you like? You stay in control.', intro: 'YOUR PERSONAL COACH' },
-    food_safety: { heading: 'Food, your way.', subtitle: 'Tell Coach what to consider. Details are optional.', intro: 'YOUR NUTRITION' },
-    proactivity: { heading: 'Set your pace.', subtitle: 'Choose how often ALL IN 365 should offer suggestions.', intro: 'YOUR EXPERIENCE' },
+    focus: { heading: 'What are you working toward?', subtitle: 'Your outcome, not your sport. You can add more goals later.', intro: "LET'S GET YOU STARTED" },
+    training_pattern: { heading: 'What do you do now?', subtitle: 'Your current routine, not an ideal week. Coach will build from here.', intro: 'YOUR BASELINE' },
+    availability: { heading: 'What fits your week?', subtitle: 'Real life first. Coach can adapt your plan around it.', intro: 'YOUR SCHEDULE' },
+    coach: { heading: 'What should Coach work around?', subtitle: 'Equipment, access, and practical constraints.', intro: 'YOUR RESOURCES' },
+    food_safety: { heading: 'How do you eat and fuel?', subtitle: 'Hard exclusions first, then preferences and Fuel.', intro: 'YOUR NUTRITION' },
+    proactivity: { heading: 'How should Coach help?', subtitle: 'Choose the tone, detail, and initiative that work for you.', intro: 'YOUR COACH' },
   };
 
   if (!authLoading && !user) return <Redirect href="/sign-in" />;
@@ -393,8 +426,33 @@ function OnboardingOwnerFlow() {
 
   const presentation = stepPresentation[activeStep];
   const isDenseStep = activeStep === 'focus' || activeStep === 'training_pattern' || activeStep === 'availability';
-  const hasNotes = activeStep === 'food_safety' && answers.foodSafety !== '' && answers.foodSafety !== 'none';
-  const isCompact = compactDevice || (windowHeight < 790 && isDenseStep);
+  const isCompact = compactDevice || windowHeight < 860;
+  const extraFields = activeStep === 'focus' && answers.primaryFocus === 'prepare_event'
+    || activeStep === 'training_pattern' || activeStep === 'availability'
+    || activeStep === 'coach' || activeStep === 'food_safety' || activeStep === 'proactivity';
+  const renderMiniChoices = (label: string, options: readonly Choice[], selected: string, onSelect: (value: string) => void) => (
+    <View style={styles.miniGroup}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={styles.miniGrid}>
+        {options.map(option => <Pressable
+          key={option.value} accessibilityRole="radio" accessibilityState={{selected: selected === option.value}}
+          disabled={saving} onPress={() => onSelect(option.value)}
+          style={[styles.miniChip, selected === option.value && styles.focusOptionSelected]}
+        ><Text numberOfLines={2} style={[styles.miniChipText, selected === option.value && styles.focusOptionTextSelected]}>{option.label}</Text></Pressable>)}
+      </View>
+    </View>
+  );
+  const renderTextField = (label: string, value: string, key: keyof OnboardingAnswers, placeholder: string, multiline = false) => (
+    <View style={styles.miniGroup}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        accessibilityLabel={label} editable={!saving} multiline={multiline}
+        value={value} onChangeText={text => updateAnswers(current => ({...current, [key]: text}))}
+        placeholder={placeholder} placeholderTextColor={colors.mutedText}
+        style={[styles.compactInput, !multiline && styles.singleInput]}
+      />
+    </View>
+  );
   const chooser = (
     <View style={[styles.focusGrid, !isDenseStep && styles.stackedChoices]}>
       {stepOptions.map(option => {
@@ -444,19 +502,34 @@ function OnboardingOwnerFlow() {
         <Text style={styles.focusDescription}>{presentation.subtitle}</Text>
       </View>
       {chooser}
-      {hasNotes ? (
-        <View style={styles.compactNotes}>
-          <Text style={styles.fieldLabel}>Anything else? (Optional)</Text>
-          <TextInput
-            accessibilityLabel="Food allergies, sensitivities or preferences"
-            editable={!saving}
-            multiline
-            onChangeText={value => updateAnswers(current => ({ ...current, foodSafetyNotes: value }))}
-            placeholder="Only share what you want Coach to know"
-            placeholderTextColor={colors.mutedText}
-            style={styles.compactInput}
-            value={answers.foodSafetyNotes}
-          />
+      {activeStep === 'focus' && answers.primaryFocus === 'prepare_event'
+        ? renderTextField('Race or event (optional)', answers.eventGoal, 'eventGoal', 'Event name / date') : null}
+      {activeStep === 'training_pattern' ? (
+        <View style={styles.extraGroup}>
+          {renderMiniChoices('How often?', FREQUENCY_OPTIONS, answers.trainingFrequency, value => updateAnswers(current => ({...current, trainingFrequency: value})))}
+          {renderTextField('Weekly volume (optional)', answers.trainingVolume, 'trainingVolume', 'e.g. 30 miles/week')}
+        </View>
+      ) : null}
+      {activeStep === 'availability' ? (
+        <View style={styles.extraGroup}>
+          {renderMiniChoices('Usually what time?', TIME_OPTIONS, answers.preferredTime, value => updateAnswers(current => ({...current, preferredTime: value})))}
+          {renderMiniChoices('Typical session length', DURATION_OPTIONS, answers.sessionLength, value => updateAnswers(current => ({...current, sessionLength: value})))}
+          {renderTextField('Schedule constraints (optional)', answers.scheduleNotes, 'scheduleNotes', 'Shifts, travel, long-run days')}
+        </View>
+      ) : null}
+      {activeStep === 'coach' ? renderTextField('Anything Coach should work around? (optional)', answers.constraintNotes, 'constraintNotes', 'Equipment, access or practical limitations', true) : null}
+      {activeStep === 'food_safety' ? (
+        <View style={styles.extraGroup}>
+          {renderTextField('Hard exclusions or allergies (optional)', answers.foodSafetyNotes, 'foodSafetyNotes', 'Leave blank if none')}
+          {renderTextField('Food preferences (optional)', answers.foodPreferences, 'foodPreferences', 'Foods you like or avoid')}
+          {renderTextField('Training fuel (optional)', answers.fuelingNotes, 'fuelingNotes', 'What works during long sessions')}
+          {renderMiniChoices('Do you meal prep?', [{value:'yes',label:'Yes'},{value:'no',label:'No'}], answers.mealPrep, value => updateAnswers(current => ({...current, mealPrep:value})))}
+        </View>
+      ) : null}
+      {activeStep === 'proactivity' ? (
+        <View style={styles.extraGroup}>
+          {renderMiniChoices('Detail', DETAIL_OPTIONS, answers.coachDetail, value => updateAnswers(current => ({...current, coachDetail:value})))}
+          {renderMiniChoices('Tone', TONE_OPTIONS, answers.coachTone, value => updateAnswers(current => ({...current, coachTone:value})))}
         </View>
       ) : null}
       <View style={styles.focusBottom}>
@@ -486,7 +559,7 @@ function OnboardingOwnerFlow() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {hasNotes ? (
+      {extraFields ? (
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.notesScrollContent} keyboardShouldPersistTaps="handled">
             {mainContent}
@@ -529,7 +602,13 @@ const styles = StyleSheet.create({
   fieldLabel: {fontSize: 12, fontWeight: '700', color: colors.warmWhite},
   compactNotes: {gap: 5},
   compactInput: {minHeight: 65, maxHeight: 100, color: colors.warmWhite, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, padding: 11, textAlignVertical: 'top', fontSize: 13},
-  notesScrollContent: {flexGrow: 1},
+  notesScrollContent: {flexGrow: 1, paddingBottom: 12},
+  extraGroup: {gap: 8},
+  miniGroup: {gap: 5},
+  miniGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 6},
+  miniChip: {minHeight: 35, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 9, justifyContent: 'center'},
+  miniChipText: {color: colors.warmWhite, fontSize: 12, fontWeight: '700'},
+  singleInput: {minHeight: 40, maxHeight: 44},
   focusBottom: {gap: 6},
   focusContinue: {minHeight: 49, borderRadius: radius.control, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center'},
   focusContinueText: {fontSize: 16, fontWeight: '900', color: colors.background},
