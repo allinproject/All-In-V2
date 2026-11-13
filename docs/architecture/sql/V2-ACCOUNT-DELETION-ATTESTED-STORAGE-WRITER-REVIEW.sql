@@ -8,6 +8,7 @@
 -- new RPCs require a bounded owner/path/body-digest HMAC signed by a separately
 -- controlled canonical writer. This DOES NOT prove that all provider-level
 -- REST/S3/signed/TUS/multipart completion routes honor metadata triggers.
+BEGIN; -- atomic reviewed upgrade: never expose new RPCs before legacy grants are revoked
 DO $preflight$
 BEGIN
  IF pg_catalog.to_regprocedure('extensions.hmac(bytea,bytea,text)') IS NULL
@@ -153,3 +154,4 @@ GRANT EXECUTE ON FUNCTION public.v2_settle_attested_privileged_storage_write_rev
 -- Signed leases are still NOT provider-level exclusivity: an unrestricted
 -- Supabase project credential, S3 signing pair or delayed TUS write may
 -- bypass DB metadata hooks. No readiness TRUE or worker enablement here.
+COMMIT;
