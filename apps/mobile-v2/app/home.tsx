@@ -225,15 +225,27 @@ function HomeOwnerScreen() {
         ) : null}
 
         <View style={styles.card}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>Progress</Text>
+          <View style={styles.sectionHeader}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>Progress</Text>
+            <Link href="/progress" asChild>
+              <Pressable accessibilityRole="button" accessibilityLabel="View progress details" style={styles.inlineAction}>
+                <Text style={styles.actionText}>View more ›</Text>
+              </Pressable>
+            </Link>
+          </View>
           {progressGlance.label ? <Text style={styles.sectionLabel}>{progressGlance.label}</Text> : null}
-          <Text style={styles.help}>{progressGlance.detail}</Text>
         </View>
 
         <View style={styles.card}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>Recovery</Text>
+          <View style={styles.sectionHeader}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>Recovery</Text>
+            <Link href="/recovery" asChild>
+              <Pressable accessibilityRole="button" accessibilityLabel="View recovery details" style={styles.inlineAction}>
+                <Text style={styles.actionText}>View more ›</Text>
+              </Pressable>
+            </Link>
+          </View>
           {recoveryGlance.label ? <Text style={styles.sectionLabel}>{recoveryGlance.label}</Text> : null}
-          <Text style={styles.help}>{recoveryGlance.detail}</Text>
         </View>
 
       </ScrollView>
