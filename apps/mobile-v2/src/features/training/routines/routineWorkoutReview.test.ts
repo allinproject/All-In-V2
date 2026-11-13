@@ -10,7 +10,7 @@ const snapshot:SavedRoutineOwnerSnapshot={
  identity:'canonical_saved_routine',routineId:'routine-a',ownerId:'athlete-a',
  version:7,sessionGeneration:12,complete:true,name:'Strength A',
  sport:'strength',notes:'Original remains unchanged',
- blocks:[{kind:'strength',id:'draft-1',exercise:'Squat',equipment:'barbell',
+ blocks:[{kind:'strength',id:'source-exercise-42',exercise:'Squat',equipment:'barbell',
   notes:'',sets:3,reps:'6',weight:'95 lb',restSeconds:90,
   setType:'working',groupId:null}],
 };
@@ -19,7 +19,7 @@ const proposal:CoachRoutineSuggestion={
  ownerId:'athlete-a',sessionGeneration:12,routineId:'routine-a',
  routineVersion:7,evidenceRefs:['completed-activity-42','recovery-3'],
  rationale:'Review a smaller dose based on verified recovery context.',
- blockId:'draft-1',
+ blockId:'source-exercise-42',
  replacement:{...(snapshot.blocks[0] as RoutineStrengthBlock),sets:2},
 };
 test('certified owner session identity is required to open a saved routine',()=>{
@@ -28,6 +28,9 @@ test('certified owner session identity is required to open a saved routine',()=>
  assert.equal(openOwnedRoutineWorkoutReview({...snapshot,complete:false} as typeof snapshot,'athlete-a',12),null);
  assert.equal(openOwnedRoutineWorkoutReview({...snapshot,version:0},'athlete-a',12),null);
  assert.equal(openOwnedRoutineWorkoutReview(snapshot,'athlete-a',12)?.suggestionStatus,'none');
+ const opened=openOwnedRoutineWorkoutReview(snapshot,'athlete-a',12)!;
+ assert.deepEqual(opened.blockMapping,[{sourceBlockId:'source-exercise-42',draftBlockId:'draft-1'}]);
+ assert.equal(opened.original.blocks[0].id,'draft-1');
 });
 test('Coach suggestion does not apply automatically; athlete applies only to this preview',()=>{
  const original=openOwnedRoutineWorkoutReview(snapshot,'athlete-a',12)!;
@@ -69,4 +72,13 @@ test('declining suggested change does not change source, accepted plan or curren
  assert.equal(applyCoachChangeForSession(declined,'athlete-a',12),declined);
  assert.equal((declined.sessionDraft.blocks[0] as RoutineStrengthBlock).sets,3);
  assert.deepEqual(declined.original,initial.original);
+});
+
+test('malformed and duplicate canonical block IDs never become a reviewable workout',()=>{
+ assert.equal(openOwnedRoutineWorkoutReview({...snapshot,
+   blocks:[snapshot.blocks[0],snapshot.blocks[0]]},'athlete-a',12),null);
+ assert.equal(openOwnedRoutineWorkoutReview({...snapshot,
+   blocks:[{...snapshot.blocks[0],id:'bad id with spaces'}]},'athlete-a',12),null);
+ assert.equal(openOwnedRoutineWorkoutReview({...snapshot,
+   blocks:[null] as unknown as typeof snapshot.blocks},'athlete-a',12),null);
 });
