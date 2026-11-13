@@ -168,12 +168,22 @@ try{
   if(location){
    const target=new URL(location,DIRECT);
    assert.equal(target.origin,DIRECT,'Cross-origin TUS Location forbidden');
-   const result=await request(target.pathname+target.search,{method:'PATCH',origin:DIRECT,
-    headers:{'tus-resumable':'1.0.0','upload-offset':'0',
-     'content-type':'application/offset+octet-stream'},
-    body:randomBytes(50)});
-   mark('TUS post-deletion completion',denied(result.status)?'PASS':'FAIL','HTTP '+result.status);
-  }else mark('TUS completion','UNTESTED','creation had no Location header');
+   try{
+    const result=await request(target.pathname+target.search,{method:'PATCH',origin:DIRECT,
+     headers:{'tus-resumable':'1.0.0','upload-offset':'0',
+      'content-type':'application/offset+octet-stream'},
+     body:randomBytes(50)});
+    mark('TUS post-deletion completion',denied(result.status)?'PASS':'FAIL','HTTP '+result.status);
+   }finally{
+    const stopped=await request(target.pathname+target.search,{method:'DELETE',origin:DIRECT,
+     headers:{'tus-resumable':'1.0.0'}});
+    if(![200,202,204,404,410].includes(stopped.status))
+     cleanupIssues.push('TUS-session-unconfirmed-termination:'+stopped.status);
+   }
+  }else{
+   mark('TUS completion','UNTESTED','creation had no Location header');
+   cleanupIssues.push('TUS-session-created-without-terminable-location');
+  }
  }else mark('TUS completion','UNTESTED','TUS creation rejected');
 
  // One user must not gain rights to the other owner's deleted content.
