@@ -15,7 +15,7 @@ CREATE TABLE allin_private.v2_account_deletion_storage_checkpoint_review (
    check (bucket_id ~ '^[a-z0-9][a-z0-9-]{1,80}$'),
  constraint v2_deletion_storage_review_path
    check (length(object_path) between 1 and 1024
-      and position(chr(0) in object_path)=0)
+      and object_path !~ '[[:cntrl:]]')
 );
 ALTER TABLE allin_private.v2_account_deletion_storage_checkpoint_review ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON allin_private.v2_account_deletion_storage_checkpoint_review
