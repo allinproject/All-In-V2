@@ -47,3 +47,9 @@ verify_jwt = true
 # Apple Watch/HealthKit owner proof needs an independently approved adapter.
 [functions.v2-device-pairing]
 verify_jwt = true
+
+# ALL-217 / ALL-210: canonical Coach API is owner-JWT only.
+# This setting alone does not deploy or arm the endpoint. Read/send release
+# controls remain independently default OFF in the Edge handler.
+[functions.v2-coach]
+verify_jwt = true
