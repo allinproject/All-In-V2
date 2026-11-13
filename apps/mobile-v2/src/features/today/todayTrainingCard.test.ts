@@ -66,3 +66,15 @@ test('other owner or invalid range cannot certify a Today workout',()=>{
   assert.equal(summarizeTodayTraining(r,day).status,'unavailable');
   assert.equal(summarizeTodayTraining(ready([planned],[]),'invalid').status,'unavailable');
 });
+
+test('verified empty completed read with missing plan remains partial, not an empty training day',()=>{
+  const r=combineCalendarReads({ownerId,fromDate:day,throughDate:day,
+    planned:{status:'unavailable'},
+    completed:{status:'ready',ownerId,fromDate:day,throughDate:day,records:[]},
+  });
+  const card=summarizeTodayTraining(r,day);
+  assert.equal(card.status,'partial');
+  assert.equal(card.title,'Training schedule unavailable');
+  assert.match(card.detail,/Completed activities were checked/);
+  assert.match(card.detail,/No rest day/);
+});
