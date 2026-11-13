@@ -131,6 +131,8 @@ on:
       - 'scripts/test-all251-privileged-storage-writer-review-local.psql'
       - 'supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs'
       - 'supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs'
+      - 'supabase/functions/_shared/trainingPrivilegedAccountExportBarrier.mjs'
+      - 'supabase/functions/_shared/trainingPrivilegedAccountExportBarrier.test.mjs'
       - 'supabase/functions/v2-private-storage-writer/index.ts'
       - 'scripts/test-v2-account-export-real-local-storage.mjs'
       - 'scripts/test-all12-private-storage-two-auth-local.mjs'
@@ -210,6 +212,7 @@ jobs:
           set -euo pipefail
           test "${CI}" = "1"
           node --test supabase/functions/_shared/trainingPrivilegedStorageWriter.test.mjs
+          node --test supabase/functions/_shared/trainingPrivilegedAccountExportBarrier.test.mjs
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
           for file in \
