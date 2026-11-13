@@ -1,7 +1,9 @@
 \set ON_ERROR_STOP on
 \ir test-v2-community-reader-postgres.psql
+CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE);
 \ir ../docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql
 \ir ../docs/architecture/sql/V2-COMMUNITY-POST-UPDATE-WRITER-CANDIDATE.sql
+\ir ../docs/architecture/sql/V2-COMMUNITY-MODERATION-WORKFLOW-REVIEW-CANDIDATE.sql
 
 DO $private_acl$
 BEGIN
@@ -324,6 +326,167 @@ END $deleted_body_read$;
 DELETE FROM allin_private.v2_community_blocks
  WHERE blocker_id='00000000-0000-0000-0000-000000000002'
    AND blocked_id='00000000-0000-0000-0000-000000000001';
+
+-- Trusted moderation uses a real per-actor auth.sessions check and a
+-- separately provisioned role row. The review test never grants client RPCs.
+INSERT INTO auth.users(id) VALUES
+ ('00000000-0000-0000-0000-000000000003'),
+ ('00000000-0000-0000-0000-000000000004');
+INSERT INTO public.v2_profiles(user_id) VALUES
+ ('00000000-0000-0000-0000-000000000003'),
+ ('00000000-0000-0000-0000-000000000004');
+INSERT INTO auth.sessions(id,user_id) VALUES
+ ('83000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000001'),
+ ('83000000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000002'),
+ ('83000000-0000-4000-8000-000000000003','00000000-0000-0000-0000-000000000003'),
+ ('83000000-0000-4000-8000-000000000004','00000000-0000-0000-0000-000000000004');
+INSERT INTO allin_private.v2_community_moderator_grants
+ (reviewer_id,permission,enabled) VALUES
+ ('00000000-0000-0000-0000-000000000003','initial_review',true),
+ ('00000000-0000-0000-0000-000000000004','appeal_review',true);
+INSERT INTO allin_private.v2_community_comments
+ (id,post_id,author_id,body) VALUES
+ ('82000000-0000-4000-8000-000000000005',
+ '80000000-0000-0000-0000-000000000001',
+ '00000000-0000-0000-0000-000000000001','Reported author content');
+DO $moderation_acl$
+DECLARE r record;
+BEGIN
+ FOR r IN SELECT c.oid,c.relrowsecurity FROM pg_class c
+ JOIN pg_namespace n ON n.oid=c.relnamespace
+ WHERE n.nspname='allin_private'
+ AND c.relname IN ('v2_community_moderator_grants',
+  'v2_community_moderation_reports','v2_community_moderation_appeals',
+  'v2_community_moderation_events')
+ LOOP
+  IF NOT r.relrowsecurity OR
+    has_table_privilege('authenticated',r.oid,'SELECT')
+   OR has_table_privilege('authenticated',r.oid,'INSERT')
+   OR has_table_privilege('service_role',r.oid,'UPDATE')
+  THEN RAISE EXCEPTION 'Moderation privacy table grant/RLS violation'; END IF;
+ END LOOP;
+ IF has_function_privilege('authenticated',
+   'allin_private.v2_community_decide_report(uuid,bigint,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Exposed moderation decision'; END IF;
+END $moderation_acl$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+DO $absent_session$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_report_comment(
+    '84000000-0000-4000-8000-000000000001',
+    '82000000-0000-4000-8000-000000000005','harassment','Reported');
+  RAISE EXCEPTION 'Missing Auth session allowed report';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $absent_session$;
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000002',false);
+DO $real_report$
+DECLARE r jsonb;
+BEGIN
+ r:=allin_private.v2_community_report_comment(
+   '84000000-0000-4000-8000-000000000001',
+   '82000000-0000-4000-8000-000000000005','harassment','Reported');
+ IF r->>'status'<>'reported' THEN RAISE EXCEPTION 'Report missing'; END IF;
+ r:=allin_private.v2_community_report_comment(
+   '84000000-0000-4000-8000-000000000001',
+   '82000000-0000-4000-8000-000000000005','harassment','Reported');
+ IF (SELECT count(*) FROM allin_private.v2_community_moderation_events
+   WHERE report_id='84000000-0000-4000-8000-000000000001')<>1
+ THEN RAISE EXCEPTION 'Report idempotency duplicated audit'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_community_decide_report(
+   '84000000-0000-4000-8000-000000000001',1,'hide');
+  RAISE EXCEPTION 'Reporter moderated own case';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $real_report$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000003',false);
+DO $initial_review$
+DECLARE r jsonb;
+BEGIN
+ r:=allin_private.v2_community_decide_report(
+  '84000000-0000-4000-8000-000000000001',1,'hide');
+ IF r->>'version'<>'2' OR
+  (SELECT moderation_state FROM allin_private.v2_community_comments
+   WHERE id='82000000-0000-4000-8000-000000000005')<>'hidden'
+ THEN RAISE EXCEPTION 'Trusted reviewer could not hide case'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_community_decide_report(
+   '84000000-0000-4000-8000-000000000001',1,'dismiss');
+  RAISE EXCEPTION 'Stale reviewer decision overwritten';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_community_resolve_appeal(
+   '84000000-0000-4000-8000-000000000001',2,'overturn');
+  RAISE EXCEPTION 'Initial reviewer resolved appeal';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $initial_review$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000002',false);
+DO $reporter_appeal_denied$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_appeal_report(
+   '84000000-0000-4000-8000-000000000001',2,'I reported this');
+  RAISE EXCEPTION 'Reporter appealed author decision';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $reporter_appeal_denied$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000001',false);
+DO $author_appeal$
+DECLARE r jsonb;
+BEGIN
+ r:=allin_private.v2_community_appeal_report(
+  '84000000-0000-4000-8000-000000000001',2,'Please review hiding');
+ IF r->>'version'<>'3' THEN RAISE EXCEPTION 'Author appeal missing'; END IF;
+ BEGIN
+  PERFORM allin_private.v2_community_appeal_report(
+   '84000000-0000-4000-8000-000000000001',2,'Duplicate appeal');
+  RAISE EXCEPTION 'Second appeal accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+END $author_appeal$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000003',false);
+DO $same_reviewer_denied$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_resolve_appeal(
+   '84000000-0000-4000-8000-000000000001',3,'overturn');
+  RAISE EXCEPTION 'Same reviewer approved own decision';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $same_reviewer_denied$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000004',false);
+DO $independent_appeal$
+DECLARE r jsonb;
+BEGIN
+ r:=allin_private.v2_community_resolve_appeal(
+  '84000000-0000-4000-8000-000000000001',3,'overturn');
+ IF r->>'version'<>'4' OR
+  (SELECT moderation_state FROM allin_private.v2_community_comments
+   WHERE id='82000000-0000-4000-8000-000000000005')<>'visible'
+ THEN RAISE EXCEPTION 'Independent appeal failed to restore content'; END IF;
+ IF (SELECT pg_catalog.string_agg(event_kind,',' ORDER BY version)
+  FROM allin_private.v2_community_moderation_events
+  WHERE report_id='84000000-0000-4000-8000-000000000001')
+  <>'reported,initial_decision,appealed,appeal_decision'
+ THEN RAISE EXCEPTION 'Complete moderation audit trail missing'; END IF;
+ IF (SELECT count(*) FROM allin_private.v2_community_moderation_events
+  WHERE report_id='84000000-0000-4000-8000-000000000001')<>4
+ THEN RAISE EXCEPTION 'Unexpected audit event count'; END IF;
+END $independent_appeal$;
+DELETE FROM auth.sessions WHERE id='83000000-0000-4000-8000-000000000004';
+DO $revoked_reviewer_session$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_resolve_appeal(
+   '84000000-0000-4000-8000-000000000001',4,'uphold');
+  RAISE EXCEPTION 'Revoked reviewer session reached moderation';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $revoked_reviewer_session$;
+SELECT set_config('request.jwt.claim.session_id','',false);
+SELECT set_config('request.jwt.claim.sub','',false);
+\echo PASS: Trusted moderator capabilities, real Auth sessions, case CAS, append audit, independent author appeal and revoked session denial.
 
 DELETE FROM auth.users WHERE id='00000000-0000-0000-0000-000000000002';
 DO $deleted$
