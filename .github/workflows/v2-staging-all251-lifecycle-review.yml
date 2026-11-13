@@ -1,0 +1,52 @@
+name: V2 ALL-251 staging lifecycle compatibility (no deploy)
+on:
+  pull_request:
+    paths:
+      - 'docs/architecture/sql/V2-STAGING-ALL251-EXPIRED-SESSION-GATE-REVIEW.sql'
+      - 'scripts/fixtures/v2-shared-staging-all251-export-auth-minimal.psql'
+      - 'scripts/test-v2-shared-staging-all251-export-auth-upgrade.psql'
+      - '.github/workflows/v2-staging-all251-lifecycle-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    name: Existing ALL-251 guarded Auth export contract, disposable PG17
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci_only_unused
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGPASSWORD: ci_only_unused
+      PGHOST: localhost
+      PGUSER: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recreate exact existing staging Auth export gate and Storage fence
+        run: psql -v ON_ERROR_STOP=1 -f scripts/fixtures/v2-shared-staging-all251-export-auth-minimal.psql
+      - name: Apply exact-hash-guarded in-place session expiry fix
+        run: psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-STAGING-ALL251-EXPIRED-SESSION-GATE-REVIEW.sql
+      - name: Verify existing session, deletion, Storage-leases and permissions
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-v2-shared-staging-all251-export-auth-upgrade.psql
+      - name: Guard refuses unreviewed second replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          if psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-STAGING-ALL251-EXPIRED-SESSION-GATE-REVIEW.sql > /tmp/lifecycle-repeat.log 2>&1; then
+            echo 'FAIL: expected changed-function guard to block repeat migration'
+            exit 1
+          fi
+          psql -At -c "SELECT count(*) FROM allin_private.v2_privileged_storage_write_leases_review" | grep -qx '1'
