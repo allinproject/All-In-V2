@@ -86,6 +86,10 @@ BEGIN
        v_goal->>'goalKind' IS DISTINCT FROM 'race_event'
     THEN RAISE EXCEPTION 'Goal-to-Event link is not accepted and typed'
       USING ERRCODE='42501'; END IF;
+    -- A paused/completed/archived Goal may keep its historical accepted
+    -- revision, but cannot silently appear as an ACTIVE primary Event Plan.
+    IF v_goal->>'goalStatus' IS DISTINCT FROM 'active'
+    THEN v_requires_review:=true; END IF;
     SELECT value INTO v_matching
     FROM pg_catalog.jsonb_array_elements(v_events->'events')
     WHERE value->>'eventId'=v_goal->>'eventId';
