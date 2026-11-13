@@ -125,6 +125,10 @@ BEGIN
  SELECT * INTO v_comment FROM allin_private.v2_community_comments
   WHERE id=p_comment_id AND deleted_at IS NULL FOR SHARE;
  IF v_comment.id IS NULL OR v_comment.author_id=v_actor
+    OR v_comment.moderation_state<>'visible'
+    OR EXISTS(SELECT 1 FROM allin_private.v2_community_blocks b
+      WHERE (b.blocker_id=v_actor AND b.blocked_id=v_comment.author_id)
+         OR (b.blocker_id=v_comment.author_id AND b.blocked_id=v_actor))
  THEN RAISE EXCEPTION 'community_report_target_unavailable' USING ERRCODE='42501'; END IF;
  SELECT * INTO v_post FROM allin_private.v2_community_posts
   WHERE id=v_comment.post_id FOR SHARE;
