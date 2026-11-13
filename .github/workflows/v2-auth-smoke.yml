@@ -36,6 +36,7 @@ on:
       - 'scripts/all230-capture-v1-restriction-source-encrypted.sh'
       - 'scripts/all230-capture-v1-restriction-source-encrypted.test.mjs'
       - 'scripts/all230-restore-v1-original-fks-offline.sh'
+      - 'scripts/all230-capture-v1-approved-source-domains-encrypted.sh'
       - 'scripts/all230-original-v1-fks-offline.test.mjs'
       - 'supabase/tests/all230_v1_original_17_fk_offline_candidate.sql'
       - 'supabase/tests/all230_v1_historical_allin_table_counts_readonly.sql'
@@ -136,6 +137,7 @@ on:
       - 'scripts/all230-capture-v1-restriction-source-encrypted.sh'
       - 'scripts/all230-capture-v1-restriction-source-encrypted.test.mjs'
       - 'scripts/all230-restore-v1-original-fks-offline.sh'
+      - 'scripts/all230-capture-v1-approved-source-domains-encrypted.sh'
       - 'scripts/all230-original-v1-fks-offline.test.mjs'
       - 'supabase/tests/all230_v1_original_17_fk_offline_candidate.sql'
       - 'supabase/tests/all230_v1_historical_allin_table_counts_readonly.sql'
@@ -244,6 +246,7 @@ jobs:
           bash -n ../../scripts/all230-capture-v1-restriction-source-encrypted.sh
           node --test ../../scripts/all230-capture-v1-restriction-source-encrypted.test.mjs
           bash -n ../../scripts/all230-restore-v1-original-fks-offline.sh
+          bash -n ../../scripts/all230-capture-v1-approved-source-domains-encrypted.sh
           node --test ../../scripts/all230-original-v1-fks-offline.test.mjs
       - name: Validate independent legacy, limitation and import manifest gate (synthetic only)
         run: node --test ../../scripts/all230-assess-v1-restriction-manifest.test.mjs
