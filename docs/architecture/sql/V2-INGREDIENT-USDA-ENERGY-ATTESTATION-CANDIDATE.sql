@@ -314,22 +314,22 @@ BEGIN
       v_pinned_methods := '[{"nutrientId":1008,"kcal":44}]'::jsonb;
     WHEN '2346407' THEN
       v_pinned_sha := '88bec4819f0243de72ad7ada9f6f4f9295e66f3e19892710d4757adc41d70b8f';
-      v_pinned_methods := '[{"nutrientId":2047,"kcal":31.4},{"nutrientId":2048,"kcal":27.9}]'::jsonb;
+      v_pinned_methods := '[{"nutrientId":2048,"kcal":27.9},{"nutrientId":2047,"kcal":31.4}]'::jsonb;
     WHEN '2644285' THEN
       v_pinned_sha := 'b2e32066eeb463137d35b84670e3c26504c5fa62f32734946a8b59e404d4e2e6';
-      v_pinned_methods := '[{"nutrientId":2047,"kcal":118},{"nutrientId":2048,"kcal":115}]'::jsonb;
+      v_pinned_methods := '[{"nutrientId":2048,"kcal":115},{"nutrientId":2047,"kcal":118}]'::jsonb;
     WHEN '2644288' THEN
       v_pinned_sha := 'd369e999d09bc5e73742bcfd466350874a3671f6c96f9d916c6cecff5787f08f';
-      v_pinned_methods := '[{"nutrientId":2047,"kcal":137},{"nutrientId":2048,"kcal":133}]'::jsonb;
+      v_pinned_methods := '[{"nutrientId":2048,"kcal":133},{"nutrientId":2047,"kcal":137}]'::jsonb;
     WHEN '2644289' THEN
       v_pinned_sha := '9666e868d07842fc3f6e69a904b7aa7cf4b8607342fdc9391210168d98b28224';
-      v_pinned_methods := '[{"nutrientId":2047,"kcal":127},{"nutrientId":2048,"kcal":123}]'::jsonb;
+      v_pinned_methods := '[{"nutrientId":2048,"kcal":123},{"nutrientId":2047,"kcal":127}]'::jsonb;
     WHEN '2685580' THEN
       v_pinned_sha := '020baa3671721a0d4fea358fd729afd3b06eb39f5d46166a81061805748a41ed';
-      v_pinned_methods := '[{"nutrientId":2047,"kcal":104},{"nutrientId":2048,"kcal":88.5}]'::jsonb;
+      v_pinned_methods := '[{"nutrientId":2048,"kcal":88.5},{"nutrientId":2047,"kcal":104}]'::jsonb;
     WHEN '2685581' THEN
       v_pinned_sha := 'de8faf99cdeb9b24b9ac84bfee58e1ff1dcd1ab576919794946c400f8be39121';
-      v_pinned_methods := '[{"nutrientId":2047,"kcal":37.9},{"nutrientId":2048,"kcal":32.3}]'::jsonb;
+      v_pinned_methods := '[{"nutrientId":2048,"kcal":32.3},{"nutrientId":2047,"kcal":37.9}]'::jsonb;
     ELSE
       RAISE EXCEPTION 'unapproved USDA Foundation source record' USING ERRCODE='23514';
   END CASE;
@@ -361,6 +361,10 @@ BEGIN
       END IF;
       v_existing := v_existing+1;
     ELSE
+      IF v_count<>0 THEN
+        RAISE EXCEPTION 'partial or conflicting immutable USDA source release'
+          USING ERRCODE='23514';
+      END IF;
       INSERT INTO allin_private.v2_ingredient_source_energy_evidence
        (source_record_id,source_payload_sha256,archive_sha256,
         fdc_nutrient_id,energy_kcal,source_review_reference)
