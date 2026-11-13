@@ -93,14 +93,19 @@ export async function readCanonicalRestoredRestrictionSource(args) {
  */
 // Raw pg rows use Date while pg_catalog.to_jsonb(row) yields timestamp
 // strings. Compare normalized values, not object insertion/key ordering.
-const canonicalValue=(value)=>{
+const canonicalValue=(value,key='')=>{
  if(value instanceof Date){
   if(!Number.isFinite(value.getTime()))throw Error('Invalid canonical timestamp');
   return value.toISOString();
  }
- if(Array.isArray(value))return value.map(canonicalValue);
+ if(typeof value==='string'&&/^(?:created_at|updated_at|retired_at)$/.test(key)){
+  const t=Date.parse(value);
+  if(!Number.isFinite(t))throw Error('Invalid canonical timestamp');
+  return new Date(t).toISOString();
+ }
+ if(Array.isArray(value))return value.map(x=>canonicalValue(x,key));
  if(value&&typeof value==='object')
-  return Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonicalValue(value[k])]));
+  return Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonicalValue(value[k],k)]));
  if(value===undefined)return null;
  return value;
 };
