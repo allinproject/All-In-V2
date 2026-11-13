@@ -4,7 +4,11 @@ import {randomUUID} from 'node:crypto';
 // ALL-222 temporary hosted staging-only tests. Invoked by ALL-251's existing
 // protected two-account workflow, using its genuine GoTrue bearer tokens.
 // No privileged token is logged or used to authorize a client RPC.
-const denied = new Set([400, 401, 403, 404]);
+const denied = new Set([400, 401, 403]);
+const unavailable = new Set([400, 401, 403, 404]);
+function expectRestricted(response, label) {
+  assert(unavailable.has(response.status), label + ': unexpectedly allowed HTTP ' + response.status);
+}
 function expectDenied(response, label) {
   assert(denied.has(response.status), label + ': unexpectedly allowed HTTP ' + response.status);
 }
@@ -94,12 +98,12 @@ export async function runAll222AuthMatrix({request, a, b, aToken, bToken, anon})
 
   // 8-10. ALL-251 intentionally removed authenticated deletion API grants in
   // this temporary staging environment. Test denial; do not grant to pass.
-  expectDenied(await rpc('v2_request_account_deletion',
+  expectRestricted(await rpc('v2_request_account_deletion',
     {...ownA,p_confirm:'DELETE MY ACCOUNT'},aToken),
     'Deletion intake intentionally disabled in temporary staging');
-  expectDenied(await rpc('v2_my_account_deletion_request',ownA,aToken),
+  expectRestricted(await rpc('v2_my_account_deletion_request',ownA,aToken),
     'Deletion status intentionally disabled in temporary staging');
-  expectDenied(await rpc('v2_cancel_account_deletion_request',
+  expectRestricted(await rpc('v2_cancel_account_deletion_request',
     {...ownA,p_expected_request_id:randomUUID()},aToken),
     'Deletion cancel intentionally disabled in temporary staging');
 
