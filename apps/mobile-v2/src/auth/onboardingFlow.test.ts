@@ -32,54 +32,72 @@ test('empty optional answers remain unknown until the user chooses or skips', ()
   assert.equal(isOnboardingAnswerComplete('proactivity', answers), false);
 });
 
-test('initial focus options cover sports and non-race lifestyle starting points', () => {
+test('goal options describe desired outcomes, not current sports', () => {
   const values = V2_ONBOARDING_FOCUS_OPTIONS.map(option => option.value);
   assert.equal(new Set(values).size, values.length);
-  assert.ok(values.includes('general_fitness'));
-  assert.ok(values.includes('nutrition_habits'));
-  assert.ok(values.includes('body_composition'));
-  assert.ok(values.includes('general_wellbeing'));
-  assert.ok(values.includes('running'));
+  assert.deepEqual(values, [
+    'general_fitness', 'get_stronger', 'build_endurance', 'weight_loss',
+    'weight_gain', 'prepare_event', 'be_consistent', 'nutrition',
+  ]);
+  assert.ok(!values.includes('running'));
 });
 
-test('explicit onboarding answers map to the owning versioned profile settings sections', () => {
+test('V1-derived six distinct questions map to existing V2 Profile sections', () => {
   const answers: OnboardingAnswers = {
-    primaryFocus: 'run',
-    currentSports: ['run', 'strength', 'run'],
+    ...EMPTY_ONBOARDING_ANSWERS,
+    primaryFocus: 'prepare_event',
+    eventGoal: '50-mile trail race',
+    currentSports: ['running', 'strength', 'running'],
+    trainingFrequency: '5_plus',
+    trainingVolume: '40 miles',
     availableDays: ['monday', 'wednesday'],
-    coachGuidance: 'balanced',
-    foodSafety: 'allergies',
+    preferredTime: 'evening',
+    sessionLength: '60_90',
+    scheduleNotes: 'Shift work',
+    trainingAccess: 'gym',
+    constraintNotes: 'No pool',
+    foodSafety: 'allergies_or_sensitivities',
     foodSafetyNotes: 'Peanuts',
-    proactivity: 'critical_only',
+    foodPreferences: 'No yogurt',
+    fuelingNotes: 'Gels on long runs',
+    mealPrep: 'yes',
+    coachDetail: 'detailed',
+    coachTone: 'direct',
+    proactivity: 'proactive',
   };
-
   assert.deepEqual(onboardingPreferenceWrite('focus', answers), {
     section: 'training_preferences',
-    patch: { primary_focus: 'run' },
+    patch: { primary_focus: 'prepare_event', event_goal: '50-mile trail race' },
   });
   assert.deepEqual(onboardingPreferenceWrite('training_pattern', answers), {
     section: 'training_preferences',
-    patch: { current_sports: ['run', 'strength'] },
+    patch: { current_sports: ['running', 'strength'], training_frequency: '5_plus', weekly_volume: '40 miles' },
   });
   assert.deepEqual(onboardingPreferenceWrite('availability', answers), {
     section: 'training_preferences',
-    patch: { available_days: ['monday', 'wednesday'] },
+    patch: {
+      available_days: ['monday', 'wednesday'], preferred_time: 'evening',
+      session_length: '60_90', schedule_notes: 'Shift work',
+    },
   });
   assert.deepEqual(onboardingPreferenceWrite('coach', answers), {
-    section: 'coach_preferences',
-    patch: { guidance_style: 'balanced' },
+    section: 'training_preferences',
+    patch: { training_access: 'gym', constraint_notes: 'No pool' },
   });
   assert.deepEqual(onboardingPreferenceWrite('food_safety', answers), {
     section: 'nutrition_preferences',
-    patch: { food_safety: { selection: 'allergies', notes: 'Peanuts' } },
+    patch: {
+      food_safety: { selection: 'allergies_or_sensitivities', notes: 'Peanuts' },
+      food_preferences: 'No yogurt', fueling_notes: 'Gels on long runs', meal_prep: true,
+    },
   });
   assert.deepEqual(onboardingPreferenceWrite('proactivity', answers), {
-    section: 'notification_preferences',
-    patch: { proactivity_level: 'critical_only' },
+    section: 'coach_preferences',
+    patch: { guidance_style: 'proactive', detail_level: 'detailed', tone: 'direct', proactive_suggestions: true },
   });
 });
 
-test('food-safety notes are optional and whitespace is normalized', () => {
+test('food-safety explicit none is not confused with unknown or an allergy', () => {
   const answers: OnboardingAnswers = {
     ...EMPTY_ONBOARDING_ANSWERS,
     foodSafety: 'none',
@@ -88,7 +106,10 @@ test('food-safety notes are optional and whitespace is normalized', () => {
   assert.equal(isOnboardingAnswerComplete('food_safety', answers), true);
   assert.deepEqual(onboardingPreferenceWrite('food_safety', answers), {
     section: 'nutrition_preferences',
-    patch: { food_safety: { selection: 'none', notes: null } },
+    patch: {
+      food_safety: { selection: 'none', notes: null },
+      food_preferences: null, fueling_notes: null, meal_prep: null,
+    },
   });
 });
 
