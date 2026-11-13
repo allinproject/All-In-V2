@@ -19,6 +19,10 @@ export type RestrictionSourceEvidence = {
   nextCursor: string | null;
   /** Trusted snapshot version shared by the source inventory and its reader. */
   snapshotVersion: string;
+  /** Trusted source-reader evidence identifier; unique across source categories. */
+  evidenceRef: string;
+  /** Digest of the source manifest, including an explicit empty inventory. */
+  inventoryDigest: string;
   /** Count reconciled against the canonical inventory by the trusted reader. */
   inspectedCount: number;
   reconciledCount: number;
@@ -51,6 +55,7 @@ export function preflightRestrictionSourceCoverage(input: {
   if (typeof version !== 'string' || !version.trim()) reasons.push('missing_snapshot');
   if (!Array.isArray(input.sources)) return { status: 'blocked', reasons: [...reasons, 'missing_sources'] };
   const kinds = new Set<string>();
+  const evidenceRefs = new Set<string>();
   for (const entry of input.sources) {
     if (!entry || typeof entry !== 'object') {
       reasons.push('malformed_source');
@@ -65,6 +70,10 @@ export function preflightRestrictionSourceCoverage(input: {
     if (typeof entry.ownerId !== 'string' || !entry.ownerId.trim() || entry.ownerId !== owner) reasons.push('source_owner_mismatch');
     if (entry.complete !== true || entry.nextCursor !== null) reasons.push('incomplete_source');
     if (typeof entry.snapshotVersion !== 'string' || !entry.snapshotVersion.trim() || entry.snapshotVersion !== version) reasons.push('stale_source');
+    if (typeof entry.evidenceRef !== 'string' || !entry.evidenceRef.trim()) reasons.push('missing_source_evidence');
+    else if (evidenceRefs.has(entry.evidenceRef)) reasons.push('reused_source_evidence');
+    else evidenceRefs.add(entry.evidenceRef);
+    if (typeof entry.inventoryDigest !== 'string' || !/^[0-9a-f]{64}$/.test(entry.inventoryDigest)) reasons.push('invalid_source_digest');
     if (!isCount(entry.inspectedCount) || !isCount(entry.reconciledCount)
         || !isCount(entry.unresolvedCount)
         || entry.inspectedCount !== entry.reconciledCount
