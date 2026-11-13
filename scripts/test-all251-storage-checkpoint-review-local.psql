@@ -16,10 +16,30 @@ BEGIN
  THEN RAISE EXCEPTION 'Review checkpoint leaked API access'; END IF;
  INSERT INTO allin_private.v2_account_deletion_execution_audit
   (request_id,user_id,status) VALUES(req,a,'processing');
+ IF (SELECT cardinality(allin_private.v2_deletion_storage_plan_review(
+    a,req,'v2-private-workout-objects',ARRAY[a::text||'/sensor.fit'])))<>1
+ THEN RAISE EXCEPTION 'Initial durable Storage plan not created'; END IF;
+ IF (SELECT cardinality(allin_private.v2_deletion_storage_plan_review(
+    a,req,'v2-private-workout-objects',ARRAY[]::text[])))<>1
+ THEN RAISE EXCEPTION 'Retry erased the immutable Storage object plan'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM allin_private.v2_deletion_storage_plan_review(
+    a,req,'v2-private-workout-objects',ARRAY[a::text||'/unknown.fit']);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Unplanned Storage object accepted'; END IF;
  PERFORM allin_private.v2_deletion_checkpoint_absence_review(
    a,req,'v2-private-workout-objects',a::text||'/sensor.fit');
  PERFORM allin_private.v2_deletion_checkpoint_absence_review(
    a,req,'v2-private-workout-objects',a::text||'/sensor.fit');
+ denied:=false;
+ BEGIN
+  PERFORM allin_private.v2_deletion_checkpoint_absence_review(
+    a,req,'v2-private-workout-objects',a::text||'/unplanned.fit');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Checkpoint accepted path absent from plan'; END IF;
  IF (SELECT count(*) FROM allin_private.v2_account_deletion_storage_checkpoint_review
       WHERE request_id=req)<>1
  THEN RAISE EXCEPTION 'Retry created duplicate checkpoint'; END IF;
