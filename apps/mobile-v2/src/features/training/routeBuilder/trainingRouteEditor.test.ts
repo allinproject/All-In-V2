@@ -4,7 +4,7 @@ import {
   addRouteWaypoint, buildAuthoritativeRouteEditRequest, buildRouteSaveCommand,
   createManualRouteEditor, deleteRouteWaypoint, moveRouteWaypoint,
   redoRouteEdit, reorderRouteWaypoint, setRouteEndpoint,
-  setRouteShape, shapeRouteWithFreehand, undoRouteEdit,
+  setRouteShape, setRouteSport, shapeRouteWithFreehand, undoRouteEdit,
 } from './trainingRouteEditor.ts';
 
 const start={latitude:44.75,longitude:-93.27};
@@ -48,4 +48,35 @@ test('shape/freehand changes remain unsaved and require fresh provider rerouting
  assert.equal(state.present.pendingFreehandTrace?.length,2);
  assert.equal(state.present.routeFresh,false);
  assert.equal(buildRouteSaveCommand(state),null);
+});
+
+test('switching sport preserves waypoints and can undo without trusting earlier provider data',()=>{
+ let state=createManualRouteEditor({sport:'run'});
+ state=setRouteEndpoint(state,'start',start);
+ state=setRouteEndpoint(state,'end',finish);
+ state=addRouteWaypoint(state,start);
+ const changed=setRouteSport(state,'ride');
+ assert.equal(changed.present.sport,'ride');
+ assert.deepEqual(changed.present.start,start);
+ assert.deepEqual(changed.present.end,finish);
+ assert.equal(changed.present.waypoints.length,1);
+ assert.equal(changed.present.route,null);
+ assert.equal(changed.present.routeFresh,false);
+ assert.equal(buildRouteSaveCommand(changed),null);
+ assert.equal(undoRouteEdit(changed).present.sport,'run');
+});
+test('restored local drafts never confer trusted provider evidence or saved route identity',async()=>{
+ const {restoreRecoverableRouteDraft}=await import('./trainingRouteEditor.ts');
+ const state=createManualRouteEditor({sport:'hike'});
+ const malicious={...state.present,routeId:'other-account-route',
+   routeFresh:true,origin:'coach',favorite:true,
+   route:{provider:{kind:'routing_map_provider',provider:'untrusted',providerRouteId:'spoofed'},distanceMeters:42}};
+ const restored=restoreRecoverableRouteDraft(JSON.stringify({version:1,draft:malicious}));
+ assert.equal(restored?.present.route,null);
+ assert.equal(restored?.present.routeFresh,false);
+ assert.equal(restored?.present.routeId,null);
+ assert.equal(restored?.present.origin,'manual');
+ assert.equal(buildRouteSaveCommand(restored!),null);
+ assert.equal(restoreRecoverableRouteDraft(JSON.stringify({version:1,draft:{...malicious,
+    waypoints:[{id:'a',point:start},{id:'a',point:finish}]}})),null);
 });
