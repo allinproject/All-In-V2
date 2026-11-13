@@ -92,7 +92,7 @@ if(!valid(serviceKey)||!valid(anonKey)||serviceKey===anonKey||
    action:"open",ownerId:a.id,candidateThreadId:randomUUID()
   });
   check("refreshed session resumes thread",resumed.status===200&&resumed.data?.threadId===thread);
-  // Separate GoTrue password login represents a fresh second client process.
+  // Separate GoTrue password login simulates a fresh client session.
   // No prior client token or locally cached thread ID is passed to open.
   const independent=await http("/auth/v1/token?grant_type=password",{
    body:{email:a.email,password:a.password}
