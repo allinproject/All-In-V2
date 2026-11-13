@@ -59,7 +59,7 @@ Deno.serve(async(req:Request)=>{
    supabase:client,signingKey:signerBytes,
   });
   const result=await createPrivilegedStorageWriter({
-   supabase:client,leaseAuthority,
+   supabase:client,leaseAuthority,requireAttestedLease:true,
   }).write({
    verifiedOwnerId:identity.data.user.id,bucketId,path,
    operation,contentType,bytes:payload,
