@@ -19,7 +19,7 @@ import {auditPrivateMediaExportCoverage,createSupabaseTrainingMediaAuditAdapters
 export function createTrainingAccountExportWorkerCandidate({
   bearerToken,authClient,serviceClient,resolveEncryptionKey,
   persistPrivateEnvelope,deletePrivateRequest,readApprovedRequestExpiry,
-  canonicalPageReader,
+  withOwnerStorageWriteBarrier,canonicalPageReader,
 }) {
   if(!serviceClient?.storage?.getBucket||!serviceClient?.from||!serviceClient?.rpc)
     throw new Error('Trusted Supabase service client missing');
@@ -34,7 +34,7 @@ export function createTrainingAccountExportWorkerCandidate({
   }
   const persistence=hasSupabaseLease
     ?createSupabasePrivateArchivePersistence({
-      serviceClient,readApprovedRequestExpiry,
+      serviceClient,readApprovedRequestExpiry,withOwnerStorageWriteBarrier,
      })
     :{persistPrivateEnvelope,deletePrivateRequest};
   const archiveSink=createTrainingEncryptedArchiveSink({
@@ -56,7 +56,7 @@ export function createTrainingAccountExportWorkerCandidate({
   }
   const largeServices = canonicalPageReader === undefined ? null : {
     ...createSupabasePagedAccountExportStorage({
-      serviceClient,readApprovedRequestExpiry,
+      serviceClient,readApprovedRequestExpiry,withOwnerStorageWriteBarrier,
     }),
     authorizeExport: services.authorizeExport,
     getCanonicalInventory: pinnedReader
