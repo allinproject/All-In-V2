@@ -20,6 +20,8 @@ on:
       - 'scripts/test-v2-usda-source-release-preview.py'
       - 'scripts/run-v2-ingredient-auto-qualification.cjs'
       - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
+      - 'scripts/test-v2-ingredient-initial-seed-isolated.cjs'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-SEED-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-hosted-catalog-reader.py'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-READER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-catalog-reader-isolated.cjs'
@@ -66,6 +68,8 @@ on:
       - 'scripts/test-v2-usda-source-release-preview.py'
       - 'scripts/run-v2-ingredient-auto-qualification.cjs'
       - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
+      - 'scripts/test-v2-ingredient-initial-seed-isolated.cjs'
+      - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-SEED-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-hosted-catalog-reader.py'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-CATALOG-READER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-catalog-reader-isolated.cjs'
@@ -135,6 +139,8 @@ jobs:
           PGLITE_MODULE=/tmp/allin-pglite/node_modules/@electric-sql/pglite/dist/index.cjs node --test scripts/test-v2-ingredient-auto-qualification-isolated.cjs
       - name: Prove least-privilege catalog reader RLS with unqualified profiles in disposable PostgreSQL
         run: PGLITE_MODULE=/tmp/allin-pglite/node_modules/@electric-sql/pglite/dist/index.cjs node --test scripts/test-v2-ingredient-catalog-reader-isolated.cjs
+      - name: Exercise independent USDA core evidence and controlled canonical seed writer in disposable PostgreSQL
+        run: PGLITE_MODULE=/tmp/allin-pglite/node_modules/@electric-sql/pglite/dist/index.cjs node --test scripts/test-v2-ingredient-initial-seed-isolated.cjs
       - name: Exercise eight pinned USDA energy attestations and fail-closed replay in disposable PGlite
         run: PGLITE_MODULE=/tmp/allin-pglite/node_modules/@electric-sql/pglite/dist/index.cjs node --test scripts/test-v2-ingredient-energy-attestation-isolated.cjs
       - name: Verify canonical ingredient SQL writer guards without deployment
