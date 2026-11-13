@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTrainingRestrictionSourceReaderCandidate,readCanonicalCurrentRestrictionSource,TRAINING_RESTRICTION_SOURCES} from './trainingRestrictionSourceReader.mjs';
+import {createTrainingRestrictionSourceReaderCandidate,readCanonicalCurrentRestrictionSource,readCanonicalApprovedPlanSource,TRAINING_RESTRICTION_SOURCES} from './trainingRestrictionSourceReader.mjs';
 
 const owner='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -20,6 +20,7 @@ function fixture(options={}) {
     return {rows:[]};
    if(sql.includes('inventory_digest_candidate'))return {rows:[{digest:fingerprint}]};
    if(sql.startsWith('SELECT * FROM public.v2_training_athlete_restrictions'))return {rows:options.currentRecords??[]};
+   if(sql.includes('FROM public.v2_training_plan_revisions r'))return {rows:options.approvedPlanRecords??[]};
    if(sql.includes('ingest_restriction_source_evidence_candidate')) {
     const sources=JSON.parse(args[2]);
     assert.equal(sources.length,5);
@@ -38,7 +39,7 @@ function fixture(options={}) {
    throw Error('Unexpected SQL: '+sql);
   },release(){released=true;},
  };
- const sourceReaders=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(1).map(kind=>[kind,async args=>{
+ const sourceReaders=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(2).map(kind=>[kind,async args=>{
   readers++;
   assert.equal(args.client,client);
   const rows=options.foreignKind===kind?[{id:'x',user_id:other}]:
@@ -68,7 +69,7 @@ test('server reader binds all five exact sources to same serializable Auth sessi
  const receipt=await f.instance().ingestReviewedSources({bearerToken:signedFixtureToken,snapshotVersion:version});
  assert.equal(receipt.status,'review_required');
  assert.equal(f.authReads,1);
- assert.equal(f.readers,4);
+ assert.equal(f.readers,3);
  assert.equal(f.reconciled,5);
  assert.equal(f.calls[0].sql,'BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
  assert(f.calls.some(c=>c.sql.includes('request.jwt.claim.sub')&&c.args[0]===owner));
@@ -83,7 +84,7 @@ test('missing source dependency rejects before connecting or ingesting',()=>{
 });
 test('partial, cross-owner and unreconciled source records roll back with no ingest',async()=>{
  for(const options of [
-  {partialKind:'approved_plans'},{wrongOwnerKind:'historical_records'},
+  {partialKind:'historical_records'},{wrongOwnerKind:'historical_records'},
   {foreignKind:'restored_records'},{unresolvedKind:'imported_records',rowsKind:'imported_records'},
  ]) {
   const f=fixture(options);
@@ -97,7 +98,7 @@ test('partial, cross-owner and unreconciled source records roll back with no ing
 });
 test('unverified owner/session refused before acquiring private pool',async()=>{
  let connected=false;
- const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(1).map(kind=>[kind,async()=>{}]));
+ const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(2).map(kind=>[kind,async()=>{}]));
  const r=createTrainingRestrictionSourceReaderCandidate({
   pool:{connect:async()=>{connected=true;throw Error('should not connect');}},
   sourceReaders:readers,reconcileSource:async()=>{},
@@ -116,6 +117,7 @@ test('stale or unexpectedly certified DB receipts roll back',async()=>{
      ||sql.includes('set_config('))return {rows:[]};
   if(sql.includes('inventory_digest_candidate'))return {rows:[{digest:fingerprint}]};
   if(sql.startsWith('SELECT * FROM public.v2_training_athlete_restrictions'))return {rows:[]};
+  if(sql.includes('FROM public.v2_training_plan_revisions r'))return {rows:[]};
   if(sql.includes('ingest_restriction_source_evidence_candidate'))return {rows:[{
    payload:{ownerId:owner,snapshotVersion:version,status:'certified',
     initialCertificationAuthorized:true,sourceAuthenticityEstablished:true,
@@ -123,7 +125,7 @@ test('stale or unexpectedly certified DB receipts roll back',async()=>{
   }]};
   throw Error('Unexpected SQL');
  },release:()=>{released=true;}};
- const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(1).map(kind=>[kind,async()=>({
+ const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(2).map(kind=>[kind,async()=>({
   ownerId:owner,snapshotVersion:version,exhaustive:true,nextCursor:null,
   evidenceRef:'trusted:'+kind,records:[],
  })]));
@@ -163,7 +165,7 @@ test('canonical current-source query includes retired rows and rejects truncatio
 });
 
 test('revoked Auth token and supplied current-reader override are rejected',async()=>{
- const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(1)
+ const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(2)
   .map(kind=>[kind,async()=>({})]));
  assert.throws(()=>createTrainingRestrictionSourceReaderCandidate({
   pool:{connect:async()=>{throw Error('unreachable');}},
@@ -201,4 +203,40 @@ test('PostgreSQL Date timestamps change source digests; invalid evidence fails b
   assert.equal(f.calls.some(c=>c.sql.includes('ingest_restriction_source_evidence_candidate')),false);
   assert.equal(f.calls.at(-1).sql,'ROLLBACK');
  }
+});
+
+test('approved plan source retains accepted and historical superseded prescription rows',async()=>{
+ const calls=[];
+ const rows=[
+  {source_kind:'plan',user_id:owner,record:{id:'p1',user_id:owner}},
+  {source_kind:'revision',user_id:owner,record:{id:'r1',user_id:owner,status:'superseded',accepted_at:'2026-10-01'}},
+  {source_kind:'day',user_id:owner,record:{id:'d1',user_id:owner,day_state:'rest'}},
+  {source_kind:'session',user_id:owner,record:{id:'s1',user_id:owner,intent:{restrictions:['no rowing']}}},
+ ];
+ const client={query:async(sql,args)=>{calls.push({sql,args});return {rows};}};
+ const result=await readCanonicalApprovedPlanSource({client,ownerId:owner,snapshotVersion:version});
+ assert.equal(result.exhaustive,true);
+ assert.deepEqual(result.records.map(x=>x.kind),['plan','revision','day','session']);
+ assert.equal(result.records.at(-1).record.intent.restrictions[0],'no rowing');
+ assert.match(calls[0].sql,/r.accepted_at IS NOT NULL/);
+ assert.match(calls[0].sql,/r.status IN \('accepted','superseded','archived'\)/);
+ assert.match(calls[0].sql,/LIMIT 201/);
+ assert.deepEqual(calls[0].args,[owner]);
+ for(const bad of [
+  Array.from({length:201},()=>rows[0]),
+  [{source_kind:'session',user_id:other,record:{user_id:other}}],
+  [{source_kind:'session',user_id:owner,record:{user_id:other}}],
+ ]) {
+  await assert.rejects(readCanonicalApprovedPlanSource({
+   client:{query:async()=>({rows:bad})},ownerId:owner,snapshotVersion:version,
+  }),/bounded|foreign or malformed/);
+ }
+});
+test('approved-plan callback override is refused rather than bypassing canonical reader',()=>{
+ const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(2)
+  .map(kind=>[kind,async()=>({})]));
+ assert.throws(()=>createTrainingRestrictionSourceReaderCandidate({
+  pool:{connect:async()=>{}},authClient:{auth:{getUser:async()=>({})}},
+  reconcileSource:async()=>({}),sourceReaders:{...readers,approved_plans:async()=>({})},
+ }),/All trusted Training source readers/);
 });
