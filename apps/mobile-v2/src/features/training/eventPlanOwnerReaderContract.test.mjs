@@ -63,3 +63,28 @@ test('Goal owner snapshot exposes only an explicitly accepted, revision-bound Ev
  assert.match(sql,/coalesce\(l\.edition_id::text,'none'\)/);
  assert.match(sql,/REVOKE ALL ON FUNCTION/);
 });
+
+test('private composite reader consumes only existing owner readers with one snapshot',()=>{
+ const sql=source('../../../../../docs/architecture/sql/V2-EVENT-PLAN-COMPOSITE-OWNER-READER-CANDIDATE.sql');
+ assert.match(sql,/allin_private\.v2_event_plan_owner_evidence_candidate\(/);
+ assert.match(sql,/allin_private\.v2_goal_owner_snapshot_candidate\(/);
+ assert.match(sql,/p_expected_user_id IS DISTINCT FROM v_user/);
+ assert.match(sql,/v_events->>'ownerId' IS DISTINCT FROM v_user::text/);
+ assert.match(sql,/v_goals->>'ownerId' IS DISTINCT FROM v_user::text/);
+ assert.match(sql,/v_events->'complete' IS DISTINCT FROM 'true'::jsonb/);
+ assert.match(sql,/v_goals->'complete' IS DISTINCT FROM 'true'::jsonb/);
+ assert.match(sql,/REVOKE ALL ON FUNCTION/);
+ assert.match(sql,/FROM PUBLIC,anon,authenticated,service_role/);
+ assert.doesNotMatch(sql,/CREATE TABLE|GRANT EXECUTE|FROM public\.v2_event_group_memberships/);
+});
+test('composite does not invent a Goal priority, edition, or participation registration',()=>{
+ const sql=source('../../../../../docs/architecture/sql/V2-EVENT-PLAN-COMPOSITE-OWNER-READER-CANDIDATE.sql');
+ assert.match(sql,/v_goal->>'revisionStatus' IS DISTINCT FROM 'accepted'/);
+ assert.match(sql,/v_goal->>'goalKind' IS DISTINCT FROM 'race_event'/);
+ assert.match(sql,/v_matching->>'editionId' IS DISTINCT FROM v_goal->>'editionId'/);
+ assert.match(sql,/v_matching->>'eventVersion' IS DISTINCT FROM v_goal->>'boundEventVersion'/);
+ assert.match(sql,/v_requires_review:=true/);
+ assert.match(sql,/'eventRegistrationInferred',false/);
+ assert.match(sql,/'trainingPlanApproved',false/);
+ assert.doesNotMatch(sql,/'priority','A'|priority_role.*'A'/);
+});
