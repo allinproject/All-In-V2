@@ -24,10 +24,7 @@ test('five review-only migrations exactly preserve the existing ordered SQL grap
    assert.match(sql,/REVIEW ONLY/);
    assert.match(sql,/DO NOT MERGE\/DEPLOY|NO HOSTED DEPLOYMENT OR MERGE AUTHORIZED/);
    assert.doesNotMatch(sql,/^\\i\s/m);
-   chunks.push(...[...sql.matchAll(/^-- Source (\d+): ([^\n]+) \[Git blob ([0-9a-f]{40})\]\n/gm)]
-      .map(m=>({number:Number(m[1]),name:m[2],blob:m[3],start:m.index+m[0].length,end:0})).map((match,index,all)=>{
-      const next=all[index+1];return {...match,sql:sql.slice(match.start,next?next.start-(next.name.length+match.blob.length+19):undefined)};
-   }));
+
  }
  // Source boundaries are checked directly below using marker split, avoiding assumptions about SQL sizes.
  let n=0;
