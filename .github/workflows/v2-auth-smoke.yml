@@ -35,6 +35,11 @@ on:
       - 'scripts/all230-assess-v1-restriction-manifest.test.mjs'
       - 'scripts/all230-capture-v1-restriction-source-encrypted.sh'
       - 'scripts/all230-capture-v1-restriction-source-encrypted.test.mjs'
+      - 'scripts/all230-restore-v1-original-fks-offline.sh'
+      - 'scripts/all230-original-v1-fks-offline.test.mjs'
+      - 'supabase/tests/all230_v1_original_17_fk_offline_candidate.sql'
+      - 'supabase/tests/all230_v1_historical_allin_table_counts_readonly.sql'
+      - 'supabase/tests/all230_v1_import_relational_recovery_inventory_readonly.sql'
       - 'supabase/tests/all12_hosted_restore_readonly_fingerprint.sql'
       - 'scripts/test-v2-coach-budget-postgres.psql'
       - 'scripts/test-v2-coach-sql-postgres.psql'
@@ -130,6 +135,11 @@ on:
       - 'scripts/all230-assess-v1-restriction-manifest.test.mjs'
       - 'scripts/all230-capture-v1-restriction-source-encrypted.sh'
       - 'scripts/all230-capture-v1-restriction-source-encrypted.test.mjs'
+      - 'scripts/all230-restore-v1-original-fks-offline.sh'
+      - 'scripts/all230-original-v1-fks-offline.test.mjs'
+      - 'supabase/tests/all230_v1_original_17_fk_offline_candidate.sql'
+      - 'supabase/tests/all230_v1_historical_allin_table_counts_readonly.sql'
+      - 'supabase/tests/all230_v1_import_relational_recovery_inventory_readonly.sql'
       - 'supabase/tests/all12_hosted_restore_readonly_fingerprint.sql'
       - 'scripts/test-v2-coach-budget-postgres.psql'
       - 'scripts/test-v2-coach-sql-postgres.psql'
@@ -233,6 +243,8 @@ jobs:
         run: |
           bash -n ../../scripts/all230-capture-v1-restriction-source-encrypted.sh
           node --test ../../scripts/all230-capture-v1-restriction-source-encrypted.test.mjs
+          bash -n ../../scripts/all230-restore-v1-original-fks-offline.sh
+          node --test ../../scripts/all230-original-v1-fks-offline.test.mjs
       - name: Validate independent legacy, limitation and import manifest gate (synthetic only)
         run: node --test ../../scripts/all230-assess-v1-restriction-manifest.test.mjs
       - name: Verify ALL-12 recovery inventory and restriction hosted fingerprint gates (metadata only)
