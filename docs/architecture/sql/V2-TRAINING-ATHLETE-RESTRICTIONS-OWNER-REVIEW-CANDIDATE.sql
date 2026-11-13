@@ -60,7 +60,8 @@ BEGIN
   RAISE EXCEPTION 'Malformed Auth session' USING ERRCODE='42501'; END;
  IF NOT EXISTS(SELECT 1 FROM auth.users u WHERE u.id=v_user)
  OR NOT EXISTS(SELECT 1 FROM auth.sessions s
-   WHERE s.id=v_session AND s.user_id=v_user)
+   WHERE s.id=v_session AND s.user_id=v_user
+     AND (s.not_after IS NULL OR s.not_after>pg_catalog.clock_timestamp()))
  OR NOT EXISTS(SELECT 1 FROM public.v2_profiles p WHERE p.user_id=v_user) THEN
   RAISE EXCEPTION 'Invalid active athlete account/session' USING ERRCODE='42501'; END IF;
  SELECT c.certified_revision INTO v_cert
