@@ -45,6 +45,11 @@ export async function previewVerifiedLargeAccountExport({
     }
     if (!await stillAuthorized()) throw new Error('Export account changed');
     await file.preview({title:'ALL IN 365 account export.ndjson'});
+    // The native viewer can outlive the awaited preview operation. If the
+    // account changed while preview was being invoked, purge this cache and
+    // refuse to claim a verified delivery. The mounted owner screen must
+    // also purge on unmount/background; this helper cannot prove that alone.
+    if (!await stillAuthorized()) throw new Error('Export account changed during preview');
     return receipt;
   } catch(error) {
     try { await purge(); }
