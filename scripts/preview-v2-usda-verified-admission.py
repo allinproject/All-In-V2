@@ -75,7 +75,7 @@ def preview_archive(path, *, runner=subprocess.run):
     data = json.dumps({"sourceFoods": foods}, separators=(",", ":"), ensure_ascii=False)
     if len(data.encode("utf8")) > MAX_NODE_BYTES:
         raise ValueError("Unexpectedly large verified source policy projection")
-    command = ["node", str(NODE_REVIEW)]
+    command = ["node", "--experimental-strip-types", str(NODE_REVIEW)]
     result = runner(command, input=data, capture_output=True, text=True, timeout=30, cwd=ROOT)
     if result.returncode:
         # The Node policy never outputs source rows. Avoid accidentally echoing
