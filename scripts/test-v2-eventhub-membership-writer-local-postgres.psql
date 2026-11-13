@@ -16,9 +16,9 @@ DECLARE
 BEGIN
  INSERT INTO auth.users(id) VALUES(a),(b);
  INSERT INTO auth.sessions(id,user_id) VALUES(sa,a),(sb,b);
- INSERT INTO public.v2_events(id,name,sport,event_kind,
+ INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind,
    start_local_date,event_timezone,source_verification)
- VALUES(e,'Spring Trail Race','running','ultra',DATE '2027-04-10',
+ VALUES(e,'10000000-0000-4000-8000-000000000001','Spring Trail Race','running','ultra',DATE '2027-04-10',
    'America/Chicago','organizer_verified');
  INSERT INTO public.v2_event_groups(id,event_id,state) VALUES(g,e,'active');
  INSERT INTO public.v2_event_url_aliases(
