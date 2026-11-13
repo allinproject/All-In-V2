@@ -2,6 +2,8 @@
 -- owner, never a Coach-owned shadow preference table. NOT DEPLOYED.
 -- Requires V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql.
 -- No public/client EXECUTE grant until auth, privacy and staging acceptance.
+-- IMPORTANT: ordinary athlete writes may not certify an unreviewed empty
+-- restriction inventory. A separate trusted owner reconciliation is required.
 BEGIN;
 CREATE TABLE allin_private.v2_training_restriction_action_receipts (
  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -46,7 +48,8 @@ BEGIN
   RAISE EXCEPTION 'Malformed athlete session' USING ERRCODE='42501'; END;
  IF NOT EXISTS(SELECT 1 FROM auth.users WHERE id=v_user)
  OR NOT EXISTS(SELECT 1 FROM auth.sessions
-  WHERE id=v_session AND user_id=v_user)
+  WHERE id=v_session AND user_id=v_user
+   AND (not_after IS NULL OR not_after>pg_catalog.clock_timestamp()))
  OR NOT EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id=v_user) THEN
   RAISE EXCEPTION 'Active athlete account/session required' USING ERRCODE='42501'; END IF;
  -- Keep action IDs scoped to the exact requested intent. The hash is only
@@ -71,11 +74,12 @@ BEGIN
   RAISE EXCEPTION 'Restriction revision changed; reload and retry'
    USING ERRCODE='40001'; END IF;
  IF p_action='certify_empty' THEN
-  IF p_rule_id IS NOT NULL OR p_category IS NOT NULL OR p_subject IS NOT NULL OR
-     v_current<>0 OR EXISTS(SELECT 1 FROM public.v2_training_athlete_restrictions
-      WHERE user_id=v_user) THEN
-   RAISE EXCEPTION 'Cannot certify nonempty or existing restriction inventory'
-    USING ERRCODE='22023'; END IF;
+  -- No record absence can prove that existing restrictions were imported or
+  -- reviewed. Do not let a normal session self-certify an empty inventory.
+  -- A separate Training-owned reconciler must record this after consent,
+  -- source inventory/restore checks and release approval.
+  RAISE EXCEPTION 'Trusted Training inventory reconciliation required'
+   USING ERRCODE='42501';
  ELSIF p_action='activate' THEN
   IF p_rule_id IS NULL OR p_category NOT IN
     ('exercise','equipment','schedule','pain_or_return','preference') OR
@@ -122,6 +126,7 @@ BEGIN
 END;$writer$;
 REVOKE ALL ON FUNCTION public.v2_training_restriction_write_candidate(
  uuid,uuid,text,uuid,text,text,bigint) FROM PUBLIC,anon,authenticated,service_role;
--- Explicit grant deferred. A future Training-owned review/accept action may
+-- Explicit grant deferred. No empty certification from this writer.
+-- A future Training-owned review/accept action may
 -- offer authenticated EXECUTE after full session, RLS, export/delete acceptance.
 COMMIT;
