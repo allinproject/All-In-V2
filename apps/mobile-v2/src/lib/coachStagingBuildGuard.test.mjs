@@ -39,3 +39,33 @@ test('ordinary app builds retain their established configuration behavior',()=>{
   EXPO_PUBLIC_SUPABASE_URL:'https://xarhuczrtzuiljmtdaeu.supabase.co'
  }));
 });
+
+test('Fuel read and write flags cannot target canonical or unrelated Supabase',()=>{
+ const ordinary={EXPO_PUBLIC_V2_COACH_STAGING_ACCEPTANCE:'false',
+  EXPO_PUBLIC_SUPABASE_URL:'https://xarhuczrtzuiljmtdaeu.supabase.co',
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_testonly_not_a_real_key'};
+ for(const flag of ['EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED','EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED']){
+  assert.throws(()=>assertCoachStagingBuildEnvironment({...ordinary,[flag]:'true'}),
+   /Fuel staging owner RPCs require the approved temporary/);
+  assert.throws(()=>assertCoachStagingBuildEnvironment({...ordinary,
+   EXPO_PUBLIC_SUPABASE_URL:'https://unapproved.supabase.co',[flag]:'true'}),
+   /approved temporary/);
+ }
+});
+
+test('Fuel staging-only read and write require the exact approved project and a key',()=>{
+ const fuel={EXPO_PUBLIC_V2_COACH_STAGING_ACCEPTANCE:'false',
+  EXPO_PUBLIC_SUPABASE_URL:'https://fbtgknlxjyeqrxemskbl.supabase.co',
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_testonly_not_a_real_key',
+  EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED:'true',
+  EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED:'true'};
+ assert.doesNotThrow(()=>assertCoachStagingBuildEnvironment(fuel));
+ assert.throws(()=>assertCoachStagingBuildEnvironment({
+  ...fuel,EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:''
+ }),/Fuel staging owner RPCs require the staging publishable key/);
+ assert.doesNotThrow(()=>assertCoachStagingBuildEnvironment({
+  ...fuel,EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED:'false',
+  EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED:'false',
+  EXPO_PUBLIC_SUPABASE_URL:'https://xarhuczrtzuiljmtdaeu.supabase.co'
+ }));
+});
