@@ -27,6 +27,9 @@ on:
       - 'docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-training-restrictions-postgres.psql'
       - 'scripts/test-all12-training-restrictions-populated-restore-local.sh'
+      - 'scripts/all12-recovery-domain-manifest.mjs'
+      - 'scripts/all12-recovery-domain-manifest.test.mjs'
+      - 'supabase/tests/all12_hosted_restore_readonly_fingerprint.sql'
       - 'scripts/test-v2-coach-budget-postgres.psql'
       - 'scripts/test-v2-coach-sql-postgres.psql'
       - 'scripts/test-v2-coach-race-setup.psql'
@@ -113,6 +116,9 @@ on:
       - 'docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-training-restrictions-postgres.psql'
       - 'scripts/test-all12-training-restrictions-populated-restore-local.sh'
+      - 'scripts/all12-recovery-domain-manifest.mjs'
+      - 'scripts/all12-recovery-domain-manifest.test.mjs'
+      - 'supabase/tests/all12_hosted_restore_readonly_fingerprint.sql'
       - 'scripts/test-v2-coach-budget-postgres.psql'
       - 'scripts/test-v2-coach-sql-postgres.psql'
       - 'scripts/test-v2-coach-race-setup.psql'
@@ -211,6 +217,8 @@ jobs:
         run: node ../../scripts/check-v2-applied-migration-integrity.mjs
       - name: Test migration integrity rejection cases
         run: node --test ../../scripts/check-v2-applied-migration-integrity.test.mjs
+      - name: Verify ALL-12 recovery inventory and restriction hosted fingerprint gates (metadata only)
+        run: node --test ../../scripts/all12-recovery-domain-manifest.test.mjs
       - name: Guard V2 CI spending and full release validation gates
         run: node --test ../../scripts/check-v2-ci-cost-policy.test.mjs
       - name: Test Windows lockfile helper safety
