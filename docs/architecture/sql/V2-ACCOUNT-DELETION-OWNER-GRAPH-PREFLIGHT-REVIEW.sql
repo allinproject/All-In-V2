@@ -53,6 +53,57 @@ UNION ALL
 SELECT 'storage'::text,b.id::text,'objects'::text,
  'unreviewed_storage_bucket_cleanup'::text
 FROM storage.buckets b
+UNION ALL
+-- The canonical privileged Storage lease ledger is the active upload fence.
+-- A correct owner FK cannot replace this protection: without the following
+-- live triggers, a claim, Auth cascade, or privileged metadata writer may
+-- race and leave bytes behind. Never repair by dropping the lease ledger.
+SELECT 'storage'::text,'v2_privileged_storage_write_leases_review'::text,
+  'owner_id'::text,'missing_or_unsecured_privileged_write_lease_ledger'::text
+WHERE pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
+ IS NOT NULL
+AND (
+  NOT EXISTS(SELECT 1 FROM pg_catalog.pg_class c
+    WHERE c.oid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+     AND c.relkind='r' AND c.relrowsecurity)
+  OR pg_catalog.has_table_privilege('anon',
+      'allin_private.v2_privileged_storage_write_leases_review','SELECT,INSERT,UPDATE,DELETE')
+  OR pg_catalog.has_table_privilege('authenticated',
+      'allin_private.v2_privileged_storage_write_leases_review','SELECT,INSERT,UPDATE,DELETE')
+  OR pg_catalog.has_table_privilege('service_role',
+      'allin_private.v2_privileged_storage_write_leases_review','SELECT,INSERT,UPDATE,DELETE')
+  OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint k
+      JOIN pg_catalog.pg_attribute a ON a.attrelid=k.conrelid
+       AND a.attname='owner_id'
+      WHERE k.conrelid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+       AND k.confrelid='auth.users'::pg_catalog.regclass
+       AND k.contype='f' AND k.confdeltype='c'
+       AND a.attnum=ANY(k.conkey))
+)
+UNION ALL
+SELECT 'storage'::text,'v2_privileged_storage_write_leases_review'::text,
+ 'owner_id'::text,'missing_privileged_storage_deletion_or_auth_fence'::text
+WHERE pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
+ IS NOT NULL
+AND (
+ NOT EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid=pg_catalog.to_regclass('allin_private.v2_account_deletion_requests')
+     AND t.tgname='v2_privileged_storage_write_fence_review'
+     AND t.tgenabled='O' AND NOT t.tgisinternal)
+ OR NOT EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='auth.users'::pg_catalog.regclass
+     AND t.tgname='v2_privileged_storage_auth_delete_fence_review'
+     AND t.tgenabled='O' AND NOT t.tgisinternal)
+)
+UNION ALL
+SELECT 'storage'::text,'objects'::text,
+ 'metadata'::text,'missing_privileged_storage_metadata_write_fence'::text
+WHERE pg_catalog.to_regclass('allin_private.v2_privileged_storage_write_leases_review')
+ IS NOT NULL
+AND NOT EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+  WHERE t.tgrelid=pg_catalog.to_regclass('storage.objects')
+   AND t.tgname='v2_privileged_storage_metadata_write_fence_review'
+   AND t.tgenabled='O' AND NOT t.tgisinternal)
 ORDER BY 1,2,3;
 $scanner$;
 -- A future approved migration must review explicit grants and function owner.
