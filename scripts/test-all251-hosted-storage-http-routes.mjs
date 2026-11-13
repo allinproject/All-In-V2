@@ -23,7 +23,7 @@ const publishable=env.ALL251_TEMP_STAGING_PUBLISHABLE_KEY;
 assert(/^sb_secret_[\w-]+$/.test(privileged??''),'Protected temporary staging secret required');
 assert(/^sb_publishable_[\w-]+$/.test(publishable??''),'Approved staging publishable key required');
 
-const owners=[],objects=new Set(),cleanupIssues=[],outcomes=[];
+const owners=[],objects=new Set(),postFreezePaths=new Set(),cleanupIssues=[],outcomes=[];
 const tusSessions=new Set();
 let a=null,b=null;
 let signerToken=null,signedPath=null;
@@ -93,6 +93,20 @@ function addObject(owner,suffix){
  return p;
 }
 function denied(status){return [400,401,403,404,409,422].includes(status);}
+// Report only a bounded provider error CODE, not arbitrary error text,
+// tokens, object paths, private media, JWTs or secret-bearing response bodies.
+async function safeStorageCode(response){
+ if(!response.headers.get('content-type')?.toLowerCase().includes('json'))
+  return 'not-json';
+ try{
+  const body=await response.clone().json();
+  if(!body||typeof body!=='object'||Array.isArray(body))return 'unknown';
+  const code=[body.code,body.statusCode,body.error].find(value=>
+   typeof value==='string'&&/^[A-Za-z][A-Za-z0-9_-]{0,40}$/.test(value));
+  return code??'unknown';
+ }catch{return 'unknown';}
+}
+const statusDetail=async response=>'HTTP '+response.status+' code='+await safeStorageCode(response);
 async function read(p){
  return request(API+'object/authenticated/'+bucketPath(p));
 }
@@ -162,7 +176,7 @@ try{
   if(typeof signerToken!=='string'||!signerToken.length)
    mark('signed upload token format','FAIL','mint returned no token');
   else mark('pre-deletion signed URL minted','OBSERVED');
- }else mark('pre-deletion signed URL minting',denied(minted.status)?'RESTRICTED':'FAIL','HTTP '+minted.status+' (no delayed token)');
+ }else mark('pre-deletion signed URL minting',denied(minted.status)?'RESTRICTED':'FAIL',(await statusDetail(minted))+' (no delayed token)');
 
  const pendingTusPath=addObject(a.id,'tus-predelete-pending');
  const pendingTus=await tusCreate(pendingTusPath);
@@ -175,54 +189,67 @@ try{
    cleanupIssues.push('pre-deletion-tus-without-location');
   }
  }else mark('pre-deletion TUS session creation',
-  denied(pendingTus.status)?'RESTRICTED':'FAIL','HTTP '+pendingTus.status);
+  denied(pendingTus.status)?'RESTRICTED':'FAIL',await statusDetail(pendingTus));
+ // B must have a valid positive control before A is frozen. Otherwise B's
+ // post-freeze 400 is a blanket-denial baseline, NOT proof of independence.
+ const bPrePath=addObject(b.id,'independent-before-freeze');
+ const bPre=await upload(bPrePath,{key:publishable,jwt:b.jwt});
+ mark('independent B user-scoped REST baseline',
+  bPre.ok?'OBSERVED':denied(bPre.status)?'RESTRICTED':'FAIL',
+  await statusDetail(bPre));
  const preRestPath=addObject(a.id,'privileged-rest-before-delete');
  const preRest=await upload(preRestPath);
  mark('pre-deletion privileged REST upload baseline',
-  preRest.ok?'OBSERVED':denied(preRest.status)?'RESTRICTED':'FAIL','HTTP '+preRest.status);
+  preRest.ok?'OBSERVED':denied(preRest.status)?'RESTRICTED':'FAIL',await statusDetail(preRest));
  await deletionRequest(a,b);
  mark('canonical synthetic deletion request','PASS');
  if(pendingTusLocation){
   const result=await request(pendingTusLocation,{method:'PATCH',origin:DIRECT,
    headers:{'tus-resumable':'1.0.0','upload-offset':'0',
     'content-type':'application/offset+octet-stream'},body:randomBytes(50)});
-  mark('delayed pre-deletion TUS completion',denied(result.status)?'PASS':'FAIL','HTTP '+result.status);
+  if(result.ok)postFreezePaths.add(pendingTusPath);
+  mark('delayed pre-deletion TUS completion',denied(result.status)?'PASS':'FAIL',await statusDetail(result));
  }else mark('delayed pre-deletion TUS completion','UNTESTED','no pre-deletion session');
 
  const restPath=addObject(a.id,'privileged-rest-late');
+ postFreezePaths.add(restPath);
  const rest=await upload(restPath);
  mark('post-deletion privileged REST POST',
   denied(rest.status)?(preRest.ok?'PASS':'RESTRICTED'):'FAIL',
-  'HTTP '+rest.status+(preRest.ok?' (baseline allowed)':' (baseline also denied)'));
+  (await statusDetail(rest))+(preRest.ok?' (baseline allowed)':' (baseline also denied)'));
 
  const ordinaryPath=addObject(a.id,'owner-jwt-rest-late');
+ postFreezePaths.add(ordinaryPath);
  const ordinary=await upload(ordinaryPath,{key:publishable,jwt:a.jwt});
- mark('post-deletion user JWT REST POST',denied(ordinary.status)?'PASS':'FAIL','HTTP '+ordinary.status);
+ mark('post-deletion user JWT REST POST',denied(ordinary.status)?'PASS':'FAIL',await statusDetail(ordinary));
 
  const freshSignedPath=addObject(a.id,'signed-mint-late');
+ postFreezePaths.add(freshSignedPath);
  const mintLate=await issueSignedUpload(freshSignedPath);
- mark('post-deletion privileged signed upload mint',denied(mintLate.status)?'PASS':'FAIL','HTTP '+mintLate.status);
+ mark('post-deletion privileged signed upload mint',denied(mintLate.status)?'PASS':'FAIL',await statusDetail(mintLate));
 
  if(signerToken){
   const completed=await redeemSigned(signedPath,signerToken);
-  mark('delayed pre-minted signed upload completion',denied(completed.status)?'PASS':'FAIL','HTTP '+completed.status);
+  if(completed.ok)postFreezePaths.add(signedPath);
+  mark('delayed pre-minted signed upload completion',denied(completed.status)?'PASS':'FAIL',await statusDetail(completed));
  }else mark('delayed pre-minted signed upload completion','UNTESTED','no valid signed token');
 
  // No TUS session is created prior to deletion: a dangling pre-deletion
  // resumable URL could survive this test and cannot be safely garbage
  // collected without verified termination support.
  const tusPath=addObject(a.id,'tus-late');
+ postFreezePaths.add(tusPath);
  const tus=await tusCreate(tusPath);
  mark('post-deletion TUS resumable creation',
   denied(tus.status)?([201,204].includes(pendingTus.status)?'PASS':'RESTRICTED'):'FAIL',
-  'HTTP '+tus.status);
+  await statusDetail(tus));
  if([201,204].includes(tus.status)){
   const location=resumableLocation(tus);
   if(location){
    const result=await request(location,{method:'PATCH',origin:DIRECT,
     headers:{'tus-resumable':'1.0.0','upload-offset':'0',
      'content-type':'application/offset+octet-stream'},body:randomBytes(50)});
-   mark('TUS post-deletion completion',denied(result.status)?'PASS':'FAIL','HTTP '+result.status);
+   mark('TUS post-deletion completion',denied(result.status)?'PASS':'FAIL',await statusDetail(result));
   }else{
    mark('TUS completion','UNTESTED','creation had no Location header');
    cleanupIssues.push('TUS-session-created-without-terminable-location');
@@ -232,14 +259,19 @@ try{
  // One user must not gain rights to the other owner's deleted content.
  const bPath=addObject(b.id,'independent-owner');
  const bUser=await upload(bPath,{key:publishable,jwt:b.jwt});
- mark('independent B user-scoped REST',
-  bUser.status===200||bUser.status===201?'OBSERVED':denied(bUser.status)?'UNTESTED':'FAIL',
-  'HTTP '+bUser.status+(denied(bUser.status)?' (no positive control)':''));
+ mark('independent B user-scoped REST after A deletion',
+  bUser.ok?(bPre.ok?'PASS':'OBSERVED'):
+  denied(bUser.status)?'UNTESTED':'FAIL',
+  (await statusDetail(bUser))+
+    (bPre.ok?' (B baseline worked)':' (B baseline not established)'));
 
- for(const p of objects){
+ // A deletion REQUEST is not the deletion worker. Existing A objects must
+ // remain readable until separately approved deletion runs; only newly
+ // uploaded post-freeze bytes constitute a freeze violation here.
+ for(const p of postFreezePaths){
+  if(!p.startsWith(a.id+'/'))continue;
   const r=await read(p);
-  if(r.ok&&p.startsWith(a.id+'/'))
-   mark('private deleted-owner bytes still accessible','FAIL');
+  if(r.ok)mark('post-freeze owner bytes created','FAIL');
  }
 }catch(err){
  const msg=String(err?.message??'unexpected').replace(/[A-Za-z0-9_-]{42,}/g,'[REDACTED]');
