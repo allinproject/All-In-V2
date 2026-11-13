@@ -257,7 +257,7 @@ begin
    select jsonb_build_object(
      'visibility',(select to_jsonb(v) from allin_private.v2_community_visibility v
        where v.user_id=v_user),
-     'outgoing_follows',coalesce((select jsonb_agg(to_jsonb(f) order by f.followed_id)
+     'outgoing_follows',coalesce((select jsonb_agg(jsonb_build_object('followed_id',f.followed_id,'state',f.state,'requested_at',f.requested_at,'approved_at',f.approved_at) order by f.followed_id)
        from allin_private.v2_community_follows f where f.follower_id=v_user),'[]'::jsonb),
      'incoming_follow_requests',coalesce((select jsonb_agg(
        jsonb_build_object('follower_id',f.follower_id,'state',f.state,
@@ -267,7 +267,7 @@ begin
        and not exists (select 1 from allin_private.v2_community_blocks b
          where (b.blocker_id=f.follower_id and b.blocked_id=v_user)
            or (b.blocker_id=v_user and b.blocked_id=f.follower_id))),'[]'::jsonb),
-     'outgoing_blocks',coalesce((select jsonb_agg(to_jsonb(b) order by b.blocked_id)
+     'outgoing_blocks',coalesce((select jsonb_agg(jsonb_build_object('blocked_id',b.blocked_id,'created_at',b.created_at) order by b.blocked_id)
        from allin_private.v2_community_blocks b where b.blocker_id=v_user),'[]'::jsonb),
      'my_action_receipts',coalesce((select jsonb_agg(jsonb_build_object('action_id',a.action_id,'action',a.action,'target_id',a.target_id,'created_at',a.created_at) order by a.created_at,a.action_id)
        from allin_private.v2_community_action_receipts a where a.actor_id=v_user),'[]'::jsonb),
