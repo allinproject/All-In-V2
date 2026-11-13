@@ -76,8 +76,34 @@ function reviewUsdaAdmission(input){
     });
   }
   if(seen.size!==bindings.size)flag('incomplete_source_food_coverage');
+  // Ordinary USDA sources that pass all source-specific controls are eligible
+  // for the existing *automated canonical reviewer transaction*. No founder
+  // per-food approval. Any global contract failure blocks the entire batch.
+  // An exception remains a review queue item; never a publication permission.
+  const globalIssues=issues.filter(issue=>!stages.some(row=>
+    typeof issue==='string'&&issue.endsWith(':'+row.source_profile_key)));
+  const batchTrusted=sourceCheck.structuralEvidencePassed&&
+    aliasCheck.structuralScopePassed&&globalIssues.length===0&&
+    stages.length===bindings.size&&seen.size===bindings.size;
+  const qualificationQueue=stages.map(row=>{
+    const reasons=issues.filter(issue=>typeof issue==='string'&&
+      issue.endsWith(':'+row.source_profile_key));
+    const automatic=batchTrusted&&row.source_preflight_pass&&reasons.length===0;
+    return {source_profile_key:row.source_profile_key,fdc_id:row.fdc_id,
+      route:automatic?'automatic_qualification':'exception_review',
+      reasons:automatic?[]:(reasons.length?reasons:globalIssues.length?
+        globalIssues:['source_preflight_not_satisfied']),
+      source_preflight_pass:row.source_preflight_pass,
+      requiresFounderApproval:false,writerAuthorized:false,
+      calculationReady:false,publicationApproved:false};
+  });
   return {status:issues.length?'review_required':'review_stage_complete',
     issues,sourceRows:stages,sourceCount:seen.size,
+    qualificationQueue,automaticQualificationCount:qualificationQueue.filter(r=>
+      r.route==='automatic_qualification').length,
+    exceptionReviewCount:qualificationQueue.filter(r=>
+      r.route==='exception_review').length,
+    individualFounderApprovalRequired:false,
     sourcePolicyVersion:ENERGY_POLICY_VERSION,requiredNutrientSetVersion:REQUIRED_SET_VERSION,
     sourceContractValidated:sourceCheck.structuralEvidencePassed,
     aliasContractValidated:aliasCheck.structuralScopePassed,
