@@ -86,6 +86,57 @@ direct-privileged bypass workflow is manual-only.
    `completePrivateStorage=false`, `uploadBarrierEnforced=false` and the
    operational worker must be disabled.
 
+## 2026-11-13 — Why the metadata fence does not prove the trusted writer
+
+**Fail-closed release finding, supported by hosted schema inspection.** Temporary
+staging now has a `BEFORE INSERT / UPDATE` Storage object **metadata** trigger
+requiring an owner-scoped open write lease. That can reject unleased metadata
+writes, but does **not** guarantee only the approved application writer can
+upload. The existing `v2_begin_privileged_storage_write_review` and settle
+RPCs grant execution to `service_role` and require **no independent
+writer-held cryptographic proof**. Anyone possessing an unrestricted project
+secret could request their own matching lease and directly call Storage, then
+settle without performing the canonical writer's content readback.
+
+This is not hypothetical authorization proof: the SQL contracts visibly grant
+that ability. We have **not** exercised a forged-lease hosted upload and are
+not claiming one succeeded. A service role with the key also has unrelated
+broad Auth/Data API authority, so isolating just the UI workflow is
+insufficient. Supabase recommends treating its internal `storage` schema as
+read-only; the staging review-only metadata trigger is not an approved,
+vendor-supported universal object-byte barrier.
+
+**Required remedies and explicit trust model:**
+
+1. **Preferred for strict exclusivity:** keep protected private file bytes in
+   a **separate provider credential/security boundary** whose privileged
+   credentials are held only by the existing canonical write/cleanup service.
+   All other V2 service-role keys must be incapable of reaching that provider.
+   Reuse the canonical owner/delete/lease/checkpoint system and adapt only its
+   Storage transport; do not duplicate ownership or account deletion. This
+   needs founder approval for cost, recovery, operations and migration before
+   creating a new project or bucket.
+2. **Same-project defense in depth, not a replacement for (1):** add a
+   writer-only independently provisioned attestation secret or signing key
+   inaccessible to `service_role` callers. The canonical begin/settle RPCs
+   should verify owner/bucket/path/operation/one-time nonce/short validity and
+   bound byte digest (including settlement), reject replay, revoke or replace
+   the old un-attested RPC signatures, and ensure the privileged writer alone
+   holds attestation material. The private database secret/key verifier must
+   not be readable via exposed Data API schemas or untrusted functions.
+   Still test raw HTTP, privileged REST and signed/S3/TUS completion because
+   authorization at metadata insert is not equivalent to authority over
+   underlying provider bytes.
+3. **No premature pass:** A successful local SQL metadata trigger test is
+   insufficient. Prove with genuine hosted two-owner credentials that direct
+   privileged upload attempts cannot mint a lease, complete a signed/resumable
+   upload, overwrite a deleted object, or settle another writer's lease,
+   while authorized writes and complete byte cleanup still pass. All external
+   secrets, service-role holders, signing URLs and S3 credentials must be
+   reviewed and outstanding writes drained. If any credential or upload
+   protocol bypass remains, keep `uploadBarrierEnforced=false` and account
+   deletion disabled.
+
 ### Architecture decision still required
 
 Supabase master keys are intentionally unrestricted within a project. If the
