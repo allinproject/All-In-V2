@@ -7,6 +7,7 @@
  * empty inventory is never an acceptable source reader.
  */
 import {createHash} from 'node:crypto';
+import {tokenSessionId} from './trainingExportAuthServices.mjs';
 
 export const TRAINING_RESTRICTION_SOURCES=Object.freeze([
  'current_restrictions','approved_plans','historical_records',
@@ -24,8 +25,9 @@ const digest=(value)=>createHash('sha256').update(JSON.stringify(keySort(value))
 const count=v=>Number.isSafeInteger(v)&&v>=0;
 
 /**
- * authenticateSession must verify a signed token through Supabase Auth, return
- * ownerId/sessionId, and must not derive identity from unverified client data.
+ * authClient.auth.getUser MUST verify the signed bearer token through
+ * Supabase Auth; session_id is then read from that same verified JWT and
+ * independently checked against auth.sessions in the private database RPC.
  * Source readers must be explicitly supplied by the trusted Training owner.
  * The current restriction source is fixed to the canonical Training table.
  * Each reader returns all canonical source rows, with independently verified
@@ -34,9 +36,9 @@ const count=v=>Number.isSafeInteger(v)&&v>=0;
  * returns {reconciledCount,unresolvedCount} and must inspect EVERY source row.
  */
 export function createTrainingRestrictionSourceReaderCandidate({
- pool,authenticateSession,sourceReaders,reconcileSource,
+ pool,authClient,sourceReaders,reconcileSource,
 }) {
- if(typeof pool?.connect!=='function'||typeof authenticateSession!=='function'
+ if(typeof pool?.connect!=='function'||typeof authClient?.auth?.getUser!=='function'
    ||typeof reconcileSource!=='function'
    ||!sourceReaders||TRAINING_RESTRICTION_SOURCES.slice(1).some(k=>typeof sourceReaders[k]!=='function')
    ||Object.keys(sourceReaders).some(k=>!TRAINING_RESTRICTION_SOURCES.slice(1).includes(k)))
@@ -45,10 +47,13 @@ export function createTrainingRestrictionSourceReaderCandidate({
   async ingestReviewedSources({bearerToken,snapshotVersion}) {
    if(typeof snapshotVersion!=='string'||!snapshotVersion.trim()
       ||snapshotVersion.length>160)throw Error('Exact Training snapshot required');
-   const verified=await authenticateSession(bearerToken);
-   if(!UUID.test(verified?.ownerId??'')||!UUID.test(verified?.sessionId??''))
+   const sessionId=tokenSessionId(bearerToken);
+   if(!UUID.test(sessionId??''))
+    throw Error('Verified Training JWT session required');
+   const verified=await authClient.auth.getUser(bearerToken);
+   const ownerId=verified?.data?.user?.id;
+   if(verified?.error||!UUID.test(ownerId??''))
     throw Error('Verified Training Auth owner and session required');
-   const {ownerId,sessionId}=verified;
    const client=await pool.connect();
    if(typeof client?.query!=='function'||typeof client?.release!=='function')
     throw Error('Trusted Training database transaction required');
