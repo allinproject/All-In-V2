@@ -628,6 +628,12 @@ BEGIN
  BEGIN
   PERFORM allin_private.v2_community_operator_set_reviewer(
    '86000000-0000-4000-8000-000000000001',
+   '00000000-0000-0000-0000-000000000003','initial_review',true,2);
+  RAISE EXCEPTION 'Changed expected revision replay accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_community_operator_set_reviewer(
+   '86000000-0000-4000-8000-000000000001',
    '00000000-0000-0000-0000-000000000003','initial_review',false,2);
   RAISE EXCEPTION 'Changed action replay accepted';
  EXCEPTION WHEN unique_violation THEN NULL; END;
@@ -728,6 +734,20 @@ BEGIN
  IF r->>'version'<>'3' OR r->>'enabled'<>'false'
  THEN RAISE EXCEPTION 'Operator revocation failed'; END IF;
 END $operator_revokes$;
+-- Trusted operator membership is independently controlled and revocable;
+-- disabling it immediately prevents further reviewer provisioning.
+UPDATE allin_private.v2_community_moderation_operators
+ SET enabled=false
+ WHERE operator_id='00000000-0000-0000-0000-000000000006';
+DO $operator_revocation$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_operator_set_reviewer(
+   '86000000-0000-4000-8000-000000000003',
+   '00000000-0000-0000-0000-000000000003','initial_review',true,3);
+  RAISE EXCEPTION 'Revoked operator still granted reviewer privileges';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $operator_revocation$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
 SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000003',false);
 DO $revoked_queue_denial$
