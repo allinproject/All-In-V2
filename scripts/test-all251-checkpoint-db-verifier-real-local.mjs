@@ -18,7 +18,7 @@ const names=execFileSync('docker',['ps','--filter','name=supabase_db_','--format
 if(names.length!==1||!/^supabase_db_[a-z0-9_-]+$/.test(names[0]))
  throw Error('Exactly one disposable Supabase DB required');
 function db(sql){
- const p=spawnSync('docker',['exec','-i',names[0],'psql','-X','-At','-1','-U','postgres',
+ const p=spawnSync('docker',['exec','-i',names[0],'psql','-X','-qAt','-1','-U','postgres',
   '-d','postgres','-v','ON_ERROR_STOP=1'],{input:sql,encoding:'utf8',timeout:30000});
  if(p.error||p.status!==0)throw Error('Local PostgreSQL review failed: '+(p.stderr||p.error));
  return p.stdout;
