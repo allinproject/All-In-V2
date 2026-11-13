@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, Redirect } from 'expo-router';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -18,6 +18,7 @@ function LegalAcceptanceOwnerScreen() {
   const { user, loading } = useAuth();
   const gate = useAccessGate();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [openDocument, setOpenDocument] = useState<typeof gate.requiredLegalDocuments[number] | null>(null);
   const [ageConfirmedReviewSet, setAgeConfirmedReviewSet] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -95,14 +96,13 @@ p_founder_beta_terms_version: founderBetaVersion,
         <Text accessibilityRole="header" style={styles.title}>Review and accept</Text>
         <Text style={styles.body}>Your access is limited until you review the current published V2 legal documents and confirm your age.</Text>
         {documents.map(doc => (
-          <View key={reviewKey(doc)} style={styles.document}>
-            <Text style={styles.documentTitle}>{doc.title} · {doc.version}</Text>
-            <ScrollView nestedScrollEnabled style={styles.documentBody}>
-              <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
-            </ScrollView>
-            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!checked[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => { if (acceptGuard.current.isBusy()) return; setChecked(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] })); }} style={styles.reviewRow}>
+          <View key={reviewKey(doc)} style={styles.legalLine}>
+            <Pressable accessibilityRole="checkbox" accessibilityLabel={`I agree to ${doc.title}`} accessibilityState={{ checked: !!checked[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => { if (acceptGuard.current.isBusy()) return; setChecked(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] })); }} style={styles.reviewRow}>
               <Text style={styles.checkbox}>{checked[reviewKey(doc)] ? '☑' : '☐'}</Text>
-              <Text style={styles.reviewText}>I have read and reviewed this document</Text>
+              <Text style={styles.reviewText}>I agree to {doc.title}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Read ${doc.title}`} onPress={() => setOpenDocument(doc)} style={styles.readLink}>
+              <Text style={styles.readLinkText}>Read</Text>
             </Pressable>
           </View>
         ))}
@@ -126,22 +126,46 @@ p_founder_beta_terms_version: founderBetaVersion,
           </Pressable>
         </Link>
       </ScrollView>
+      <Modal visible={!!openDocument} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpenDocument(null)}>
+        <SafeAreaView style={styles.modalSafe}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalTitleGroup}>
+              <Text accessibilityRole="header" style={styles.modalTitle}>{openDocument?.title}</Text>
+              <Text style={styles.modalVersion}>{openDocument?.version}</Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close legal document" onPress={() => setOpenDocument(null)} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <Text selectable style={styles.legalText}>{openDocument?.content_markdown}</Text>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { flexGrow: 1, padding: spacing.lg, gap: spacing.md },
+  content: { flexGrow: 1, padding: spacing.lg, gap: spacing.sm },
   brand: { color: colors.warmWhite, fontSize: 18, fontWeight: '800', letterSpacing: 1.5 },
   gold: { color: colors.gold },
   title: { color: colors.warmWhite, fontSize: 28, fontWeight: '800' },
   body: { color: colors.mutedText, fontSize: 14, lineHeight: 21 },
-  document: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.control, padding: spacing.md, gap: spacing.sm },
-  documentTitle: { color: colors.warmWhite, fontSize: 15, fontWeight: '800' },
-  documentBody: { maxHeight: 260 },
+  legalLine: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8},
+  readLink: {minHeight: 44, minWidth: 48, justifyContent: 'center', alignItems: 'center'},
+  readLinkText: {color: colors.gold, textDecorationLine: 'underline', fontSize: 13, fontWeight: '700'},
+  modalSafe: {flex: 1, backgroundColor: colors.background},
+  modalHeader: {flexDirection: 'row', alignItems: 'center', padding: 20, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border},
+  modalTitleGroup: {flex: 1, gap: 4},
+  modalTitle: {color: colors.warmWhite, fontWeight: '800', fontSize: 18},
+  modalVersion: {color: colors.mutedText, fontSize: 12},
+  modalClose: {minHeight: 44, minWidth: 56, alignItems: 'center', justifyContent: 'center'},
+  modalCloseText: {color: colors.gold, fontWeight: '700'},
+  modalContent: {padding: 20, paddingBottom: 48},
   legalText: { color: colors.mutedText, fontSize: 13, lineHeight: 20 },
-  reviewRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 40 },
+  reviewRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44, flexShrink: 1 },
   checkbox: { color: colors.gold, fontSize: 22, width: 28 },
   reviewText: { flex: 1, color: colors.warmWhite, fontSize: 14, lineHeight: 20 },
   button: { minHeight: 52, borderRadius: radius.control, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
