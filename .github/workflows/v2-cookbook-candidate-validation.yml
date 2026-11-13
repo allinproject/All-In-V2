@@ -119,7 +119,7 @@ jobs:
       - name: Test verified ZIP to canonical review admission bridge (no database or network)
         run: |
           python3 -m py_compile scripts/preview-v2-usda-verified-admission.py
-          python3 -m unittest discover -s scripts -p test-v2-usda-source-release-preview.py
+          python3 scripts/test-v2-usda-source-release-preview.py
           node --experimental-strip-types --test scripts/preview-v2-usda-archive-admission.test.cjs
       - name: Test automatic ingredient qualification through existing canonical writer transaction
         run: node --test scripts/run-v2-ingredient-auto-qualification.test.cjs
