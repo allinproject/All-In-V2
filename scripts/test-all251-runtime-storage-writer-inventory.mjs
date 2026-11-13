@@ -42,19 +42,13 @@ test('all runtime client/server direct Storage upload paths must use the canonic
    /\.uploadToSignedUrl\s*\(/g,
    /\.createSignedUploadUrl\s*\(/g,
    /\.createUploadSignedUrl\s*\(/g,
-   /\.update\s*\(/g,
-   /\.move\s*\(/g,
-   /\.copy\s*\(/g,
    /\/storage\/v1\/(?:object|s3|upload\/resumable)/g,
    /\b(?:PutObjectCommand|UploadPartCommand|CompleteMultipartUploadCommand|CopyObjectCommand|CreateMultipartUploadCommand)\b/g,
    /\b(?:tus\.Upload|new\s+S3Client\s*\(|new\s+tus\.Upload\s*\()/g,
+   // Require an actual chained Storage method, not a PostgREST .update().
+   /\.storage\s*\.from\s*\([^)]*\)\s*\.(?:update|move|copy)\s*\(/g,
   ];
-  // update/move/copy are common database operations, so only classify those
-  // as Storage when this file also has a Storage client or S3 endpoint.
-  const storageClient=/\.storage\s*\.|\/storage\/v1|\bS3Client\b|\btus\.Upload\b/.test(src);
-  const active=storageClient?markers:markers.filter(re=>!
-   ['/\\.update','/\\.move','/\\.copy'].some(x=>re.toString().startsWith(x)));
-  const direct=active.reduce((sum,re)=>sum+[...src.matchAll(re)].length,0);
+  const direct=markers.reduce((sum,re)=>sum+[...src.matchAll(re)].length,0);
   if(!direct)continue;
   const requirements=reviewed.get(name);
   if(!requirements || !requirements.every(term=>src.includes(term))){
