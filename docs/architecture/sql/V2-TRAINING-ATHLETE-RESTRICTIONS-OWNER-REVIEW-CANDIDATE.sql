@@ -272,7 +272,7 @@ BEGIN
  FOR v_source IN SELECT value FROM pg_catalog.jsonb_array_elements(p_sources)
  LOOP
   IF pg_catalog.jsonb_typeof(v_source)<>'object' OR
-     (SELECT count(*) FROM pg_catalog.jsonb_object_keys(v_source))<>9 THEN
+     (SELECT count(*) FROM pg_catalog.jsonb_object_keys(v_source))<>11 THEN
    RAISE EXCEPTION 'Malformed Training source evidence fields'
     USING ERRCODE='22023'; END IF;
   v_kind:=v_source->>'kind';
