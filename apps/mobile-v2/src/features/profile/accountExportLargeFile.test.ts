@@ -76,3 +76,26 @@ test('unknown cleanup does not claim success',async()=>{
   verifyFile:f.verified,stillAuthorized:async()=>true,
  }),/cleanup requires manual attention/);
 });
+
+test('owner changes while native preview is resolving: revoke result and purge plaintext cache',async()=>{
+ const f=fixture();let checks=0;
+ await assert.rejects(previewVerifiedLargeAccountExport({
+  ownerId:owner,file:f.file,downloadToTemporaryFile:f.download,
+  verifyFile:f.verified,
+  stillAuthorized:async()=>++checks<3,
+ }),/account changed during preview/);
+ assert.equal(checks,3);
+ assert.deepEqual(f.events,['download','verify','preview','purge']);
+ assert.equal(f.file.exists,false);
+});
+
+test('native preview completion leaves cache for viewer until screen-level cleanup',async()=>{
+ const f=fixture();let checks=0;
+ await previewVerifiedLargeAccountExport({
+  ownerId:owner,file:f.file,downloadToTemporaryFile:f.download,
+  verifyFile:f.verified,stillAuthorized:async()=>{checks++;return true;},
+ });
+ assert.equal(checks,3);
+ assert.equal(f.file.exists,true,
+  'Screen must delete cache when native viewer is finished or screen unmounts');
+});
