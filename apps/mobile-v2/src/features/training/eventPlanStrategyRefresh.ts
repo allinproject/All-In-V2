@@ -109,6 +109,8 @@ export function reviewEventStrategyGenerationReceipt(input:{
     latestSource.evidenceState!=='verified'||typeof receipt.adviceText!=='string'||
     !receipt.adviceText.trim())
     return {status:'unavailable',reason:'invalid_receipt'};
+  if(latestSource.sourceRevision<current.sourceRevision)
+    return {status:'stale',reason:'source_changed'};
   if(receipt.basedOnSourceRevision!==latestSource.sourceRevision||
      receipt.basedOnCourseVersion!==latestSource.courseVersion)
     return {status:'stale',reason:'source_changed'};
