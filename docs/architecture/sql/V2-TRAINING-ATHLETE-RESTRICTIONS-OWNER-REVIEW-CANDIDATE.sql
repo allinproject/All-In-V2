@@ -149,6 +149,24 @@ CREATE TABLE allin_private.v2_training_restriction_source_evidence (
  UNIQUE(user_id,snapshot_version,evidence_ref),
  CHECK(inspected_count=reconciled_count AND unresolved_count=0)
 );
+-- Source evidence rows are append-only once accepted by a trusted
+-- importer. Updating evidence in place could launder a stale source snapshot.
+-- Owner deletion remains handled separately by existing FK cascades and the
+-- reviewed account-deletion lifecycle; that is NOT a normal evidence edit.
+CREATE FUNCTION allin_private.v2_training_restriction_evidence_immutable_candidate()
+ RETURNS trigger LANGUAGE plpgsql VOLATILE SECURITY INVOKER
+ SET search_path='' AS $immutable$
+BEGIN
+ RAISE EXCEPTION 'Restriction source evidence cannot be rewritten'
+  USING ERRCODE='42501';
+END;$immutable$;
+REVOKE ALL ON FUNCTION
+ allin_private.v2_training_restriction_evidence_immutable_candidate()
+ FROM PUBLIC,anon,authenticated,service_role;
+CREATE TRIGGER v2_training_restriction_evidence_append_only
+ BEFORE UPDATE ON allin_private.v2_training_restriction_source_evidence
+ FOR EACH ROW EXECUTE FUNCTION
+ allin_private.v2_training_restriction_evidence_immutable_candidate();
 ALTER TABLE allin_private.v2_training_restriction_source_evidence ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON allin_private.v2_training_restriction_source_evidence
  FROM PUBLIC,anon,authenticated,service_role;
