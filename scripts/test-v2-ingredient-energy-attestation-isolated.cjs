@@ -46,9 +46,11 @@ async function setup(options={}){
    await db.exec("INSERT INTO public.v2_ingredient_profile_sources(profile_id,source_record_id,evidence_role) VALUES("+[profile,source,'primary'].map(literal).join(',')+")");
    const nutrientRows=[['energy_kcal',r.energy.kcal],['protein_g',r.protein],['carbohydrate_g',r.carbs],['total_fat_g',r.fat],['sodium_mg',r.sodiumMg]];
    for(const [code,amt] of nutrientRows)await db.query('INSERT INTO public.v2_ingredient_profile_nutrients(profile_id,nutrient_code,amount) VALUES($1,$2,$3)',[profile,code,amt]);
+   if(!options.skipSourceEnergyEvidence) {
    for(const energy of [r.energy,...(r.energy.alternative?[r.energy.alternative]:[])]){
       const nid=Number(energy.code);
       await db.query("INSERT INTO allin_private.v2_ingredient_source_energy_evidence(source_record_id,source_payload_sha256,archive_sha256,fdc_nutrient_id,energy_kcal,source_review_reference) VALUES($1,$2,$3,$4,$5,$6)",[source,digest,options.archiveSha256||evidence.archiveSha256,nid,energy.kcal,'ALL-228 official pinned source test fixture']);
+   }
    }
    rows.push({key,id:profile,source,digest,fdc:r.fdcId,energyCode:Number(r.energy.code),energy:r.energy.kcal});
  }
@@ -125,4 +127,71 @@ test('future IdP verification date never authorizes reviewer',async()=>{
   await db.exec('SET ROLE allin_v2_ingredient_reviewer');
   await assert.rejects(()=>db.query(query(rows[0].id,rows[0].digest)),e=>e.code==='42501');
  }finally{await db.close()}
+});
+
+
+const release=(row,methods)=>"SELECT allin_private.v2_release_ingredient_source_energy("+
+ [row.source,row.digest,evidence.archiveSha256,JSON.stringify(methods),
+  'Independently authorized original USDA Foundation archive verification']
+  .map((v,i)=>i===3?literal(v)+'::jsonb':literal(v)).join(',')+") AS out";
+const methodsFor=row=>{
+ const food=evidence.records.find(r=>r.fdcId===row.fdc);
+ return [food.energy,...(food.energy.alternative?[food.energy.alternative]:[])]
+   .map(energy=>({nutrientId:Number(energy.code),kcal:energy.kcal}));
+};
+test('independent source officer releases 14 immutable observations and separate reviewer attests 8 without publication',async()=>{
+ const {db,rows}=await setup({skipSourceEnergyEvidence:true});
+ try {
+  await db.exec("CREATE ROLE source_release_officer_a LOGIN NOINHERIT; GRANT allin_v2_ingredient_source_releaser TO source_release_officer_a");
+  await db.exec("INSERT INTO allin_private.v2_ingredient_review_operators(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES('source_release_officer_a',true,'SOURCE-OFFICER-ISOLATED','test-idp.example','verified-source-officer-a','vault-isolated-source-officer-a',now()-interval '1 hour',now()+interval '1 day')");
+  await db.exec('SET SESSION AUTHORIZATION source_release_officer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_source_releaser');
+  for(const row of rows){
+   const first=(await db.query(release(row,methodsFor(row)))).rows[0].out;
+   assert.equal(first.status,'released');
+   assert.equal(first.evidence_count,row.energyCode===1008?1:2);
+   assert.equal(first.calculation_ready,false);
+   const replay=(await db.query(release(row,methodsFor(row)))).rows[0].out;
+   assert.equal(replay.status,'already_released');
+  }
+  await assert.rejects(()=>db.query("SELECT * FROM allin_private.v2_ingredient_source_energy_evidence"),e=>e.code==='42501');
+  await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
+  await assert.rejects(()=>db.query(release(rows[0],methodsFor(rows[0]))),e=>e.code==='42501');
+  for(const row of rows){
+   const result=(await db.query(query(row.id,row.digest))).rows[0].out;
+   assert.equal(result.status,'attested');
+   assert.equal(result.energy_fdc_nutrient_id,row.energyCode);
+   assert.equal(result.calculation_ready,false);
+  }
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  const counts=(await db.query("SELECT count(*)::int AS c FROM allin_private.v2_ingredient_source_energy_evidence")).rows[0].c;
+  assert.equal(counts,14);
+  const attestations=(await db.query("SELECT count(*)::int AS c FROM allin_private.v2_ingredient_energy_attestations")).rows[0].c;
+  assert.equal(attestations,8);
+  assert.equal((await db.query("SELECT count(*)::int AS c FROM public.v2_ingredient_nutrition_profiles WHERE review_status='calculation_ready'")).rows[0].c,0);
+  await assert.rejects(()=>db.exec('DELETE FROM allin_private.v2_ingredient_source_energy_evidence'),e=>e.code==='42501');
+ } finally {await db.close()}
+});
+test('source officer rejects wrong digest, energy, unauthorized login and source revision without any immutable release',async()=>{
+ const {db,rows}=await setup({skipSourceEnergyEvidence:true});
+ try {
+  await db.exec("CREATE ROLE source_release_officer_b LOGIN NOINHERIT; GRANT allin_v2_ingredient_source_releaser TO source_release_officer_b");
+  await db.exec("INSERT INTO allin_private.v2_ingredient_review_operators(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES('source_release_officer_b',true,'SOURCE-OFFICER-ISOLATED-B','test-idp.example','verified-source-officer-b','vault-isolated-source-officer-b',now()-interval '1 hour',now()+interval '1 day')");
+  const row=rows[2];
+  await db.exec('SET SESSION AUTHORIZATION energy_reviewer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
+  await assert.rejects(()=>db.query(release(row,methodsFor(row))),e=>e.code==='42501');
+  await db.exec('SET SESSION AUTHORIZATION source_release_officer_b');
+  await db.exec('SET ROLE allin_v2_ingredient_source_releaser');
+  await assert.rejects(()=>db.query(release(row,methodsFor(row).map(x=>({...x,kcal:999}))),e=>e.code==='23514');
+  await assert.rejects(()=>db.query(release({...row,digest:'f'.repeat(64)},methodsFor(row))),e=>e.code==='23514');
+  await assert.rejects(()=>db.query(release(row,[{nutrientId:2047,kcal:31.4}])),e=>e.code==='23514');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  assert.equal((await db.query("SELECT count(*)::int AS c FROM allin_private.v2_ingredient_source_energy_evidence")).rows[0].c,0);
+  await db.exec("UPDATE allin_private.v2_ingredient_review_operators SET enabled=false,revoked_at=clock_timestamp() WHERE login_role='source_release_officer_b'");
+  await db.exec('SET SESSION AUTHORIZATION source_release_officer_b');
+  await db.exec('SET ROLE allin_v2_ingredient_source_releaser');
+  await assert.rejects(()=>db.query(release(row,methodsFor(row))),e=>e.code==='42501');
+ } finally {await db.close()}
 });
