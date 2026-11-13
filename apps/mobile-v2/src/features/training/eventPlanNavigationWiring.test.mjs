@@ -43,3 +43,11 @@ test('the displayed Event Plan list rejects a previous athlete or session',()=>{
  assert.match(list,/projection\.events\.every\(e=>e\.ownerId===ownerId\)/);
  assert.match(owner,/ownerId:s\.ownerId,authSessionGeneration:s\.authSessionGeneration/);
 });
+
+test('mounted Event detail selection is tied to the original certified snapshot',()=>{
+ const list=source('./EventPlanListContent.tsx');
+ assert.match(list,/resolveSelectedEventPlan\(projection,ownerId,sessionGeneration,selection\)/);
+ assert.match(list,/snapshotVersion:projection\.snapshotVersion/);
+ assert.match(list,/editionId:e\.editionId,eventVersion:e\.eventVersion/);
+ assert.match(list,/setSelection\(null\)/);
+});
