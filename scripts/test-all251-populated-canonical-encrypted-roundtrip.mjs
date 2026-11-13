@@ -105,7 +105,7 @@ function baseServices(){
   },
   readPage:async({ownerId,requestId:rid,collection,cursor,limit})=>{
    assert.equal(ownerId,owner);assert.equal(rid,requestId);
-   assert(limit<=25);
+   assert(Number.isInteger(limit)&&limit>=25&&limit<=200); // Archive requests 200; canonical SQL produced <=25
    const pages=sourcePages.get(collection);
    assert(pages,'Unknown canonical source '+collection);
    const i=cursor===null?0:pages.findIndex((_,j)=>j>0&&pages[j-1].nextCursor===cursor);
