@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createLocalDeletionStorageTransport} from '../supabase/functions/_shared/trainingDeletionLocalStorageTransport.mjs';
+import {createPrivilegedStorageWriter} from '../supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs';
 
 const A='a1111111-a111-4111-8111-a11111111111';
 const B='b2222222-b222-4222-8222-b22222222222';
@@ -122,4 +123,31 @@ test('never accept hosted endpoint, client key, or malformed paths',async()=>{
  await assert.rejects(f.client.deleteObject({
   ownerId:A,requestId:'invalid',bucketId:bucket,path:A+'/safe',
  }),/Exact Storage delete scope/);
+});
+
+test('hosted writer strict mode rejects unsigned lease fallback before any Storage I/O',async()=>{
+ const calls=[];
+ const supabase={
+  rpc:async(name)=>{calls.push(name);return {data:null,error:{message:'unavailable'}};},
+  storage:{from:()=>{calls.push('storage');throw Error('unreachable storage');}},
+ };
+ assert.throws(()=>createPrivilegedStorageWriter({
+  supabase,requireAttestedLease:true,
+ }),/Attested privileged Storage lease authority required/);
+ assert.deepEqual(calls,[]);
+ const trusted=createPrivilegedStorageWriter({
+  supabase,requireAttestedLease:true,leaseAuthority:{
+   begin:async()=>({data:null,error:{message:'disabled'}}),
+   settle:async()=>({data:true,error:null}),
+  },
+ });
+ await assert.rejects(trusted.write({
+  verifiedOwnerId:A,bucketId:bucket,path:A+'/safe.fit',
+  bytes:new Uint8Array([1,2,3]),operation:'create',
+  contentType:'application/octet-stream',
+ }),/Durable privileged Storage write lease unavailable/);
+ assert.deepEqual(calls,[],'strict mode never calls legacy RPC or Storage without attested lease');
+ assert.throws(()=>createPrivilegedStorageWriter({
+  supabase,requireAttestedLease:'true',
+ }),/Invalid privileged Storage lease enforcement mode/);
 });
