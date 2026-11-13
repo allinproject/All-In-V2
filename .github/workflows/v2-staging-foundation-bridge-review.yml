@@ -6,6 +6,7 @@ on:
       - 'scripts/fixtures/v2-shared-staging-owners-minimal.pgsql'
       - 'scripts/test-v2-shared-staging-bridge-acceptance.psql'
       - 'scripts/test-v2-shared-staging-bridge-source-parity.mjs'
+      - 'docs/architecture/V2-SHARED-STAGING-FOUNDATION-RECONCILIATION.md'
       - '.github/workflows/v2-staging-foundation-bridge-review.yml'
   workflow_dispatch:
 
