@@ -83,7 +83,8 @@ export function reviewCanonicalEventGoalComposite(input:{
         return blocked('review_required','partial_goal_event_binding');
       continue;
     }
-    if(g.goalKind!=='race_event'||g.revisionStatus!=='accepted'||
+    if(g.goalKind!=='race_event'||g.goalStatus!=='active'||
+       g.revisionStatus!=='accepted'||
        !g.activeRevisionId?.trim()||
        !['primary','secondary','maintenance','optional'].includes(g.priorityRole??''))
       return blocked('review_required','goal_binding_not_accepted');
