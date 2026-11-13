@@ -659,9 +659,9 @@ jobs:
           test "${CI}" = "1"
           db_container="$(docker ps --filter 'name=supabase_db_' --format '{{.ID}}' | head -n 1)"
           test -n "$db_container"
-          for file in \\
-            docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql \\
-            docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-READINESS-REVIEW.sql \\
+          for file in \
+            docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-CHECKPOINT-REVIEW.sql \
+            docs/architecture/sql/V2-ACCOUNT-DELETION-STORAGE-READINESS-REVIEW.sql \
             scripts/test-all251-storage-readiness-aggregate-local.psql; do
             docker cp "$file" "$db_container:/tmp/$(basename "$file")"
           done
