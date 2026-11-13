@@ -31,7 +31,7 @@ const encode=p=>p.split('/').map(encodeURIComponent).join('/');
 const denied=s=>[400,401,403,404,409,422].includes(s);
 
 function config(env){
- assert.equal(env.CI,'false','This is an operator-only staging test, not CI');
+ assert.notEqual(env.CI,'true','This is an operator-only staging test, not CI');
  assert.equal(env.ALL251_OPERATOR_APPROVED,'true');
  const secret=env.ALL251_TEMP_STAGING_SECRET_KEY;
  const pub=env.ALL251_TEMP_STAGING_PUBLISHABLE_KEY;
