@@ -91,6 +91,20 @@ export async function readCanonicalRestoredRestrictionSource(args) {
  * This checks the observable mapping, NOT source completeness or authority
  * to issue an initial certification.
  */
+// Raw pg rows use Date while pg_catalog.to_jsonb(row) yields timestamp
+// strings. Compare normalized values, not object insertion/key ordering.
+const canonicalValue=(value)=>{
+ if(value instanceof Date){
+  if(!Number.isFinite(value.getTime()))throw Error('Invalid canonical timestamp');
+  return value.toISOString();
+ }
+ if(Array.isArray(value))return value.map(canonicalValue);
+ if(value&&typeof value==='object')
+  return Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonicalValue(value[k])]));
+ if(value===undefined)return null;
+ return value;
+};
+const matchingRow=(a,b)=>JSON.stringify(canonicalValue(a))===JSON.stringify(canonicalValue(b));
 export function reconcileObservedRestrictionSources({ownerId,currentRules,history,imports}) {
  if(!UUID.test(ownerId??'')||!Array.isArray(currentRules)
    ||history?.ownerId!==ownerId||imports?.ownerId!==ownerId
@@ -108,7 +122,7 @@ export function reconcileObservedRestrictionSources({ownerId,currentRules,histor
   const rule=row?.record;
   if(row.user_id!==ownerId||rule?.user_id!==ownerId
     ||rule?.status!=='retired'||!rules.has(rule.id)
-    ||JSON.stringify(rule)!==JSON.stringify(rules.get(rule.id)))
+    ||!matchingRow(rule,rules.get(rule.id)))
    reasons.push('unmatched_historical_rule');
   else retired.add(rule.id);
  }
