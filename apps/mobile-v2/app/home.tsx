@@ -158,6 +158,20 @@ function HomeOwnerScreen() {
           </Link>
         </View>
 
+        <View style={styles.goalFeature}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.goalTitleGroup}>
+              <View style={styles.goalAccent} />
+              <Text accessibilityRole="header" style={styles.sectionTitle}>Goals &amp; Milestones</Text>
+            </View>
+            <Link href="/goals" asChild>
+              <Pressable accessibilityRole="button" accessibilityLabel="View goals and milestones" style={styles.inlineAction}>
+                <Text style={styles.actionText}>View more ›</Text>
+              </Pressable>
+            </Link>
+          </View>
+        </View>
+
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>Daily Energy</Text>
@@ -282,6 +296,9 @@ const styles = StyleSheet.create({
   quickActionText: {color: colors.goldSoft, fontSize: 15, fontWeight: '800'},
   quickActionHint: {color: colors.mutedText, fontSize: 11},
   card: {backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 18, paddingHorizontal: 2, gap: 12},
+  goalFeature: {backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 18, paddingHorizontal: 2},
+  goalTitleGroup: {flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 10},
+  goalAccent: {width: 4, height: 23, backgroundColor: colors.gold},
   sectionHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8},
   sectionTitle: {color: colors.warmWhite, fontSize: 17, fontWeight: '800'},
   inlineAction: {minHeight: 44, justifyContent: 'center', paddingHorizontal: 4},
