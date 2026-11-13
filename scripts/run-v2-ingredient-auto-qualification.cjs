@@ -176,9 +176,14 @@ async function runAutomaticQualification({client,attestEnergy=false,...inputs}) 
 // The hosted entrypoint never executes the canonical transaction until a
 // real restricted role has passed the read-only schema and permission gate.
 // The low-level adapter remains available for isolated transactional tests.
-async function runHostedAutomaticQualification({client,...inputs}) {
+async function runHostedAutomaticQualification({client,attestEnergy,...inputs}) {
+  // Hosted callers must make the energy-evidence decision explicitly.
+  // An omitted option must never silently downgrade an intended attestation
+  // into a review-only operation or suggest publication eligibility.
+  if(typeof attestEnergy!=='boolean')
+    throw Error('Hosted energy attestation intent must be an explicit boolean');
   await checkHostedIngestReadiness(client,{requirePublisher:false});
-  return runAutomaticQualification({client,...inputs});
+  return runAutomaticQualification({client,attestEnergy,...inputs});
 }
 module.exports={planAutomaticQualification,runAutomaticQualification,
   runHostedAutomaticQualification,requestKey,WRITER,ENERGY_WRITER,
