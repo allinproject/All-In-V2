@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
-import * as Linking from 'expo-linking';
+import { getV2EmailAuthRedirectUrl } from '../src/auth/emailAuthRedirectRuntime';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 import { canStartV2SignedOutAction, createV2AuthActionGuard } from '../src/auth/authRoute';
@@ -118,7 +118,7 @@ export default function SignUpScreen() {
         email: submittedEmail,
         password: submittedPassword,
         options: {
-          emailRedirectTo: Linking.createURL('/auth/callback'),
+          emailRedirectTo: getV2EmailAuthRedirectUrl(),
         },
       });
       if (signUpError) throw signUpError;
