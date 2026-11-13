@@ -60,3 +60,34 @@ test('all runtime client/server direct Storage upload paths must use the canonic
  assert(archive>0,'Canonical export Storage adapter is not inventoried');
  assert.deepEqual(unsafe,[],'New runtime Storage uploads require all-writer barrier review');
 });
+
+test('protected ALL-251 staging Storage secret stays in approved staging workflows',()=>{
+ const approved=new Set([
+  'v2-all251-temporary-auth-smoke.yml',
+  'v2-all251-temporary-hosted-storage.yml',
+  'v2-all251-hosted-privileged-writer.yml',
+ ]);
+ const seen=new Set();
+ for(const file of readdirSync(resolve(root,'.github/workflows'))){
+  if(!/\.(?:yml|yaml)$/.test(file))continue;
+  const src=readFileSync(resolve(root,'.github/workflows',file),'utf8');
+  if(!src.includes('secrets.ALL251_TEMP_STAGING_SECRET_KEY'))continue;
+  seen.add(file);
+  assert(approved.has(file),
+   'New privileged Storage credential holder requires ALL-251 review: '+file);
+  assert(src.includes('environment: all251-temporary-staging'),
+   'Privileged staging credential must remain behind protected environment: '+file);
+  assert(src.includes('fbtgknlxjyeqrxemskbl'),
+   'Privileged staging credential must be pinned to disposable project: '+file);
+ }
+ assert.deepEqual([...seen].sort(),[...approved].sort(),
+  'Protected privileged Storage credential workflow inventory changed');
+ const rawProbe=readFileSync(resolve(root,
+  '.github/workflows/v2-all251-hosted-privileged-writer.yml'),'utf8');
+ assert(rawProbe.includes('workflow_dispatch:'),
+  'Raw service-role bypass probe must require an explicit manual run');
+ // A protected staging secret in an auto-triggered bypass test would expose
+ // full Storage privileges on ordinary repository pushes. No push trigger.
+ assert.equal(/^\s*push\s*:/m.test(rawProbe),false,
+  'Raw privileged Storage bypass probe must never run automatically');
+});
