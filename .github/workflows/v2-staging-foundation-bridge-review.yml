@@ -1,0 +1,60 @@
+name: V2 shared staging canonical foundation bridge replay (no deploy)
+on:
+  pull_request:
+    paths:
+      - 'docs/architecture/sql/V2-SHARED-STAGING-PROFILE-FOUNDATION-BRIDGE-REVIEW.sql'
+      - 'scripts/fixtures/v2-shared-staging-owners-minimal.pgsql'
+      - 'scripts/test-v2-shared-staging-bridge-acceptance.psql'
+      - 'scripts/test-v2-shared-staging-bridge-source-parity.mjs'
+      - '.github/workflows/v2-staging-foundation-bridge-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge-review:
+    name: Guarded profile bridge against populated staging-owner fixture
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci_only_unused
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGPASSWORD: ci_only_unused
+      PGHOST: localhost
+      PGUSER: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Prove source identity with canonical foundation
+        run: node --test scripts/test-v2-shared-staging-bridge-source-parity.mjs
+      - name: Recreate existing account lifecycle, Coach and Nutrition owners
+        run: psql -v ON_ERROR_STOP=1 -f scripts/fixtures/v2-shared-staging-owners-minimal.pgsql
+      - name: Apply guarded canonical profile bridge to disposable PG17
+        run: psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-SHARED-STAGING-PROFILE-FOUNDATION-BRIDGE-REVIEW.sql
+      - name: Assert existing owner data, grants, RLS, and future Auth signup
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-v2-shared-staging-bridge-acceptance.psql
+      - name: Assert bridge fails closed on repeat without altering canonical owner rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          if psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-SHARED-STAGING-PROFILE-FOUNDATION-BRIDGE-REVIEW.sql > /tmp/bridge-repeat.log 2>&1; then
+            echo 'FAIL: duplicate bridge replay did not fail closed'
+            exit 1
+          fi
+          psql -At -c "SELECT count(*) FROM public.v2_profiles" | grep -qx '1'
+          psql -At -c "SELECT count(*) FROM public.v2_coach_threads" | grep -qx '1'
+          psql -At -c "SELECT status FROM allin_private.v2_account_deletion_requests" | grep -qx 'cancelled'
