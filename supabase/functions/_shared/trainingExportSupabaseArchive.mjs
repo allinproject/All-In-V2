@@ -65,7 +65,7 @@ export function createSupabasePrivateArchivePersistence({
    let writes=0;
    const result=await withOwnerStorageWriteBarrier({
      ownerId,requestId,bucketId:PRIVATE_ACCOUNT_EXPORT_BUCKET,objectPath:path,
-     operation:'insert',write:async()=>{
+     operation:'insert',bytes,contentType:'application/octet-stream',write:async()=>{
        writes++;
        if(writes!==1)throw Error('Private archive write called more than once');
        return serviceClient.storage.from(PRIVATE_ACCOUNT_EXPORT_BUCKET)
@@ -194,7 +194,7 @@ export function createSupabasePagedAccountExportStorage({
   let writes=0;
   const result=await withOwnerStorageWriteBarrier({
    ownerId,requestId,bucketId:PRIVATE_ACCOUNT_EXPORT_BUCKET,objectPath:path,
-   operation:'insert',write:async()=>{
+   operation:'insert',bytes:raw,contentType:'application/octet-stream',write:async()=>{
     writes++;
     if(writes!==1)throw Error('Private page write called more than once');
     return serviceClient.storage.from(PRIVATE_ACCOUNT_EXPORT_BUCKET)
