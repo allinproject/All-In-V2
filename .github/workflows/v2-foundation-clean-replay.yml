@@ -101,6 +101,10 @@ on:
       - 'scripts/test-v2-account-export-pinned-snapshot-race-local.sh'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-account-export-populated-db-pages.mjs'
+      - 'scripts/test-all251-local-storage-transport.test.mjs'
+      - 'supabase/functions/_shared/trainingDeletionLocalStorageTransport.mjs'
+      - 'scripts/test-all251-private-storage-cleanup-review.test.mjs'
+      - 'supabase/functions/_shared/trainingDeletionPrivateStorageReview.mjs'
       - 'scripts/test-v2-account-export-real-local-storage.mjs'
       - 'scripts/test-all12-private-storage-two-auth-local.mjs'
       - 'scripts/test-v2-account-export-populated-db-pages.psql'
@@ -177,6 +181,7 @@ jobs:
         run: |
           set -euo pipefail
           node --test scripts/test-all251-private-storage-cleanup-review.test.mjs
+          node --test scripts/test-all251-local-storage-transport.test.mjs
       - name: ALL-12 restored private Storage two authenticated owners
         run: |
           set -euo pipefail
