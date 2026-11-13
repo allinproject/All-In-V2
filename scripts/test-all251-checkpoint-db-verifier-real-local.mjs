@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {createDeletionCheckpointDatabaseReviewAdapter} from '../supabase/functions/_shared/trainingDeletionCheckpointDbVerifierReview.mjs';
+import {reviewPrivateStorageCleanup} from '../supabase/functions/_shared/trainingDeletionPrivateStorageReview.mjs';
 if(process.env.CI!=='1')throw Error('Disposable CI only');
 const env=Object.fromEntries(execFileSync('supabase',['status','-o','env'],{
  encoding:'utf8',timeout:15000}).split(/\r?\n/)
@@ -94,6 +95,48 @@ try{
  WHERE request_id='${R}'::uuid AND object_path='${paths[1]}';`);
  assert.equal(await verifier.verifyBucketCheckpoints(scope),false,
   'Removing persisted evidence must revoke success');
+ const objects=new Set(paths);
+ const otherObject=B+'/preserve.fit';
+ objects.add(otherObject);
+ const opts={
+  ownerId:A,requestId:R,approvedBucketIds:[bucket],
+  listBucketCatalog:async()=>[{id:bucket,public:false}],
+  listOwnerStorageObjects:async({ownerId,bucketId})=>{
+   assert.equal(ownerId,A);assert.equal(bucketId,bucket);
+   const found=[...objects].filter(path=>path.startsWith(ownerId+'/'));
+   return {ownerId,bucketId:bucket,paths:found,totalCount:found.length,exhaustive:true};
+  },
+  persistAndLoadObjectPlan:async({ownerId,requestId,bucketId})=>{
+   assert.equal(ownerId,A);assert.equal(requestId,R);assert.equal(bucketId,bucket);
+   const raw=db(`SELECT array_to_json(planned_paths)::text
+    FROM allin_private.v2_account_deletion_storage_plan_review
+    WHERE request_id='${R}'::uuid AND bucket_id='${bucket}';`).trim();
+   return {ownerId,requestId,bucketId,durable:true,paths:JSON.parse(raw)};
+  },
+  objectExists:async({path})=>objects.has(path),
+  deleteObject:async({path})=>{assert.equal(objects.delete(path),true);return {deleted:true};},
+  recordCheckpoint:async({path})=>{
+   assert.ok(paths.includes(path));
+   db(`SELECT allin_private.v2_deletion_checkpoint_absence_review(
+    '${A}'::uuid,'${R}'::uuid,'${bucket}','${path}');`);
+   return {persisted:true};
+  },
+  readCheckpoint:async({ownerId,requestId,bucketId,path})=>{
+   assert.ok(paths.includes(path));
+   const rows=db(`SELECT count(*) FROM allin_private.v2_account_deletion_storage_checkpoint_review
+    WHERE request_id='${R}'::uuid AND bucket_id='${bucket}'
+     AND object_path='${path}' AND status='absent_verified';`).trim();
+   return rows==='1'?{ownerId,requestId,bucketId,path,state:'absent_verified'}:null;
+  },
+  assertOwnerWritesQuiesced:async()=>true, // TEST ONLY: no real upload freeze
+  verifyBucketCheckpoints:scope=>verifier.verifyBucketCheckpoints(scope),
+ };
+ const cleanupReceipt=await reviewPrivateStorageCleanup(opts);
+ assert.equal(cleanupReceipt.reviewOnly,true);
+ assert.equal(cleanupReceipt.verifiedAbsent,2);
+ assert.deepEqual([...objects],[otherObject]);
+ assert.equal(await verifier.verifyBucketCheckpoints(scope),true);
+ console.log('PASS ALL-251 cleanup wired to real Postgres checkpoint verifier with synthetic Storage and write barrier');
  console.log('PASS ALL-251 real PostgreSQL checkpoint RPC: false/true/false, owner and count isolation, anonymous denial');
 }finally{
  if(installed)db(cleanup);
