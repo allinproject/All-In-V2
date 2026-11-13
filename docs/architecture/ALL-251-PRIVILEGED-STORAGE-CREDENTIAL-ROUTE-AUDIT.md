@@ -144,3 +144,57 @@ keys, and confirm that the old credential fails when exercised.
 make service-role Storage access owner-scoped. Do not set
 `uploadBarrierEnforced=true` or enable account deletion without an approved
 architecture and live negative hosted bypass acceptance.
+
+
+## 2026-11-13 — GitHub Actions staging environment and secret consumer audit
+
+Scoped to current `integration/v2-foundation` workflow files (14 total). A
+workflow's `environment:` and branch `if:` are **source declarations**;
+they do not prove server-side GitHub environment protection rules, secret
+storage scope, required reviewers, trusted runner permissions or who can
+change/re-run workflows. The connected GitHub API cannot read private
+environment/Actions secret settings, so protection-rule state is **UNKNOWN**.
+
+| Workflow | Secret references | Trigger | Continued need |
+| --- | --- | --- | --- |
+| `v2-all251-temporary-auth-smoke.yml` | `ALL251_TEMP_STAGING_SECRET_KEY`, `ALL251_TEMP_STAGING_PUBLISHABLE_KEY` | Manual **and limited push** to exact workflow/test script on integration branch | **KEEP while hosted two-account Auth and unleased-Storage-denial acceptance is active**; push-triggered privileged access should require reviewed protected environment settings or be switched to manual-only after owner approval |
+| `v2-all251-hosted-privileged-writer.yml` | Same two ALL-251 key references | **Manual-only** integration-branch acceptance | **KEEP for final hosted lease and bypass regression**, manually approved; do not auto-trigger |
+| `v2-all251-temporary-hosted-storage.yml` | Same two key references (mapped to alternative env variable names) | **Manual-only** integration-branch private media/export Storage test | **KEEP until private byte export/recovery acceptance is finalized**; retire with staging project |
+| `v2-all228-temporary-hosted-workload.yml` | `ALL228_TEMP_STAGING_PGPASS_LINE` (separate PostgreSQL pooler password, NOT the ALL-251 Storage secret) | **Manual-only** integration branch | **KEEP until ALL-228 hosted ingestion workload evidence closes**; review deletion deadline independently |
+| `v2-all251-temporary-hosted-http.yml` | `ALL251_OWNER_A_TOKEN`, `ALL251_OWNER_B_TOKEN`, `ALL251_REVOKED_TOKEN`; plus nonsecret environment variables | **Manual-only** integration branch | **Review for retirement or regeneration**: per-user JWTs are ephemeral and may have expired; do not assume old tokens or user IDs still exist. Remove only after HTTP acceptance evidence and dependencies reconciled |
+
+All five workflows declare `environment: all251-temporary-staging` and
+`if: github.ref == 'refs/heads/integration/v2-foundation'`.
+Other current V2 workflows inspected do not reference a secret or declare
+that staging environment. The exact staging Storage secret is referenced in
+**three** workflow files, not five. GitHub source scanner has a CI guard
+covering this three-workflow allowlist and disallows an automatic bypass-probe.
+
+**Protect/verify before enabling any production writer:**
+1. In GitHub repository Settings → Environments → `all251-temporary-staging`,
+   verify deployment branch policy is selected branches only, limited to
+   `integration/v2-foundation`. Check required reviewer approval and
+   self-review allowance (where plan permits); if missing, configure approval
+   and recheck manual and push-triggered workflows.
+2. In that environment's Secrets inventory, verify which names are
+   environment-level versus repository/organization-level. Ensure the
+   staging `ALL251_TEMP_STAGING_SECRET_KEY` is not also exposed as an
+   unprotected repository/org secret. Audit authorized writers/admins and
+   change history. Do **not** copy secret values into issue or chat.
+3. Explicitly decide whether the automated Auth smoke should remain enabled:
+   while needed, code edits to its test or workflow can result in staging
+   secret access. Prefer manual-only while privileged bypass remediation is
+   in progress unless reviewer gates are independently verified.
+4. Confirm `ALL228_TEMP_STAGING_PGPASS_LINE` and persisted owner JWT token
+   secrets still have active acceptance consumers; remove stale secrets only
+   after the relevant issue owners confirm acceptance completion.
+5. After ALL-251/ALL-228 staging acceptance completes, revoke unused
+   temporary secrets (plus any corresponding Supabase key credentials) and
+   remove the temporary project according to its existing deletion reminder.
+
+**No credential or workflow was disabled by this source audit.** It is unsafe
+to assume a masked secret's provider scope, to revoke the working staging key
+before dependent hosted tests finish, or to delete other chats' active fixtures.
+A read-only staging DB check during this audit showed **two Auth users, zero
+objects and zero open write leases**, indicating active concurrent staging
+test work; no account cleanup was performed.
