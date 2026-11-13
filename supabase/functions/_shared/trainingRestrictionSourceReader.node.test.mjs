@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTrainingRestrictionSourceReaderCandidate,TRAINING_RESTRICTION_SOURCES} from './trainingRestrictionSourceReader.mjs';
+import {createTrainingRestrictionSourceReaderCandidate,readCanonicalCurrentRestrictionSource,TRAINING_RESTRICTION_SOURCES} from './trainingRestrictionSourceReader.mjs';
 
 const owner='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -129,4 +129,30 @@ test('stale or unexpectedly certified DB receipts roll back',async()=>{
  await assert.rejects(r.ingestReviewedSources({bearerToken:'valid',snapshotVersion:version}),
   /Unapproved Training ingestion receipt/);
  assert.equal(released,true);
+});
+
+test('canonical current-source query includes retired rows and rejects truncation',async()=>{
+ const queries=[];
+ const records=[{id:'one',user_id:owner,status:'active'},
+  {id:'two',user_id:owner,status:'retired'}];
+ const client={query:async(sql,args)=>{
+  queries.push({sql,args});
+  return {rows:records};
+ }};
+ const result=await readCanonicalCurrentRestrictionSource({
+  client,ownerId:owner,snapshotVersion:version,
+ });
+ assert.equal(result.exhaustive,true);
+ assert.equal(result.records.length,2);
+ assert.equal(result.records[1].status,'retired');
+ assert.match(queries[0].sql,/WHERE user_id=\$1 ORDER BY id LIMIT 201/);
+ assert.deepEqual(queries[0].args,[owner]);
+ await assert.rejects(readCanonicalCurrentRestrictionSource({
+  client:{query:async()=>({rows:Array.from({length:201},()=>({user_id:owner}))})},
+  ownerId:owner,snapshotVersion:version,
+ }),/unbounded/);
+ await assert.rejects(readCanonicalCurrentRestrictionSource({
+  client:{query:async()=>({rows:[{user_id:other}]})},
+  ownerId:owner,snapshotVersion:version,
+ }),/foreign/);
 });
