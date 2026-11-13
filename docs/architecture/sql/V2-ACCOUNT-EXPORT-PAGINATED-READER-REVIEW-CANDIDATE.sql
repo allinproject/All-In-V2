@@ -396,6 +396,18 @@ BEGIN
     '''published_at'',p.published_at,''updated_at'',p.updated_at) '||
     'FROM allin_private.v2_community_posts p '||
     'WHERE p.owner_id=$1 ORDER BY p.published_at,p.id LIMIT $2 OFFSET $3';
+ ELSIF p_collection='community.my_comments' THEN
+  -- REVIEW-ONLY / NOT REGISTERED. Author owns the text, not the parent
+  -- post's private body or another person's replies. The parent reference
+  -- is an opaque identity for portable context; never export parent content.
+  -- Do not activate until author/post ACL and moderator retention are reviewed.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''id'',c.id,''post_id'',c.post_id,''author_id'',c.author_id,'||
+    '''parent_comment_id'',c.parent_comment_id,''body'',c.body,'||
+    '''revision'',c.revision,''created_at'',c.created_at,'||
+    '''updated_at'',c.updated_at,''deleted_at'',c.deleted_at) '||
+    'FROM allin_private.v2_community_comments c '||
+    'WHERE c.author_id=$1 ORDER BY c.created_at,c.id LIMIT $2 OFFSET $3';
  ELSIF p_collection LIKE 'community.%' THEN
   v_schema:='allin_private';
   IF p_collection='community.outgoing_follows' THEN
