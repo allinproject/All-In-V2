@@ -75,6 +75,7 @@ on:
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
       - 'scripts/v2-training-account-export-worker-candidate*.mjs'
+      - 'scripts/test-all251-runtime-storage-writer-inventory.mjs'
       - 'scripts/test-v2-account-export-catalog-alignment.mjs'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql'
@@ -159,6 +160,7 @@ on:
       - 'supabase/config.toml'
       - 'supabase/functions/_shared/**'
       - 'scripts/v2-training-account-export-worker-candidate*.mjs'
+      - 'scripts/test-all251-runtime-storage-writer-inventory.mjs'
       - 'scripts/test-v2-account-export-catalog-alignment.mjs'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql'
@@ -224,6 +226,7 @@ jobs:
           node --experimental-strip-types --test ../../supabase/functions/v2-account-deletion-worker/policy.test.mjs ../../supabase/functions/v2-account-deletion-worker/execution.test.mjs
       - name: Validate private account-export Storage and retention adapters
         run: |
+          node --test ../../scripts/test-all251-runtime-storage-writer-inventory.mjs
           node --test ../../supabase/functions/_shared/trainingExportSupabaseArchive.node.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportMediaCoverage.node.test.mjs
           node --test ../../supabase/functions/_shared/trainingExportLargeArchive.node.test.mjs
