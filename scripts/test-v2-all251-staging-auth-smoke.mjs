@@ -534,7 +534,10 @@ try{
   process.stdout.write('PASS: authenticated HTTP route rejects export while worker disabled\\n');
  }
  acceptanceStep='synthetic Auth logout';
- const logout=await request('/auth/v1/logout',{method:'POST',userJwt:bToken,apiKey:anon});
+ // The revoked-JWT test validates this exact B session. GoTrue `local` scope
+ // terminates the matching session ID, not unrelated sessions. The product
+ // remains responsible for client-side token removal on sign-out.
+ const logout=await request('/auth/v1/logout?scope=local',{method:'POST',userJwt:bToken,apiKey:anon});
  assert([200,204].includes(logout.status),'Auth logout failed');
  process.stdout.write('PASS: synthetic Auth session revoked\\n');
  if(env.ALL222_STAGING_AUTH_MATRIX_ALLOW==='true') {
