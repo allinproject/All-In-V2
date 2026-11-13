@@ -1,0 +1,117 @@
+\set ON_ERROR_STOP on
+-- Review-only, isolated local DB; synthetic objects exist only as metadata.
+-- No provider bytes are uploaded. Every change rolls back.
+BEGIN;
+\i /tmp/V2-ACCOUNT-DELETION-PRIVILEGED-STORAGE-WRITER-REVIEW.sql
+\i /tmp/V2-ALL251-ATTESTED-PRIVILEGED-STORAGE-WRITER-REVIEW.sql
+DO $test$
+DECLARE
+ a uuid:='a8111111-8111-4111-8111-811111111111';
+ b uuid:='b8222222-8222-4222-8222-822222222222';
+ n uuid:='c8333333-8333-4333-8333-833333333333';
+ n2 uuid:='d8444444-8444-4444-8444-444444444444';
+ n3 uuid:='e8555555-8555-4555-8555-855555555555';
+ bid text:='v2-private-workout-objects';
+ p text:=a::text||'/exact.fit';
+ h text:=repeat('a',64);
+ epoch bigint:=pg_catalog.date_part('epoch',pg_catalog.clock_timestamp())::bigint;
+ key_bytes bytea;
+ signature text; message text;
+ lease uuid; denied boolean;
+BEGIN
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO storage.buckets(id,name,public)
+ VALUES(bid,bid,false);
+ IF has_function_privilege('service_role',
+  'public.v2_begin_privileged_storage_write_review(uuid,text,text,text)','EXECUTE')
+ OR has_function_privilege('service_role',
+  'public.v2_settle_privileged_storage_write_review(uuid,uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Legacy unsigned RPC remains accessible'; END IF;
+ IF NOT has_function_privilege('service_role',
+  'public.v2_begin_privileged_storage_write_attested_review(uuid,text,text,text,text,uuid,bigint,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Attested bridge unavailable'; END IF;
+ IF has_table_privilege('service_role',
+  'allin_private.v2_privileged_storage_writer_key_review','SELECT')
+ OR has_table_privilege('service_role',
+  'allin_private.v2_privileged_storage_writer_nonces_review','INSERT')
+ OR has_function_privilege('service_role',
+  'allin_private.v2_verify_storage_writer_attestation_review(text,uuid,text,text,text,text,uuid,uuid,bigint,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Writer key, nonce or signature verifier leaked'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_privileged_storage_write_attested_review(
+   a,bid,p,'create',h,n,epoch,repeat('0',64));
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Unprovisioned signer key was accepted'; END IF;
+ key_bytes:=extensions.gen_random_bytes(32);
+ INSERT INTO allin_private.v2_privileged_storage_writer_key_review(secret)
+ VALUES(key_bytes);
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_privileged_storage_write_attested_review(
+   a,bid,p,'create',h,n,epoch,repeat('0',64));
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Forged signature accepted'; END IF;
+ message:=pg_catalog.concat_ws('|','v2-writer-v1','begin',a::text,bid,p,
+  'create',h,'',n::text,epoch::text);
+ signature:=pg_catalog.encode(extensions.hmac(
+  pg_catalog.convert_to(message,'UTF8'),key_bytes,'sha256'),'hex');
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_privileged_storage_write_attested_review(
+   b,bid,p,'create',h,n,epoch,signature);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Other owner replayed A signature'; END IF;
+ lease:=public.v2_begin_privileged_storage_write_attested_review(
+  a,bid,p,'create',h,n,epoch,signature);
+ IF lease IS NULL OR NOT EXISTS (
+  SELECT 1 FROM allin_private.v2_privileged_storage_write_leases_review
+  WHERE lease_id=lease AND owner_id=a AND writer_sha256_review=h
+   AND settled_at IS NULL
+ ) THEN RAISE EXCEPTION 'Authenticated exact digest lease not bound'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_privileged_storage_write_attested_review(
+   a,bid,p,'create',h,n,epoch,signature);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Replay of same signed nonce was accepted'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_privileged_storage_write_attested_review(
+   a,bid,p,'create',h,n3,epoch-600,signature);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Expired signed request accepted'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_settle_privileged_storage_write_attested_review(
+   a,lease,n2,epoch,repeat('0',64));
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Unsigned lease settlement accepted'; END IF;
+ message:=pg_catalog.concat_ws('|','v2-writer-v1','settle',a::text,bid,p,
+  'create',h,lease::text,n2::text,epoch::text);
+ signature:=pg_catalog.encode(extensions.hmac(
+  pg_catalog.convert_to(message,'UTF8'),key_bytes,'sha256'),'hex');
+ IF public.v2_settle_privileged_storage_write_attested_review(
+  a,lease,n2,epoch,signature) IS DISTINCT FROM true
+ THEN RAISE EXCEPTION 'Attested matching settlement refused'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_settle_privileged_storage_write_attested_review(
+   a,lease,n2,epoch,signature);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Settled lease reused'; END IF;
+ IF (SELECT count(*) FROM allin_private.v2_privileged_storage_writer_nonces_review
+   WHERE owner_id=a)<>2
+ THEN RAISE EXCEPTION 'Nonce ledger differs from accepted signed operations'; END IF;
+ INSERT INTO allin_private.v2_account_deletion_requests
+ (user_id,request_id,status)
+ VALUES(a,pg_catalog.gen_random_uuid(),'requested');
+ denied:=false;
+ BEGIN
+  PERFORM public.v2_begin_privileged_storage_write_attested_review(
+   a,bid,p,'create',h,n3,epoch,repeat('0',64));
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Unattested late write accepted'; END IF;
+ RAISE NOTICE 'PASS ALL-251 signing key locked, legacy RPC closed, exact digest, owner binding, nonce replay, expiry and settlement denied when forged';
+END $test$;
+ROLLBACK;
