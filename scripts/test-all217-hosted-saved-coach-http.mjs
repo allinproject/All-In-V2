@@ -94,7 +94,8 @@ if(!valid(pub)||!valid(secret)||pub===secret||
   console.log("The operator must commit the fixed pair via canonical staging DB RPCs.");
   console.log("Do NOT press Enter until the operator confirms the commit.");
   rl=createInterface({input:stdin,output:stdout});
-  await rl.question("Press Enter AFTER staging canonical pair is committed, or Ctrl+C to abort: ");
+  process.once("SIGINT",()=>{console.error("Interrupted: attempting disposable account cleanup");rl?.close()});
+  await rl.question("Press Enter AFTER staging canonical pair is committed (early Enter fails safely): ");
 
   const hist=await coach(a.token,{action:"history",ownerId:a.id,threadId:thread,limit:40});
   check("real owner JWT HTTP reads committed two-message history",
