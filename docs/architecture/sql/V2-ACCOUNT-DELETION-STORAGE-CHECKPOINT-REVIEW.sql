@@ -160,23 +160,29 @@ REVOKE ALL ON FUNCTION allin_private.v2_deletion_storage_bucket_checkpoints_revi
 -- Exposes only an attested boolean, not sensitive object paths or owner rows.
 -- No worker hook may interpret this alone as authorization to delete Auth.
 CREATE FUNCTION public.v2_review_account_deletion_bucket_checkpoints(
- p_expected_owner_id uuid,p_expected_request_id uuid,p_bucket_id text
+ p_expected_owner_id uuid,p_expected_request_id uuid,p_bucket_id text,
+ p_expected_count integer
 ) RETURNS boolean
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
 AS $bridge$
-DECLARE v_complete boolean;
+DECLARE v_complete boolean; v_count integer;
 BEGIN
  IF p_expected_owner_id IS NULL OR p_expected_request_id IS NULL
-    OR p_bucket_id IS NULL
+    OR p_bucket_id IS NULL OR p_expected_count IS NULL
+    OR p_expected_count NOT BETWEEN 0 AND 10000
  THEN RAISE EXCEPTION 'Exact checkpoint verification scope required' USING ERRCODE='22023'; END IF;
+ SELECT cardinality(p.planned_paths) INTO v_count
+ FROM allin_private.v2_account_deletion_storage_plan_review p
+ WHERE p.request_id=p_expected_request_id AND p.bucket_id=p_bucket_id;
+ IF v_count IS DISTINCT FROM p_expected_count THEN RETURN false; END IF;
  v_complete:=allin_private.v2_deletion_storage_bucket_checkpoints_review(
   p_expected_owner_id,p_expected_request_id,p_bucket_id);
  IF v_complete IS DISTINCT FROM true THEN RETURN false; END IF;
  RETURN true;
 END $bridge$;
-REVOKE ALL ON FUNCTION public.v2_review_account_deletion_bucket_checkpoints(uuid,uuid,text)
+REVOKE ALL ON FUNCTION public.v2_review_account_deletion_bucket_checkpoints(uuid,uuid,text,integer)
  FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION public.v2_review_account_deletion_bucket_checkpoints(uuid,uuid,text)
+GRANT EXECUTE ON FUNCTION public.v2_review_account_deletion_bucket_checkpoints(uuid,uuid,text,integer)
  TO service_role;
-COMMENT ON FUNCTION public.v2_review_account_deletion_bucket_checkpoints(uuid,uuid,text) IS
+COMMENT ON FUNCTION public.v2_review_account_deletion_bucket_checkpoints(uuid,uuid,text,integer) IS
  'ALL-251 disposable review bridge only. Never deploy until retention, upload blocking and actual deletion lifecycle approval.';
