@@ -96,3 +96,51 @@ Storage behind a separate, controlled credential boundary/provider or using
 an authenticated scoped Storage design plus custody controls. Do **not**
 introduce a second source of truth or deploy a new project without an approved
 architecture/recovery/cost decision.
+
+## 2026-11-13 credential audit — observed inventory and disposition
+
+Audited **temporary staging only** (`fbtgknlxjyeqrxemskbl`) through current
+connected project metadata, publishable-key listings, Edge deployment source,
+24-hour Storage operation logs, repository workflows and security advisors.
+No private credential material is recorded here.
+
+| Credential / route | Observed evidence | Disposition / next proof |
+| --- | --- | --- |
+| Modern publishable keys | Two enabled entries: `default` and `all251_temp_staging_publishable_key` | **KEEP pending usage verification**; public keys do not themselves bypass RLS; removal is unrelated to privileged upload isolation |
+| Legacy anon key | One enabled legacy `anon` API key | **KEEP pending compatibility audit**; it is not a privileged upload credential |
+| Staging modern secret key | `ALL251_TEMP_STAGING_SECRET_KEY` is referenced by exactly three reviewed staging GitHub workflows | **KEEP for the current protected acceptance workflow** until a replacement test mechanism exists; credential value, full key-list, holder count and revocation status are unavailable through connected actions |
+| GitHub `v2-all251-temporary-auth-smoke.yml` | Protected `all251-temporary-staging` environment; push and manual trigger | **RETAIN** as currently used by staging testing; review whether automatic privileged test coverage is still required before disabling |
+| GitHub `v2-all251-temporary-hosted-storage.yml` | Protected staging environment, manual trigger | **RETAIN** while hosted Storage acceptance is in progress |
+| GitHub `v2-all251-hosted-privileged-writer.yml` | Protected staging environment, **manual-only** direct bypass probe | **RETAIN disabled from push** until negative bypass tests have been superseded; do not run casually |
+| Deployed `v2-coach` Edge function (v2) | Active, `verify_jwt=true`; deployed source references `SUPABASE_SERVICE_ROLE_KEY`, no direct Storage upload observed in inspected source | **PRESERVE**; audit actual credential custody and replace elevated access where possible before any rotation |
+| Deployed `v2-account-export-download` Edge function (v5) | Active, `verify_jwt=true`; no direct Storage writer observed | **PRESERVE**; this is a read/download flow, not evidence of unrestricted upload |
+| `v2-private-storage-writer` Edge function | Not deployed in inspected staging | **KEEP OFF** until exclusive credential scope and hosted race tests pass |
+| Generated S3 access key pairs | Key-pair inventory/permissions not returned by connected Supabase actions | **UNKNOWN — DO NOT CLAIM DISABLED**; owner must review Storage S3 credentials and revoke only unused keys once holders are reconciled |
+| Storage signing keys / outstanding signed upload URLs | Signing-key inventory and issued URL records unavailable from connected actions | **UNKNOWN**; review issuance and rotate only after active signed URLs/consumers are identified |
+| TUS/multipart or external CLI/Studio writers | No positive owner inventory exposed by connector; source inventory is not equivalent to provider credential inventory | **UNKNOWN**; check operator accounts, S3 clients, upload completions and external integration credentials |
+| Raw Storage REST privileged path | Real hosted test demonstrated a post-deletion-request upload succeeded using the staging secret | **FAILED EXCLUSIVE ENFORCEMENT**; cannot mark upload barrier accepted until unauthorized privileged credential holders and paths are eliminated |
+
+**Operational log corroboration:** The past-24-hour staging Storage log aggregate
+reported 17 `service_role` POST object uploads, 3 PUT replacements, and 16
+deletions (plus read/list activity). These totals include acceptance testing,
+are not attributable to unique credential holders, and are **not proof** that
+unobserved external credentials or active S3/signed URLs do not exist.
+
+**Staging state at audit:** Two private buckets, zero Auth users, zero Stored
+objects, zero active write leases and zero custom `storage.objects` policies;
+`service_role` has `BYPASSRLS`. The connected Supabase security advisor
+was inspected, but its generic private-schema RLS findings do not establish
+that all project-level privileged credential holders are accounted for.
+
+**Credential removal decision:** No key or external access is proven unused.
+Revoking any project-wide secret could disrupt existing Coach/Auth/hosted test
+workflows. Therefore **no credential was revoked or disabled** in this audit;
+the manual-only raw bypass probe remains restricted. Access changes require
+the restricted Supabase dashboard/GitHub environment administrator to inventory
+real keyholders, identify last use, replace working consumers, revoke abandoned
+keys, and confirm that the old credential fails when exercised.
+
+**Residual gate:** Key rotation or additional project secret keys **do not**
+make service-role Storage access owner-scoped. Do not set
+`uploadBarrierEnforced=true` or enable account deletion without an approved
+architecture and live negative hosted bypass acceptance.
