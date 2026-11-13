@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assessRecoveryCoverage,recoveryDomains,findUntrackedRecoveryTables,assessIndependentRecoveryEvidence,assessIndependentLogicalRecoveryEvidence} from './all12-recovery-domain-manifest.mjs';
+import {assessRecoveryCoverage,recoveryDomains,findUntrackedRecoveryTables,assessIndependentRecoveryEvidence,assessIndependentLogicalRecoveryEvidence,assessRestrictionHostedRestoreFingerprint} from './all12-recovery-domain-manifest.mjs';
 test('missing domains fail closed',()=>{
  const x=assessRecoveryCoverage();
  assert.equal(x.complete,false);
@@ -242,4 +242,36 @@ test('Training restriction source, certification and action receipts remain expl
   verifiedTables:tables,verifiedExternal:['private_media','auth_configuration']});
  assert.equal(absent.complete,false);
  assert.ok(absent.domains.find(d=>d.name==='training_restrictions').absent.includes('allin_private.v2_training_restriction_certifications'));
+});
+
+test('hosted restriction metadata absent in real V2 or mismatched restore cannot satisfy source fingerprint check',()=>{
+ const expected=recoveryDomains.find(d=>d.name==='training_restrictions').tables;
+ const mk=(missing=[],change=null)=>({
+  training_restriction_domain:{metadata_only:true,provider_restoration_proven:false,
+   source_evidence_is_complete:false,verified_owner_data:false,
+   all_four_tables_present:missing.length===0,
+   tables:expected.map(table=>({table,deployed:!missing.includes(table),
+     schema_fingerprint_available:!missing.includes(table)}))},
+  table_security_fingerprints:expected.filter(t=>!missing.includes(t)).map(table=>({
+   table,rls:true,force_rls:false,columns_md5:'a'.repeat(32),
+   policies_md5:'b'.repeat(32),constraints_md5:
+    table===change?'c'.repeat(32):'d'.repeat(32),
+  })),
+ });
+ const absent=assessRestrictionHostedRestoreFingerprint({
+  source:mk([expected[3]]),target:mk()});
+ assert.equal(absent.matched,false);
+ assert(absent.reasons.includes('source_restriction_tables_absent_or_unfingerprinted'));
+ assert.equal(absent.initialCertificationAuthorized,false);
+ const tamper=assessRestrictionHostedRestoreFingerprint({
+  source:mk(),target:mk([],expected[1])});
+ assert.equal(tamper.matched,false);
+ assert(tamper.reasons.includes('restriction_schema_security_drift:'+expected[1]));
+ const match=assessRestrictionHostedRestoreFingerprint({source:mk(),target:mk()});
+ assert.deepEqual(match,{matched:true,reviewRequired:true,reasons:[],tableCount:4,
+  initialCertificationAuthorized:false});
+ const untrusted=mk();
+ untrusted.training_restriction_domain.provider_restoration_proven=true;
+ assert(assessRestrictionHostedRestoreFingerprint({
+  source:untrusted,target:mk()}).reasons.includes('source_untrusted_domain_metadata'));
 });
