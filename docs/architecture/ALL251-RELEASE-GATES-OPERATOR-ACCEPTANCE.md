@@ -4,7 +4,7 @@
 
 ## 1. Hosted KMS, existing AWS key only
 
-The existing `trainingExportAwsKms.mjs` implements the KMS data-key/context contract and has **passing isolated SDK-shaped fake** tests. The new `scripts/test-all251-hosted-kms-existing-key.mjs` is an OPTIONAL operator-controlled real-provider acceptance client, NOT part of CI and **not executed**. It never creates KMS keys, roles or resources. Requires a preexisting customer-managed symmetric key, real least-privileged assumed role credentials, independently approved AWS cost, local ephemeral AWS SDK v3 `@aws-sdk/client-kms` and `@aws-sdk/client-sts` dependencies, and exact protected inputs:
+The existing `trainingExportAwsKms.mjs` implements the KMS data-key/context contract and has **passing isolated SDK-shaped fake** tests. The new `scripts/test-all251-hosted-kms-existing-key.mjs` is an OPTIONAL operator-controlled real-provider acceptance client, NOT part of CI and **not executed**. It never creates KMS keys, roles or resources. Requires a preexisting customer-managed symmetric key, real least-privileged assumed role credentials (exact-key `kms:GenerateDataKey`, `kms:Decrypt`, and `kms:DescribeKey`; `sts:GetCallerIdentity` for identity verification), independently approved AWS cost, local ephemeral AWS SDK v3 `@aws-sdk/client-kms` and `@aws-sdk/client-sts` dependencies, and exact protected inputs:
 
 - `ALL251_KMS_HOSTED_ALLOW=true`
 - `ALL251_KMS_COST_APPROVED=true` (separate explicit founder approval for the existing resource/API charges)
