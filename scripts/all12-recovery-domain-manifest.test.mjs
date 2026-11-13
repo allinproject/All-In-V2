@@ -113,7 +113,11 @@ test('complete independently reviewed physical recovery evidence can satisfy its
   sourceTargetSnapshotCompared:true,restoredSchemaAndRlsVerified:true,
   restoredOwnerAuthBoundaryVerified:true,restoredDataIntegrityVerified:true,
   authConfigurationRecovered:true,privateStorageBytesAndMetadataRecovered:true,
-  liveSchemaDomainInventoryReconciled:true,reviewedReleaseAuthorization:true
+  liveSchemaDomainInventoryReconciled:true,
+  restrictionHostedSchemaFingerprintsMatch:true,
+  restrictionOwnerDataAndEvidenceReceiptsRestored:true,
+  restrictionLegacyAndImportSourceProvenanceReconciled:true,
+  reviewedReleaseAuthorization:true
  });
  assert.deepEqual(r,{accepted:true,missing:[]});
 });
@@ -274,4 +278,28 @@ test('hosted restriction metadata absent in real V2 or mismatched restore cannot
  untrusted.training_restriction_domain.provider_restoration_proven=true;
  assert(assessRestrictionHostedRestoreFingerprint({
   source:untrusted,target:mk()}).reasons.includes('source_untrusted_domain_metadata'));
+});
+
+test('hosted recovery cannot be accepted from generic restore claims without restriction provenance',()=>{
+ const denied=assessIndependentRecoveryEvidence({
+  sourceProjectRef:'xarhuczrtzuiljmtdaeu',
+  restoredProjectRef:'independent-quarantined-target',
+  backupSnapshotId:'provider-snapshot',
+  backupCutoffUtc:'2026-11-13T01:00:00Z',
+  restoreStartedUtc:'2026-11-13T02:00:00Z',
+  restoreCompletedUtc:'2026-11-13T02:10:00Z',
+  measuredRpoSeconds:3600,measuredRtoSeconds:600,
+  providerPhysicalRestore:true,preStartOutboundIsolationVerified:true,
+  scheduledWorkersQuarantinedBeforeStartup:true,
+  sourceTargetSnapshotCompared:true,restoredSchemaAndRlsVerified:true,
+  restoredOwnerAuthBoundaryVerified:true,restoredDataIntegrityVerified:true,
+  authConfigurationRecovered:true,privateStorageBytesAndMetadataRecovered:true,
+  liveSchemaDomainInventoryReconciled:true,reviewedReleaseAuthorization:true,
+ });
+ assert.equal(denied.accepted,false);
+ for(const field of [
+  'restrictionHostedSchemaFingerprintsMatch',
+  'restrictionOwnerDataAndEvidenceReceiptsRestored',
+  'restrictionLegacyAndImportSourceProvenanceReconciled',
+ ])assert(denied.missing.includes(field),field);
 });
