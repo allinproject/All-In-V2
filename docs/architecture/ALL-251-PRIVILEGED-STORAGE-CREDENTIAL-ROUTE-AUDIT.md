@@ -326,7 +326,19 @@ cannot access provider bytes.
   reuse this authority via optional injection. The default-off Edge writer
   requires a distinct, server-only `ALLIN_WRITER_ATTESTATION_SECRET_B64`
   before it will use the signed RPCs.
-- The signing secret must be generated out-of-band with a CSPRNG, placed in
+- **Shared-hosting limitation (verified 2026-11-13):** Supabase hosted Edge
+Functions share project-level configured secrets and injected service keys.
+There is no independently isolated per-Edge-Function secret scope in a single
+Supabase project. A signer set through the project's Edge Functions → Secrets
+would be available to other hosted Edge functions, so it **cannot** be
+described as independent writer-only custody and must **not** be used as proof
+of the exclusive upload barrier. See Supabase
+[Edge secrets documentation](https://supabase.com/docs/guides/functions/secrets).
+An out-of-project trusted signer/runtime, or a consciously accepted
+same-project defense-in-depth trust model, requires separate approval and
+release evidence; no new infrastructure is authorized automatically.
+
+The signing secret must be generated out-of-band with a CSPRNG, placed in
   secure private database provisioning and the **dedicated writer only**.
   It must **not** be copied to the project-wide service key, GitHub
   environment shared test secrets, mobile apps, build artifacts, or this
