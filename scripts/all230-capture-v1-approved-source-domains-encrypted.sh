@@ -5,11 +5,15 @@ set -euo pipefail
 umask 077
 : "$ALL230_V1_FULL_SCOPE_APPROVED" "$ALL230_V1_SECURE_CUSTODY_APPROVED"
 : "$ALL230_V1_SOURCE_PROJECT_REF" "$ALL230_V1_AGE_RECIPIENT" "$ALL230_V1_ARCHIVE_DIRECTORY"
-: "$PGHOST" "$PGUSER" "$PGDATABASE" "$PGSSLMODE" "$PGSSLROOTCERT" "$PGPASSFILE"
+: "$PGHOST" "$PGUSER" "$PGDATABASE" "$PGSSLMODE" "$PGSSLROOTCERT"
 [[ "$ALL230_V1_FULL_SCOPE_APPROVED" == YES && "$ALL230_V1_SECURE_CUSTODY_APPROVED" == YES ]] || { echo 'BLOCKED: operator approvals';exit 2; }
 [[ "$ALL230_V1_SOURCE_PROJECT_REF" == impulecgsgaruvniuttc && "$PGDATABASE" == postgres && "$PGSSLMODE" == verify-full ]] || { echo 'BLOCKED: wrong source/TLS';exit 2; }
-[[ -r "$PGSSLROOTCERT" && -r "$PGPASSFILE" ]] || { echo 'BLOCKED: no verified TLS/PGPASSFILE';exit 2; }
-[[ "$(stat -c %a "$PGPASSFILE")" == 600 ]] || { echo 'BLOCKED: password file must be 0600';exit 2; }
+[[ -r "$PGSSLROOTCERT" ]] || { echo 'BLOCKED: TLS CA missing';exit 2; }
+if [[ -n "$(printenv PGPASSFILE 2>/dev/null || true)" ]]; then
+ [[ -r "$PGPASSFILE" && "$(stat -c %a "$PGPASSFILE")" == 600 ]] || { echo 'BLOCKED: password file must be readable 0600';exit 2; }
+elif [[ -z "$(printenv PGPASSWORD 2>/dev/null || true)" ]]; then
+ echo 'BLOCKED: enter V1 password into transient PGPASSWORD or protected 0600 PGPASSFILE';exit 2
+fi
 if [[ "$PGHOST" == db.impulecgsgaruvniuttc.supabase.co ]]; then
  [[ "$PGUSER" == postgres ]] || { echo 'BLOCKED: wrong V1 direct role';exit 2; }
 elif [[ "$PGHOST" == *.pooler.supabase.com ]]; then
