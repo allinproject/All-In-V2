@@ -122,17 +122,6 @@ function TrainingCalendarOwnerScreen() {
         </View>
         {activeTab === 'calendar' ? (
           <>
-        <Link href="/goals" asChild>
-          <Pressable accessibilityRole="button" accessibilityLabel="Review your goals"
-            style={styles.card}>
-            <Text style={styles.section}>Goals &amp; Milestones</Text>
-            <Text style={styles.muted}>
-              Review race, strength, endurance and everyday goals. Athlete approval
-              stays disabled until verified Goal records are connected.
-            </Text>
-            <Text style={styles.gold}>View Goals ›</Text>
-          </Pressable>
-        </Link>
         {level === 'month' ? (
           <>
             <View style={styles.header}>
@@ -167,7 +156,6 @@ function TrainingCalendarOwnerScreen() {
                 ))}
               </View>
             ))}
-            <Text style={styles.note}>Tap a day to open its week and show that day's workouts. Sport/status markers will appear when verified scheduled and completed workout data is connected; the current calendar cannot load those records yet.</Text>
           </>
         ) : (
           <>
@@ -195,40 +183,37 @@ function TrainingCalendarOwnerScreen() {
               ))}
             </View>
             <Text style={styles.dayTitle}>{formatCalendarDay(day)}</Text>
-            <View style={styles.card}>
-              <Text style={styles.section}>Scheduled Workouts</Text>
+            <View style={styles.activities}>
+              <Text style={styles.section}>Activities</Text>
               {daySections.scheduled.status === 'ready'
-                ? daySections.scheduled.records.length
-                  ? daySections.scheduled.records.map(item => (
-                    <View key={item.id} style={styles.workoutRow}>
+                ? daySections.scheduled.records.map(item => (
+                    <View key={'planned:' + item.id} style={styles.workoutRow}>
                       <Text style={styles.white}>{markerSymbols[item.sport]}</Text>
-                      <Text style={styles.muted}>{item.state === 'planned' ? 'Scheduled' : item.state === 'missed' ? 'Missed' : item.state === 'rest' ? 'Rest day' : 'Recovery'} · {item.athleteLocalDate}</Text>
+                      <Text style={styles.muted}>{item.state === 'planned' ? 'Scheduled' : item.state === 'missed' ? 'Missed' : item.state === 'rest' ? 'Rest day' : 'Recovery'}</Text>
                     </View>
                   ))
-                  : <Text style={styles.muted}>No scheduled workouts for this day in the verified plan.</Text>
-                : <Text style={styles.muted}>Your accepted Training schedule is not connected yet. Workouts may exist; none are being marked complete or hidden as an empty plan.</Text>}
+                : null}
+              {daySections.completed.status === 'ready'
+                ? daySections.completed.records.map(item => (
+                    <View key={'completed:' + item.id} style={styles.workoutRow}>
+                      <Text style={styles.white}>{markerSymbols[item.sport]}</Text>
+                      <Text style={styles.muted}>Completed</Text>
+                    </View>
+                  ))
+                : null}
+              {daySections.scheduled.status !== 'ready' || daySections.completed.status !== 'ready'
+                ? <Text style={styles.muted}>Workout history is not connected yet.</Text>
+                : daySections.scheduled.records.length === 0 && daySections.completed.records.length === 0
+                  ? <Text style={styles.muted}>No activities recorded for this day.</Text>
+                  : null}
               <Link href={{ pathname: '/add-workout', params: { date: day } }} asChild>
                 <Pressable accessibilityRole="button" style={styles.addButton}>
                   <Text style={styles.addText}>+ Add Workout</Text>
                 </Pressable>
               </Link>
             </View>
-            <View style={styles.card}>
-              <Text style={styles.section}>Completed Activities</Text>
-              {daySections.completed.status === 'ready'
-                ? daySections.completed.records.length
-                  ? daySections.completed.records.map(item => (
-                    <View key={item.id} style={styles.workoutRow}>
-                      <Text style={styles.white}>{markerSymbols[item.sport]}</Text>
-                      <Text style={styles.muted}>Completed · {item.athleteLocalDate}</Text>
-                    </View>
-                  ))
-                  : <Text style={styles.muted}>No completed activities for this day in the verified history.</Text>
-                : <Text style={styles.muted}>The canonical activity reader is not connected yet. This is not an empty-history result.</Text>}
-            </View>
           </>
         )}
-        <Text style={styles.note}>Dates currently follow this device's local timezone. Athlete-profile timezone and real workout records remain pending.</Text>
           </>
         ) : activeTab === 'plans' ? (
           <>
@@ -296,9 +281,10 @@ const styles = StyleSheet.create({
   selected:{borderColor:colors.gold,borderWidth:2,backgroundColor:colors.surfaceRaised},
   dayTitle:{fontSize:18,color:colors.warmWhite,fontWeight:'800'},
   card:{backgroundColor:colors.surface,borderRadius:18,padding:18,gap:14,borderColor:colors.border,borderWidth:1},
-  workoutRow:{backgroundColor:colors.surfaceRaised,borderRadius:12,padding:12,gap:4},
+  workoutRow:{paddingVertical:12,gap:4,borderBottomColor:colors.border,borderBottomWidth:1},
+  activities:{paddingVertical:12,gap:10},
   section:{fontSize:18,fontWeight:'800',color:colors.warmWhite},
-  addButton:{minHeight:48,borderColor:colors.gold,borderWidth:1,borderRadius:14,justifyContent:'center',alignItems:'center',backgroundColor:colors.surfaceRaised},
+  addButton:{minHeight:48,borderColor:colors.gold,borderWidth:1,borderRadius:8,justifyContent:'center',alignItems:'center',backgroundColor:colors.background,marginTop:6},
   addText:{color:colors.goldSoft,fontSize:16,fontWeight:'800'},
   note:{color:colors.mutedText,fontSize:12,lineHeight:18},
   compactTabs:{flexDirection:'row',gap:4,alignItems:'stretch'},
