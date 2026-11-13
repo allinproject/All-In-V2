@@ -323,3 +323,22 @@ sharing file bytes or user identities with chats/issues. The first Auth
 restore must be on a newly approved isolated Auth-capable target; do not
 merge with the existing Training container or reuse real credentials until
 its independent source review passes. Keep ALL-12 and ALL-230 In Progress.
+
+
+## 2026-11-13 — Local V1 relation restore PASS; gated V2 canonical connection
+
+Founder-provided read-only offline target verification (Docker network none, no ports, tmpfs PostgreSQL): 1 authentic V1 auth.users row, 1 auth.identities row, 1 preserved allin_training row, 1 authentic owner join, and **17/17 original Training/Coach foreign keys present and validated**. Source comparison, encrypted archive digest/decode and owner relationship were separately verified. This is a **scoped local relational rehearsal** only—not live Auth sign-in, complete V1 restore, unified source cutoff, private Storage file-byte recovery, provider-side ALL-12 acceptance or Coach behavior acceptance.
+
+Founder explicitly substitutes objective **self-verification** for a separate human reviewer for this narrow offline rehearsal. Do not call it independently attested, waive unrelated security or recovery gates, or certify completeness of outside import/provider records.
+
+Read-only live V2 database inspection on 2026-11-13: **0 auth.users rows**, and canonical public tables v2_training_athlete_restrictions, v2_training_plans, v2_training_plan_revisions, v2_training_revision_days and v2_training_revision_sessions **absent**. Consequently no authenticated V2 destination owner or deployed canonical Training writer/reader currently exists; this document does not authorize directly writing the hosted V2 database or moving V1 Auth password hashes, sessions, refresh tokens or identity provider credentials.
+
+### Required smallest safe integration sequence
+
+1. Refresh current integration branch and owner schema/RPC state. Reuse the existing canonical V2 Training migrations and writers, rather than inventing a parallel Coach memory store. Gate any hosted schema installation through approved migration/recovery and no-outbound safeguards, never silently repurpose the reserved staging database.
+2. Establish a fresh, authenticated V2 user via V2 Auth. Perform a private, owner-authorized, one-to-one V1-source-to-V2-user mapping; never assume source and destination UUIDs match and never transplant old credentials.
+3. Migrate only approved non-credential Training facts through canonical Training owner writer, preserving revisions and explicit athlete approvals. Legacy V1 preferences.limitation='none' is just a sentinel for that single field and **must not** retire the later explicitly approved hard restriction against lying leg curls. Persist the explicit restriction as an active exercise rule with explicit_user provenance. Migrate the known weekday split (Mon/Thu Legs+Abs; Tue/Fri Chest+Back; Wed Shoulders+Arms) and required leg-day **four** 3-round major+ab supersets only as approved structured plan facts; do not invent exercises, reps, weights, historical accepted-plan versions or live authorization.
+4. Feed Coach solely through existing supabase/functions/_shared/coachCanonicalTrainingReader.mjs and apps/mobile-v2/src/features/coach/coachTurnContext.mjs, with authenticated owner, revision-bound Training day RPC, independently owner-scoped current restrictions and completeness flags. Existing trainingPlanSynthesis.ts prohibits restricted exercises; do not infer a complete approved plan from legacy free text.
+5. Accept end to end only after actual canonical plan/restriction writes, fresh authenticated Coach day reads, exactly four 3-round major+ab pairs on leg days, banned lying leg curls never appearing, weekdays matching verified plan, unknown weights remaining unknown, cross-session persistence, and wrong-owner/stale-revision/reader-unavailable denials. Validate on device. Keep ALL-230 open for live Coach behavior and ALL-12 open for distinct provider backup evidence.
+
+**Current status:** scoped offline V1 relational PASS; V2 canonical account/schema/migration/Coach end-to-end **NOT CONNECTED**; no hosted writes were made by this review.
