@@ -39,16 +39,15 @@ def preview_archive(path, *, runner=subprocess.run):
     verified = verifier.verify_archive(path)
     evidence = json.loads(EVIDENCE.read_text(encoding="utf8"))
     pinned = json.loads(ENERGY.read_text(encoding="utf8"))
-    if len(verified) != len(evidence["records"]) != 8:
+    if len(verified) != 8 or len(evidence["records"]) != 8 or len(pinned["records"]) != 8:
         raise ValueError("Unexpected source inventory")
-    if len(verified) != 8 or pinned["archiveSha256"] != evidence["archiveSha256"] != verifier.ARCHIVE_SHA:
+    if pinned["archiveSha256"] != verifier.ARCHIVE_SHA or evidence["archiveSha256"] != verifier.ARCHIVE_SHA:
         raise ValueError("Source manifest drift")
     with zipfile.ZipFile(path) as z:
         member = [i for i in z.infolist() if i.filename.lower().endswith(".json")][0]
         original = json.loads(z.read(member))
     indexed = {food["fdcId"]: food for food in original["FoundationFoods"]
                if isinstance(food, dict) and isinstance(food.get("fdcId"), int)}
-    summaries = {row["fdcId"]: row for row in evidence["records"]}
     digests = {row["fdcId"]: row for row in pinned["records"]}
     foods = []
     for row in evidence["records"]:
