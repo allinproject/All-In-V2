@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // ALL-210 / ALL-217: real JWT Coach HTTP acceptance in disposable staging ONLY.
-// Requires ALL217_STAGING_SERVICE_ROLE_KEY and ALL217_STAGING_ANON_KEY locally.
+// Requires the staging SECRET key and PUBLISHABLE key (legacy variable names kept for compatibility).
+// Modern sb_secret/sb_publishable keys go only in the apikey header; user JWTs in Authorization.
 // Never paste tokens or keys in chat or add them to Git.
 import assert from "node:assert/strict";
 import {randomBytes,randomUUID} from "node:crypto";
@@ -19,7 +20,7 @@ if(!valid(serviceKey)||!valid(anonKey)||serviceKey===anonKey||
   const key=admin?serviceKey:anonKey;
   const result=await fetch(base+path,{
    method,signal:AbortSignal.timeout(15000),
-   headers:{apikey:key,authorization:"Bearer "+(token??key),
+   headers:{apikey:key,...(token?{authorization:"Bearer "+token}:{}),
     "content-type":"application/json","cache-control":"no-store"},
    ...(body===undefined?{}:{body:JSON.stringify(body)})
   });
