@@ -353,3 +353,30 @@ test('normalized source facts must agree with official reviewed USDA facts befor
  assert.equal(result.exceptions[0].source_profile_key,'milk_cottage_2pct');
  assert.equal(client.calls.filter(c=>c.sql===WRITER).length,14);
 });
+
+test('routed writer refuses unsafe hosted login before BEGIN',async()=>{
+ const client=routedClient();
+ const original=client.query.bind(client);
+ client.query=async(sql,args)=>{
+  if(sql===HOSTED_READINESS_SQL){
+   const response=await original(sql,args);
+   response.rows[0].login='postgres';
+   return response;
+  }
+  return original(sql,args);
+ };
+ await assert.rejects(runRoutedHostedAutomaticQualification({client,...batchFixture()}),
+  /Hosted ingest readiness denied/);
+ assert.deepEqual(client.calls.map(c=>c.sql),[HOSTED_READINESS_SQL]);
+});
+test('explicit routed energy mode invokes only canonical private attestation writer',async()=>{
+ const client=routedClient(),result=await runRoutedHostedAutomaticQualification({
+  client,...batchFixture(),attestEnergy:true
+ });
+ assert.equal(result.qualified.length,8);
+ assert.equal(result.exceptions.length,0);
+ assert.equal(client.calls.filter(c=>c.sql===ENERGY_WRITER).length,8);
+ assert.equal(result.qualified.every(row=>row.energyAttestation?.status==='attested'),true);
+ assert.equal(result.calculationReady,false);
+ assert.equal(result.publicationApproved,false);
+});
