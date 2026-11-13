@@ -17,13 +17,13 @@ BEGIN
  INSERT INTO auth.sessions(id,user_id) VALUES(sa,a),(s2,b);
  IF NOT EXISTS(SELECT 1 FROM public.v2_profiles WHERE user_id=a)
  THEN RAISE EXCEPTION 'Auth trigger failed to create owner profile'; END IF;
- INSERT INTO public.v2_events(id,name,sport,event_kind,
+ INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind,
    source_verification,start_local_date,event_timezone)
- VALUES(e1,'Trail 50','running','ultra','organizer_verified',
+ VALUES(e1,'10000000-0000-4000-8000-000000000001','Trail 50','running','ultra','organizer_verified',
        DATE '2027-04-10','America/Chicago'),
-       (e2,'Cycling Classic','cycling','road','organizer_verified',
+       (e2,'10000000-0000-4000-8000-000000000002','Cycling Classic','cycling','road','organizer_verified',
        DATE '2027-05-21','America/Chicago'),
-       (e3,'Other Athlete Race','running','race','organizer_verified',
+       (e3,'10000000-0000-4000-8000-000000000003','Other Athlete Race','running','race','organizer_verified',
        DATE '2027-06-01','America/Chicago');
  INSERT INTO public.v2_event_groups(id,event_id,state)
  VALUES(g2,e2,'active');
