@@ -114,6 +114,8 @@ jobs:
         run: |
           npm install --prefix /tmp/allin-pglite --no-save --ignore-scripts --package-lock=false @electric-sql/pglite@0.3.16
           PGLITE_MODULE=/tmp/allin-pglite/node_modules/@electric-sql/pglite/dist/index.cjs node --test scripts/test-v2-ingredient-auto-qualification-isolated.cjs
+      - name: Exercise eight pinned USDA energy attestations and fail-closed replay in disposable PGlite
+        run: PGLITE_MODULE=/tmp/allin-pglite/node_modules/@electric-sql/pglite/dist/index.cjs node --test scripts/test-v2-ingredient-energy-attestation-isolated.cjs
       - name: Verify canonical ingredient SQL writer guards without deployment
         run: node --test scripts/check-v2-ingredient-writer-candidate.test.cjs
       - name: Check read-only hosted reviewer connection safety preflight (no credential required)
