@@ -13,6 +13,7 @@ declare
  v_user uuid:=auth.uid();
  v_export jsonb;
  v_goals jsonb;
+ v_goal_edition_links jsonb;
  v_eventhub jsonb;
  v_community jsonb;
  v_billing jsonb;
@@ -36,6 +37,7 @@ begin
          'v2_profiles','v2_profile_settings','v2_onboarding_progress','v2_legal_acceptances',
          'v2_coach_threads','v2_coach_messages',
          'v2_goals','v2_goal_revisions','v2_goal_revision_behavior_targets',
+         'v2_goal_event_edition_links',
          'v2_event_group_memberships','v2_event_participations'
        ]))
        or (n.nspname='allin_private' and c.relname=any(array[
@@ -136,7 +138,18 @@ begin
    where pg_catalog.to_regclass(expected.relation_name) is null) then
      raise exception 'Partial goals export domain schema' using errcode='42501';
    end if;
+   -- Preserve typed accepted Goal/Event edition bindings in the owning Goals
+   -- export. The link table is a review candidate and may not exist in
+   -- older foundation-only schema replays.
+   if pg_catalog.to_regclass('public.v2_goal_event_edition_links') is not null then
+     select coalesce(jsonb_agg(to_jsonb(l) order by l.goal_revision_id),'[]'::jsonb)
+       into v_goal_edition_links
+       from public.v2_goal_event_edition_links l where l.user_id=v_user;
+   else
+     v_goal_edition_links := '[]'::jsonb;
+   end if;
    select jsonb_build_object(
+     'event_edition_links',v_goal_edition_links,
      'goals',coalesce((select jsonb_agg(to_jsonb(g) order by g.id)
        from public.v2_goals g where g.user_id=v_user),'[]'::jsonb),
      'revisions',coalesce((select jsonb_agg(to_jsonb(r) order by r.id)
