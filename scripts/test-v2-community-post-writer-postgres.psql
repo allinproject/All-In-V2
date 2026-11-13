@@ -380,6 +380,23 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $absent_session$;
 SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000002',false);
+-- A comment hidden by a block cannot be used to infer its existence
+-- through the report endpoint, even when the parent post belongs to viewer.
+INSERT INTO allin_private.v2_community_blocks(blocker_id,blocked_id)
+ VALUES('00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002');
+DO $blocked_report$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_report_comment(
+    '84000000-0000-4000-8000-000000000001',
+    '82000000-0000-4000-8000-000000000005','harassment','Reported');
+  RAISE EXCEPTION 'Blocked comment allowed report target probing';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $blocked_report$;
+DELETE FROM allin_private.v2_community_blocks
+ WHERE blocker_id='00000000-0000-0000-0000-000000000001'
+ AND blocked_id='00000000-0000-0000-0000-000000000002';
 DO $real_report$
 DECLARE r jsonb;
 BEGIN
@@ -421,6 +438,18 @@ BEGIN
   RAISE EXCEPTION 'Initial reviewer resolved appeal';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $initial_review$;
+-- Removing a trusted reviewer grant must take effect immediately, not
+-- merely when the reviewer's JWT expires.
+UPDATE allin_private.v2_community_moderator_grants SET enabled=false
+WHERE reviewer_id='00000000-0000-0000-0000-000000000003'
+ AND permission='initial_review';
+DO $revoked_role$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_community_moderation_reviewer('initial_review');
+  RAISE EXCEPTION 'Disabled reviewer grant still authorized';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $revoked_role$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
 SELECT set_config('request.jwt.claim.session_id','83000000-0000-4000-8000-000000000002',false);
 DO $reporter_appeal_denied$
