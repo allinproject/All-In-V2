@@ -79,6 +79,8 @@ export async function reviewPrivateStorageCleanup({
    if(currentlyPresent.some(path=>!paths.includes(path)))
      throw Error('Unplanned owner Storage object discovered');
    for(const path of paths) {
+     if(await assertOwnerWritesQuiesced({ownerId,requestId})!==true)
+       throw Error('Owner Storage write barrier expired before object cleanup');
      // Before each destructive request, re-check ownership and existence.
      if(!validPath(path,ownerId))throw Error('Invalid owner path');
      const existed=await objectExists({ownerId,requestId,bucketId,path});
@@ -90,6 +92,8 @@ export async function reviewPrivateStorageCleanup({
      }
      const remaining=await objectExists({ownerId,requestId,bucketId,path});
      if(remaining!==false)throw Error('Storage object still exists after delete');
+     if(await assertOwnerWritesQuiesced({ownerId,requestId})!==true)
+       throw Error('Owner Storage write barrier expired before checkpoint');
      const scope={ownerId,requestId,bucketId,path};
      const saved=await recordCheckpoint({...scope,state:'absent_verified'});
      if(saved?.persisted!==true)throw Error('Storage checkpoint not persisted');
