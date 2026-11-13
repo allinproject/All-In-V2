@@ -102,6 +102,13 @@ export function reorderRouteWaypoint(state:ManualRouteEditorState,id:string,toIn
 export function deleteRouteWaypoint(state:ManualRouteEditorState,id:string):ManualRouteEditorState{
  if(!state.present.waypoints.some(x=>x.id===id))return state;return pushHistory(state,markNeedsReroute({...state.present,waypoints:state.present.waypoints.filter(x=>x.id!==id),pendingFreehandTrace:null}));
 }
+export function setRouteSport(state:ManualRouteEditorState,sport:RouteSport):ManualRouteEditorState{
+ if(!['run','ride','hike','ruck'].includes(sport)||state.present.sport===sport)return state;
+ // Keep the athlete's geometry intent; invalidate provider evidence and require
+ // a new sport-specific routing/access check before any save or attachment.
+ return pushHistory(state,{...state.present,sport,route:null,routeFresh:false,
+   pendingFreehandTrace:null,lastMaterialChange:null});
+}
 export function setRouteShape(state:ManualRouteEditorState,shape:Exclude<RouteShape,'unknown'>):ManualRouteEditorState{
  if(state.present.shape===shape)return state;return pushHistory(state,markNeedsReroute({...state.present,shape,pendingFreehandTrace:null}));
 }
@@ -142,7 +149,28 @@ export function buildRouteLibrarySections(savedRoutes:SavedTrainingRouteRecord[]
 
 export function serializeRecoverableRouteDraft(state:ManualRouteEditorState):string{return JSON.stringify({version:1,draft:state.present});}
 export function restoreRecoverableRouteDraft(raw:string):ManualRouteEditorState|null{
- try{const parsed=JSON.parse(raw),draft=parsed?.draft as ManualRouteDraft;if(parsed?.version!==1||!draft||!['run','ride','hike','ruck'].includes(draft.sport)||!['loop','out_and_back','point_to_point'].includes(draft.shape)||!(draft.start==null||finitePoint(draft.start))||!(draft.end==null||finitePoint(draft.end))||!Array.isArray(draft.waypoints)||draft.waypoints.some(x=>!x||typeof x.id!=='string'||!finitePoint(x.point)))return null;return {present:draft,undo:[],redo:[]};}catch{return null;}
+ try{
+  if(typeof raw!=='string'||raw.length>500000)return null;
+  const parsed=JSON.parse(raw),draft=parsed?.draft as ManualRouteDraft;
+  if(parsed?.version!==1||!draft||typeof draft!=='object'||
+     !['run','ride','hike','ruck'].includes(draft.sport)||
+     !['loop','out_and_back','point_to_point'].includes(draft.shape)||
+     typeof draft.name!=='string'||!draft.name.trim()||draft.name.length>120||
+     !(draft.start==null||finitePoint(draft.start))||
+     !(draft.end==null||finitePoint(draft.end))||
+     !Array.isArray(draft.waypoints)||draft.waypoints.length>100||
+     draft.waypoints.some(x=>!x||typeof x.id!=='string'||!x.id.trim()||!finitePoint(x.point))||
+     new Set(draft.waypoints.map(x=>x.id)).size!==draft.waypoints.length||
+     !(draft.pendingFreehandTrace==null||
+       Array.isArray(draft.pendingFreehandTrace)&&
+       draft.pendingFreehandTrace.length<=5000&&
+       draft.pendingFreehandTrace.every(finitePoint)))return null;
+  // A local draft has no authority to certify roads, accessibility, geometry,
+  // measurements, or provenance. Discard any cached "verified" route claims.
+  return {present:{...draft,routeId:null,origin:'manual',
+    derivedFromRouteId:null,route:null,routeFresh:false,
+    lastMaterialChange:null,favorite:false},undo:[],redo:[]};
+ }catch{return null;}
 }
 
 export function isCanonicalRoute(route:ValidatedTrainingRoute|null|undefined):route is ValidatedTrainingRoute{
