@@ -41,6 +41,7 @@ test('eight USDA summaries pass full source+binding+alias preflight without writ
 test('wrong source nutrient, wrong energy method and source-fdc ID fail the joined review',()=>{
   const bad=fixtureFoods();bad[0].foodNutrients.find(x=>x.nutrient.id===1008).amount=83;
   assert(run(bad).issues.some(x=>x.startsWith('source_value_mismatch:milk_cottage_2pct')));
+  assert.equal(run(bad).sourceRows.find(x=>x.source_profile_key==='milk_cottage_2pct').source_preflight_pass,false);
   const missing=fixtureFoods();missing[3].foodNutrients=missing[3].foodNutrients.filter(x=>x.nutrient.id!==2048);
   assert(run(missing).issues.some(x=>x.startsWith('energy_method_or_version_mismatch:black_beans_canned_drained')));
   const wrong=fixtureFoods();wrong[2].fdcId=123456;
@@ -57,11 +58,13 @@ test('source admission refuses absent or altered per-food SHA even when macro va
   const noDigest=fixtureFoods();
   delete noDigest[0].payload_sha256;
   assert(run(noDigest).issues.includes('source_digest_reference_mismatch:milk_cottage_2pct'));
+  assert.equal(run(noDigest).sourceRows.find(x=>x.source_profile_key==='milk_cottage_2pct').source_preflight_pass,false);
   assert.equal(run(noDigest).authorizedToWrite,false);
   const wrongDigest=fixtureFoods();
   wrongDigest[3].payload_sha256='0'.repeat(64);
   assert(run(wrongDigest).issues.includes('source_digest_reference_mismatch:black_beans_canned_drained'));
   assert.equal(run(wrongDigest).status,'review_required');
+  assert.equal(run(wrongDigest).sourceRows.find(x=>x.source_profile_key==='black_beans_canned_drained').source_preflight_pass,false);
   const changedBinding=JSON.parse(JSON.stringify(bindings));
   changedBinding.bindings[0].nutrition_evidence.source_payload_sha256_verified='f'.repeat(64);
   assert.equal(run(fixtureFoods(),{sourceBindings:changedBinding}).status,'review_required');
