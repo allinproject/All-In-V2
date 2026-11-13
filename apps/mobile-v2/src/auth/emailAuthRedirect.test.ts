@@ -14,6 +14,7 @@ test('Expo Go callback is scoped to current running server and Expo Router auth 
   assert.equal(v2EmailAuthRedirectUrl({expoGo:true,expoGoEnabled:true,expoGoLinkingUri:expo,nativeCallbackUrl:native}), 'exp://192.168.1.8:8082/--/auth/callback');
   assert.equal(v2EmailAuthRedirectUrl({expoGo:true,expoGoEnabled:true,expoGoLinkingUri:expo,nativeCallbackUrl:native,recovery:true}), 'exp://192.168.1.8:8082/--/auth/callback?type=recovery');
   assert.equal(v2EmailAuthRedirectUrl({expoGo:true,expoGoEnabled:true,expoGoLinkingUri:'exps://secure.dev:443/',nativeCallbackUrl:native}), 'exps://secure.dev:443/--/auth/callback');
+  assert.equal(v2EmailAuthRedirectUrl({expoGo:true,expoGoEnabled:true,expoGoLinkingUri:'exp://192.168.1.8:8082/--/',nativeCallbackUrl:native}), 'exp://192.168.1.8:8082/--/auth/callback');
 });
 
 test('Expo Go links fail closed without explicit exact-session approval', () => {
