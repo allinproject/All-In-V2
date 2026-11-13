@@ -23,7 +23,7 @@ export type RoutineDraft={
  name:string;sport:TrainingSport;notes:string;blocks:RoutineBlock[];
  nextId:number;version:number;status:'unsaved_draft';
 };
-const supportedSports=new Set<TrainingSport>(['strength','running','walking','cycling','swimming','hiking','rucking','rowing','elliptical','stair_stepper','yoga','mobility','other']);
+const supportedSports=new Set<TrainingSport>(['strength','running','walking','cycling','swimming','hiking','rucking','rowing','elliptical','stair','yoga','mobility','other']);
 const clean=(value:string,max=200)=>value.replace(/[\r\n\t]+/g,' ').trim().slice(0,max);
 export function isStrengthRoutine(sport:TrainingSport){return sport==='strength';}
 export function newRoutineDraft(sport:TrainingSport='strength'):RoutineDraft{
