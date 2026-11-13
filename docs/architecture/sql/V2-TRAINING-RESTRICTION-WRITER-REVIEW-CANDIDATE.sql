@@ -32,6 +32,8 @@ DECLARE
  v_claim text:=pg_catalog.current_setting('request.jwt.claim.session_id',true);
  v_session uuid;
  v_current bigint:=0;
+ v_cert_digest text;
+ v_certified_at timestamptz;
  v_next bigint;
  v_hash text;
  v_existing allin_private.v2_training_restriction_action_receipts%ROWTYPE;
@@ -85,7 +87,8 @@ BEGIN
   RETURN pg_catalog.jsonb_build_object('ownerId',v_user,
    'certifiedRevision',v_existing.result_revision,'replayed',true);
  END IF;
- SELECT certified_revision INTO v_current
+ SELECT certified_revision,inventory_digest,certified_at
+ INTO v_current,v_cert_digest,v_certified_at
  FROM allin_private.v2_training_restriction_certifications
  WHERE user_id=v_user FOR UPDATE;
  v_current:=coalesce(v_current,0);
@@ -96,6 +99,18 @@ BEGIN
  IF v_current=0 THEN
   RAISE EXCEPTION 'Trusted Training inventory reconciliation required'
    USING ERRCODE='42501'; END IF;
+ -- Refuse to recertify a corrupted or partially restored inventory merely
+ -- because a legitimate owner is submitting a new rule change. Reconcile
+ -- the full Training-owned source inventory first, outside this writer.
+ IF v_certified_at IS NULL OR
+    v_certified_at>pg_catalog.clock_timestamp() OR
+    v_cert_digest IS DISTINCT FROM
+     allin_private.v2_training_restriction_inventory_digest_candidate(v_user) OR
+    EXISTS(SELECT 1 FROM public.v2_training_athlete_restrictions r
+      WHERE r.user_id=v_user AND
+       (r.revision>v_current OR r.updated_at>v_certified_at)) THEN
+  RAISE EXCEPTION 'Restriction inventory must be reconciled before mutation'
+   USING ERRCODE='40001'; END IF;
  IF p_expected_revision<>v_current THEN
   RAISE EXCEPTION 'Restriction revision changed; reload and retry'
    USING ERRCODE='40001'; END IF;
