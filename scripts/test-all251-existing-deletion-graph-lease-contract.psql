@@ -37,6 +37,17 @@ BEGIN
  THEN RAISE EXCEPTION 'Unsafe lease ledger RLS accepted'; END IF;
 END $unsafe$;
 ALTER TABLE allin_private.v2_privileged_storage_write_leases_review ENABLE ROW LEVEL SECURITY;
+-- A future privileged grant is not an acceptable shortcut around the
+-- reviewed writer/lease discipline, even when RLS itself stays enabled.
+GRANT SELECT ON allin_private.v2_privileged_storage_write_leases_review TO authenticated;
+DO $grant$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+   WHERE reason='missing_or_unsecured_privileged_write_lease_ledger')
+ THEN RAISE EXCEPTION 'Direct authenticated lease access was silently accepted'; END IF;
+END $grant$;
+REVOKE SELECT ON allin_private.v2_privileged_storage_write_leases_review FROM authenticated;
+
 ALTER TABLE storage.objects DISABLE TRIGGER v2_privileged_storage_metadata_write_fence_review;
 DO $disabled$
 BEGIN
