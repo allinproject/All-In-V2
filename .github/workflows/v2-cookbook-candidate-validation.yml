@@ -20,6 +20,8 @@ on:
       - 'scripts/test-v2-usda-source-release-preview.py'
       - 'scripts/run-v2-ingredient-auto-qualification.cjs'
       - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
+      - 'scripts/run-v2-ingredient-initial-seed.cjs'
+      - 'scripts/run-v2-ingredient-initial-seed.test.cjs'
       - 'scripts/test-v2-ingredient-initial-seed-isolated.cjs'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-SEED-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-hosted-catalog-reader.py'
@@ -68,6 +70,8 @@ on:
       - 'scripts/test-v2-usda-source-release-preview.py'
       - 'scripts/run-v2-ingredient-auto-qualification.cjs'
       - 'scripts/run-v2-ingredient-auto-qualification.test.cjs'
+      - 'scripts/run-v2-ingredient-initial-seed.cjs'
+      - 'scripts/run-v2-ingredient-initial-seed.test.cjs'
       - 'scripts/test-v2-ingredient-initial-seed-isolated.cjs'
       - 'docs/architecture/sql/V2-INGREDIENT-CANONICAL-SEED-WRITER-CANDIDATE.sql'
       - 'scripts/test-v2-ingredient-hosted-catalog-reader.py'
@@ -131,6 +135,8 @@ jobs:
           python3 -m py_compile scripts/preview-v2-usda-verified-admission.py
           python3 scripts/test-v2-usda-source-release-preview.py
           node --experimental-strip-types --test scripts/preview-v2-usda-archive-admission.test.cjs
+      - name: Verify USDA source admission to independent core release and initial canonical seed routing
+        run: node --test scripts/run-v2-ingredient-initial-seed.test.cjs
       - name: Test automatic ingredient qualification through existing canonical writer transaction
         run: node --test scripts/run-v2-ingredient-auto-qualification.test.cjs
       - name: Test canonical writer transaction and rollback in disposable PGlite
