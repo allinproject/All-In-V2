@@ -359,3 +359,75 @@ The signing secret must be generated out-of-band with a CSPRNG, placed in
 
 No signer key, migration or function was applied to hosted staging or
 production as part of this implementation slice.
+
+
+## 2026-11-13 — Operator-held staging signing boundary (prepared, NOT activated)
+
+**Purpose:** Test the existing canonical attested writer on the already-approved
+temporary staging project without storing the 32-byte signer in Supabase
+project-wide Edge Secrets, a shared service-role secret, CI logs or the repo.
+This is a one-shot operator-controlled staging runner, not a second production
+Storage owner, a persistent hosted service, a replacement for account deletion,
+or evidence of provider-level Storage exclusivity. No new paid project/service
+is authorized.
+
+**Prepared source:** `scripts/all251-staging-operator-trusted-writer.mjs`
+imports the existing `createAttestedPrivilegedStorageLeaseAuthority` and
+`createPrivilegedStorageWriter` with `requireAttestedLease: true`. It rejects
+GitHub CI, requires an explicit operator acceptance flag and the exact
+temporary project credential classes, and keeps the signer only in process
+memory. Its disposable two-account scenario verifies genuine attested Storage
+writes with byte readback and settlement, a synthetic owner-A deletion
+request, subsequent A-write denial, independent B-write continuation and
+object/Auth cleanup. It intentionally does **not** claim signed URL, S3 or
+TUS delayed-finalization acceptance. Review and test this script before any
+privileged use.
+
+**Activation prerequisites (hard gates, not performed by committing this file):**
+
+1. Independently confirm the chosen operator workstation and access-control
+   boundary. Only the named operator can obtain the 32-byte signer; all other
+   Supabase service-role holders, project-wide Edge functions, repository
+   maintainers without operator rights and external automation must not obtain
+   it. Use OS-protected ephemeral secret injection and never echo it, paste it
+   into chat/Linear, or commit it. A merely different Supabase secret key is
+   not an isolated custody boundary.
+2. Verify approved, representative **staging-only** backup/rollback and
+   review the attested SQL candidate as a migration, including ownership,
+   extension availability, transaction/privilege checks and the existing
+   deletion/Storage triggers. Do not blindly run the review SQL in production
+   or weaken the metadata fence. Keep legacy unsigned begin/settle RPCs
+   revoked.
+3. From an authenticated PostgreSQL administrator connection with certificate
+   validation, provision the same CSPRNG-generated 32-byte signer into the
+   private verifier table (using encrypted transport and non-echoed standard
+   input), and into ONLY the operator process. No normal service-role grants
+   to read/update the key or its nonce ledger; verify forged/absent HMAC and
+   nonce replay are denied BEFORE accepting any successful upload. Audit key
+   custody without revealing the secret in logs or tool responses.
+4. Run the operator-only script on the approved workstation with
+   `ALL251_OPERATOR_APPROVED=true`, the temporary staging
+   `ALL251_TEMP_STAGING_SECRET_KEY`,
+   `ALL251_TEMP_STAGING_PUBLISHABLE_KEY` and the separately held
+   `ALL251_OPERATOR_SIGNER_BASE64`. The operator must supply these securely
+   outside the repository. The script creates only synthetic users, checks
+   real byte readback and performs cleanup; any ambiguous lease or incomplete
+   cleanup must fail closed and be reconciled before further tests.
+5. Independently execute real pre-minted signed URL/TUS delayed-completion
+   attempts and privileged S3 SigV4/multipart against the same deletion
+   boundary. The shared Supabase master service-role credential and provider
+   object-byte authority remain independent unresolved threats. An attested
+   PostgreSQL RPC PASS does not prove provider exclusivity.
+6. After the one-shot staging acceptance, revoke/retire the temporary signer
+   under the approved rollback procedure, verify zero users, objects and
+   open leases, and account for temporary credentials. A lasting hosted Edge
+   deployment still requires **independently scoped hosted** signer custody;
+   a shared Supabase Edge secret is explicitly insufficient. Hosting/KMS,
+   privacy/retention and device acceptance remain separate release gates.
+
+**Current status:** The script and local negative configuration tests are
+prepared for review; no signer has been generated/provisioned by the assistant,
+no attested hosted SQL has been installed, no operator-hosted acceptance has
+run, and `v2-private-storage-writer` stays undeployed/default OFF.
+`uploadBarrierEnforced=false`, `completePrivateStorage=false`, operational
+account deletion OFF. Do not mark ALL-251 complete.
