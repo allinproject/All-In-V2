@@ -33,7 +33,7 @@ test('route view never calls provider data verified if editing invalidated it',(
 });
 
 test('Train and workspace switching preserve the in-session route draft without exposing hidden editor',()=>{
- const train=read('../../../app/train.tsx');
+ const train=read('../../../../app/train.tsx');
  const workspace=read('../RoutesRoutinesContent.tsx');
  assert.match(train,/display:activeTab === 'routes_routines' \? 'flex' : 'none'/);
  assert.match(train,/importantForAccessibility=\{activeTab === 'routes_routines' \? 'auto' : 'no-hide-descendants'\}/);
