@@ -44,7 +44,282 @@ DECLARE v_key bytea; v_message text; v_expected text;
 BEGIN
  IF p_action NOT IN ('begin','settle') OR p_owner IS NULL OR
     p_nonce IS NULL OR p_epoch IS NULL OR
-    p_hash !~ '^[0-9a-f]{64}$' OR
+    (p_hash IS NULL OR p_hash !~ '^[0-9a-f]{64}
+    (p_hmac IS NULL OR p_hmac !~ '^[0-9a-f]{64}
+    p_path IS NULL OR p_path LIKE '%|%' OR p_path ~ '[[:cntrl:]]' OR
+    p_bucket IS NULL OR p_bucket LIKE '%|%' OR
+    p_operation NOT IN ('create','replace') OR
+    pg_catalog.abs(pg_catalog.date_part('epoch',pg_catalog.clock_timestamp())::bigint-p_epoch)>120 OR
+    (p_action='begin' AND p_lease IS NOT NULL) OR
+    (p_action='settle' AND p_lease IS NULL)
+ THEN RAISE EXCEPTION 'Writer attestation rejected' USING ERRCODE='42501'; END IF;
+ SELECT secret INTO v_key
+ FROM allin_private.v2_privileged_storage_writer_key_review
+ WHERE singleton=true;
+ IF v_key IS NULL THEN
+  RAISE EXCEPTION 'Writer signing key not provisioned' USING ERRCODE='42501';
+ END IF;
+ v_message:=pg_catalog.concat_ws('|',
+  'v2-writer-v1',p_action,p_owner::text,p_bucket,p_path,
+  p_operation,p_hash,coalesce(p_lease::text,''),p_nonce::text,p_epoch::text);
+ v_expected:=pg_catalog.encode(extensions.hmac(
+  pg_catalog.convert_to(v_message,'UTF8'),v_key,'sha256'),'hex');
+ IF v_expected IS DISTINCT FROM p_hmac THEN
+  RAISE EXCEPTION 'Writer signature rejected' USING ERRCODE='42501'; END IF;
+ INSERT INTO allin_private.v2_privileged_storage_writer_nonces_review
+  (nonce,action,owner_id) VALUES(p_nonce,p_action,p_owner);
+ EXCEPTION WHEN unique_violation THEN
+  RAISE EXCEPTION 'Writer nonce replay rejected' USING ERRCODE='42501';
+END $verify$;
+REVOKE ALL ON FUNCTION
+ allin_private.v2_verify_storage_writer_attestation_review(
+ text,uuid,text,text,text,text,uuid,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+
+-- The old service-role granted 4-argument RPC is made inaccessible to ALL
+-- ordinary API clients as part of the same approved activation transaction.
+-- New attested SECURITY DEFINER RPC invokes it using its function-owner
+-- privileges and binds the exact payload hash to the resulting lease.
+CREATE FUNCTION public.v2_begin_privileged_storage_write_attested_review(
+ p_owner_id uuid,p_bucket_id text,p_object_path text,p_operation text,
+ p_sha256 text,p_nonce uuid,p_issued_epoch bigint,p_signature text
+) RETURNS uuid LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $begin$
+DECLARE v_id uuid;
+BEGIN
+ PERFORM allin_private.v2_verify_storage_writer_attestation_review(
+  'begin',p_owner_id,p_bucket_id,p_object_path,p_operation,
+  p_sha256,NULL,p_nonce,p_issued_epoch,p_signature);
+ v_id:=public.v2_begin_privileged_storage_write_review(
+  p_owner_id,p_bucket_id,p_object_path,p_operation);
+ UPDATE allin_private.v2_privileged_storage_write_leases_review
+ SET writer_sha256_review=p_sha256 WHERE owner_id=p_owner_id AND lease_id=v_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Lease hash binding failed' USING ERRCODE='42501'; END IF;
+ RETURN v_id;
+END $begin$;
+REVOKE ALL ON FUNCTION public.v2_begin_privileged_storage_write_attested_review(
+ uuid,text,text,text,text,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.v2_begin_privileged_storage_write_attested_review(
+ uuid,text,text,text,text,uuid,bigint,text) TO service_role;
+
+CREATE FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ p_owner_id uuid,p_lease_id uuid,p_nonce uuid,p_issued_epoch bigint,
+ p_signature text
+) RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $settle$
+DECLARE v_lease record;
+BEGIN
+ SELECT bucket_id,object_path,operation,writer_sha256_review,settled_at
+ INTO v_lease FROM allin_private.v2_privileged_storage_write_leases_review
+ WHERE owner_id=p_owner_id AND lease_id=p_lease_id FOR UPDATE;
+ IF NOT FOUND OR v_lease.settled_at IS NOT NULL
+    OR v_lease.writer_sha256_review IS NULL
+ THEN RAISE EXCEPTION 'Attested unresolved lease required' USING ERRCODE='42501'; END IF;
+ PERFORM allin_private.v2_verify_storage_writer_attestation_review(
+  'settle',p_owner_id,v_lease.bucket_id,v_lease.object_path,
+  v_lease.operation,v_lease.writer_sha256_review,p_lease_id,
+  p_nonce,p_issued_epoch,p_signature);
+ RETURN public.v2_settle_privileged_storage_write_review(p_owner_id,p_lease_id);
+END $settle$;
+REVOKE ALL ON FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ uuid,uuid,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ uuid,uuid,uuid,bigint,text) TO service_role;
+
+-- Key security cutover: no direct, unsigned service-role lease entrypoints.
+REVOKE ALL ON FUNCTION public.v2_begin_privileged_storage_write_review(
+ uuid,text,text,text) FROM PUBLIC,anon,authenticated,service_role;
+REVOKE ALL ON FUNCTION public.v2_settle_privileged_storage_write_review(
+ uuid,uuid) FROM PUBLIC,anon,authenticated,service_role;
+-- The activation must fail closed until a distinct signing key has been
+-- safely provisioned. Direct Storage REST, S3 and TUS provider bypasses
+-- remain independent release blockers, not made safe by this candidate.
+) OR
+    p_hmac !~ '^[0-9a-f]{64}$' OR
+    p_path IS NULL OR p_path LIKE '%|%' OR p_path ~ '[[:cntrl:]]' OR
+    p_bucket IS NULL OR p_bucket LIKE '%|%' OR
+    p_operation NOT IN ('create','replace') OR
+    pg_catalog.abs(pg_catalog.extract(epoch FROM pg_catalog.clock_timestamp())::bigint-p_epoch)>120 OR
+    (p_action='begin' AND p_lease IS NOT NULL) OR
+    (p_action='settle' AND p_lease IS NULL)
+ THEN RAISE EXCEPTION 'Writer attestation rejected' USING ERRCODE='42501'; END IF;
+ SELECT secret INTO v_key
+ FROM allin_private.v2_privileged_storage_writer_key_review
+ WHERE singleton=true;
+ IF v_key IS NULL THEN
+  RAISE EXCEPTION 'Writer signing key not provisioned' USING ERRCODE='42501';
+ END IF;
+ v_message:=pg_catalog.concat_ws('|',
+  'v2-writer-v1',p_action,p_owner::text,p_bucket,p_path,
+  p_operation,p_hash,coalesce(p_lease::text,''),p_nonce::text,p_epoch::text);
+ v_expected:=pg_catalog.encode(extensions.hmac(
+  pg_catalog.convert_to(v_message,'UTF8'),v_key,'sha256'),'hex');
+ IF v_expected IS DISTINCT FROM p_hmac THEN
+  RAISE EXCEPTION 'Writer signature rejected' USING ERRCODE='42501'; END IF;
+ INSERT INTO allin_private.v2_privileged_storage_writer_nonces_review
+  (nonce,action,owner_id) VALUES(p_nonce,p_action,p_owner);
+ EXCEPTION WHEN unique_violation THEN
+  RAISE EXCEPTION 'Writer nonce replay rejected' USING ERRCODE='42501';
+END $verify$;
+REVOKE ALL ON FUNCTION
+ allin_private.v2_verify_storage_writer_attestation_review(
+ text,uuid,text,text,text,text,uuid,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+
+-- The old service-role granted 4-argument RPC is made inaccessible to ALL
+-- ordinary API clients as part of the same approved activation transaction.
+-- New attested SECURITY DEFINER RPC invokes it using its function-owner
+-- privileges and binds the exact payload hash to the resulting lease.
+CREATE FUNCTION public.v2_begin_privileged_storage_write_attested_review(
+ p_owner_id uuid,p_bucket_id text,p_object_path text,p_operation text,
+ p_sha256 text,p_nonce uuid,p_issued_epoch bigint,p_signature text
+) RETURNS uuid LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $begin$
+DECLARE v_id uuid;
+BEGIN
+ PERFORM allin_private.v2_verify_storage_writer_attestation_review(
+  'begin',p_owner_id,p_bucket_id,p_object_path,p_operation,
+  p_sha256,NULL,p_nonce,p_issued_epoch,p_signature);
+ v_id:=public.v2_begin_privileged_storage_write_review(
+  p_owner_id,p_bucket_id,p_object_path,p_operation);
+ UPDATE allin_private.v2_privileged_storage_write_leases_review
+ SET writer_sha256_review=p_sha256 WHERE owner_id=p_owner_id AND lease_id=v_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Lease hash binding failed' USING ERRCODE='42501'; END IF;
+ RETURN v_id;
+END $begin$;
+REVOKE ALL ON FUNCTION public.v2_begin_privileged_storage_write_attested_review(
+ uuid,text,text,text,text,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.v2_begin_privileged_storage_write_attested_review(
+ uuid,text,text,text,text,uuid,bigint,text) TO service_role;
+
+CREATE FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ p_owner_id uuid,p_lease_id uuid,p_nonce uuid,p_issued_epoch bigint,
+ p_signature text
+) RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $settle$
+DECLARE v_lease record;
+BEGIN
+ SELECT bucket_id,object_path,operation,writer_sha256_review,settled_at
+ INTO v_lease FROM allin_private.v2_privileged_storage_write_leases_review
+ WHERE owner_id=p_owner_id AND lease_id=p_lease_id FOR UPDATE;
+ IF NOT FOUND OR v_lease.settled_at IS NOT NULL
+    OR v_lease.writer_sha256_review IS NULL
+ THEN RAISE EXCEPTION 'Attested unresolved lease required' USING ERRCODE='42501'; END IF;
+ PERFORM allin_private.v2_verify_storage_writer_attestation_review(
+  'settle',p_owner_id,v_lease.bucket_id,v_lease.object_path,
+  v_lease.operation,v_lease.writer_sha256_review,p_lease_id,
+  p_nonce,p_issued_epoch,p_signature);
+ RETURN public.v2_settle_privileged_storage_write_review(p_owner_id,p_lease_id);
+END $settle$;
+REVOKE ALL ON FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ uuid,uuid,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ uuid,uuid,uuid,bigint,text) TO service_role;
+
+-- Key security cutover: no direct, unsigned service-role lease entrypoints.
+REVOKE ALL ON FUNCTION public.v2_begin_privileged_storage_write_review(
+ uuid,text,text,text) FROM PUBLIC,anon,authenticated,service_role;
+REVOKE ALL ON FUNCTION public.v2_settle_privileged_storage_write_review(
+ uuid,uuid) FROM PUBLIC,anon,authenticated,service_role;
+-- The activation must fail closed until a distinct signing key has been
+-- safely provisioned. Direct Storage REST, S3 and TUS provider bypasses
+-- remain independent release blockers, not made safe by this candidate.
+) OR
+    p_path IS NULL OR p_path LIKE '%|%' OR p_path ~ '[[:cntrl:]]' OR
+    p_bucket IS NULL OR p_bucket LIKE '%|%' OR
+    p_operation NOT IN ('create','replace') OR
+    pg_catalog.abs(pg_catalog.extract(epoch FROM pg_catalog.clock_timestamp())::bigint-p_epoch)>120 OR
+    (p_action='begin' AND p_lease IS NOT NULL) OR
+    (p_action='settle' AND p_lease IS NULL)
+ THEN RAISE EXCEPTION 'Writer attestation rejected' USING ERRCODE='42501'; END IF;
+ SELECT secret INTO v_key
+ FROM allin_private.v2_privileged_storage_writer_key_review
+ WHERE singleton=true;
+ IF v_key IS NULL THEN
+  RAISE EXCEPTION 'Writer signing key not provisioned' USING ERRCODE='42501';
+ END IF;
+ v_message:=pg_catalog.concat_ws('|',
+  'v2-writer-v1',p_action,p_owner::text,p_bucket,p_path,
+  p_operation,p_hash,coalesce(p_lease::text,''),p_nonce::text,p_epoch::text);
+ v_expected:=pg_catalog.encode(extensions.hmac(
+  pg_catalog.convert_to(v_message,'UTF8'),v_key,'sha256'),'hex');
+ IF v_expected IS DISTINCT FROM p_hmac THEN
+  RAISE EXCEPTION 'Writer signature rejected' USING ERRCODE='42501'; END IF;
+ INSERT INTO allin_private.v2_privileged_storage_writer_nonces_review
+  (nonce,action,owner_id) VALUES(p_nonce,p_action,p_owner);
+ EXCEPTION WHEN unique_violation THEN
+  RAISE EXCEPTION 'Writer nonce replay rejected' USING ERRCODE='42501';
+END $verify$;
+REVOKE ALL ON FUNCTION
+ allin_private.v2_verify_storage_writer_attestation_review(
+ text,uuid,text,text,text,text,uuid,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+
+-- The old service-role granted 4-argument RPC is made inaccessible to ALL
+-- ordinary API clients as part of the same approved activation transaction.
+-- New attested SECURITY DEFINER RPC invokes it using its function-owner
+-- privileges and binds the exact payload hash to the resulting lease.
+CREATE FUNCTION public.v2_begin_privileged_storage_write_attested_review(
+ p_owner_id uuid,p_bucket_id text,p_object_path text,p_operation text,
+ p_sha256 text,p_nonce uuid,p_issued_epoch bigint,p_signature text
+) RETURNS uuid LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $begin$
+DECLARE v_id uuid;
+BEGIN
+ PERFORM allin_private.v2_verify_storage_writer_attestation_review(
+  'begin',p_owner_id,p_bucket_id,p_object_path,p_operation,
+  p_sha256,NULL,p_nonce,p_issued_epoch,p_signature);
+ v_id:=public.v2_begin_privileged_storage_write_review(
+  p_owner_id,p_bucket_id,p_object_path,p_operation);
+ UPDATE allin_private.v2_privileged_storage_write_leases_review
+ SET writer_sha256_review=p_sha256 WHERE owner_id=p_owner_id AND lease_id=v_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Lease hash binding failed' USING ERRCODE='42501'; END IF;
+ RETURN v_id;
+END $begin$;
+REVOKE ALL ON FUNCTION public.v2_begin_privileged_storage_write_attested_review(
+ uuid,text,text,text,text,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.v2_begin_privileged_storage_write_attested_review(
+ uuid,text,text,text,text,uuid,bigint,text) TO service_role;
+
+CREATE FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ p_owner_id uuid,p_lease_id uuid,p_nonce uuid,p_issued_epoch bigint,
+ p_signature text
+) RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $settle$
+DECLARE v_lease record;
+BEGIN
+ SELECT bucket_id,object_path,operation,writer_sha256_review,settled_at
+ INTO v_lease FROM allin_private.v2_privileged_storage_write_leases_review
+ WHERE owner_id=p_owner_id AND lease_id=p_lease_id FOR UPDATE;
+ IF NOT FOUND OR v_lease.settled_at IS NOT NULL
+    OR v_lease.writer_sha256_review IS NULL
+ THEN RAISE EXCEPTION 'Attested unresolved lease required' USING ERRCODE='42501'; END IF;
+ PERFORM allin_private.v2_verify_storage_writer_attestation_review(
+  'settle',p_owner_id,v_lease.bucket_id,v_lease.object_path,
+  v_lease.operation,v_lease.writer_sha256_review,p_lease_id,
+  p_nonce,p_issued_epoch,p_signature);
+ RETURN public.v2_settle_privileged_storage_write_review(p_owner_id,p_lease_id);
+END $settle$;
+REVOKE ALL ON FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ uuid,uuid,uuid,bigint,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ uuid,uuid,uuid,bigint,text) TO service_role;
+
+-- Key security cutover: no direct, unsigned service-role lease entrypoints.
+REVOKE ALL ON FUNCTION public.v2_begin_privileged_storage_write_review(
+ uuid,text,text,text) FROM PUBLIC,anon,authenticated,service_role;
+REVOKE ALL ON FUNCTION public.v2_settle_privileged_storage_write_review(
+ uuid,uuid) FROM PUBLIC,anon,authenticated,service_role;
+-- The activation must fail closed until a distinct signing key has been
+-- safely provisioned. Direct Storage REST, S3 and TUS provider bypasses
+-- remain independent release blockers, not made safe by this candidate.
+) OR
     p_hmac !~ '^[0-9a-f]{64}$' OR
     p_path IS NULL OR p_path LIKE '%|%' OR p_path ~ '[[:cntrl:]]' OR
     p_bucket IS NULL OR p_bucket LIKE '%|%' OR
