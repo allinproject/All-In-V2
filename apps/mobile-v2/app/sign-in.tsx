@@ -136,9 +136,12 @@ export default function SignInScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>
-            <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-            <Text accessibilityRole="header" style={styles.title}>Welcome back</Text>
-            <Text style={styles.body}>Sign in to your ALL IN 365 V2 account.</Text>
+            <View style={styles.brandHeader}>
+              <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
+              <Text style={styles.tagline}>LIVE ALL IN.</Text>
+            </View>
+            <Text accessibilityRole="header" style={styles.title}>Welcome back.</Text>
+            <Text style={styles.body}>Your whole fitness life in one place.</Text>
             <TextInput accessibilityLabel="Email" editable={!submitting && !resending} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="Email" placeholderTextColor="#929292" style={styles.input} value={email} onChangeText={value => { if (requestGuard.current.isBusy()) return; setEmail(value); setConfirmationPendingEmail(null); setError(null); setNotice(null); }} />
             <TextInput accessibilityLabel="Password" editable={!submitting && !resending} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder="Password" placeholderTextColor="#929292" style={styles.input} value={password} onChangeText={value => { if (requestGuard.current.isBusy()) return; setPassword(value); }} onSubmitEditing={() => void signIn()} />
             {visibleError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{visibleError}</Text> : null}
@@ -166,19 +169,21 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  content: { flexGrow: 1, justifyContent: 'center', padding: 22 },
-  card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 22, padding: 28, gap: 16 },
-  brand: { color: colors.warmWhite, fontSize: 18, fontWeight: '800', letterSpacing: 1.5 },
+  content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 48 },
+  card: { width: '100%', maxWidth: 460, alignSelf: 'center', gap: 16 },
+  brandHeader: { alignItems: 'center', paddingBottom: 56, gap: 9 },
+  tagline: { color: colors.goldSoft, fontSize: 11, fontWeight: '800', letterSpacing: 4 },
+  brand: { color: colors.warmWhite, fontSize: 43, fontWeight: '900', letterSpacing: -1.5 },
   gold: { color: colors.gold },
-  title: { color: colors.warmWhite, fontSize: 30, fontWeight: '800', marginTop: 8 },
-  body: { color: colors.mutedText, fontSize: 15, lineHeight: 21 },
-  input: { backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: 14, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 15, paddingVertical: 14 },
+  title: { color: colors.warmWhite, fontSize: 34, fontWeight: '900', letterSpacing: -0.8 },
+  body: { color: colors.mutedText, fontSize: 15, lineHeight: 22, marginBottom: 12 },
+  input: { backgroundColor: colors.background, borderColor: '#514B3E', borderWidth: 1, borderRadius: 12, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 16, paddingVertical: 16 },
   error: { color: colors.danger, fontSize: 14, lineHeight: 19 },
   notice: { color: colors.goldSoft, fontSize: 14, lineHeight: 19 },
-  googleButton: { minHeight: 52, borderRadius: 14, backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  googleButton: { minHeight: 54, borderRadius: 12, backgroundColor: colors.background, borderColor: '#514B3E', borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   googleButtonText: { color: colors.warmWhite, fontWeight: '800', fontSize: 16 },
   resendButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
-  button: { minHeight: 52, borderRadius: 14, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: 56, borderRadius: 12, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.9 },
   disabled: { opacity: 0.65 },
   buttonText: { color: colors.background, fontSize: 16, fontWeight: '800' },

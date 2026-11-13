@@ -165,9 +165,12 @@ p_founder_beta_terms_version: founderBetaVersion,
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>
-            <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-            <Text accessibilityRole="header" style={styles.title}>Create your V2 account</Text>
-            <Text style={styles.body}>This creates a fresh account in the dedicated ALL IN 365 V2 backend. V1 account credentials and personal history are not imported.</Text>
+            <View style={styles.brandHeader}>
+              <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
+              <Text style={styles.tagline}>LIVE ALL IN.</Text>
+            </View>
+            <Text accessibilityRole="header" style={styles.title}>Your journey starts here.</Text>
+            <Text style={styles.body}>Start where you are. Go as far as you want.</Text>
             {loadingDocuments ? <ActivityIndicator color={colors.gold} /> : null}
             {!loadingDocuments && documents.map(doc => (
               <View key={reviewKey(doc)} style={styles.document}>
@@ -207,12 +210,14 @@ p_founder_beta_terms_version: founderBetaVersion,
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  content: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
-  card: { width: '100%', maxWidth: 520, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.card, padding: spacing.lg, gap: spacing.md },
-  brand: { color: colors.warmWhite, fontSize: 18, fontWeight: '800', letterSpacing: 1.5 },
+  content: { flexGrow: 1, alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: 44, paddingBottom: 48 },
+  card: { width: '100%', maxWidth: 520, gap: spacing.md },
+  brandHeader: { alignItems: 'center', paddingBottom: 38, paddingTop: 12, gap: 9 },
+  tagline: { color: colors.goldSoft, fontSize: 11, fontWeight: '800', letterSpacing: 4 },
+  brand: { color: colors.warmWhite, fontSize: 39, fontWeight: '900', letterSpacing: -1.5 },
   gold: { color: colors.gold },
-  title: { color: colors.warmWhite, fontSize: 28, fontWeight: '800' },
-  body: { color: colors.mutedText, fontSize: 14, lineHeight: 21 },
+  title: { color: colors.warmWhite, fontSize: 31, fontWeight: '900', letterSpacing: -0.8 },
+  body: { color: colors.mutedText, fontSize: 15, lineHeight: 23, marginBottom: 10 },
   document: { backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: radius.control, padding: spacing.md, gap: spacing.sm },
   documentTitle: { color: colors.warmWhite, fontSize: 15, fontWeight: '800' },
   documentBody: { maxHeight: 210 },
@@ -220,8 +225,8 @@ const styles = StyleSheet.create({
   reviewRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 40 },
   checkbox: { color: colors.gold, fontSize: 22, width: 28 },
   reviewText: { flex: 1, color: colors.warmWhite, fontSize: 14, lineHeight: 20 },
-  input: { backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderWidth: 1, borderRadius: radius.control, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 15, paddingVertical: 14 },
-  button: { minHeight: 52, borderRadius: radius.control, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
+  input: { backgroundColor: colors.background, borderColor: '#514B3E', borderWidth: 1, borderRadius: 12, color: colors.warmWhite, fontSize: 16, paddingHorizontal: 16, paddingVertical: 16 },
+  button: { minHeight: 56, borderRadius: 12, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.45 },
   buttonText: { color: colors.background, fontSize: 16, fontWeight: '800' },
   notice: { color: colors.goldSoft, fontSize: 14, lineHeight: 20 },
