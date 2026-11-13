@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/tokens';
+import { RouteBuilderContent } from './routeBuilder/RouteBuilderContent';
 
 type Workspace = 'routes' | 'routines';
 
 /**
- * The V1 interactive map and repeatable workout editor remain the prescribed
- * implementation. This surface establishes their separate navigation without
- * claiming V1 route data or an unconnected map provider is functioning.
+ * Routes mount the ported V1 interactive editor without unapproved legacy writers.
+ * Routine storage and its editor remain separately gated by canonical V2 ownership.
  */
 export function RoutesRoutinesContent() {
   const [selected, setSelected] = useState<Workspace>('routes');
@@ -27,9 +27,8 @@ export function RoutesRoutinesContent() {
     {selected === 'routes' ? (
       <View style={styles.body}>
         <Text accessibilityRole="header" style={styles.title}>Routes</Text>
-        <Text style={styles.subheading}>Route Builder</Text>
-        <Text style={styles.muted}>The interactive route map is not connected yet.</Text>
-        <Text style={styles.muted}>Your saved routes have not been checked.</Text>
+        <RouteBuilderContent />
+        <Text style={styles.muted}>Your existing saved routes have not been checked. Canonical route saving and provider-backed rerouting remain gated.</Text>
       </View>
     ) : (
       <View style={styles.body}>
