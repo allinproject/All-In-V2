@@ -4,6 +4,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {createPrivilegedStorageWriter,MAX_PRIVILEGED_STORAGE_BYTES} from '../_shared/trainingPrivilegedStorageWriter.mjs';
+import {createAttestedPrivilegedStorageLeaseAuthority} from '../_shared/trainingPrivilegedStorageWriterAttestor.mjs';
 
 const headers={'content-type':'application/json','cache-control':'no-store'};
 function reply(status:number,code:string){return new Response(JSON.stringify({code}),
@@ -27,6 +28,16 @@ Deno.serve(async(req:Request)=>{
  const path=req.headers.get('x-allin-path')??'';
  const operation=req.headers.get('x-allin-operation')??'';
  const contentType=req.headers.get('content-type')??'';
+ // Deliberate fail-closed second credential: ordinary service-role holders
+ // MUST NOT be able to issue writer leases. Provision independently and
+ // only to this trusted writer, never in mobile or shared workflow env.
+ const signerEncoded=Deno.env.get('ALLIN_WRITER_ATTESTATION_SECRET_B64')??'';
+ let signerBytes:Uint8Array;
+ try{
+  const decoded=atob(signerEncoded);
+  signerBytes=Uint8Array.from(decoded,c=>c.charCodeAt(0));
+  if(signerBytes.length!==32)return reply(503,'writer_signer_not_configured');
+ }catch{return reply(503,'writer_signer_not_configured');}
  const client=createClient(endpoint,key,{auth:{
   persistSession:false,autoRefreshToken:false,
  }});
@@ -39,7 +50,12 @@ Deno.serve(async(req:Request)=>{
    return reply(413,'body_too_large');
  }catch{return reply(400,'invalid_body');}
  try{
-  const result=await createPrivilegedStorageWriter({supabase:client}).write({
+  const leaseAuthority=createAttestedPrivilegedStorageLeaseAuthority({
+   supabase:client,signingKey:signerBytes,
+  });
+  const result=await createPrivilegedStorageWriter({
+   supabase:client,leaseAuthority,
+  }).write({
    verifiedOwnerId:identity.data.user.id,bucketId,path,
    operation,contentType,bytes:payload,
   });
