@@ -9,6 +9,9 @@ DECLARE
  req uuid:='c3333333-c333-4333-8333-c33333333333';
  denied boolean;
 BEGIN
+ IF has_function_privilege('authenticated',
+  'allin_private.v2_deletion_storage_bucket_checkpoints_review(uuid,uuid,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'Checkpoint completion helper leaked to clients'; END IF;
  IF has_function_privilege('service_role',
   'allin_private.v2_deletion_storage_plan_review(uuid,uuid,text,text[])','EXECUTE')
  OR has_table_privilege('authenticated',
@@ -37,6 +40,20 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN denied:=true;
  END;
  IF NOT denied THEN RAISE EXCEPTION 'Unplanned Storage object accepted'; END IF;
+
+ IF NOT allin_private.v2_deletion_storage_bucket_checkpoints_review(
+   a,req,'v2-private-empty-bucket')
+ THEN RAISE EXCEPTION 'Empty planned bucket did not complete'; END IF;
+ IF allin_private.v2_deletion_storage_bucket_checkpoints_review(
+   a,req,'v2-private-workout-objects')
+ THEN RAISE EXCEPTION 'Missing object checkpoint was accepted'; END IF;
+ denied:=false;
+ BEGIN
+  PERFORM allin_private.v2_deletion_storage_bucket_checkpoints_review(
+    a,req,'v2-unplanned-bucket');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'Unplanned bucket was accepted'; END IF;
  PERFORM allin_private.v2_deletion_checkpoint_absence_review(
    a,req,'v2-private-workout-objects',a::text||'/sensor.fit');
  PERFORM allin_private.v2_deletion_checkpoint_absence_review(
@@ -48,6 +65,9 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN denied:=true;
  END;
  IF NOT denied THEN RAISE EXCEPTION 'Checkpoint accepted path absent from plan'; END IF;
+ IF NOT allin_private.v2_deletion_storage_bucket_checkpoints_review(
+   a,req,'v2-private-workout-objects')
+ THEN RAISE EXCEPTION 'Complete object checkpoints still blocked'; END IF;
  IF (SELECT count(*) FROM allin_private.v2_account_deletion_storage_checkpoint_review
       WHERE request_id=req)<>1
  THEN RAISE EXCEPTION 'Retry created duplicate checkpoint'; END IF;
