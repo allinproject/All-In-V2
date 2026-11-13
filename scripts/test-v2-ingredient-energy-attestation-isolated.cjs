@@ -174,6 +174,12 @@ test('independent source officer releases 14 immutable observations and separate
   await db.exec('SET SESSION AUTHORIZATION postgres');
   const counts=(await db.query("SELECT count(*)::int AS c FROM allin_private.v2_ingredient_source_energy_evidence")).rows[0].c;
   assert.equal(counts,14);
+  // Database-owned source issuer attribution is immutable and separate
+  // from the independently authenticated reviewer's attestation identity.
+  const issuers=(await db.query("SELECT source_releaser_db_login::text AS login,count(*)::int AS n FROM allin_private.v2_ingredient_source_energy_evidence GROUP BY 1")).rows;
+  assert.deepEqual(issuers,[{login:'source_release_officer_a',n:14}]);
+  const reviewers=(await db.query("SELECT reviewer_db_login::text AS login,count(*)::int AS n FROM allin_private.v2_ingredient_energy_attestations GROUP BY 1")).rows;
+  assert.deepEqual(reviewers,[{login:'energy_reviewer_a',n:8}]);
   const attestations=(await db.query("SELECT count(*)::int AS c FROM allin_private.v2_ingredient_energy_attestations")).rows[0].c;
   assert.equal(attestations,8);
   assert.equal((await db.query("SELECT count(*)::int AS c FROM public.v2_ingredient_nutrition_profiles WHERE review_status='calculation_ready'")).rows[0].c,0);
@@ -204,6 +210,26 @@ test('source officer rejects wrong digest, energy, unauthorized login and source
 });
 
 
+
+test('second independent issuer cannot overwrite or relabel already released USDA evidence',async()=>{
+ const {db,rows}=await setup({skipSourceEnergyEvidence:true});
+ try {
+  for(const suffix of ['a','b']){
+   await db.exec("CREATE ROLE source_release_officer_"+suffix+" LOGIN NOINHERIT; GRANT allin_v2_ingredient_source_releaser TO source_release_officer_"+suffix);
+   await db.exec("INSERT INTO allin_private.v2_ingredient_review_operators(login_role,enabled,enrollment_reference,identity_issuer,identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at) VALUES('source_release_officer_"+suffix+"',true,'SOURCE-OFFICER-ISOLATED-"+suffix+"','test-idp.example','verified-source-issuer-"+suffix+"','vault-isolated-source-issuer-"+suffix+"',now()-interval '1 hour',now()+interval '1 day')");
+  }
+  await db.exec('SET SESSION AUTHORIZATION source_release_officer_a');
+  await db.exec('SET ROLE allin_v2_ingredient_source_releaser');
+  assert.equal((await db.query(release(rows[0],methodsFor(rows[0])))).rows[0].out.status,'released');
+  await db.exec('SET SESSION AUTHORIZATION source_release_officer_b');
+  await db.exec('SET ROLE allin_v2_ingredient_source_releaser');
+  await assert.rejects(()=>db.query(release(rows[0],methodsFor(rows[0]))),e=>e.code==='23514');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  assert.deepEqual((await db.query("SELECT DISTINCT source_releaser_db_login::text AS issuer FROM allin_private.v2_ingredient_source_energy_evidence")).rows,
+   [{issuer:'source_release_officer_a'}]);
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM allin_private.v2_ingredient_source_energy_evidence")).rows[0].n,1);
+ }finally{await db.close()}
+});
 test('accidental dual membership cannot self-attest source evidence',async()=>{
  const {db,rows}=await setup();
  try {
