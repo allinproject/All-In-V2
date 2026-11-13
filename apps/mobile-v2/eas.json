@@ -16,6 +16,19 @@
       "ios": {
         "simulator": false
       }
+    },
+    "coach-staging-ios-device": {
+      "distribution": "internal",
+      "credentialsSource": "remote",
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fbtgknlxjyeqrxemskbl.supabase.co",
+        "EXPO_PUBLIC_V2_COACH_READ_ENABLED": "true",
+        "EXPO_PUBLIC_V2_COACH_SEND_ENABLED": "false",
+        "EXPO_PUBLIC_V2_COACH_STAGING_ACCEPTANCE": "true"
+      }
     }
   }
 }
