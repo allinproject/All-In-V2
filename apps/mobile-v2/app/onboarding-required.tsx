@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, Redirect } from 'expo-router';
+import { Redirect } from 'expo-router';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -217,6 +219,8 @@ export default function OnboardingRequiredScreen() {
 function OnboardingOwnerFlow() {
   const { user, loading: authLoading } = useAuth();
   const gate = useAccessGate();
+  const { height: windowHeight } = useWindowDimensions();
+  const compactDevice = windowHeight < 735;
   const ownerId = user?.id ?? null;
 
   const [loadingState, setLoadingState] = useState(true);
@@ -532,6 +536,65 @@ function OnboardingOwnerFlow() {
     );
   }
 
+  if (activeStep === 'focus') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={[styles.focusScreen, compactDevice && styles.focusScreenCompact]}>
+          <View style={styles.focusBrand}>
+            <Image source={require('../assets/all-in-365-circle.jpg')} style={[styles.focusLogo, compactDevice && styles.focusLogoCompact]} resizeMode="contain" accessibilityLabel="ALL IN 365 logo" />
+            <Text style={styles.focusSlogan}>LIVE ALL IN.</Text>
+          </View>
+          <View style={styles.focusProgress}>
+            <View style={styles.stepRow}>
+              <Text style={styles.stepLabel}>LET'S GET YOU STARTED</Text>
+              <Text style={styles.stepLabel}>01 / 06</Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: '16.6667%' }]} />
+            </View>
+          </View>
+          <View style={styles.focusHeading}>
+            <Text accessibilityRole="header" style={[styles.focusTitle, compactDevice && styles.focusTitleCompact]}>What's your focus?</Text>
+            <Text style={styles.focusDescription}>Pick where you'd like to start. You can do it all.</Text>
+          </View>
+          <View style={styles.focusGrid}>
+            {V2_ONBOARDING_FOCUS_OPTIONS.map(option => {
+              const selected = answers.primaryFocus === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected, disabled: saving }}
+                  disabled={saving}
+                  onPress={() => updateAnswers(current => ({ ...current, primaryFocus: option.value }))}
+                  style={[styles.focusOption, compactDevice && styles.focusOptionCompact, selected && styles.focusOptionSelected]}
+                >
+                  <Text numberOfLines={2} style={[styles.focusOptionText, selected && styles.focusOptionTextSelected]}>{option.label}</Text>
+                  {selected ? <Text style={styles.focusCheck}>✓</Text> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+          <View style={styles.focusBottom}>
+            {actionError ? <Text accessibilityRole="alert" style={styles.error}>{actionError}</Text> : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving || !canComplete, busy: saving }}
+              disabled={saving || !canComplete}
+              onPress={() => void saveStep('complete')}
+              style={[styles.focusContinue, (saving || !canComplete) && styles.disabled]}
+            >
+              {saving ? <ActivityIndicator color={colors.background} /> : <Text style={styles.focusContinueText}>Continue</Text>}
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled={saving} onPress={() => void saveStep('skip')} style={styles.focusSkip}>
+              <Text style={styles.skipButtonText}>I'll decide later</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -564,17 +627,6 @@ function OnboardingOwnerFlow() {
               {saving ? <ActivityIndicator color={colors.background} /> : <Text style={styles.primaryButtonText}>Continue</Text>}
             </Pressable>
           </View>
-          <Text style={styles.helper}>You can export your data or request account deletion without finishing setup.</Text>
-          <Link href="/profile/account-export" asChild>
-            <Pressable accessibilityRole="button" style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Export my data</Text>
-            </Pressable>
-          </Link>
-          <Link href="/profile/account-deletion" asChild>
-            <Pressable accessibilityRole="button" style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Delete account</Text>
-            </Pressable>
-          </Link>
           <Text style={styles.footer}>Start where you are. Go as far as you want.</Text>
         </View>
       </ScrollView>
@@ -583,6 +635,28 @@ function OnboardingOwnerFlow() {
 }
 
 const styles = StyleSheet.create({
+  focusScreen: {flex: 1, paddingHorizontal: 22, paddingTop: 8, paddingBottom: 4, justifyContent: 'space-between', gap: 8},
+  focusScreenCompact: {paddingHorizontal: 18, paddingTop: 2, gap: 4},
+  focusBrand: {alignItems: 'center', gap: 1},
+  focusLogo: {width: 76, height: 76, borderRadius: 38},
+  focusLogoCompact: {width: 58, height: 58, borderRadius: 29},
+  focusSlogan: {color: colors.gold, letterSpacing: 2.1, fontSize: 11, fontWeight: '900'},
+  focusProgress: {gap: 8},
+  focusHeading: {gap: 4},
+  focusTitle: {fontSize: 31, fontWeight: '900', lineHeight: 36, color: colors.warmWhite},
+  focusTitleCompact: {fontSize: 27, lineHeight: 31},
+  focusDescription: {color: colors.mutedText, fontSize: 13, lineHeight: 19},
+  focusGrid: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8},
+  focusOption: {width: '48.6%', minHeight: 52, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 11, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 3},
+  focusOptionCompact: {minHeight: 43, paddingVertical: 4, paddingHorizontal: 9},
+  focusOptionSelected: {borderColor: colors.gold, backgroundColor: '#252117'},
+  focusOptionText: {color: colors.warmWhite, fontSize: 13, lineHeight: 17, fontWeight: '700', flexShrink: 1},
+  focusOptionTextSelected: {color: colors.goldSoft},
+  focusCheck: {color: colors.gold, fontWeight: '900', fontSize: 16},
+  focusBottom: {gap: 6},
+  focusContinue: {minHeight: 49, borderRadius: radius.control, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center'},
+  focusContinueText: {fontSize: 16, fontWeight: '900', color: colors.background},
+  focusSkip: {minHeight: 37, alignItems: 'center', justifyContent: 'center'},
 footer: { color: colors.mutedText, fontSize: 12, textAlign: 'center', marginTop: spacing.md },
   safe: { flex: 1, backgroundColor: colors.background },
   scrollContent: { flexGrow: 1 },
