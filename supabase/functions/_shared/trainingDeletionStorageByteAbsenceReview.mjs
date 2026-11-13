@@ -14,14 +14,14 @@ const validPath=(p,owner)=>typeof p==='string' && p.length<=1024 &&
  p.split('/').every(x=>x && x!=='.' && x!=='..' && !/[\\\u0000-\u001f]/.test(x));
 export async function verifyPrivateStorageByteAbsenceReview({
  ownerId,requestId,approvedBucketIds,listBucketCatalog,
- persistAndLoadObjectPlan,listOwnerStorageObjects,objectExists,
+ readExistingObjectPlan,listOwnerStorageObjects,objectExists,
  verifyBucketCheckpoints,assertOwnerWritesQuiesced,
 }) {
  if(!UUID.test(ownerId??'')||!UUID.test(requestId??'')||
   !Array.isArray(approvedBucketIds)||approvedBucketIds.length<1||
   new Set(approvedBucketIds).size!==approvedBucketIds.length||
   approvedBucketIds.some(id=>!BUCKET.test(id))||
-  [listBucketCatalog,persistAndLoadObjectPlan,listOwnerStorageObjects,
+  [listBucketCatalog,readExistingObjectPlan,listOwnerStorageObjects,
    objectExists,verifyBucketCheckpoints,assertOwnerWritesQuiesced]
    .some(x=>typeof x!=='function'))
   throw Error('Trusted Storage absence verification dependencies required');
@@ -41,9 +41,7 @@ export async function verifyPrivateStorageByteAbsenceReview({
  for(const bucketId of approvedBucketIds){
   await barrier();
   // Never create/extend a manifest in a read-only verification operation.
-  const plan=await persistAndLoadObjectPlan({
-   ownerId,requestId,bucketId,observedPaths:[],
-  });
+  const plan=await readExistingObjectPlan({ownerId,requestId,bucketId});
   if(plan?.durable!==true||plan.ownerId!==ownerId||
    plan.requestId!==requestId||plan.bucketId!==bucketId||
    !Array.isArray(plan.paths)||plan.paths.length>MAX_FILES||
