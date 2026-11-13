@@ -77,6 +77,20 @@ BEGIN
   WHERE user_id=b) OR
   (SELECT count(*) FROM public.v2_training_athlete_restrictions WHERE user_id=b)<>1
  THEN RAISE EXCEPTION 'Denied certification changed restored source state'; END IF;
+ -- A partial restore can retain the prior idempotency receipt but lose
+ -- certification. The exact replay must still fail, not report success.
+ INSERT INTO allin_private.v2_training_restriction_action_receipts
+  (user_id,action_id,request_hash,result_revision)
+ VALUES(b,'99999999-2222-4222-8222-999999999999',
+  pg_catalog.md5(pg_catalog.jsonb_build_array(
+   b,'activate','99999999-3333-4333-8333-999999999999'::uuid,
+   'exercise','another unsafe exercise',0::bigint)::text),1);
+ BEGIN
+  PERFORM public.v2_training_restriction_write_candidate(b,
+   '99999999-2222-4222-8222-999999999999','activate',
+   '99999999-3333-4333-8333-999999999999','exercise','another unsafe exercise',0);
+  RAISE EXCEPTION 'Orphaned restored action receipt falsely verified';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $unreconciled_restore$;
 SELECT pg_catalog.set_config('request.jwt.claim.sub',
  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',false);
