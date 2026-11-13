@@ -46,3 +46,31 @@ export function certifyEventPlanDetailIdentity(
     return null;
   return {...event};
 }
+
+export type EventPlanSectionEvidence = {
+  ownerId:string;eventId:string;editionId:string;eventVersion:number;
+  sectionId:EventPlanSectionId;text:string;
+};
+/**
+ * Section content must match the currently selected certified event revision.
+ * A stale or foreign payload is never shown even if its section ID is valid.
+ * This is a UI guard; the backend must independently enforce owner access.
+ */
+export function certifiedEventPlanSectionText(
+  event:EventPlanDetailIdentity,
+  evidence:readonly EventPlanSectionEvidence[]|undefined,
+):Partial<Record<EventPlanSectionId,string>> {
+  const visible=new Set(eventPlanSections(event.discipline).map(x=>x.id));
+  const output:Partial<Record<EventPlanSectionId,string>>={};
+  if(!Array.isArray(evidence))return output;
+  const seen=new Set<EventPlanSectionId>();
+  for(const item of evidence) {
+    if(!item||!visible.has(item.sectionId)||seen.has(item.sectionId)||
+       item.ownerId!==event.ownerId||item.eventId!==event.eventId||
+       item.editionId!==event.editionId||item.eventVersion!==event.eventVersion||
+       typeof item.text!=='string'||!item.text.trim())continue;
+    seen.add(item.sectionId);
+    output[item.sectionId]=item.text;
+  }
+  return output;
+}
