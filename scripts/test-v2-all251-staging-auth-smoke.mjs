@@ -117,6 +117,16 @@ try{
    p_local_date:all222Date,p_timezone:'America/Chicago',
    p_occurred_at:new Date().toISOString(),
  },aToken);
+ if(started.status!==200){
+   let safeErrorCode='unknown';
+   try{
+     const errorBody=await started.clone().json();
+     if(typeof errorBody?.code==='string'&&/^[A-Z0-9_]{3,24}$/.test(errorBody.code))
+       safeErrorCode=errorBody.code;
+   }catch{}
+   process.stderr.write('ALL222 Training start HTTP '+started.status+
+     ' SQLSTATE '+safeErrorCode+' (no response body, credentials or identifiers)\\n');
+ }
  assert.equal(started.status,200,'Authenticated Training start rejected');
  const trainingResult=await started.json();
  assert.equal(trainingResult.sessionId,all222Session);
