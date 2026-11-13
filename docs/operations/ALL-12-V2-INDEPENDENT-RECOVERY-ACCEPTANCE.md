@@ -222,3 +222,39 @@ The backup archive is never handled by ChatGPT or GitHub Actions. It must remain
 The operator capture performs the same read-only V2 schema inventory query both **before and after** `pg_dump`. If the deployed V2 table set changes or either catalog readback is malformed, it deletes the untrusted archive and metadata rather than accepting them. The dump connection itself sets `default_transaction_read_only=on`; capture never applies migrations or writes to production. The local report records the deployed table count and the matched pre/post check.
 
 **Limit:** Matching pre/post table names does not establish a single PostgreSQL snapshot across catalog queries and dump, prove row-content consistency, or recover Auth/Storage configuration and object bytes. A migration can theoretically occur and reverse between checks, and row mutations are not detected by table names. Independently attested source cutoff, archive TOC, data integrity, isolated restore and explicit release review remain required.
+
+
+## 2026-11-13 — Reconciled independent V2 logical-recovery evidence (release gate remains blocked)
+
+This is an **evidence reconciliation, not a declaration that the drill is accepted**.
+The source project is `xarhuczrtzuiljmtdaeu`; the shared temporary staging
+project is not a recovery destination. Do not upload backup bytes or secrets to
+the repository, Linear, CI artifacts, or chat.
+
+| Requirement | Evidence obtained | Acceptance state |
+| --- | --- | --- |
+| Real deployed-source backup | Authorized PC operator reported a scoped data-only V2 `pg_dump -Fc` archive captured 2026-11-13T01:36:50.541Z–01:37:01.122Z, SHA-256 `31f7f9ebf3ed2313ea367c99e6951592ad76fc65692db730e8e44b08f3d2beea` | **Partial/operator-reported**: backup interval is not an independently established exact snapshot cutoff |
+| Artifact provenance and scope | Operator-reported verified SHA match in encrypted local VeraCrypt volume and isolated container; exactly 16 approved table-data entries (12 deployed V2 application tables, 4 Auth) and `auth.refresh_tokens_id_seq`, no large objects | **Partial**: pre/post inventory names compared, source-cutoff sequence and independently captured per-row digests remain unverified |
+| Isolated database restore | Operator reported separate PostgreSQL 17 Docker restore in `network=none` `all12-scoped-restore-20261112`, with restored 16 table-data entries, 32 FK constraints, one disabled processor singleton; other 15 table counts zero | **Partial**: offline DB restore is observed through operator console evidence; no independently verified outbound capabilities of *all* restored/configured services, full schema/config parity or snapshot-aligned digest attestation |
+| ACL/RLS and synthetic identities | Operator reported eight source-derived ACL GRANTs (including column-scoped profile UPDATE), two-owner profile RLS and synthetic Auth relationship / revoked-session restoration. [Full CI foundation run 43360754808](https://github.com/allinproject/All-In-V2/actions/runs/43360754808) independently confirms all 13 local synthetic ALL-12 steps passed | **Engineering evidence accepted**, NOT authentication/configuration recovery from the real V2 source backup |
+| Live source status after capture | Read-only Supabase observation 2026-11-13T03:48:50Z: 12 V2 application tables, 12 with RLS, 18 migrations, zero Auth users/identities, zero Storage buckets/objects | **Observed**, but not the source-at-backup cutoff or proof that later source state equals backup state |
+| Private Storage | The actual source reportedly had zero buckets/objects; synthetic local Storage byte restore + owner denial passed CI | **Pending operational acceptance**: source-at-cutoff empty-inventory evidence, target-empty evidence and recovered Storage policy/config are separately required; synthetic objects cannot be presented as hosted-source objects |
+| Auth/app configuration | Database Auth rows were empty in the captured source; local synthetic real GoTrue sessions and credentials passed CI | **Pending**: independently reconstructed target Auth provider settings, JWT key strategy, integrations, service boot and session acceptance |
+| Operational timing | Capture **window** known; independently measured time-to-restore and cutoff-based recovery-point difference not established | **Unverified**: do not fabricate RPO/RTO from timestamps that measure different phases |
+| Off-host recovery and retention | Archive retained encrypted on operator-controlled V:; isolated PostgreSQL tests and source-derived ACL checks reported | **Pending**: artifact retention/cleanup evidence, durable off-host backup availability and target egress isolation review |
+| Formal review | Founder chose an independently verified logical recovery path rather than requiring a new physical clone. No acceptance of incomplete operational evidence or production release was given | **Not accepted** |
+
+### Exact remaining independent logical-acceptance evidence
+
+1. Inspect the encrypted operator-held archive and capture manifest locally; establish the authentic source snapshot cutoff, archive/manifest signature and complete source-at-cutoff V2/Auth/sequence table inventory. Verify source and restored row-content digests, ACL/policy/role parity, triggers and migration ledger at the same snapshot—not at today's source state.
+2. Demonstrate that the independently isolated target was outbound-disabled *before* importing source data and cannot run copied cron, webhooks, Vault, net/HTTP, third-party integrations or production credentials. Archive `network=none` for the container supports only that container's network isolation, not restored service configuration.
+3. Prove recovered Auth configuration and service startup and the verified empty-hosted-source account/Storage fallback if source cutoff truly had zero users and files. Real recovered source account credentials cannot be tested when none existed; test synthetic accounts separately and label that evidence as synthetic.
+4. Capture independently measured backup/recovery timestamps, RPO and RTO using a stated clock and restore-complete service verification. Confirm encrypted artifact retention/cleanup and independent evidence reviewer.
+5. Re-run `assessIndependentLogicalRecoveryEvidence` only with independently verified, traceable evidence. Obtain explicit scoped founder release decision; keep provider-managed physical restoration separate.
+
+**Decision:** `independentLogicalRecoveryAccepted=false`,
+`providerPhysicalRestoreAccepted=false`, `releaseReady=false`.
+The successfully green local synthetic recovery suite is retained and must **not**
+be repeated solely to satisfy missing real-source operational evidence.
+No new billable project, remote restore, production data mutation, or deployment
+is authorized by this section.
