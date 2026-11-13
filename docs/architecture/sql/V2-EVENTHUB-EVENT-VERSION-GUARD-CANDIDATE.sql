@@ -12,6 +12,7 @@ BEGIN
     USING ERRCODE='42501';
  END IF;
  IF NEW.id IS DISTINCT FROM OLD.id
+  OR NEW.edition_id IS DISTINCT FROM OLD.edition_id
   OR NEW.created_at IS DISTINCT FROM OLD.created_at
  THEN RAISE EXCEPTION 'Canonical Event identity is immutable'
    USING ERRCODE='42501'; END IF;
