@@ -20,7 +20,7 @@ export type EventPlanOwnerSnapshot = {
 };
 export type EventPlanOwnerProjection =
   | {status:'unavailable';reason:string;events:null}
-  | {status:'ready';snapshotVersion:string;events:EventPlanOwnerRow[]};
+  | {status:'ready';ownerId:string;authSessionGeneration:number;snapshotVersion:string;events:EventPlanOwnerRow[]};
 
 export function projectEventPlanOwnerSnapshot(input:{
   expectedOwnerId:string;
@@ -59,5 +59,6 @@ export function projectEventPlanOwnerSnapshot(input:{
   // Stable date then identity ordering, retaining ALL A-priority events.
   projected.sort((a,b)=>a.eventDate.localeCompare(b.eventDate)||
     a.eventId.localeCompare(b.eventId));
-  return {status:'ready',snapshotVersion:s.snapshotVersion,events:projected};
+  return {status:'ready',ownerId:s.ownerId,authSessionGeneration:s.authSessionGeneration,
+    snapshotVersion:s.snapshotVersion,events:projected};
 }
