@@ -24,6 +24,8 @@ export function RoutesRoutinesContent({
   const [selected, setSelected] = useState<Workspace>('routes');
   // Unapproved sources cannot make a saved Routine appear connected.
   const certified=!!savedRoutineSnapshot&&!!currentOwnerId&&
+    savedRoutineSnapshot.identity==='canonical_saved_routine'&&
+    savedRoutineSnapshot.complete===true&&
     savedRoutineSnapshot.ownerId===currentOwnerId&&
     savedRoutineSnapshot.sessionGeneration===sessionGeneration&&
     Number.isSafeInteger(savedRoutineSnapshot.version)&&savedRoutineSnapshot.version>0;
