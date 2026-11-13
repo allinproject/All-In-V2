@@ -177,3 +177,48 @@ test('thirteen scoped exact aliases do not broaden source food forms',()=>{
  }
  assert.equal(exact.size,13);
 });
+
+
+test('each USDA food retains its explicit form restrictions and distinct calorie method',()=>{
+ const source=readEvidence('ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json');
+ const policy=readEvidence('ALL-228-EIGHT-ALIAS-AND-PREPARATION-ACCEPTANCE-CANDIDATES-2026-11-12.json');
+ const expectations=[
+  [328841,'milk_cottage_2pct','prepared',['2% milkfat'],['different_milkfat','specific_brand']],
+  [790577,'red_onion_raw','raw',['red','raw'],['cooked','different_color']],
+  [2346407,'cabbage_green_raw','raw',['green','raw'],['cooked','cup_to_grams_without_review']],
+  [2644285,'black_beans_canned_drained','cooked_drained',['black','sodium added','drained and rinsed'],['unrinsed','without_added_salt','dry']],
+  [2644288,'chickpeas_canned_drained_rinsed','cooked_drained',['chickpeas','sodium added','drained and rinsed'],['unrinsed','without_added_salt','dry']],
+  [2644289,'beans_kidney_canned_drained','cooked_drained',['kidney','dark red','sodium added','sugar added','drained and rinsed'],['without_added_sugar','light_red','undrained']],
+  [2685580,'tomato_paste_canned_unsalted','prepared',['paste','without salt added'],['with_added_salt','double_concentrated','sodium_free_assumption']],
+  [2685581,'tomatoes_crushed_canned','prepared',['crushed','canned'],['with_specific_spices','low_sodium','undrained_to_drained']]
+ ];
+ const byId=new Map(source.records.map(r=>[r.fdcId,r]));
+ const policyById=new Map(policy.records.map(r=>[Number(r.source_fdc_id),r]));
+ for(const [id,key,state,descriptionTerms,excludedForms] of expectations){
+  const food=byId.get(id),scope=policyById.get(id);
+  assert(food&&scope,'missing pinned source '+id);
+  assert.equal(food.profile,key);
+  assert.equal(scope.preparation_state,state);
+  const description=food.source.toLowerCase();
+  for(const term of descriptionTerms)assert(description.includes(term),id+' source form lost: '+term);
+  for(const form of excludedForms)assert(scope.incompatible_form_conditions.includes(form),id+' incompatible form not blocked: '+form);
+  assert(food.caveats.length>0,id+' must retain manual review caveats');
+  assert.equal(scope.identity_kind,'generic_food');
+  assert.equal(scope.canonical_identity_approved,false);
+  assert.equal(scope.profile_calculation_ready,false);
+  const selected=Number(food.energy.code);
+  assert.equal(selected,id===328841||id===790577?1008:2048,id+' energy method unexpectedly changed');
+  if(selected===2048){
+   assert.equal(Number(food.energy.alternative?.code),2047,id+' 2047 source alternative must remain separate');
+   assert.notEqual(food.energy.kcal,food.energy.alternative.kcal,id+' selected energy must not silently use general factors');
+  } else assert.equal(food.energy.alternative,undefined);
+ }
+ // Source-specific portion evidence is never permission to invent a generic
+ // one-can, drained-yield, density, one-cup or cooked-weight conversion.
+ const bindings=readEvidence('ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json');
+ for(const binding of bindings.bindings){
+  assert.equal(binding.conversion_review.household_and_purchase_yields_approved,false);
+  assert.equal(binding.identity_approval,'pending_reviewer');
+  assert.equal(binding.profile_approval,'pending_reviewer');
+ }
+});
