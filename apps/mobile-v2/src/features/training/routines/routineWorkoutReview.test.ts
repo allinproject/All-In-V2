@@ -20,7 +20,7 @@ const proposal:CoachRoutineSuggestion={
  routineVersion:7,evidenceRefs:['completed-activity-42','recovery-3'],
  rationale:'Review a smaller dose based on verified recovery context.',
  blockId:'draft-1',
- replacement:{...snapshot.blocks[0],sets:2},
+ replacement:{...(snapshot.blocks[0] as RoutineStrengthBlock),sets:2},
 };
 test('certified owner session identity is required to open a saved routine',()=>{
  assert.equal(openOwnedRoutineWorkoutReview(snapshot,'athlete-b',12),null);
@@ -33,16 +33,16 @@ test('Coach suggestion does not apply automatically; athlete applies only to thi
  const original=openOwnedRoutineWorkoutReview(snapshot,'athlete-a',12)!;
  const pending=reviewCoachRoutineSuggestion(original,proposal,'athlete-a',12);
  assert.equal(pending.suggestionStatus,'proposed');
- assert.equal((pending.sessionDraft.blocks[0] as typeof snapshot.blocks[0]).sets,3);
+ assert.equal((pending.sessionDraft.blocks[0] as RoutineStrengthBlock).sets,3);
  const applied=applyCoachChangeForSession(pending,'athlete-a',12);
  assert.equal(applied.suggestionStatus,'applied_for_session');
- assert.equal((applied.sessionDraft.blocks[0] as typeof snapshot.blocks[0]).sets,2);
- assert.equal((applied.original.blocks[0] as typeof snapshot.blocks[0]).sets,3);
- assert.equal((snapshot.blocks[0] as typeof snapshot.blocks[0]).sets,3);
+ assert.equal((applied.sessionDraft.blocks[0] as RoutineStrengthBlock).sets,2);
+ assert.equal((applied.original.blocks[0] as RoutineStrengthBlock).sets,3);
+ assert.equal((snapshot.blocks[0] as RoutineStrengthBlock).sets,3);
  assert.equal(applied.planMutation,false);
  const kept=keepOriginalRoutineWorkout(applied);
  assert.equal(kept.suggestionStatus,'kept_original');
- assert.equal((kept.sessionDraft.blocks[0] as typeof snapshot.blocks[0]).sets,3);
+ assert.equal((kept.sessionDraft.blocks[0] as RoutineStrengthBlock).sets,3);
 });
 test('rejects stale revision, wrong account, missing evidence and changed block identities',()=>{
  const original=openOwnedRoutineWorkoutReview(snapshot,'athlete-a',12)!;
@@ -67,6 +67,6 @@ test('declining suggested change does not change source, accepted plan or curren
  const declined=keepOriginalRoutineWorkout(pending);
  assert.equal(declined.suggestionStatus,'kept_original');
  assert.equal(applyCoachChangeForSession(declined,'athlete-a',12),declined);
- assert.equal((declined.sessionDraft.blocks[0] as typeof snapshot.blocks[0]).sets,3);
- assert.equal(declined.original,initial.original);
+ assert.equal((declined.sessionDraft.blocks[0] as RoutineStrengthBlock).sets,3);
+ assert.deepEqual(declined.original,initial.original);
 });
