@@ -88,3 +88,62 @@ its full-domain populated replay must pass before acceptance. **Comments
 remain unimplemented and therefore not validated.** Legal sign-off for
 post-deletion audit/backups/holds remains pending. The whole account export
 must continue reporting `complete=false`.
+
+## 2026-11-13 — Canonical comments/replies, retention and media acceptance
+
+The **single** `allin_private.v2_community_posts` canonical post owner now
+defines a **review-only** `v2_community_comments` author-owned child ledger.
+The post reference is a real FK; a reply's parent-comment FK is scoped to
+the same post. A comment author is not necessarily the post owner. A
+commenter leaving removes that author's comments, **not** another
+commenter's reply: the surviving reply's parent ID is cleared. Deleting the
+post removes its comments and replies, including other authors' contributions
+on that deleted parent. These semantics require explicit user-facing deletion
+notice and legal/retention approval before releasing a writer.
+
+- **Authorship:** An author-only `community.my_comments` projection is
+  staged in the existing paginated reader. Only the author's ID, own body,
+  post and reply IDs, revision/edit/deleted timestamps are included; parent
+  post content, other authors' bodies, moderation details and internal
+  relationship state are not included. It is **NOT registered**, and the
+  complete user export stays false.
+- **Audience:** A future comment writer/reader must recheck active
+  authenticated session, parent-post audience, profile visibility, follow
+  approval and **both directions of blocks** inside the same authorization
+  boundary. Deleting or privatizing a post revokes external comment reads;
+  the author export must never become a public comments feed. A parent reply
+  cannot point to a different post. Unreviewed moderation/reports, likes,
+  media URLs and comment mentions are not auto-exportable.
+- **Deletion:** User deletion requires Auth/session revocation and
+  verified removal of authored comments, action receipts, relevant pair CAS
+  state and private media. A post owner's deletion removes its posts and
+  their comments. Unrelated surviving author content elsewhere must not be
+  deleted merely because the author interacted with a deleted person.
+  The controlled worker stays OFF pending full graph and object-byte proof.
+- **Retention decision pending:** No time limit is invented. The product
+  rule is immediate removal from active tables and accessible private media
+  when an authorized account deletion completes, subject to documented
+  legal holds. Exact retention periods and access rules for backup copies,
+  moderation/abuse evidence, support, audit proof and held data require
+  **ALL-219 legal/privacy approval**. Legal approval has not been given by
+  these source changes.
+- **Private media completeness:** The existing authenticated ALL-251
+  Storage integrity adapters prove checksummed **Training route/series**
+  bytes only. The canonical Community post/comment schemas currently
+  introduce **no approved attachment reference, bucket, source-key index,
+  file-size or checksum contract**. Community image/video/voice attachments
+  therefore remain unsupported and **must not** be reported as absent
+  user data if a later schema/bucket is added. Any future Community media
+  must have owner and parent post/comment linkage, exact private object
+  path and digest, permission/redaction rules, paginated exhaustive
+  owner-object scan, corrupt/missing/orphan detection, encrypted source-byte
+  archive, account deletion/restore and two-owner denial. Unknown media
+  buckets fail closed in the current media verifier.
+
+**Technical evidence:** isolated PostgreSQL Community canonical post/comment
+schema tests; A/B author-only comment projection through test-only inventory;
+snapshot verification and redaction regression. **Not yet release
+acceptance:** real Auth-backed comment writer and audience reader,
+moderation policy, live media byte coverage, legal retention sign-off,
+KMS-backed complete archive or positive hosted account export. Keep the
+existing system and its `complete=false` gate.
