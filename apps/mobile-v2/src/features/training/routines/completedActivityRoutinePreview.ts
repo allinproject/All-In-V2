@@ -40,6 +40,8 @@ export type RoutineConversionPreview={
   status:'ready_for_athlete_review'|'requires_manual_review';
   source:{activityId:string;activityVersion:number;structuredEvidenceVersion:number};
   draft:RoutineDraft;
+  /** Source IDs remain review-only evidence and never become completion claims in a routine. */
+  blockLineage:readonly {draftBlockId:string;sourceBlockId:string}[];
   excludedBlocks:number;
   notes:readonly string[];
 };
@@ -64,6 +66,7 @@ export function prepareCompletedActivityRoutinePreview(
     !Number.isSafeInteger(source.actualStructureCount)||source.actualStructureCount<0||
     source.actualStructureCount<source.prescribedBlocks.length)return null;
  const sourceIds=new Set<string>();
+ const blockLineage:{draftBlockId:string;sourceBlockId:string}[]=[];
  let draft=renameRoutineDraft(newRoutineDraft(source.sport),source.title);
  let excluded=source.actualStructureCount-source.prescribedBlocks.length;
  const notes:string[]=[];
@@ -91,6 +94,7 @@ export function prepareCompletedActivityRoutinePreview(
   const proposed=updateRoutineBlock(draft,candidate);
   if(proposed===draft){draft=previous;excluded++;continue;}
   draft=proposed;
+  blockLineage.push({draftBlockId:target.id,sourceBlockId:b.sourceBlockId});
  }
  if(excluded)notes.push(`${excluded} recorded block(s) had no reusable, verified prescription and were not copied.`);
  if(!draft.blocks.length)notes.push('No complete pre-workout prescriptions were provided. Build a routine manually rather than treating performance measurements as targets.');
@@ -99,6 +103,6 @@ export function prepareCompletedActivityRoutinePreview(
   status:excluded===0&&inspectRoutineDraft(draft).ready?'ready_for_athlete_review':'requires_manual_review',
   source:{activityId:source.activityId,activityVersion:source.activityVersion,
     structuredEvidenceVersion:source.structuredEvidenceVersion},
-  draft,excludedBlocks:excluded,notes,
+  draft,blockLineage,excludedBlocks:excluded,notes,
  };
 }
