@@ -29,6 +29,8 @@ on:
       - 'scripts/test-all12-training-restrictions-populated-restore-local.sh'
       - 'scripts/all12-recovery-domain-manifest.mjs'
       - 'scripts/all12-recovery-domain-manifest.test.mjs'
+      - 'scripts/all12-assess-recovery-timing.mjs'
+      - 'scripts/all12-assess-recovery-timing.test.mjs'
       - 'scripts/all230-assess-v1-restriction-manifest.mjs'
       - 'scripts/all230-assess-v1-restriction-manifest.test.mjs'
       - 'scripts/all230-capture-v1-restriction-source-encrypted.sh'
@@ -122,6 +124,8 @@ on:
       - 'scripts/test-all12-training-restrictions-populated-restore-local.sh'
       - 'scripts/all12-recovery-domain-manifest.mjs'
       - 'scripts/all12-recovery-domain-manifest.test.mjs'
+      - 'scripts/all12-assess-recovery-timing.mjs'
+      - 'scripts/all12-assess-recovery-timing.test.mjs'
       - 'scripts/all230-assess-v1-restriction-manifest.mjs'
       - 'scripts/all230-assess-v1-restriction-manifest.test.mjs'
       - 'scripts/all230-capture-v1-restriction-source-encrypted.sh'
@@ -233,6 +237,8 @@ jobs:
         run: node --test ../../scripts/all230-assess-v1-restriction-manifest.test.mjs
       - name: Verify ALL-12 recovery inventory and restriction hosted fingerprint gates (metadata only)
         run: node --test ../../scripts/all12-recovery-domain-manifest.test.mjs
+      - name: Refuse unverifiable RPO/RTO measurements (synthetic evidence only)
+        run: node --test ../../scripts/all12-assess-recovery-timing.test.mjs
       - name: Guard V2 CI spending and full release validation gates
         run: node --test ../../scripts/check-v2-ci-cost-policy.test.mjs
       - name: Test Windows lockfile helper safety
