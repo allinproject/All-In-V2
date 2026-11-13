@@ -69,7 +69,17 @@ BEGIN
   SELECT certified_revision INTO v_current
   FROM allin_private.v2_training_restriction_certifications
   WHERE user_id=v_user FOR UPDATE;
-  IF v_current IS NULL OR v_current<v_existing.result_revision THEN
+  IF v_current IS NULL OR v_current<v_existing.result_revision OR
+    NOT EXISTS(SELECT 1 FROM allin_private.v2_training_restriction_certifications c
+      WHERE c.user_id=v_user AND
+      c.inventory_digest=
+        allin_private.v2_training_restriction_inventory_digest_candidate(v_user)
+      AND c.certified_at<=pg_catalog.clock_timestamp()) OR
+    EXISTS(SELECT 1 FROM public.v2_training_athlete_restrictions r
+      JOIN allin_private.v2_training_restriction_certifications c
+       ON c.user_id=r.user_id
+      WHERE r.user_id=v_user AND
+       (r.revision>c.certified_revision OR r.updated_at>c.certified_at)) THEN
    RAISE EXCEPTION 'Restriction receipt lacks current owner certification'
     USING ERRCODE='42501'; END IF;
   RETURN pg_catalog.jsonb_build_object('ownerId',v_user,
@@ -130,10 +140,14 @@ BEGIN
  END IF;
  v_next:=v_current+1;
  INSERT INTO allin_private.v2_training_restriction_certifications
-  (user_id,certified_revision,certified_at)
- VALUES(v_user,v_next,now())
+  (user_id,certified_revision,inventory_digest,certified_at)
+ VALUES(v_user,v_next,
+  allin_private.v2_training_restriction_inventory_digest_candidate(v_user),
+  pg_catalog.clock_timestamp())
  ON CONFLICT(user_id) DO UPDATE
-  SET certified_revision=excluded.certified_revision,certified_at=excluded.certified_at;
+  SET certified_revision=excluded.certified_revision,
+      inventory_digest=excluded.inventory_digest,
+      certified_at=excluded.certified_at;
  INSERT INTO allin_private.v2_training_restriction_action_receipts
   (user_id,action_id,request_hash,result_revision)
  VALUES(v_user,p_action_id,v_hash,v_next);
