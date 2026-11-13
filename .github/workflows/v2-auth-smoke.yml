@@ -26,6 +26,7 @@ on:
       - 'docs/architecture/sql/V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-training-restrictions-postgres.psql'
+      - 'scripts/test-all12-training-restrictions-populated-restore-local.sh'
       - 'scripts/test-v2-coach-budget-postgres.psql'
       - 'scripts/test-v2-coach-sql-postgres.psql'
       - 'scripts/test-v2-coach-race-setup.psql'
@@ -111,6 +112,7 @@ on:
       - 'docs/architecture/sql/V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-training-restrictions-postgres.psql'
+      - 'scripts/test-all12-training-restrictions-populated-restore-local.sh'
       - 'scripts/test-v2-coach-budget-postgres.psql'
       - 'scripts/test-v2-coach-sql-postgres.psql'
       - 'scripts/test-v2-coach-race-setup.psql'
@@ -402,6 +404,11 @@ jobs:
           docker cp docs/architecture/sql/V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql "$POSTGRES_CONTAINER_ID:/tmp/allin/docs/architecture/sql/V2-TRAINING-ATHLETE-RESTRICTIONS-OWNER-REVIEW-CANDIDATE.sql"
           docker cp docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql "$POSTGRES_CONTAINER_ID:/tmp/allin/docs/architecture/sql/V2-TRAINING-RESTRICTION-WRITER-REVIEW-CANDIDATE.sql"
           docker exec "$POSTGRES_CONTAINER_ID" psql -U "$PGUSER" -d allin_coach_restrictions_test -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-training-restrictions-postgres.psql
+      - name: Verify populated Training restriction source-evidence recovery and missing-retired-row detection
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+          CI: '1'
+        run: bash scripts/test-all12-training-restrictions-populated-restore-local.sh "$POSTGRES_CONTAINER_ID"
       - name: Verify Coach claim concurrency across independent PostgreSQL backends
         env:
           POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
