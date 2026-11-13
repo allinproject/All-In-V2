@@ -1,0 +1,54 @@
+\set ON_ERROR_STOP on
+-- ALL-251: isolated local metadata guard proof. No actual Storage bytes are
+-- created or deleted by direct SQL. All synthetic rows and triggers rollback.
+BEGIN;
+\i /tmp/V2-ACCOUNT-DELETION-PRIVILEGED-STORAGE-WRITER-REVIEW.sql
+\i /tmp/V2-ACCOUNT-DELETION-STORAGE-METADATA-UPLOAD-BARRIER-REVIEW.sql
+DO $qa$
+DECLARE
+ a uuid:='a8111111-8111-4111-8111-811111111111';
+ b uuid:='b8222222-8222-4222-8222-822222222222';
+ l uuid;
+ id uuid:=gen_random_uuid();
+ denied boolean;
+BEGIN
+ INSERT INTO auth.users(id) VALUES(a),(b);
+ INSERT INTO storage.buckets(id,name,public)
+ VALUES('v2-private-workout-objects','v2-private-workout-objects',false);
+ denied:=false;
+ BEGIN
+  INSERT INTO storage.objects(id,bucket_id,name)
+  VALUES(id,'v2-private-workout-objects',a::text||'/raw-no-lease.fit');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Direct privileged Storage metadata write bypassed lease'; END IF;
+ l:=public.v2_begin_privileged_storage_write_review(
+  a,'v2-private-workout-objects',a::text||'/leased.fit','create');
+ INSERT INTO storage.objects(id,bucket_id,name)
+ VALUES(id,'v2-private-workout-objects',a::text||'/leased.fit');
+ denied:=false;
+ BEGIN
+  INSERT INTO storage.objects(id,bucket_id,name)
+  VALUES(gen_random_uuid(),'v2-private-workout-objects',b::text||'/leased.fit');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Foreign owner used another lease'; END IF;
+ IF NOT public.v2_settle_privileged_storage_write_review(a,l) THEN
+  RAISE EXCEPTION 'Lease settlement rejected'; END IF;
+ denied:=false;
+ BEGIN
+  UPDATE storage.objects SET metadata='{"test":true}'::jsonb WHERE id=id;
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Content metadata updated after lease settlement'; END IF;
+ INSERT INTO allin_private.v2_account_deletion_requests(user_id,request_id,status)
+ VALUES(a,gen_random_uuid(),'requested');
+ denied:=false;
+ BEGIN
+  INSERT INTO storage.objects(id,bucket_id,name)
+  VALUES(gen_random_uuid(),'v2-private-workout-objects',a::text||'/after-deletion.fit');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'Raw privileged metadata write after deletion succeeded'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_trigger t WHERE t.tgrelid='storage.objects'::regclass
+  AND t.tgname='v2_privileged_storage_metadata_write_fence_review' AND t.tgenabled='O')
+ THEN RAISE EXCEPTION 'Storage metadata guard disabled'; END IF;
+ RAISE NOTICE 'PASS ALL-251: unleased raw Storage metadata denied, exact lease accepted, cross-owner rejected, late content update/deletion write denied';
+END $qa$;
+ROLLBACK;
