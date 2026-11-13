@@ -36,18 +36,32 @@ VALUES
   '2026-11-12 12:00:00+00','2026-11-12','America/Chicago',
   'snack','OWNER_B_FOOD_SECRET',1,'each',300,'user_entered');
 
--- Current inventory blocks the new ALL-247 owner table before release.
+-- The current canonical reader now registers the reviewed Food/Hydration
+-- quartet; this MUST NOT activate a complete user export. The owner-focused
+-- paginated data and two-owner privacy assertions continue below.
 SET LOCAL ROLE service_role;
-DO $unapproved$
+DO $registered_but_closed$
+DECLARE v jsonb;p jsonb;
 BEGIN
- BEGIN
-  PERFORM public.v2_account_export_page_review_candidate(
+ v:=public.v2_account_export_inventory_review_candidate(
    'a6111111-1111-4111-8111-111111111111',
    'a6333333-3333-4333-8333-333333333333',
-   'a6555555-5555-4555-8555-555555555555','public.v2_food_log_entries',NULL,25);
-  RAISE EXCEPTION 'Unapproved food log exported by live canonical registry';
- EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-END $unapproved$;
+   'a6555555-5555-4555-8555-555555555555');
+ IF v->>'complete'<>'false'
+ OR NOT v->'collections' ? 'public.v2_food_log_entries'
+ OR NOT v->'collections' ? 'allin_private.v2_food_log_write_actions'
+ OR NOT v->'collections' ? 'public.v2_hydration_events'
+ OR NOT v->'collections' ? 'allin_private.v2_hydration_actions'
+ THEN RAISE EXCEPTION 'Canonical Fuel registration or release gate changed'; END IF;
+ p:=public.v2_account_export_page_review_candidate(
+   'a6111111-1111-4111-8111-111111111111',
+   'a6333333-3333-4333-8333-333333333333',
+   'a6555555-5555-4555-8555-555555555555',
+   'public.v2_food_log_entries',NULL,25);
+ IF p->>'completeUserExport'<>'false'
+ OR pg_catalog.jsonb_array_length(p->'rows')<>25
+ THEN RAISE EXCEPTION 'Reviewed Food source is incomplete or was released'; END IF;
+END $registered_but_closed$;
 RESET ROLE;
 -- This stub does NOT approve production; it exercises the post-gate exact
 -- projection under the real Auth session/request authorizer, then ROLLBACK.
