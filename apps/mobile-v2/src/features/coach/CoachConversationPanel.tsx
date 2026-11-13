@@ -49,7 +49,8 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
   return()=>{current=false;if(historyEpoch.current===epoch)historyEpoch.current++};
  },[ownerId,revision]);
  const loadOlder=()=>{
-  if(!thread||!olderCursor||loadingOlder||busy)return;
+  if(!thread||!olderCursor||loadingOlder||busy||!messages)return;
+  const existingMessages=messages;
   const capturedCursor=olderCursor,capturedThread=thread;
   const capturedEpoch=historyEpoch.current;
   setLoadingOlder(true);
@@ -61,7 +62,7 @@ export function CoachConversationPanel({ownerId}:{ownerId:string}){
     setNotice('Older saved Coach history could not be verified.');
     return;
    }
-   const known=new Set(messages.map(m=>m.id));
+   const known=new Set(existingMessages.map(m=>m.id));
    if(page.messages.some(m=>known.has(m.id))){
     setNotice('Coach history changed during paging. Refresh to reconcile.');
     return;
