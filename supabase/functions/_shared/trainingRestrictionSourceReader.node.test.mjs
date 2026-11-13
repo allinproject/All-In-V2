@@ -161,3 +161,25 @@ test('canonical current-source query includes retired rows and rejects truncatio
   ownerId:owner,snapshotVersion:version,
  }),/foreign/);
 });
+
+test('revoked Auth token and supplied current-reader override are rejected',async()=>{
+ const readers=Object.fromEntries(TRAINING_RESTRICTION_SOURCES.slice(1)
+  .map(kind=>[kind,async()=>({})]));
+ assert.throws(()=>createTrainingRestrictionSourceReaderCandidate({
+  pool:{connect:async()=>{throw Error('unreachable');}},
+  authClient:{auth:{getUser:async()=>({data:{user:{id:owner}}})}},
+  sourceReaders:{...readers,current_restrictions:async()=>({})},
+  reconcileSource:async()=>({reconciledCount:0,unresolvedCount:0}),
+ }),/All trusted Training source readers/);
+ let connected=false;
+ const reader=createTrainingRestrictionSourceReaderCandidate({
+  pool:{connect:async()=>{connected=true;throw Error('unreachable');}},
+  authClient:{auth:{getUser:async()=>({error:Error('revoked')})}},
+  sourceReaders:readers,
+  reconcileSource:async()=>({reconciledCount:0,unresolvedCount:0}),
+ });
+ await assert.rejects(reader.ingestReviewedSources({
+  bearerToken:signedFixtureToken,snapshotVersion:version,
+ }),/Verified Training Auth owner/);
+ assert.equal(connected,false);
+});
