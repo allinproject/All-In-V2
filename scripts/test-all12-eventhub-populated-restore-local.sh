@@ -26,8 +26,8 @@ END $gate$;
 INSERT INTO auth.users(id) VALUES
  ('a6161616-6161-4616-8616-616161616161'),
  ('b6161616-6161-4616-8616-616161616161');
-INSERT INTO public.v2_events(id,name,sport,event_kind,start_local_date,event_timezone)
-VALUES ('a6262626-6262-4626-8626-626262626262','Synthetic Trail Event','running','ultra','2027-04-10','America/Chicago');
+INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind,start_local_date,event_timezone)
+VALUES ('a6262626-6262-4626-8626-626262626262','10000000-0000-4000-8000-000000000005','Synthetic Trail Event','running','ultra','2027-04-10','America/Chicago');
 INSERT INTO public.v2_event_url_aliases(id,event_id,canonical_url,evidence_kind)
 VALUES ('a6363636-6363-4636-8636-636363636363','a6262626-6262-4626-8626-626262626262',
         'https://example.org/all12-eventhub-synthetic','submitted');
