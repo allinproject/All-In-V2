@@ -115,11 +115,12 @@ test('late owner upload is detected by final inventory even with stale barrier a
  const record=f.opts.recordCheckpoint;
  let introduced=false;
  f.opts.recordCheckpoint=async entry=>{
-  await record(entry);
+  const saved=await record(entry);
   if(!introduced){
    introduced=true;
    f.objects.add(A+'/late-upload.fit');
   }
+  return saved;
  };
  await assert.rejects(reviewPrivateStorageCleanup(f.opts),/inventory not empty/);
  assert.equal(f.objects.has(B+'/leave-me.fit'),true);
@@ -145,7 +146,8 @@ test('crash after deletion before checkpoint retains plan and reconciles on retr
   return original(entry);
  };
  await assert.rejects(reviewPrivateStorageCleanup(f.opts),/checkpoint DB unavailable/);
- assert.equal(f.objects.has(A+'/one.fit'),false);
+ assert.equal([...f.objects].filter(path=>path.startsWith(A+'/')).length,1,
+  'Exactly one owner object must already be deleted before checkpoint failure');
  const result=await reviewPrivateStorageCleanup(f.opts);
  assert.equal(result.verifiedAbsent,2);
  assert.equal(f.checkpoints.length,2);
