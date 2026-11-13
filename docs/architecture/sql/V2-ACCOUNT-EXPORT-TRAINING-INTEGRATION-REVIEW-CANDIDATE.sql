@@ -116,6 +116,53 @@ begin
        OR c.relname LIKE 'v2_achievement_%')
  ) THEN RAISE EXCEPTION 'New domain requires explicit account export classification'
    USING ERRCODE='42501'; END IF;
+ -- ALL-251 PRIVILEGED STORAGE: the durable write-lease ledger is operational
+ -- security state, not downloadable athlete history. Classify this EXACT
+ -- existing table explicitly, but only while the full safety contract holds.
+ -- A newer or renamed owner_id relation still fails the unknown-key scanner.
+ IF pg_catalog.to_regclass(
+   'allin_private.v2_privileged_storage_write_leases_review') IS NOT NULL THEN
+  IF NOT EXISTS(
+    SELECT 1 FROM pg_catalog.pg_class c
+    WHERE c.oid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+      AND c.relkind='r' AND c.relrowsecurity
+  ) OR NOT EXISTS(
+    SELECT 1 FROM pg_catalog.pg_attribute a
+    WHERE a.attrelid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+      AND a.attname='owner_id' AND a.attnum>0 AND NOT a.attisdropped
+  ) OR NOT EXISTS(
+    SELECT 1 FROM pg_catalog.pg_constraint fk
+    JOIN pg_catalog.pg_attribute col
+      ON col.attrelid=fk.conrelid AND col.attname='owner_id'
+    WHERE fk.conrelid='allin_private.v2_privileged_storage_write_leases_review'::pg_catalog.regclass
+      AND fk.confrelid='auth.users'::pg_catalog.regclass
+      AND fk.contype='f' AND fk.confdeltype='c'
+      AND col.attnum=ANY(fk.conkey)
+  ) OR pg_catalog.has_table_privilege('anon',
+    'allin_private.v2_privileged_storage_write_leases_review',
+    'SELECT,INSERT,UPDATE,DELETE')
+  OR pg_catalog.has_table_privilege('authenticated',
+    'allin_private.v2_privileged_storage_write_leases_review',
+    'SELECT,INSERT,UPDATE,DELETE')
+  OR pg_catalog.has_table_privilege('service_role',
+    'allin_private.v2_privileged_storage_write_leases_review',
+    'SELECT,INSERT,UPDATE,DELETE')
+  OR NOT EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='allin_private.v2_account_deletion_requests'::pg_catalog.regclass
+      AND t.tgname='v2_privileged_storage_write_fence_review'
+      AND t.tgenabled='O' AND NOT t.tgisinternal)
+  OR NOT EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='auth.users'::pg_catalog.regclass
+      AND t.tgname='v2_privileged_storage_auth_delete_fence_review'
+      AND t.tgenabled='O' AND NOT t.tgisinternal)
+  OR NOT EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid='storage.objects'::pg_catalog.regclass
+      AND t.tgname='v2_privileged_storage_metadata_write_fence_review'
+      AND t.tgenabled='O' AND NOT t.tgisinternal)
+  THEN RAISE EXCEPTION 'Privileged Storage lease ledger or write/delete fences changed'
+    USING ERRCODE='42501';
+  END IF;
+ END IF;
  -- Future owner data can use owner_id / athlete_id / actor_id rather
  -- than user_id.  Reject unknown V2 relations before a supposedly complete
  -- export silently skips Nutrition, Progress, equipment or Community posts.
@@ -138,7 +185,8 @@ begin
        n.nspname='allin_private' AND c.relname=ANY(ARRAY[
          'v2_community_pair_revisions','v2_community_follows',
          'v2_community_blocks','v2_community_action_receipts',
-         'v2_subscription_checkout_attempts','v2_subscription_purchases'
+         'v2_subscription_checkout_attempts','v2_subscription_purchases',
+         'v2_privileged_storage_write_leases_review'
        ])
      )
  ) THEN RAISE EXCEPTION 'Unreviewed alternate-key owner table requires export coverage'
