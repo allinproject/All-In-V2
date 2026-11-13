@@ -94,6 +94,25 @@ BEGIN
  IF pg_catalog.jsonb_array_length(j->'restrictions')<>1 OR
   j->'restrictions'->0->>'subject'<>'lying leg curl' THEN
   RAISE EXCEPTION 'Saved restriction missing from fresh read'; END IF;
+ -- An unreviewed privileged row mutation must not masquerade as part of
+ -- the certified snapshot even when it illegally keeps the old revision.
+ UPDATE public.v2_training_athlete_restrictions
+  SET subject='unreviewed changed movement',
+      updated_at=pg_catalog.clock_timestamp()+interval '1 second'
+  WHERE id=rule AND user_id=a;
+ BEGIN
+  PERFORM public.v2_training_active_restrictions_read_candidate(a);
+  RAISE EXCEPTION 'Changed rule passed old certification without revision';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ -- Restore the synthetic canonical row to its exact certified version.
+ UPDATE public.v2_training_athlete_restrictions
+  SET subject='lying leg curl',
+      updated_at=(SELECT certified_at
+       FROM allin_private.v2_training_restriction_certifications WHERE user_id=a)
+  WHERE id=rule AND user_id=a;
+ j:=public.v2_training_active_restrictions_read_candidate(a);
+ IF j->'restrictions'->0->>'subject'<>'lying leg curl' THEN
+  RAISE EXCEPTION 'Restored certified record unreadable'; END IF;
  BEGIN
   PERFORM public.v2_training_restriction_write_candidate(a,act1,
    'activate',rule,'exercise','wrong rule',1);
