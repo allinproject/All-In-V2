@@ -189,3 +189,51 @@ denial, deletion and independent restore.
 **Release state:** Review-only SQL and isolated PostgreSQL tests are not
 hosted owner-session, rate-limit, moderation, legal or media acceptance.
 Keep account-export complete=false and deletion worker disabled.
+
+## 2026-11-13 — Trusted moderation review contract (ALL-244)
+
+The **same canonical Community comment ledger** now has a review-only
+moderation workflow in
+\`docs/architecture/sql/V2-COMMUNITY-MODERATION-WORKFLOW-REVIEW-CANDIDATE.sql\`.
+This is **not** an activated report endpoint, moderation panel, operator
+access grant, retention policy approval, or live data schema.
+
+- **Reviewer grants:** Separate \`initial_review\` and \`appeal_review\`
+  permissions live only in the restricted \`allin_private\` schema.
+  End users cannot provision themselves. A trusted administrative process
+  must independently authenticate, authorize, record and revoke reviewer
+  membership before deployment. A live \`auth.sessions\` row is mandatory
+  on every moderation action; deleting a session or disabling membership
+  denies its next action without waiting for token expiration.
+- **Reports:** Reporters can submit only on currently visible comments
+  from a post they may view. Blocked or hidden comment existence cannot be
+  probed through reports. The report stores the comment identity, reporter,
+  bounded reason code/detail and status, **not another copy of private
+  comment body**. Stable report IDs prevent changed-payload retries and
+  one reporter/comment pair cannot spawn multiple open reports.
+- **Initial decisions:** A different trusted reviewer may dismiss, hold or
+  hide a reported comment. Case version changes are serialized, so stale
+  decisions fail; no self-review by reporter or author. Moderation visibility
+  changes the *existing* comment record and reader, not a competing feed.
+- **Appeals:** Only the affected comment author may submit one bounded
+  appeal against a decided case. A separately authorized appeal reviewer
+  must differ from the initial reviewer, reporter and author. Uphold
+  preserves the existing decision; overturn restores visibility only for
+  a nondeleted comment. The immutable-by-workflow case event sequence
+  records report, initial decision, appeal and appeal result with actor,
+  version, reason/result and timestamp. Raw case details are **not**
+  registered for general Community profile/feed or account export.
+- **Controls still required:** Independently review operator
+  provisioning/deprovisioning and least privilege; add rate limits,
+  abuse escalation, review queue visibility controls, trusted
+  moderator authentication/session integration, immutable audit
+  guarantees and evidence access logging. Decide legally approved
+  moderation/audit retention, legal holds, deletion exceptions and
+  appeal notice procedures in ALL-219. Restricted candidate SQL grants
+  neither \`authenticated\` nor \`service_role\` default DML or RPC
+  execution. Do not claim these service workflows are live or use
+  candidate tests as legal acceptance.
+
+The existing comment-author export remains opt-out of \`complete=true\`.
+Community media remains blocked pending its canonical attachment contract,
+owner-scoped private bytes, restoration and formal privacy approval.
