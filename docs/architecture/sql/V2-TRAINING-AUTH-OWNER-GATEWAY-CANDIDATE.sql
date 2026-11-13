@@ -13,7 +13,10 @@ LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
 AS $owner_action$
 DECLARE
  v_uid uuid := auth.uid();
- v_session_claim text := pg_catalog.current_setting('request.jwt.claim.session_id',true);
+ v_session_claim text := coalesce(
+   nullif(pg_catalog.current_setting('request.jwt.claim.session_id',true),''),
+   nullif((nullif(pg_catalog.current_setting('request.jwt.claims',true),'')::jsonb ->> 'session_id'),'')
+ );
  v_session_id uuid;
  v_server_fingerprint text;
 BEGIN
