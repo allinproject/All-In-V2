@@ -101,12 +101,6 @@ const TONE_OPTIONS: Choice[] = [
   {value: 'supportive',label: 'Supportive'}, {value: 'neutral',label: 'Balanced'}, {value: 'direct',label: 'Direct'},
 ];
 
-const COACH_OPTIONS: Choice[] = [
-  { value: 'only_when_asked', label: 'When I ask', description: 'Keep Coach available, but let me lead.' },
-  { value: 'balanced', label: 'Balanced', description: 'Offer useful guidance without crowding my day.' },
-  { value: 'proactive', label: 'Proactive', description: 'Point out opportunities and decisions that may help.' },
-];
-
 const FOOD_OPTIONS: Choice[] = [
   { value: 'none', label: 'No known allergies or restrictions' },
   { value: 'allergies_or_sensitivities', label: 'Allergies or sensitivities' },
