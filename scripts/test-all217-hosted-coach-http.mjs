@@ -45,7 +45,7 @@ if(!valid(serviceKey)||!valid(anonKey)||serviceKey===anonKey||
   assert.equal(session.status,200,"sign-in HTTP "+session.status);
   assert.equal(session.data?.user?.id,user.data.id,"signed-in owner mismatch");
   assert.ok(session.data?.access_token&&session.data?.refresh_token);
-  return {id:user.data.id,access:session.data.access_token,refresh:session.data.refresh_token};
+  return {id:user.data.id,access:session.data.access_token,refresh:session.data.refresh_token,email,password};
  };
  const coach=(token,body)=>http("/functions/v1/v2-coach",{token,body});
  let failed=false;
@@ -92,6 +92,25 @@ if(!valid(serviceKey)||!valid(anonKey)||serviceKey===anonKey||
    action:"open",ownerId:a.id,candidateThreadId:randomUUID()
   });
   check("refreshed session resumes thread",resumed.status===200&&resumed.data?.threadId===thread);
+  // Separate GoTrue password login represents a fresh second client process.
+  // No prior client token or locally cached thread ID is passed to open.
+  const independent=await http("/auth/v1/token?grant_type=password",{
+   body:{email:a.email,password:a.password}
+  });
+  check("independent second client authenticates same owner",
+   independent.status===200&&independent.data?.user?.id===a.id&&
+   independent.data?.access_token!==a.access);
+  const secondDevice=await coach(independent.data.access_token,{
+   action:"open",ownerId:a.id,candidateThreadId:randomUUID()
+  });
+  check("fresh second client resumes server-owned thread",
+   secondDevice.status===200&&secondDevice.data?.threadId===thread);
+  const secondHistory=await coach(independent.data.access_token,{
+   action:"history",ownerId:a.id,threadId:thread,limit:10
+  });
+  check("independent client reads owner-scoped history",
+   secondHistory.status===200&&Array.isArray(secondHistory.data?.messages)&&
+   secondHistory.data.messages.length===0);
   const denied=await coach(refresh.data.access_token,{
    action:"send",ownerId:a.id,threadId:thread,clientRequestId:randomUUID(),
    userMessageId:randomUUID(),assistantMessageId:randomUUID(),
