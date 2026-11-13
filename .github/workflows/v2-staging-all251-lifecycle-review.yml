@@ -7,6 +7,8 @@ on:
       - 'scripts/test-v2-shared-staging-all251-export-auth-upgrade.psql'
       - '.github/workflows/v2-staging-all251-lifecycle-review.yml'
       - 'docs/architecture/sql/V2-STAGING-ALL251-HARD-OFF-AUDIT-BRIDGE-REVIEW.sql'
+      - 'docs/architecture/sql/V2-STAGING-ALL251-CANONICAL-OWNER-REQUEST-REVIEW.sql'
+      - 'scripts/test-v2-shared-staging-all251-owner-lifecycle.psql'
   workflow_dispatch:
 
 permissions:
@@ -51,6 +53,10 @@ jobs:
           psql -At -c "SELECT execution_enabled FROM allin_private.v2_account_deletion_processor_config WHERE singleton=true" | grep -qx 'f'
           psql -At -c "SELECT count(*) FROM allin_private.v2_account_deletion_execution_audit" | grep -qx '0'
           psql -At -c "SELECT has_table_privilege('authenticated','allin_private.v2_account_deletion_execution_audit','SELECT')" | grep -qx 'f'
+      - name: Install canonical owner status/request/cancel as disabled client RPCs
+        run: psql -v ON_ERROR_STOP=1 -f docs/architecture/sql/V2-STAGING-ALL251-CANONICAL-OWNER-REQUEST-REVIEW.sql
+      - name: Verify owner-scoped request/cancel idempotency and rollback
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-v2-shared-staging-all251-owner-lifecycle.psql
       - name: Guard refuses unreviewed second replacement
         shell: bash
         run: |
