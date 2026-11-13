@@ -178,7 +178,7 @@ function OwnedProfileScreen() {
             <View onLayout={onGuideAnchorLayout("nutrition")} style={styles.card}>
               <Text style={styles.section}>Nutrition</Text>
               <Link href="/profile/kitchen" asChild>
-                <Pressable onLayout={onPersonalizeChildLayout("kitchen")} accessibilityRole="button" style={[styles.button, highlightedTarget==="kitchen" && styles.guideTarget]}>
+                <Pressable onLayout={onPersonalizeChildLayout("kitchen")} accessibilityRole="button" style={StyleSheet.flatten([styles.button, highlightedTarget==="kitchen" && styles.guideTarget])}>
                   <Text style={styles.buttonText}>Kitchen & Meal Prep Setup</Text>
                 </Pressable>
               </Link>
