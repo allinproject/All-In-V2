@@ -66,6 +66,33 @@ test('private relationship policies remain explicit and incoming blocks are not 
  assert(reader.includes('v2_account_export_authorize_request_candidate'),
   'session and exact request gate is required');
 });
+test('Community relation exports use explicit owner-scoped redaction, never raw relation rows',()=>{
+ const start=reader.indexOf("ELSIF p_collection LIKE 'community.%' THEN");
+ const end=reader.indexOf(" ELSIF p_collection='public.v2_training_athlete_restrictions' THEN",start);
+ assert(start>0&&end>start,'Community export projection scope missing');
+ const sql=reader.slice(start,end);
+ assert(!sql.includes('pg_catalog.to_jsonb(t)'),
+  'Unreviewed Community column must not be serialized by raw fallback');
+ for(const check of [
+  "p_collection='community.outgoing_follows'",
+  "WHERE t.follower_id=$1",
+  "p_collection='community.outgoing_blocks'",
+  "WHERE t.blocker_id=$1",
+  "WHERE t.actor_id=$1",
+  "WHERE t.followed_id=$1",
+  "AND NOT EXISTS (SELECT 1 FROM allin_private.v2_community_blocks",
+  "RAISE EXCEPTION 'Unreviewed Community export projection'",
+ ])assert(sql.includes(check),'Community privacy boundary missing: '+check);
+ for(const secret of ["''payload_sha256''","''expected_version''",
+  "''result_version''","''lower_user_id''","''upper_user_id''"]){
+  assert(!sql.includes(secret),'Internal Community state leaked: '+secret);
+ }
+ const inventory=reader.slice(0,start);
+ assert(!inventory.includes("UNION ALL SELECT 'community.incoming_blocks'"),
+  'Another athlete\'s block decision must not become exportable');
+ assert(!inventory.includes("UNION ALL SELECT 'community.my_comments'"),
+  'Comments are not an approved canonical source yet');
+});
 test('reader has no direct anonymous or authenticated execute permissions',()=>{
  assert(reader.includes('FROM PUBLIC,anon,authenticated,service_role'));
  assert(reader.includes('TO service_role'));
