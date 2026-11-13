@@ -40,7 +40,8 @@ test('five review-only migrations exactly preserve the existing ordered SQL grap
      assert.equal(index,n++);
      assert.equal(match[2],names[index]);
      const original=readFileSync(resolve(root,'docs/architecture/sql',names[index]),'utf8');
-     const expected=stripCandidateTransactionWrappers(original,names[index]).sql.trim();
+     const expected=stripCandidateTransactionWrappers(original,names[index]).sql.split('\n')
+       .filter(line=>!/^-- local overlay stripped file-level (BEGIN|COMMIT) \(atomic outer transaction\)$/.test(line)).join('\n').trim();
      assert.equal(piece.slice(first+1).trim(),expected,names[index]);
    }
  }
