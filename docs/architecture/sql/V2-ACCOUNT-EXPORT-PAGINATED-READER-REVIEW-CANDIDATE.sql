@@ -302,6 +302,50 @@ BEGIN
    WHERE pg_catalog.to_regclass(required.name) IS NULL
  ) THEN RAISE EXCEPTION 'Billing export source graph is incomplete'
     USING ERRCODE='42501'; END IF;
+ -- Join-only owner-derived tables can have no user_id/owner_id column;
+ -- they may still contain athlete records through an FK to a canonical
+ -- owner table. Every such descendant needs an explicit export projection or
+ -- a narrow, reviewed privacy/internal-operation classification. Reject
+ -- future unregistered receipts even when Auth deletion cascade is valid.
+ IF EXISTS (
+  SELECT 1
+  FROM pg_catalog.pg_class child
+  JOIN pg_catalog.pg_namespace child_ns ON child_ns.oid=child.relnamespace
+  WHERE child_ns.nspname IN ('public','allin_private')
+    AND child.relkind IN ('r','p') AND child.relname LIKE 'v2_%'
+    AND NOT EXISTS(
+      SELECT 1 FROM pg_catalog.pg_attribute own
+      WHERE own.attrelid=child.oid AND own.attnum>0 AND NOT own.attisdropped
+        AND own.attname=ANY(ARRAY[
+          'user_id','owner_id','athlete_id','actor_id','created_by_user_id',
+          'athlete_user_id','follower_id','followed_id','blocker_id','blocked_id',
+          'lower_user_id','upper_user_id','target_id','account_id','profile_id'
+        ])
+    )
+    AND EXISTS(
+      SELECT 1 FROM pg_catalog.pg_constraint link
+      JOIN pg_catalog.pg_class parent ON parent.oid=link.confrelid
+      JOIN pg_catalog.pg_namespace parent_ns ON parent_ns.oid=parent.relnamespace
+      JOIN pg_catalog.pg_attribute parent_owner
+        ON parent_owner.attrelid=parent.oid
+        AND parent_owner.attnum>0 AND NOT parent_owner.attisdropped
+      WHERE link.conrelid=child.oid AND link.contype='f'
+        AND parent_ns.nspname IN ('public','allin_private')
+        AND parent.relname LIKE 'v2_%'
+        AND parent_owner.attname=ANY(ARRAY[
+          'user_id','owner_id','athlete_id','athlete_user_id','account_id'
+        ])
+    )
+    AND NOT(
+      child_ns.nspname='allin_private'
+      AND child.relname=ANY(ARRAY[
+        -- Existing Billing export projects this through the owning purchase
+        -- and strips provider secrets; the raw event table is never exposed.
+        'v2_subscription_verified_events'
+      ])
+    )
+ ) THEN RAISE EXCEPTION 'Unclassified join-only owner child requires account export projection or private exclusion'
+   USING ERRCODE='42501'; END IF;
  -- This ID is bound to the exact PostgreSQL snapshot and export request.
  -- It MUST NOT be recomputed using a new transaction during staging.
  v_snapshot:=pg_catalog.md5(p_owner::text||':'||p_request::text||':'||
