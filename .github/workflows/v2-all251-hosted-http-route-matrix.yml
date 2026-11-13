@@ -1,15 +1,32 @@
 name: ALL-251 protected hosted Storage HTTP route matrix
-# Manual-only and intentionally release-blocking while any bypass is possible.
-# Never run unreviewed privileged probes on branch push.
+# Explicit one-workflow/script-path push may REQUEST reviewer approval;
+# it cannot run secret-bearing probes until all251-temporary-staging approval.
+# Keep all other commits out of this test; never expose secrets on push.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - integration/v2-foundation
+    paths:
+      - .github/workflows/v2-all251-hosted-http-route-matrix.yml
+      - scripts/test-all251-hosted-storage-http-routes.mjs
 permissions:
   contents: read
 concurrency:
   group: all251-staging-http-route-matrix
   cancel-in-progress: false
 jobs:
+  offline-script-syntax-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - run: node --check scripts/test-all251-hosted-storage-http-routes.mjs
   protected-disposable-staging-only:
+    needs: offline-script-syntax-only
     if: github.ref == 'refs/heads/integration/v2-foundation'
     runs-on: ubuntu-latest
     environment: all251-temporary-staging
