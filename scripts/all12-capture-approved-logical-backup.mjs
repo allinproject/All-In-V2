@@ -66,7 +66,7 @@ function queryLiveV2Tables() {
  });
  if(checked.error||checked.status!==0)
   throw Error('ALL-12 read-only live inventory query failed; no archive was created');
- return checked.stdout.trim().split(/\\r?\\n/).filter(Boolean);
+ return checked.stdout.trim().split(/\r?\n/).filter(Boolean);
 }
 
 async function sha256(path) {
