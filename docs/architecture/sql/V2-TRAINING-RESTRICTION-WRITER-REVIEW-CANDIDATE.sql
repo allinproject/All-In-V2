@@ -143,7 +143,7 @@ BEGIN
   (user_id,certified_revision,inventory_digest,certified_at)
  VALUES(v_user,v_next,
   allin_private.v2_training_restriction_inventory_digest_candidate(v_user),
-  pg_catalog.clock_timestamp())
+  now())
  ON CONFLICT(user_id) DO UPDATE
   SET certified_revision=excluded.certified_revision,
       inventory_digest=excluded.inventory_digest,
