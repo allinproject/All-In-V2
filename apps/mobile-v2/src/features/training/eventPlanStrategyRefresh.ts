@@ -118,3 +118,60 @@ export function reviewEventStrategyGenerationReceipt(input:{
     return {status:'stale',reason:'strategy_advanced'};
   return {status:'review_ready',adviceText:receipt.adviceText,requiresTrainingApproval:true};
 }
+
+/**
+ * Prepare an idempotent, authenticated refresh *intent* for the owning Coach
+ * service. This never calls a provider or writes canonical Event/Training data.
+ * Source and strategy snapshots must still originate from certified owners.
+ */
+export type EventStrategyRefreshIntent=StrategyEventRef&{
+  requestKey:string;
+  authSessionGeneration:number;
+  expectedStrategyRevision:number;
+  sourceRevision:number;
+  courseVersion:string|null;
+  invalidateCourseDependentAdvice:boolean;
+  requiresTrainingApproval:true;
+};
+export type EventStrategyRefreshIntentResult=
+ |{status:'unavailable';reason:'not_authenticated'|'invalid_session'}
+ |{status:'not_requested';reason:'missing_or_mismatched_event'|'invalid_revision'|
+   'unverified_or_conflicting_source'|'source_revision_regressed'|'same_source'}
+ |{status:'ready';intent:EventStrategyRefreshIntent};
+
+export function prepareEventStrategyRefreshIntent(input:{
+  expected:StrategyEventRef;
+  authenticatedOwnerId:string|null;
+  authSessionGeneration:number;
+  accessGateReady:boolean;
+  current:EventStrategySnapshot|null;
+  incoming:StrategySourceRevision|null;
+}):EventStrategyRefreshIntentResult{
+  if(!input.accessGateReady||!input.authenticatedOwnerId||
+    input.authenticatedOwnerId!==input.expected?.ownerId)
+    return{status:'unavailable',reason:'not_authenticated'};
+  if(!Number.isSafeInteger(input.authSessionGeneration)||input.authSessionGeneration<0)
+    return{status:'unavailable',reason:'invalid_session'};
+  const decision=reviewEventStrategySourceRefresh(input);
+  if(decision.status!=='refresh_advice')
+    return{status:'not_requested',reason:decision.reason};
+  const current=input.current!;
+  const incoming=input.incoming!;
+  // JSON tuple avoids ambiguous concatenation when owner IDs or course
+  // versions contain punctuation. Same certified revisions deduplicate.
+  const requestKey=JSON.stringify([
+    input.expected.ownerId,input.expected.eventId,input.expected.editionId,
+    input.expected.eventVersion,input.authSessionGeneration,
+    current.strategyRevision,incoming.sourceRevision,incoming.courseVersion,
+  ]);
+  return{status:'ready',intent:{
+    ...input.expected,
+    requestKey,
+    authSessionGeneration:input.authSessionGeneration,
+    expectedStrategyRevision:current.strategyRevision,
+    sourceRevision:incoming.sourceRevision,
+    courseVersion:incoming.courseVersion,
+    invalidateCourseDependentAdvice:decision.invalidateCourseDependentAdvice,
+    requiresTrainingApproval:true,
+  }};
+}
