@@ -72,7 +72,7 @@ BEGIN
    'completeUserExport',false
  );
 END;
-$function$
+$function$;
 
 
 REVOKE ALL ON FUNCTION allin_private.v2_account_export_authorize_session_candidate(uuid,uuid)
