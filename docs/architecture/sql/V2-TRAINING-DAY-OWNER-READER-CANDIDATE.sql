@@ -34,8 +34,10 @@ BEGIN
  EXCEPTION WHEN invalid_text_representation THEN
    RAISE EXCEPTION 'Malformed Auth session' USING ERRCODE='42501';
  END;
- IF NOT EXISTS(SELECT 1 FROM auth.sessions s WHERE s.id=v_session_id AND s.user_id=v_user) THEN
-  RAISE EXCEPTION 'Auth session revoked or belongs to another account' USING ERRCODE='42501';
+ IF NOT EXISTS(SELECT 1 FROM auth.sessions s
+  WHERE s.id=v_session_id AND s.user_id=v_user
+    AND (s.not_after IS NULL OR s.not_after>pg_catalog.clock_timestamp())) THEN
+  RAISE EXCEPTION 'Auth session expired, revoked or belongs to another account' USING ERRCODE='42501';
  END IF;
  -- Rest/unavailable/recovery state is a first-class calendar fact.
  WITH selected_days AS (
