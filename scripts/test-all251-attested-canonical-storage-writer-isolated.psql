@@ -1,8 +1,7 @@
 \set ON_ERROR_STOP on
 -- Isolated PostgreSQL 17 only. No Supabase hosted access, no real user bytes.
-CREATE ROLE anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
-CREATE ROLE service_role NOLOGIN;
+-- Shared disposable PostgreSQL cluster has roles from the first fixture;
+-- this test is isolated in its own DATABASE, not its own server.
 CREATE SCHEMA auth;
 CREATE SCHEMA storage;
 CREATE SCHEMA allin_private;
