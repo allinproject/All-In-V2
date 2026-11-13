@@ -424,10 +424,23 @@ BEGIN
     '''target_id'',t.target_id,''created_at'',t.created_at) '||
     'FROM allin_private.v2_community_action_receipts t '||
     'WHERE t.actor_id=$1 ORDER BY t.created_at,t.action_id LIMIT $2 OFFSET $3';
+  ELSIF p_collection='community.outgoing_follows' THEN
+   -- Export only this athlete's directed request/follow state. Do not
+   -- serialize future internal columns or the other athlete's privacy state.
+   v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''followed_id'',t.followed_id,''state'',t.state,'||
+    '''requested_at'',t.requested_at,''approved_at'',t.approved_at) '||
+    'FROM allin_private.v2_community_follows t '||
+    'WHERE t.follower_id=$1 ORDER BY t.followed_id LIMIT $2 OFFSET $3';
+  ELSIF p_collection='community.outgoing_blocks' THEN
+   -- Never export an inbound block; the actor owns only their decision.
+   v_query:='SELECT pg_catalog.jsonb_build_object('||
+    '''blocked_id'',t.blocked_id,''created_at'',t.created_at) '||
+    'FROM allin_private.v2_community_blocks t '||
+    'WHERE t.blocker_id=$1 ORDER BY t.blocked_id LIMIT $2 OFFSET $3';
   ELSE
-   v_query:=pg_catalog.format('SELECT pg_catalog.to_jsonb(t) FROM %I.%I t '||
-    'WHERE t.%I=$1 ORDER BY pg_catalog.to_jsonb(t)::text LIMIT $2 OFFSET $3',
-    v_schema,v_table,v_column);
+   RAISE EXCEPTION 'Unreviewed Community export projection'
+    USING ERRCODE='42501';
   END IF;
  ELSIF p_collection='public.v2_training_athlete_restrictions' THEN
   -- ALL-230 / ALL-251 REVIEW ONLY / NOT INVENTORIED.
