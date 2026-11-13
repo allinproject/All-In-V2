@@ -102,7 +102,7 @@ const mediaScoped={
  listCanonicalMediaReferences:async()=>mediaRefs,
  listBucketCatalog:async()=>[{id:'v2-private-workout-objects',public:false}],
  listOwnerStorageObjects:async()=>({
-  ownerId,requestId,bucketId:'v2-private-workout-objects',
+  ownerId:owner,requestId,bucketId:'v2-private-workout-objects',
   exhaustive:true,totalCount:originalMedia.size,paths:[...originalMedia.keys()]
  }),
 };
