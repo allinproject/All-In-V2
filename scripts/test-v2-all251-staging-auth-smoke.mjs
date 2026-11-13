@@ -62,6 +62,110 @@ try{
  acceptanceStep='synthetic Auth login';
  const aToken=await login(a),bToken=await login(b);
  assert.notEqual(aToken,bToken);
+
+ // ALL222 canonical Profile Onboarding Training acceptance.
+ // Real GoTrue sessions only; no role injection, SQL login, mock tokens or client table writes.
+ const all222Rpc=(name,body,token)=>request('/rest/v1/rpc/'+name,{
+   method:'POST',body,userJwt:token,apiKey:anon,
+ });
+ const all222Denied=res=>assert([400,401,403].includes(res.status),
+   'Cross-owner RPC unexpectedly authorized');
+ acceptanceStep='ALL222 canonical owner snapshot before writes';
+ const initialResponse=await all222Rpc('v2_my_profile_state',{},aToken);
+ assert.equal(initialResponse.status,200,'Owner A initial profile snapshot unavailable');
+ const initial=await initialResponse.json();
+ assert.equal(initial.profile?.user_id,a.id,'Profile owner mismatch');
+ assert(Number.isInteger(initial.settings?.version),'Profile version missing');
+ assert(Number.isInteger(initial.onboarding?.version),'Onboarding version missing');
+ acceptanceStep='ALL222 Profile settings real Auth write';
+ const profileWrite=await all222Rpc('v2_patch_profile_settings_section',{
+   p_expected_user_id:a.id,p_section:'training_preferences',
+   p_patch:{all222_staging_verified:'real-auth'},
+   p_expected_version:initial.settings.version,p_client_action_id:randomUUID(),
+ },aToken);
+ assert.equal(profileWrite.status,200,'Canonical Profile settings write denied');
+ const profileVersion=await profileWrite.json();
+ assert.equal(profileVersion,initial.settings.version+1);
+ acceptanceStep='ALL222 Profile settings authenticated readback';
+ const profileRead=await all222Rpc('v2_my_profile_state',{},aToken);
+ assert.equal(profileRead.status,200,'Profile readback failed');
+ const ownerProfile=await profileRead.json();
+ assert.equal(ownerProfile.settings?.version,profileVersion);
+ assert.equal(ownerProfile.settings?.settings?.training_preferences?.all222_staging_verified,'real-auth');
+ acceptanceStep='ALL222 onboarding real Auth write';
+ const onboardingWrite=await all222Rpc('v2_set_onboarding_step',{
+   p_expected_user_id:a.id,p_step:'focus',p_action:'complete',
+   p_expected_version:initial.onboarding.version,p_client_action_id:randomUUID(),
+ },aToken);
+ assert.equal(onboardingWrite.status,200,'Canonical onboarding writer denied');
+ const onboardingVersion=await onboardingWrite.json();
+ assert.equal(onboardingVersion,initial.onboarding.version+1);
+ acceptanceStep='ALL222 onboarding authenticated readback';
+ const onboardingRead=await all222Rpc('v2_my_profile_state',{},aToken);
+ assert.equal(onboardingRead.status,200,'Onboarding readback failed');
+ const ownerOnboarding=await onboardingRead.json();
+ assert.equal(ownerOnboarding.onboarding?.version,onboardingVersion);
+ assert(ownerOnboarding.onboarding?.completed_steps?.includes('focus'));
+ acceptanceStep='ALL222 canonical Training real Auth start';
+ const all222Session=randomUUID(),all222Action=randomUUID();
+ const all222Date=new Date().toISOString().slice(0,10);
+ const started=await all222Rpc('v2_training_session_action_candidate',{
+   p_expected_user_id:a.id,p_session_id:all222Session,
+   p_action_id:all222Action,p_command:'start',p_expected_version:0,
+   p_request_fingerprint:'not_trusted_server_recomputes',
+   p_local_date:all222Date,p_timezone:'America/Chicago',
+   p_occurred_at:new Date().toISOString(),
+ },aToken);
+ assert.equal(started.status,200,'Authenticated Training start rejected');
+ const trainingResult=await started.json();
+ assert.equal(trainingResult.sessionId,all222Session);
+ assert.equal(trainingResult.version,1);
+ assert.equal(trainingResult.status,'active');
+ acceptanceStep='ALL222 Training owner day readback';
+ const trainingRead=await all222Rpc('v2_training_day_read_candidate',{
+   p_expected_user_id:a.id,p_athlete_date:all222Date,
+ },aToken);
+ assert.equal(trainingRead.status,200,'Training owner reader rejected');
+ const trainingState=await trainingRead.json();
+ assert.equal(trainingState.ownerId,a.id);
+ assert.equal(trainingState.liveWorkout?.executionId,all222Session);
+ assert.equal(trainingState.liveWorkout?.status,'active');
+ acceptanceStep='ALL222 cross-account owner boundary';
+ const bProfile=await all222Rpc('v2_my_profile_state',{},bToken);
+ assert.equal(bProfile.status,200,'B cannot access own Profile');
+ const bSnapshot=await bProfile.json();
+ assert.notEqual(bSnapshot.settings?.settings?.training_preferences?.all222_staging_verified,'real-auth');
+ assert(!bSnapshot.onboarding?.completed_steps?.includes('focus'),'A onboarding leaked to B');
+ const bDay=await all222Rpc('v2_training_day_read_candidate',{
+   p_expected_user_id:b.id,p_athlete_date:all222Date,
+ },bToken);
+ assert.equal(bDay.status,200,'B cannot access own Training day');
+ assert.equal((await bDay.json()).liveWorkout,null,'A Training leaked into B');
+ all222Denied(await all222Rpc('v2_training_day_read_candidate',{
+   p_expected_user_id:a.id,p_athlete_date:all222Date,
+ },bToken));
+ all222Denied(await all222Rpc('v2_patch_profile_settings_section',{
+   p_expected_user_id:a.id,p_section:'training_preferences',
+   p_patch:{all222_staging_verified:'foreign'},
+   p_expected_version:profileVersion,p_client_action_id:randomUUID(),
+ },bToken));
+ all222Denied(await all222Rpc('v2_set_onboarding_step',{
+   p_expected_user_id:a.id,p_step:'coach',p_action:'skip',
+   p_expected_version:onboardingVersion,p_client_action_id:randomUUID(),
+ },bToken));
+ all222Denied(await all222Rpc('v2_training_session_action_candidate',{
+   p_expected_user_id:a.id,p_session_id:all222Session,
+   p_action_id:randomUUID(),p_command:'pause',p_expected_version:1,
+   p_request_fingerprint:'untrusted',p_local_date:all222Date,
+   p_timezone:'America/Chicago',p_occurred_at:new Date().toISOString(),
+ },bToken));
+ acceptanceStep='ALL222 post-foreign-denial owner state preserved';
+ const preserved=await all222Rpc('v2_training_day_read_candidate',{
+   p_expected_user_id:a.id,p_athlete_date:all222Date,
+ },aToken);
+ assert.equal(preserved.status,200);
+ assert.equal((await preserved.json()).liveWorkout?.status,'active');
+ process.stdout.write('PASS: ALL222 genuine Auth A Profile, Onboarding, Training writes and readbacks; B isolated and denied\\n');
  acceptanceStep='synthetic Auth invalid password rejection';
  for(const u of [a,b]){
    const denied=await request('/auth/v1/token?grant_type=password',{
