@@ -11,16 +11,14 @@ export type OnboardingFocusOption = {
 // This is the athlete's initial orientation, not their canonical Goal list.
 // Users can pursue several goals concurrently after onboarding.
 export const V2_ONBOARDING_FOCUS_OPTIONS: readonly OnboardingFocusOption[] = [
-  { value: 'general_fitness', label: 'General fitness' },
-  { value: 'running', label: 'Running' },
-  { value: 'strength', label: 'Strength' },
-  { value: 'cycling', label: 'Cycling' },
-  { value: 'swimming', label: 'Swimming' },
-  { value: 'triathlon_hybrid', label: 'Triathlon / Hybrid' },
-  { value: 'walking_hiking_rucking', label: 'Walking / Hiking / Rucking' },
-  { value: 'nutrition_habits', label: 'Nutrition & eating habits' },
-  { value: 'body_composition', label: 'Weight & body composition' },
-  { value: 'general_wellbeing', label: 'General wellbeing' },
+  { value: 'general_fitness', label: 'Improve overall fitness' },
+  { value: 'get_stronger', label: 'Get stronger' },
+  { value: 'build_endurance', label: 'Build endurance' },
+  { value: 'weight_loss', label: 'Lose weight' },
+  { value: 'weight_gain', label: 'Gain weight' },
+  { value: 'prepare_event', label: 'Prepare for a race / event' },
+  { value: 'be_consistent', label: 'Build consistency' },
+  { value: 'nutrition', label: 'Improve nutrition' },
 ] as const;
 export type SettingsSection =
   | 'training_preferences'
@@ -30,6 +28,19 @@ export type SettingsSection =
 
 export type OnboardingAnswers = {
   primaryFocus: string;
+  eventGoal: string;
+  trainingFrequency: string;
+  trainingVolume: string;
+  preferredTime: string;
+  sessionLength: string;
+  scheduleNotes: string;
+  trainingAccess: string;
+  constraintNotes: string;
+  foodPreferences: string;
+  fuelingNotes: string;
+  mealPrep: string;
+  coachDetail: string;
+  coachTone: string;
   currentSports: string[];
   availableDays: string[];
   coachGuidance: string;
@@ -92,6 +103,19 @@ export type OnboardingPreferenceWrite = {
 
 export const EMPTY_ONBOARDING_ANSWERS: OnboardingAnswers = {
   primaryFocus: '',
+  eventGoal: '',
+  trainingFrequency: '',
+  trainingVolume: '',
+  preferredTime: '',
+  sessionLength: '',
+  scheduleNotes: '',
+  trainingAccess: '',
+  constraintNotes: '',
+  foodPreferences: '',
+  fuelingNotes: '',
+  mealPrep: '',
+  coachDetail: 'normal',
+  coachTone: 'neutral',
   currentSports: [],
   availableDays: [],
   coachGuidance: '',
@@ -116,11 +140,11 @@ export function isOnboardingAnswerComplete(
     case 'focus':
       return answers.primaryFocus.trim().length > 0;
     case 'training_pattern':
-      return answers.currentSports.length > 0;
+      return answers.currentSports.length > 0 || answers.trainingFrequency.trim().length > 0 || answers.trainingVolume.trim().length > 0;
     case 'availability':
-      return answers.availableDays.length > 0;
+      return answers.availableDays.length > 0 || answers.preferredTime.trim().length > 0 || answers.sessionLength.trim().length > 0 || answers.scheduleNotes.trim().length > 0;
     case 'coach':
-      return answers.coachGuidance.trim().length > 0;
+      return answers.trainingAccess.trim().length > 0 || answers.constraintNotes.trim().length > 0;
     case 'food_safety':
       return answers.foodSafety.trim().length > 0;
     case 'proactivity':
@@ -136,22 +160,22 @@ export function onboardingPreferenceWrite(
     case 'focus':
       return {
         section: 'training_preferences',
-        patch: { primary_focus: answers.primaryFocus.trim() },
+        patch: { primary_focus: answers.primaryFocus.trim(), event_goal: answers.primaryFocus === 'prepare_event' ? answers.eventGoal.trim() || null : null },
       };
     case 'training_pattern':
       return {
         section: 'training_preferences',
-        patch: { current_sports: [...new Set(answers.currentSports)] },
+        patch: { current_sports: [...new Set(answers.currentSports)], training_frequency: answers.trainingFrequency || null, weekly_volume: answers.trainingVolume.trim() || null },
       };
     case 'availability':
       return {
         section: 'training_preferences',
-        patch: { available_days: [...new Set(answers.availableDays)] },
+        patch: { available_days: [...new Set(answers.availableDays)], preferred_time: answers.preferredTime || null, session_length: answers.sessionLength || null, schedule_notes: answers.scheduleNotes.trim() || null },
       };
     case 'coach':
       return {
-        section: 'coach_preferences',
-        patch: { guidance_style: answers.coachGuidance },
+        section: 'training_preferences',
+        patch: { training_access: answers.trainingAccess || null, constraint_notes: answers.constraintNotes.trim() || null },
       };
     case 'food_safety':
       return {
@@ -161,12 +185,15 @@ export function onboardingPreferenceWrite(
             selection: answers.foodSafety,
             notes: answers.foodSafetyNotes.trim() || null,
           },
+          food_preferences: answers.foodPreferences.trim() || null,
+          fueling_notes: answers.fuelingNotes.trim() || null,
+          meal_prep: answers.mealPrep === 'yes' ? true : answers.mealPrep === 'no' ? false : null,
         },
       };
     case 'proactivity':
       return {
-        section: 'notification_preferences',
-        patch: { proactivity_level: answers.proactivity },
+        section: 'coach_preferences',
+        patch: { guidance_style: answers.proactivity, detail_level: answers.coachDetail, tone: answers.coachTone, proactive_suggestions: answers.proactivity === 'proactive' },
       };
   }
 }
