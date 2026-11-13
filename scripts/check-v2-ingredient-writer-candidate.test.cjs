@@ -222,3 +222,30 @@ test('each USDA food retains its explicit form restrictions and distinct calorie
   assert.equal(binding.profile_approval,'pending_reviewer');
  }
 });
+
+
+test('verified USDA source evidence cannot be mistaken for canonical approval',()=>{
+ const bindings=readEvidence('ALL-228-EIGHT-REVIEWED-SOURCE-BINDINGS-2026-11-12.json');
+ const digests=readEvidence('ALL-225-USDA-EIGHT-PER-FOOD-ENERGY-DIGESTS-2026-11-12.json');
+ const attestation=bindings.source_attestation;
+ assert.equal(attestation.status,'original_archive_raw_nutrient_verification_passed_not_identity_approval');
+ assert.equal(attestation.verified_record_count,8);
+ assert.equal(attestation.verified_nutrient_observations,40);
+ assert.equal(attestation.archive_sha256,digests.archiveSha256);
+ const sources=new Map(digests.records.map(record=>[String(record.fdcId),record]));
+ assert.equal(sources.size,8);
+ for(const binding of bindings.bindings){
+  const source=sources.get(binding.reviewed_source_reference.external_record_id);
+  assert(source,'verified source evidence has no pinned USDA digest');
+  assert.equal(binding.nutrition_evidence.raw_archive_nutrient_observations_verified,true);
+  assert.equal(binding.nutrition_evidence.source_payload_sha256_verified,source.sourcePayloadSha256);
+  assert.deepEqual(binding.nutrition_evidence.raw_archive_verified_nutrient_ids,[1003,1004,1005,1093,source.selectedFdcNutrientId]);
+  assert.equal(binding.canonical_v2_id,null);
+  assert.equal(binding.identity_approval,'pending_reviewer');
+  assert.equal(binding.profile_approval,'pending_reviewer');
+  assert.equal(binding.conversion_review.household_and_purchase_yields_approved,false);
+ }
+ assert.equal(bindings.calculationReady,false);
+ assert.equal(bindings.approvedForPublication,false);
+ assert.equal(bindings.authorizedToWrite,false);
+});
