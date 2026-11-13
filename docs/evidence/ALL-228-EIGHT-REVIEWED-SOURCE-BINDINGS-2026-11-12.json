@@ -2,7 +2,7 @@
   "contract": "ALL-228 canonical Ingredient Database candidate-source bindings; review only, NOT seed",
   "owner": "ALL-228",
   "relatedOwner": "ALL-222",
-  "status": "source_evidence_applied_pending_individual_identity_and_nutrient_review",
+  "status": "original_usda_raw_nutrients_verified_canonical_identity_and_profiles_pending_individual_reviewer",
   "sourceEvidencePath": "docs/evidence/ALL-228-EIGHT-DIRECT-FDC-FOOD-FORM-NUTRIENT-BASIS-2026-11-12.json",
   "sourceEvidenceArchiveSha256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579",
   "reviewState": "needs_review",
@@ -33,7 +33,17 @@
         "energy_source_nutrient_id": 1008,
         "alternative_energy_source_nutrient_id": null,
         "energy_selection_status": "pending_ALL-225_energy_policy",
-        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready",
+        "raw_archive_nutrient_observations_verified": true,
+        "raw_archive_verified_nutrient_ids": [
+          1003,
+          1004,
+          1005,
+          1093,
+          1008
+        ],
+        "source_payload_sha256_verified": "77cf3ae438814c51bb5ef732b14a6f2643fa54b5c428f0104354c24473368323",
+        "raw_archive_verification_scope": "selected 100g edible source-only ID/unit/amount; canonical calculation still needs reviewer approval"
       },
       "conversion_review": {
         "source_food_portion_evidence": [
@@ -81,7 +91,17 @@
         "energy_source_nutrient_id": 1008,
         "alternative_energy_source_nutrient_id": null,
         "energy_selection_status": "pending_ALL-225_energy_policy",
-        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready",
+        "raw_archive_nutrient_observations_verified": true,
+        "raw_archive_verified_nutrient_ids": [
+          1003,
+          1004,
+          1005,
+          1093,
+          1008
+        ],
+        "source_payload_sha256_verified": "0b8fc2d591a88381aa11cf0e3041f3b3f30ef4a660d68f74e3f483214f6d8b51",
+        "raw_archive_verification_scope": "selected 100g edible source-only ID/unit/amount; canonical calculation still needs reviewer approval"
       },
       "conversion_review": {
         "source_food_portion_evidence": [
@@ -128,7 +148,17 @@
         "energy_source_nutrient_id": 2048,
         "alternative_energy_source_nutrient_id": 2047,
         "energy_selection_status": "pending_ALL-225_energy_policy",
-        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready",
+        "raw_archive_nutrient_observations_verified": true,
+        "raw_archive_verified_nutrient_ids": [
+          1003,
+          1004,
+          1005,
+          1093,
+          2048
+        ],
+        "source_payload_sha256_verified": "88bec4819f0243de72ad7ada9f6f4f9295e66f3e19892710d4757adc41d70b8f",
+        "raw_archive_verification_scope": "selected 100g edible source-only ID/unit/amount; canonical calculation still needs reviewer approval"
       },
       "conversion_review": {
         "source_food_portion_evidence": [
@@ -174,7 +204,17 @@
         "energy_source_nutrient_id": 2048,
         "alternative_energy_source_nutrient_id": 2047,
         "energy_selection_status": "pending_ALL-225_energy_policy",
-        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready",
+        "raw_archive_nutrient_observations_verified": true,
+        "raw_archive_verified_nutrient_ids": [
+          1003,
+          1004,
+          1005,
+          1093,
+          2048
+        ],
+        "source_payload_sha256_verified": "b2e32066eeb463137d35b84670e3c26504c5fa62f32734946a8b59e404d4e2e6",
+        "raw_archive_verification_scope": "selected 100g edible source-only ID/unit/amount; canonical calculation still needs reviewer approval"
       },
       "conversion_review": {
         "source_food_portion_evidence": [
@@ -220,7 +260,17 @@
         "energy_source_nutrient_id": 2048,
         "alternative_energy_source_nutrient_id": 2047,
         "energy_selection_status": "pending_ALL-225_energy_policy",
-        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready",
+        "raw_archive_nutrient_observations_verified": true,
+        "raw_archive_verified_nutrient_ids": [
+          1003,
+          1004,
+          1005,
+          1093,
+          2048
+        ],
+        "source_payload_sha256_verified": "d369e999d09bc5e73742bcfd466350874a3671f6c96f9d916c6cecff5787f08f",
+        "raw_archive_verification_scope": "selected 100g edible source-only ID/unit/amount; canonical calculation still needs reviewer approval"
       },
       "conversion_review": {
         "source_food_portion_evidence": [
@@ -267,7 +317,17 @@
         "energy_source_nutrient_id": 2048,
         "alternative_energy_source_nutrient_id": 2047,
         "energy_selection_status": "pending_ALL-225_energy_policy",
-        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready",
+        "raw_archive_nutrient_observations_verified": true,
+        "raw_archive_verified_nutrient_ids": [
+          1003,
+          1004,
+          1005,
+          1093,
+          2048
+        ],
+        "source_payload_sha256_verified": "9666e868d07842fc3f6e69a904b7aa7cf4b8607342fdc9391210168d98b28224",
+        "raw_archive_verification_scope": "selected 100g edible source-only ID/unit/amount; canonical calculation still needs reviewer approval"
       },
       "conversion_review": {
         "source_food_portion_evidence": [
@@ -312,7 +372,17 @@
         "energy_source_nutrient_id": 2048,
         "alternative_energy_source_nutrient_id": 2047,
         "energy_selection_status": "pending_ALL-225_energy_policy",
-        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready",
+        "raw_archive_nutrient_observations_verified": true,
+        "raw_archive_verified_nutrient_ids": [
+          1003,
+          1004,
+          1005,
+          1093,
+          2048
+        ],
+        "source_payload_sha256_verified": "020baa3671721a0d4fea358fd729afd3b06eb39f5d46166a81061805748a41ed",
+        "raw_archive_verification_scope": "selected 100g edible source-only ID/unit/amount; canonical calculation still needs reviewer approval"
       },
       "conversion_review": {
         "source_food_portion_evidence": [
@@ -356,7 +426,17 @@
         "energy_source_nutrient_id": 2048,
         "alternative_energy_source_nutrient_id": 2047,
         "energy_selection_status": "pending_ALL-225_energy_policy",
-        "nutrient_values_review_status": "source_transcribed_not_calculation_ready"
+        "nutrient_values_review_status": "source_transcribed_not_calculation_ready",
+        "raw_archive_nutrient_observations_verified": true,
+        "raw_archive_verified_nutrient_ids": [
+          1003,
+          1004,
+          1005,
+          1093,
+          2048
+        ],
+        "source_payload_sha256_verified": "de8faf99cdeb9b24b9ac84bfee58e1ff1dcd1ab576919794946c400f8be39121",
+        "raw_archive_verification_scope": "selected 100g edible source-only ID/unit/amount; canonical calculation still needs reviewer approval"
       },
       "conversion_review": {
         "source_food_portion_evidence": [
@@ -377,5 +457,15 @@
         "no brand-specific spices or draining assumptions"
       ]
     }
-  ]
+  ],
+  "source_attestation": {
+    "status": "original_archive_raw_nutrient_verification_passed_not_identity_approval",
+    "verified_record_count": 8,
+    "verified_nutrient_observations": 40,
+    "archive_sha256": "dd414cc9f1a132626bad354ef6655972c78b44aff14f16114dc899708663c579",
+    "verified_by": "founder_local_read_only_verifier_output_2026-11-12",
+    "verifier": "scripts/verify-v2-usda-eight-source-nutrients.py",
+    "scope": "source digest, exact USDA description, selected raw energy/protein/fat/carbohydrate/sodium nutrient ID+unit+amount; alternative 2047 energy where listed",
+    "limitations": "Not a canonical ID, profile reviewer approval, household conversion, source importer approval, or publication authorization"
+  }
 }
