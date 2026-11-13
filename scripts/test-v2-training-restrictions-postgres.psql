@@ -11,7 +11,7 @@ DO $roles$ BEGIN
  IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN BYPASSRLS; END IF;
 END $roles$;
 CREATE TABLE auth.users(id uuid PRIMARY KEY);
-CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE);
+CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,not_after timestamptz);
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE SQL STABLE AS $uid$
  SELECT nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
 $uid$;
@@ -57,17 +57,22 @@ BEGIN
   PERFORM public.v2_training_active_restrictions_read_candidate(a);
   RAISE EXCEPTION 'Empty uncertified rules were trusted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
- j:=public.v2_training_restriction_write_candidate(a,act0,
-  'certify_empty',null,null,null,0);
- IF (j->>'certifiedRevision')::integer<>1 THEN RAISE EXCEPTION 'Initial certification failed'; END IF;
- j:=public.v2_training_active_restrictions_read_candidate(a);
- IF j->>'verified'<>'true' OR pg_catalog.jsonb_array_length(j->'restrictions')<>0 THEN
-  RAISE EXCEPTION 'Verified empty inventory incorrect'; END IF;
+ -- Account absence of rules cannot establish inventory reconciliation.
+ BEGIN
+  PERFORM public.v2_training_restriction_write_candidate(a,act0,
+   'certify_empty',null,null,null,0);
+  RAISE EXCEPTION 'Athlete self-certified absent restrictions';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_training_active_restrictions_read_candidate(a);
+  RAISE EXCEPTION 'Uncertified inventory trusted after denied request';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- A user can still register a real restriction as the first reviewed action.
  j:=public.v2_training_restriction_write_candidate(a,act1,
-  'activate',rule,'exercise','lying leg curl',1);
- IF (j->>'certifiedRevision')::integer<>2 THEN RAISE EXCEPTION 'Restriction activation failed'; END IF;
+  'activate',rule,'exercise','lying leg curl',0);
+ IF (j->>'certifiedRevision')::integer<>1 THEN RAISE EXCEPTION 'Initial restriction activation failed'; END IF;
  j:=public.v2_training_restriction_write_candidate(a,act1,
-  'activate',rule,'exercise','lying leg curl',1);
+  'activate',rule,'exercise','lying leg curl',0);
  IF j->>'replayed'<>'true' THEN RAISE EXCEPTION 'Exact retry failed'; END IF;
  j:=public.v2_training_active_restrictions_read_candidate(a);
  IF pg_catalog.jsonb_array_length(j->'restrictions')<>1 OR
@@ -75,25 +80,36 @@ BEGIN
   RAISE EXCEPTION 'Saved restriction missing from fresh read'; END IF;
  BEGIN
   PERFORM public.v2_training_restriction_write_candidate(a,act1,
-   'activate',rule,'exercise','wrong rule',1);
+   'activate',rule,'exercise','wrong rule',0);
   RAISE EXCEPTION 'Changed action ID reused';
  EXCEPTION WHEN unique_violation THEN NULL; END;
  BEGIN
   PERFORM public.v2_training_restriction_write_candidate(b,act2,
-   'retire',rule,null,null,2);
+   'retire',rule,null,null,1);
   RAISE EXCEPTION 'Owner spoofing accepted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN
   PERFORM public.v2_training_restriction_write_candidate(a,act2,
-   'retire',rule,null,null,1);
+   'retire',rule,null,null,0);
   RAISE EXCEPTION 'Stale revision accepted';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
  j:=public.v2_training_restriction_write_candidate(a,act2,
-  'retire',rule,null,null,2);
- IF (j->>'certifiedRevision')::integer<>3 THEN RAISE EXCEPTION 'Retirement failed'; END IF;
+  'retire',rule,null,null,1);
+ IF (j->>'certifiedRevision')::integer<>2 THEN RAISE EXCEPTION 'Retirement failed'; END IF;
  j:=public.v2_training_active_restrictions_read_candidate(a);
  IF pg_catalog.jsonb_array_length(j->'restrictions')<>0 THEN
   RAISE EXCEPTION 'Retired restriction remains active'; END IF;
+ -- A revoked/expired authenticated session cannot read or mutate rules.
+ UPDATE auth.sessions SET not_after=now()-interval '1 second'
+  WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ BEGIN
+  PERFORM public.v2_training_restriction_write_candidate(a,
+   '77777777-7777-4777-8777-777777777777','activate',
+   '88888888-8888-4888-8888-888888888888','exercise','unsafe movement',2);
+  RAISE EXCEPTION 'Expired restriction session wrote';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE auth.sessions SET not_after=NULL
+  WHERE id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
  -- An entirely different authenticated owner has no access to A's rules.
  PERFORM pg_catalog.set_config('request.jwt.claim.sub',b::text,true);
  PERFORM pg_catalog.set_config('request.jwt.claim.session_id',
