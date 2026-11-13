@@ -168,6 +168,30 @@ def main():
         + review(2,"reviewed",review_key2)
         + review(1,"needs_review",review_key1)
         + review(2,"reviewed",review_key2)
+        # Negative hosted controls are executed by the independent reviewer
+        # session, inside nested PostgreSQL exception subtransactions. Neither
+        # may generate an attestation or make a profile calculation-ready.
+        + "DO $reject_energy$ DECLARE message_text text; BEGIN "
+        + "BEGIN PERFORM allin_private.v2_attest_ingredient_energy("
+        + literal(profile) + ",3," + literal(d) + ","
+        + literal("Attempt verified energy attestation without source release evidence")
+        + "); RAISE EXCEPTION 'missing energy source should have been rejected'; "
+        + "EXCEPTION WHEN SQLSTATE '23514' THEN "
+        + "GET STACKED DIAGNOSTICS message_text = MESSAGE_TEXT; "
+        + "IF message_text <> 'ambiguous or missing source archive evidence' "
+        + "THEN RAISE EXCEPTION 'unexpected source attestation denial'; END IF; "
+        + "END; END $reject_energy$;\n"
+        + "DO $reject_release$ DECLARE message_text text; BEGIN "
+        + "BEGIN PERFORM allin_private.v2_review_ingredient_profile_status("
+        + literal(profile) + ",3," + literal(d) + ",'calculation_ready',"
+        + literal("Temporarily verify publication hard stop on unqualified USDA source")
+        + "," + literal(str(uuid.uuid4())) + "); "
+        + "RAISE EXCEPTION 'unapproved calculation-ready transition succeeded'; "
+        + "EXCEPTION WHEN SQLSTATE '0A000' THEN "
+        + "GET STACKED DIAGNOSTICS message_text = MESSAGE_TEXT; "
+        + "IF message_text NOT LIKE 'calculation_ready blocked pending%' "
+        + "THEN RAISE EXCEPTION 'unexpected publication denial'; END IF; "
+        + "END; END $reject_release$;\n"
         + "ROLLBACK;\n"
     )
     fixture_created = False
@@ -189,6 +213,7 @@ def main():
             raise RuntimeError("Replay was not idempotent")
         verified = True
         print("PASS independently authenticated USDA review and in-transaction idempotent replay.")
+        print("PASS missing USDA energy evidence and calculation-ready publication correctly denied.")
         print("No calculation-ready publication. Writer transaction rolled back.")
     finally:
         # Always revoke credential even if test failed, then remove the fixture
