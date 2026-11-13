@@ -65,6 +65,11 @@ class HostedEightSeedSafety(unittest.TestCase):
         self.assertIn("DROP ROLE IF EXISTS "+officer,sql)
         self.assertIn("DROP ROLE IF EXISTS "+worker,sql)
         self.assertIn("DELETE FROM public.v2_ingredient_profile_nutrients WHERE profile_id IN",sql)
+        self.assertNotIn("DELETE FROM allin_private.v2_ingredient_review_operators",sql)
+        self.assertIn("Enrollments are immutable audit history",sql)
+        final=hosted.clean_sql(officer,worker)
+        self.assertIn("enabled=false AND revoked_at IS NOT NULL",final)
+        self.assertIn("v2_ingredient_profile_nutrients)=0",final)
         self.assertNotIn("DROP TABLE public.v2_",sql)
         self.assertNotIn("DROP SCHEMA public",sql)
 
