@@ -34,8 +34,8 @@ export function quarantineCron(sql){
  assert(!/\b(?:cron\.|create\s+extension|pg_net|vault\.)/i.test(safe),'unsafe scheduler/runtime reference');
  return safe+'\n';
 }
-export function validateInventory(names,read){
- const result=auditAppliedMigrations(names,read);
+export function canonicalSql(sql){\n assert(!/(?<!\\r)\\r(?!\\n)/.test(sql),'unsupported isolated CR line ending');\n return sql.replace(/\\r\\n/g,'\\n');\n}\nexport function validateInventory(names,read){
+ // Windows Git can check out unchanged .sql with CRLF. Pin the canonical LF\n // bytes already recorded in the authoritative immutable digest ledger.\n const result=auditAppliedMigrations(names,n=>canonicalSql(read(n)));
  assert(result.ok,result.problems.join('; '));
  assert(result.appliedCount===18,'expected 18 canonical migrations');
  const observed=names.filter(n=>/^\d{14}_.*\.sql$/.test(n));
@@ -78,7 +78,7 @@ function main(){
  try{
    sql(target,auth,'Auth schema bootstrap');
    for(const {name} of files){
-     const original=read(name);
+     const original=canonicalSql(read(name));
      const executed=name===cronMigration?quarantineCron(original):original;
      assert(!/\b(?:net\.http|pg_net|vault\.|cron\.schedule)\s*\(/i.test(executed),
        'unsafe outbound or scheduler reference '+name);
