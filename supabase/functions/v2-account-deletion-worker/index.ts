@@ -47,6 +47,11 @@ Deno.serve(async (req: Request) => {
   };
   const result = await executeDeletionOnce(request, {
     claim: async () => await client.rpc('v2_claim_account_deletion_for_processing', args),
+    // Deliberately fail closed until server-controlled immutable Storage plans,
+    // service-role database checkpoint verification, and the authoritative
+    // upload write barrier are all integrated and certified. A passing review
+    // RPC alone MUST NOT unlock irreversible Auth deletion.
+    verifyStorageReadiness: async () => null,
     deleteAuthUser: async userId => await client.auth.admin.deleteUser(userId),
     inspectAuthUser: async userId => await client.auth.admin.getUserById(userId),
     complete: async () => await client.rpc('v2_record_account_deletion_completion', args),
@@ -55,7 +60,8 @@ Deno.serve(async (req: Request) => {
       ...args, p_failure_code: reason,
     }),
   });
-  if (result !== 'completed') return reply(result === 'claim_not_accepted' ? 409 : 500, result);
+  if (result !== 'completed') return reply(result === 'claim_not_accepted' ? 409 :
+    result === 'storage_not_accepted' ? 503 : 500, result);
   return new Response(JSON.stringify({ status: 'completed', request_id: request.request_id }), {
     status: 200, headers,
   });
