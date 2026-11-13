@@ -9,6 +9,7 @@ const bucketId='v2-private-workout-objects';
 function fixture() {
  const objects=new Set([A+'/one.fit',A+'/nested/two.fit',B+'/leave-me.fit']);
  const checkpoints=[];
+ const plans=new Map();
  let failOnce=false;
  return {
   objects,checkpoints,
@@ -26,7 +27,17 @@ function fixture() {
     if(failOnce){failOnce=false;throw Error('temporary Storage 503');}
     objects.delete(path);return {deleted:true};
    },
-   recordCheckpoint:async(entry)=>{checkpoints.push(entry);return {persisted:true};},
+   recordCheckpoint:async(entry)=>{
+    const index=checkpoints.findIndex(x=>x.ownerId===entry.ownerId&&
+     x.requestId===entry.requestId&&x.bucketId===entry.bucketId&&x.path===entry.path);
+    if(index<0)checkpoints.push(entry);else checkpoints[index]=entry;
+    return {persisted:true};
+   },
+   persistAndLoadObjectPlan:async({ownerId,requestId,bucketId,observedPaths})=>{
+    const id=ownerId+':'+requestId+':'+bucketId;
+    if(!plans.has(id))plans.set(id,[...observedPaths]);
+    return {ownerId,requestId,bucketId,durable:true,paths:[...plans.get(id)]};
+   },
    readCheckpoint:async({ownerId,requestId,bucketId,path})=>checkpoints.find(c=>
     c.ownerId===ownerId&&c.requestId===requestId&&c.bucketId===bucketId&&c.path===path),
    assertOwnerWritesQuiesced:async({ownerId,requestId})=>ownerId===A&&requestId===R,
@@ -41,7 +52,7 @@ test('ALL-251 review removes only A, verifies absence and repeats idempotently',
  assert.deepEqual([...f.objects],[B+'/leave-me.fit']);
  assert.equal(f.checkpoints.length,2);
  const again=await reviewPrivateStorageCleanup(f.opts);
- assert.equal(again.verifiedAbsent,0);
+ assert.equal(again.verifiedAbsent,2);
  assert.equal(f.objects.has(B+'/leave-me.fit'),true);
 });
 test('transient failure refuses completion; rerun resumes without touching B',async()=>{
@@ -124,4 +135,33 @@ test('unacknowledged or mismatched checkpoint readback refuses success',async()=
  wrong.opts.readCheckpoint=async()=>({...wrong.checkpoints[0],ownerId:B});
  await assert.rejects(reviewPrivateStorageCleanup(wrong.opts),/readback not verified/);
  assert.equal(wrong.objects.has(B+'/leave-me.fit'),true);
+});
+
+test('crash after deletion before checkpoint retains plan and reconciles on retry',async()=>{
+ const f=fixture();let crashed=false;
+ const original=f.opts.recordCheckpoint;
+ f.opts.recordCheckpoint=async entry=>{
+  if(!crashed){crashed=true;throw Error('checkpoint DB unavailable');}
+  return original(entry);
+ };
+ await assert.rejects(reviewPrivateStorageCleanup(f.opts),/checkpoint DB unavailable/);
+ assert.equal(f.objects.has(A+'/one.fit'),false);
+ const result=await reviewPrivateStorageCleanup(f.opts);
+ assert.equal(result.verifiedAbsent,2);
+ assert.equal(f.checkpoints.length,2);
+ assert.deepEqual([...f.objects],[B+'/leave-me.fit']);
+});
+test('missing, wrong-owner and stale immutable plan never authorize completion',async()=>{
+ const f=fixture();
+ delete f.opts.persistAndLoadObjectPlan;
+ await assert.rejects(reviewPrivateStorageCleanup(f.opts),/dependencies required/);
+ const wrong=fixture();
+ wrong.opts.persistAndLoadObjectPlan=async()=>({
+  ownerId:B,requestId:R,bucketId,durable:true,paths:[A+'/one.fit']});
+ await assert.rejects(reviewPrivateStorageCleanup(wrong.opts),/Durable Storage object plan unavailable/);
+ const missing=fixture();
+ missing.opts.persistAndLoadObjectPlan=async()=>({
+  ownerId:A,requestId:R,bucketId,durable:true,paths:[A+'/one.fit']});
+ await assert.rejects(reviewPrivateStorageCleanup(missing.opts),/Unplanned owner Storage object/);
+ assert.equal(missing.objects.size,3);
 });
