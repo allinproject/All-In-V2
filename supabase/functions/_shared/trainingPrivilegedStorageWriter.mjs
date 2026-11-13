@@ -24,10 +24,17 @@ function equalBytes(a,b) {
  for(let i=0;i<a.length;i++)mismatch|=a[i]^b[i];
  return mismatch===0;
 }
-export function createPrivilegedStorageWriter({supabase,leaseAuthority=null}) {
+export function createPrivilegedStorageWriter({supabase,leaseAuthority=null,requireAttestedLease=false}) {
  if(!supabase || typeof supabase.rpc!=='function'||
   typeof supabase.storage?.from!=='function')
   throw Error('Trusted server-only Supabase Storage writer required');
+ // A hosted trusted runtime must opt into strict attested-only leases so
+ // future code cannot silently fall back to service-role unsigned RPCs.
+ // This does not itself isolate provider-level Storage or shared credentials.
+ if(requireAttestedLease===true&&leaseAuthority===null)
+  throw Error('Attested privileged Storage lease authority required');
+ if(requireAttestedLease!==true&&requireAttestedLease!==false)
+  throw Error('Invalid privileged Storage lease enforcement mode');
  if(leaseAuthority!==null &&
   (typeof leaseAuthority.begin!=='function'||typeof leaseAuthority.settle!=='function'))
   throw Error('Exact attested privileged Storage lease authority required');
