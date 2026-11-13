@@ -11,7 +11,7 @@ CREATE TABLE auth.users (
  raw_user_meta_data jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
- SELECT pg_catalog.nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
+ SELECT nullif(pg_catalog.current_setting('request.jwt.claim.sub',true),'')::uuid
 $$;
 INSERT INTO auth.users (id,raw_user_meta_data)
  VALUES ('11111111-1111-4111-8111-111111111111','{"display_name":"preserved-staging-test"}');
