@@ -17,6 +17,14 @@ DECLARE
  v_missing text[];
  v_unknown text[];
  v_snapshot uuid;
+ v_fuel_expected text[]:=ARRAY[
+   'public.v2_food_log_entries',
+   'allin_private.v2_food_log_write_actions',
+   'public.v2_hydration_events',
+   'allin_private.v2_hydration_actions'];
+ v_fuel_count integer;
+ v_fuel_table regclass;
+ v_fuel_relation record;
 BEGIN
  PERFORM allin_private.v2_account_export_authorize_request_candidate(
    p_owner,p_session,p_request);
@@ -79,6 +87,50 @@ BEGIN
     -- export_registered=false; the active owner-table inventory must fail
     -- closed if any of those candidate owner tables are introduced.
  ) AS reviewed(schema_name,table_name);
+ -- Optional reviewed Fuel overlay extends THIS SAME owner inventory and
+ -- paginated reader; it is never a second account-export source or endpoint.
+ -- The quartet is atomic: partial Food/Hydration installs must refuse export.
+ SELECT pg_catalog.count(*) INTO v_fuel_count
+ FROM pg_catalog.unnest(v_fuel_expected) AS f(table_name)
+ WHERE pg_catalog.to_regclass(f.table_name) IS NOT NULL;
+ IF v_fuel_count NOT IN (0,4) THEN
+   RAISE EXCEPTION 'Incomplete owner Food Log/Hydration graph'
+     USING ERRCODE='42501';
+ END IF;
+ IF v_fuel_count=4 THEN
+   FOR v_fuel_relation IN
+     SELECT pg_catalog.to_regclass(f.table_name) AS relation_oid
+     FROM pg_catalog.unnest(v_fuel_expected) AS f(table_name)
+   LOOP
+     v_fuel_table:=v_fuel_relation.relation_oid;
+     IF NOT EXISTS(
+       SELECT 1 FROM pg_catalog.pg_class c
+       WHERE c.oid=v_fuel_table AND c.relkind IN ('r','p')
+         AND c.relrowsecurity
+     ) OR NOT EXISTS(
+       SELECT 1 FROM pg_catalog.pg_attribute a
+       WHERE a.attrelid=v_fuel_table AND a.attname='user_id'
+         AND a.attnum>0 AND NOT a.attisdropped
+     ) OR NOT EXISTS(
+       SELECT 1 FROM pg_catalog.pg_constraint fk
+       JOIN pg_catalog.pg_attribute owner_column
+         ON owner_column.attrelid=fk.conrelid
+         AND owner_column.attname='user_id'
+       WHERE fk.conrelid=v_fuel_table AND fk.contype='f'
+         AND fk.confrelid='auth.users'::pg_catalog.regclass
+         AND fk.confdeltype='c'
+         AND owner_column.attnum=ANY(fk.conkey)
+     ) OR pg_catalog.has_table_privilege('anon',v_fuel_table,
+       'SELECT,INSERT,UPDATE,DELETE')
+       OR pg_catalog.has_table_privilege('authenticated',v_fuel_table,
+       'INSERT,UPDATE,DELETE')
+     THEN
+       RAISE EXCEPTION 'Unapproved Food Log/Hydration owner security contract'
+         USING ERRCODE='42501';
+     END IF;
+   END LOOP;
+   v_expected:=v_expected||v_fuel_expected;
+ END IF;
  SELECT pg_catalog.array_agg(n.nspname||'.'||c.relname ORDER BY n.nspname,c.relname)
  INTO v_actual
  FROM pg_catalog.pg_class c
