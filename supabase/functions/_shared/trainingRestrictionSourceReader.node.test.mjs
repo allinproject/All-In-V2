@@ -7,6 +7,9 @@ const other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const session='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const version='owner-snapshot-12';
 const fingerprint='e'.repeat(32);
+const signedFixtureToken=['eyJhbGciOiJIUzI1NiJ9',
+ Buffer.from(JSON.stringify({sub:owner,session_id:session})).toString('base64url'),
+ 'test-signature'].join('.');
 function fixture(options={}) {
  const calls=[];let released=false,authReads=0,readers=0,reconciled=0;
  const client={
@@ -48,7 +51,7 @@ function fixture(options={}) {
  const ingest=createTrainingRestrictionSourceReaderCandidate;
  const instance=()=>ingest({
   pool:{connect:async()=>client},
-  authenticateSession:async()=>{authReads++;return {ownerId:owner,sessionId:session};},
+  authClient:{auth:{getUser:async()=>{authReads++;return {data:{user:{id:owner}}};}}},
   sourceReaders,
   reconcileSource:async ({kind,records})=>{
    reconciled++;
@@ -62,7 +65,7 @@ function fixture(options={}) {
 }
 test('server reader binds all five exact sources to same serializable Auth session, inserts once',async()=>{
  const f=fixture();
- const receipt=await f.instance().ingestReviewedSources({bearerToken:'verified',snapshotVersion:version});
+ const receipt=await f.instance().ingestReviewedSources({bearerToken:signedFixtureToken,snapshotVersion:version});
  assert.equal(receipt.status,'review_required');
  assert.equal(f.authReads,1);
  assert.equal(f.readers,4);
@@ -85,7 +88,7 @@ test('partial, cross-owner and unreconciled source records roll back with no ing
  ]) {
   const f=fixture(options);
   await assert.rejects(f.instance().ingestReviewedSources({
-   bearerToken:'verified',snapshotVersion:version,
+   bearerToken:signedFixtureToken,snapshotVersion:version,
   }),/complete owner-bound|foreign\/malformed|Unresolved/);
   assert.equal(f.calls.at(-1).sql,'ROLLBACK');
   assert.equal(f.calls.some(x=>x.sql.includes('ingest_restriction_source_evidence_candidate')),false);
@@ -98,7 +101,7 @@ test('unverified owner/session refused before acquiring private pool',async()=>{
  const r=createTrainingRestrictionSourceReaderCandidate({
   pool:{connect:async()=>{connected=true;throw Error('should not connect');}},
   sourceReaders:readers,reconcileSource:async()=>{},
-  authenticateSession:async()=>({ownerId:owner,sessionId:'unverified'}),
+  authClient:{auth:{getUser:async()=>({error:Error('revoked')})}},
  });
  await assert.rejects(r.ingestReviewedSources({bearerToken:'bad',snapshotVersion:version}),/Verified/);
  assert.equal(connected,false);
@@ -125,10 +128,10 @@ test('stale or unexpectedly certified DB receipts roll back',async()=>{
   evidenceRef:'trusted:'+kind,records:[],
  })]));
  const r=createTrainingRestrictionSourceReaderCandidate({
-  pool:{connect:async()=>db},authenticateSession:async()=>({ownerId:owner,sessionId:session}),
+  pool:{connect:async()=>db},authClient:{auth:{getUser:async()=>({data:{user:{id:owner}}})}},
   sourceReaders:readers,reconcileSource:async()=>({reconciledCount:0,unresolvedCount:0}),
  });
- await assert.rejects(r.ingestReviewedSources({bearerToken:'valid',snapshotVersion:version}),
+ await assert.rejects(r.ingestReviewedSources({bearerToken:signedFixtureToken,snapshotVersion:version}),
   /Unapproved Training ingestion receipt/);
  assert.equal(released,true);
 });
