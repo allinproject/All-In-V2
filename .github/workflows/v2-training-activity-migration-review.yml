@@ -4,6 +4,7 @@ on:
     paths:
       - 'supabase/migrations/2026111303550*_v2_*_review.sql'
       - 'scripts/test-v2-training-activity-migration-parity.mjs'
+      - 'scripts/test-v2-training-activity-two-owner-local.psql'
       - 'docs/architecture/sql/V2-*-CANDIDATE.sql'
       - '.github/workflows/v2-training-activity-migration-review.yml'
   workflow_dispatch:
@@ -158,6 +159,14 @@ jobs:
             RAISE NOTICE 'PASS release review: % RLS owner tables, % denied client functions, export and Auth cascade gates',total_tables,total_functions;
           END $audit$;
           SQL
+      - name: Exercise both authenticated owner readers with populated two-athlete fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          container="$(docker ps --filter name=supabase_db_ --format '{{.ID}}' | head -n 1)"
+          test -n "$container"
+          docker cp scripts/test-v2-training-activity-two-owner-local.psql "$container:/tmp/test-v2-training-activity-two-owner-local.psql"
+          docker exec "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/test-v2-training-activity-two-owner-local.psql
       - name: Stop disposable database
         if: always()
         run: supabase stop --no-backup || true
