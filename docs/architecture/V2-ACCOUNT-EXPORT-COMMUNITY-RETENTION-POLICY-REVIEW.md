@@ -254,3 +254,37 @@ A single comment may be reported by multiple permitted viewers. The canonical co
 - **Retention/export boundaries:** Operator memberships, private grant events, evidence-access receipts, moderation cases and appeals are not automatically public Community content or complete owner-export collections. ALL-219 legal/privacy review must classify first- and third-party identities, purpose-limited incident evidence, backup/holds, audit-retention periods and deletion/exceptions before enabling real data collection. No duration, approval or completeness is inferred from isolated testing.
 
 **Still needed before activation:** independently approved operator provisioning and four-eyes administration, rate limiting and incident escalation, host Auth session/device tests, operational queue/reviewer UI, access auditing and legal acceptance. No client role receives direct table or RPC grants. The account export remains complete=false and destructive deletion remains disabled.
+
+
+## 2026-11-13 — Private moderator interface (review-only client)
+
+The existing ALL-244 database moderation queue has a corresponding UI component at
+`apps/mobile-v2/src/features/community/PrivateModeratorReviewContent.tsx`,
+with validated transport boundary at `moderatorReviewContract.ts`.
+
+**Not publicly routable:** This component is intentionally not referenced in
+the five-tab navigator, Community screen, or Expo Router tree. It does not
+directly call Supabase or receive private schema or function privileges.
+The typed `ModeratorReviewTransport` must be implemented by a separately
+approved, server-side moderator gateway that authenticates a live Auth
+session, validates the active reviewer grant on **every** read and mutation,
+enforces permitted report/appeal scopes and passes only allowlisted response
+fields. The trusted server, not the mobile device, generates evidence access
+receipt UUIDs and records the private read audit.
+
+The view provides an initial-review queue, an appeals queue, keyset page
+loading, individually audited case evidence, and explicit dismiss/hold/hide
+or uphold/overturn actions using the server case version. It never claims a
+successful decision until the authoritative server result matches the
+expected report ID, decision and incremented version; it reloads the queue
+after a decision. Review content is cleared when its reviewer session
+changes or the server refuses access. New response columns, cross-queue
+items, foreign reports, malformed cursors, overbroad evidence and stale
+results fail closed.
+
+Before enabling a trusted route, the gateway must be implemented and
+tested with real hosted Auth and operator provisioning, evidence-access
+logging, rate limits, abuse-escalation workflow, focus/session revocation
+behavior, audit/retention/legal acceptance and reviewed deployment.
+No current source/CI test authorizes activating the private moderator view
+or the complete account export.
