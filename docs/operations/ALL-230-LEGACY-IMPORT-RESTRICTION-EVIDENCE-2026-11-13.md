@@ -22,6 +22,8 @@ No source data, account identifiers, tokens, individual row hashes, or backup fi
 | `public.allin_coach_thread_state` | 0 |
 | `public.allin_coaching_records` | 0 |
 
+Additional source-only JSON-key observation at **2026-11-13 13:01 UTC** found `preferences.limitation` present as a **nonempty string** in the one Training row; `preferences.notes` also has string type, `draft` is a JSON object with `workouts`, and `accepted` is SQL NULL. The private limitation/notes/workout contents and owner identity were **not retrieved or published**. This is positive evidence of unmapped legacy limitation content, so an empty V2 restriction inventory cannot legitimately be certified until the source owner reviews and maps it or explicitly documents a justified exclusion.
+
 The single `allin_training` record has JSONB `preferences`, `draft`, and `accepted` fields. **One row can encode multiple preferences, plans, injuries, avoided movements, limitations, or other restrictions.** Counts cannot prove their absence or whether other V1 tables, messages, providers, private Storage, or previous snapshots contain relevant information.
 
 ## Acceptance blockers — must stay closed
