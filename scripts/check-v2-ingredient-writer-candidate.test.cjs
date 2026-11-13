@@ -96,6 +96,27 @@ test('energy attestation is immutable, source-bound and never grants publication
  assert(!/GRANT\s+(?:INSERT|UPDATE|DELETE)\s+ON\s+allin_private\.v2_ingredient_energy_attestations/i.test(energy));
 });
 
+test('source-release issuer attribution and dual-role separation are durable SQL contracts',()=>{
+ const reader=fs.readFileSync(path.join(root,'V2-INGREDIENT-CANONICAL-CATALOG-READER-CANDIDATE.sql'),'utf8');
+ for(const term of [
+  'allin_v2_ingredient_source_releaser',
+  'v2_release_ingredient_source_energy',
+  'source_releaser_db_login name NOT NULL DEFAULT session_user',
+  'source_releaser_db_login,',
+  'source_releaser_db_login<>v_actor',
+  "OR pg_has_role(v_actor::text,'allin_v2_ingredient_reviewer','member')",
+  "OR pg_has_role(v_actor::text,'allin_v2_ingredient_publisher','member')",
+  'GRANT EXECUTE ON FUNCTION allin_private.v2_release_ingredient_source_energy'
+ ]) assertHas(energy,term);
+ for(const source of [writer,energy]) {
+  assertHas(source,"to_regrole('allin_v2_ingredient_source_releaser')");
+  assertHas(source,'session_user');
+ }
+ for(const term of ['NOLOGIN NOINHERIT NOBYPASSRLS','FOR SELECT TO allin_v2_ingredient_catalog_reader'])assertHas(reader,term);
+ assert(!/GRANT\s+allin_v2_ingredient_source_releaser\s+TO\s+/i.test(energy));
+ assert(!/GRANT\s+(?:INSERT|UPDATE|DELETE)\s+ON\s+allin_private\.v2_ingredient_source_energy_evidence\s+TO\s+allin_v2_ingredient_source_releaser/i.test(energy));
+});
+
 test('privileged canonical reviewer and energy functions retain a trusted search path',()=>{
  for(const source of [writer,energy]){
   assertHas(source,'SET search_path = pg_catalog, pg_temp');
