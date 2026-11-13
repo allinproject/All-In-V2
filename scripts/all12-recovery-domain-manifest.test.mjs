@@ -229,7 +229,8 @@ test('Training restriction source, certification and action receipts remain expl
  assert.deepEqual(domain.tables,[
   'public.v2_training_athlete_restrictions',
   'allin_private.v2_training_restriction_certifications',
-  'allin_private.v2_training_restriction_action_receipts'
+  'allin_private.v2_training_restriction_action_receipts',
+  'allin_private.v2_training_restriction_source_evidence'
  ]);
  assert.deepEqual(findUntrackedRecoveryTables(domain.tables),[]);
  const tables=recoveryDomains.flatMap(d=>d.tables);
