@@ -30,6 +30,14 @@ jobs:
           import {readFileSync} from 'node:fs';
           const s=readFileSync('scripts/test-all251-hosted-storage-http-routes.mjs','utf8');
           for(const needle of [
+            "verifiedSigner()",
+            "createAttestedPrivilegedStorageLeaseAuthority",
+            "verifiedWriterUpload(a.id,canonicalA",
+            "verifiedWriterUpload(b.id,canonicalB",
+            "canonical A signed write denied after deletion",
+            "canonical B signed write accepted after A deletion",
+            "signingKey.fill(0)",
+
             "bPre.ok?'OBSERVED':",
             "preRest.ok?'OBSERVED':",
             "preRest.ok?'PASS':'RESTRICTED'",
