@@ -82,6 +82,8 @@ def main():
     admin_pw = getpass.getpass("TEMP project administrator database password (hidden): ")
     if not admin_pw:
         raise RuntimeError("Empty administrator password")
+    global ROLE
+    ROLE = "allin_ing_workload_temp_" + secrets.token_hex(5)
     worker_pw = secrets.token_hex(32)
     ident, profile, source_id, alias = [str(uuid.uuid4()) for _ in range(4)]
     review_key1, review_key2 = [str(uuid.uuid4()) for _ in range(2)]
@@ -105,7 +107,7 @@ def main():
         "(login_role,principal_kind,enabled,enrollment_reference,identity_issuer,"
         "identity_subject,credential_vault_reference,identity_verified_at,credential_expires_at)"
         " VALUES('" + ROLE + "','workload',true,'ALL228-TEMP-REVIEW-ONLY',"
-        "'allin-v2-internal-workload','ingest-temp-review228-20261112',"
+        "'allin-v2-internal-workload','ingest-temp-review228-" + ROLE[-10:] + "',"
         "'ALL228-LOCAL-ONE-SHOT-REVIEW',clock_timestamp(),"
         "clock_timestamp()+interval '10 minutes');\n"
         "INSERT INTO public.v2_ingredients(id,canonical_key,canonical_name,"
@@ -199,21 +201,38 @@ def main():
                    "enabled=false, credential_expires_at=clock_timestamp(),"
                    "revoked_at=clock_timestamp() WHERE login_role='" + ROLE +
                    "' AND revoked_at IS NULL;\n")
-        if fixture_created:
-            cleanup += (
+        # Deletion is scoped to freshly generated UUIDs and safe even if the
+        # setup COMMIT succeeded but its response was lost.
+        cleanup += (
                 "DELETE FROM public.v2_ingredient_aliases WHERE id=" + literal(alias) + ";\n"
                 "DELETE FROM public.v2_ingredient_profile_nutrients WHERE profile_id=" + literal(profile) + ";\n"
                 "DELETE FROM public.v2_ingredient_profile_sources WHERE profile_id=" + literal(profile) + ";\n"
                 "DELETE FROM public.v2_ingredient_source_records WHERE id=" + literal(source_id) + ";\n"
                 "DELETE FROM public.v2_ingredient_nutrition_profiles WHERE id=" + literal(profile) + ";\n"
                 "DELETE FROM public.v2_ingredients WHERE id=" + literal(ident) + ";\n"
-                # Never delete shared nutrient definitions.
-            )
+            # Never delete shared nutrient definitions.
+        )
         cleanup += "COMMIT;\n"
         try:
             db_call("postgres", admin_pw, ca, cleanup)
+            clean_sql = (
+                "SELECT (NOT EXISTS(SELECT 1 FROM public.v2_ingredients WHERE id="
+                + literal(ident) + ") AND NOT EXISTS("
+                "SELECT 1 FROM public.v2_ingredient_nutrition_profiles WHERE id="
+                + literal(profile) + ") AND NOT EXISTS("
+                "SELECT 1 FROM public.v2_ingredient_source_records WHERE id="
+                + literal(source_id) + ") AND NOT EXISTS("
+                "SELECT 1 FROM allin_private.v2_ingredient_review_events WHERE profile_id="
+                + literal(profile) + ") AND NOT EXISTS("
+                "SELECT 1 FROM allin_private.v2_ingredient_review_operators "
+                "WHERE login_role='" + ROLE + "' AND enabled=true) AND NOT EXISTS("
+                "SELECT 1 FROM pg_authid WHERE rolname='" + ROLE
+                + "' AND rolpassword IS NOT NULL))::text;")
+            clean_proof = db_call("postgres", admin_pw, ca, clean_sql).strip()
+            if clean_proof != "true":
+                raise RuntimeError("Scoped fixture or enabled credential remained")
             cleanup_success = True
-            print("PASS temporary staging fixture removed and reviewer password revoked.")
+            print("PASS independent cleanup: zero fixture rows or review events; reviewer password revoked.")
         except Exception:
             print("WARNING: hosted fixture cleanup failed; operator expires in 10 minutes.")
         worker_pw = None
