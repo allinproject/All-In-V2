@@ -32,17 +32,20 @@ function validateInventory(inventory,ownerId,bucketId) {
  * Caller MUST NOT treat this receipt as release approval or enable deletion.
  * Persisted checkpoints must be keyed by (ownerId, requestId, bucketId, path)
  * with idempotent upsert, and must NEVER be trusted in place of object readback.
+ * A durable immutable object plan MUST be written before the first delete;
+ * otherwise a crash between Storage deletion and checkpoint loses evidence.
  */
 export async function reviewPrivateStorageCleanup({
  ownerId,requestId,approvedBucketIds,listBucketCatalog,listOwnerStorageObjects,
- deleteObject,objectExists,recordCheckpoint,readCheckpoint,assertOwnerWritesQuiesced,
+ deleteObject,objectExists,recordCheckpoint,readCheckpoint,persistAndLoadObjectPlan,
+ assertOwnerWritesQuiesced,
 }) {
  if(!UUID.test(ownerId??'')||!UUID.test(requestId??'') ||
     !Array.isArray(approvedBucketIds) || !approvedBucketIds.length ||
     new Set(approvedBucketIds).size!==approvedBucketIds.length ||
     approvedBucketIds.some(id=>typeof id!=='string'||!/^[a-z0-9][a-z0-9-]{1,80}$/.test(id)) ||
     [listBucketCatalog,listOwnerStorageObjects,deleteObject,objectExists,recordCheckpoint,
-     readCheckpoint,assertOwnerWritesQuiesced]
+     readCheckpoint,persistAndLoadObjectPlan,assertOwnerWritesQuiesced]
       .some(fn=>typeof fn!=='function'))
    throw Error('Approved server-only cleanup dependencies required');
  // Only an authoritative server-side writer barrier can establish this.
@@ -61,7 +64,20 @@ export async function reviewPrivateStorageCleanup({
    if(await assertOwnerWritesQuiesced({ownerId,requestId})!==true)
      throw Error('Owner Storage write barrier expired');
    const inventory=await listOwnerStorageObjects({ownerId,requestId,bucketId});
-   const paths=validateInventory(inventory,ownerId,bucketId);
+   const currentlyPresent=validateInventory(inventory,ownerId,bucketId);
+   // Persist the exact scoped object plan before ANY deletion. On retry,
+   // previously removed files still occur in this plan and must get audited.
+   // The canonical server plan must be immutable for this request; new
+   // objects appearing outside it are a fatal write-barrier failure.
+   const plan=await persistAndLoadObjectPlan({ownerId,requestId,bucketId,
+     observedPaths:currentlyPresent});
+   if(plan?.durable!==true||plan?.ownerId!==ownerId||
+      plan?.requestId!==requestId||plan?.bucketId!==bucketId)
+     throw Error('Durable Storage object plan unavailable');
+   const paths=validateInventory({ownerId,bucketId,exhaustive:true,
+     totalCount:plan.paths?.length,paths:plan.paths},ownerId,bucketId);
+   if(currentlyPresent.some(path=>!paths.includes(path)))
+     throw Error('Unplanned owner Storage object discovered');
    for(const path of paths) {
      // Before each destructive request, re-check ownership and existence.
      if(!validPath(path,ownerId))throw Error('Invalid owner path');
