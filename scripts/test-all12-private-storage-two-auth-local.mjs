@@ -133,6 +133,8 @@ try{
  assert.ok([400,401,403,404].includes(anonymous.status),'anonymous downloaded owner file');
  const removed=await req('DELETE','/storage/v1/object/'+bucket+'/'+path,admin,null);
  assert.ok(removed.ok,'delete owner source before recovery');
+ const absent=await req('GET','/storage/v1/object/authenticated/'+bucket+'/'+path,anon,a.token);
+ assert.ok([400,404].includes(absent.status),'source object must be unavailable before restoration');
  bytes=null; // Restore from the independently persisted artifact, not the original buffer.
  const recoveryBytes=readFileSync(backupPath);
  assert.equal(hash(recoveryBytes),originalSha256,'backup artifact changed');
