@@ -44,8 +44,8 @@ DECLARE v_key bytea; v_message text; v_expected text;
 BEGIN
  IF p_action NOT IN ('begin','settle') OR p_owner IS NULL OR
     p_nonce IS NULL OR p_epoch IS NULL OR
-    (p_hash IS NULL OR p_hash !~ '^[0-9a-f]{64}
-    (p_hmac IS NULL OR p_hmac !~ '^[0-9a-f]{64}
+     (p_hash IS NULL OR p_hash !~ '^[0-9a-f]{64}$') OR
+     (p_hmac IS NULL OR p_hmac !~ '^[0-9a-f]{64}$') OR
     p_path IS NULL OR p_path LIKE '%|%' OR p_path ~ '[[:cntrl:]]' OR
     p_bucket IS NULL OR p_bucket LIKE '%|%' OR
     p_operation NOT IN ('create','replace') OR
