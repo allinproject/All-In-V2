@@ -50,7 +50,7 @@ INSERT INTO public.v2_training_athlete_restrictions
 VALUES(
  '99999999-9999-4999-8999-999999999999',
  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
- 'exercise','lying leg curl','approved_plan','synthetic_restored_plan',1
+ 'exercise','lying leg curl','approved_plan','active','synthetic_restored_plan',1
 );
 DO $unreconciled_restore$
 DECLARE b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
