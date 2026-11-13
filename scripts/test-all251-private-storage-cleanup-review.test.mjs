@@ -26,7 +26,9 @@ function fixture() {
     if(failOnce){failOnce=false;throw Error('temporary Storage 503');}
     objects.delete(path);return {deleted:true};
    },
-   recordCheckpoint:async(entry)=>{checkpoints.push(entry);},
+   recordCheckpoint:async(entry)=>{checkpoints.push(entry);return {persisted:true};},
+   readCheckpoint:async({ownerId,requestId,bucketId,path})=>checkpoints.find(c=>
+    c.ownerId===ownerId&&c.requestId===requestId&&c.bucketId===bucketId&&c.path===path),
    assertOwnerWritesQuiesced:async({ownerId,requestId})=>ownerId===A&&requestId===R,
   },
  };
@@ -112,4 +114,14 @@ test('late owner upload is detected by final inventory even with stale barrier a
  assert.equal(f.objects.has(B+'/leave-me.fit'),true);
  assert.equal(f.objects.has(A+'/late-upload.fit'),true);
  // Test demonstrates a listing guard, NOT a real upload freeze.
+});
+
+test('unacknowledged or mismatched checkpoint readback refuses success',async()=>{
+ const absent=fixture();
+ absent.opts.recordCheckpoint=async()=>({persisted:false});
+ await assert.rejects(reviewPrivateStorageCleanup(absent.opts),/not persisted/);
+ const wrong=fixture();
+ wrong.opts.readCheckpoint=async()=>({...wrong.checkpoints[0],ownerId:B});
+ await assert.rejects(reviewPrivateStorageCleanup(wrong.opts),/readback not verified/);
+ assert.equal(wrong.objects.has(B+'/leave-me.fit'),true);
 });
