@@ -97,6 +97,53 @@ mapping. The resulting operator receipt says
 `initialCertificationAuthorized:false`; it is **not** a provider-issued
 backup attestation or hosted restore acceptance.
 
-**Current result:** the script and negative CI controls are implemented;
-**no ciphertext archive has been acquired or independently reviewed**.
-Do not promote that engineering work into a PASS for source acquisition.
+**Current result (updated 2026-11-13):** the operator reported acquiring the encrypted scoped V1 source archive, locally validating the ciphertext SHA-256 against its capture receipt, decoding its PostgreSQL data, matching all eleven source counts and comparing the one complete Training row digest against live V1. The result is a **locally verified scoped archive and isolated row restoration**, not an independently reviewed source-custody chain, authenticated provider backup, or complete historical/import recovery. No plaintext archive or private key was shared here.
+
+
+## 2026-11-13 — Expanded V1 source discovery after local scoped restore
+
+Read-only V1 catalog inventory and privacy-safe counts (no owner IDs, free text,
+message bodies, source JSON or raw source fingerprints retrieved):
+
+- `public.allin_%` tables in live V1: **183**, including **61** with JSON/JSONB columns.
+  This demonstrates that the earlier **11-table restricted ciphertext archive is NOT
+  a complete V1 history backup**.
+- Additional sources sampled: `allin_coach_messages` **16** rows,
+  `allin_profiles` **1**, `allin_integration_health` **15**;
+  `allin_profile_goals`, `allin_private_health_conditions`,
+  `allin_health_days` and other named Training/import candidates queried had
+  zero at the observation time. These counts do not prove absence in other
+  providers, snapshots, or unexamined V1 tables.
+- **Two of 16 Coach messages** match broad restriction/recovery-related
+  keywords. These are *possible review candidates*, NOT confirmed injury or
+  movement restrictions. No message text was retrieved. The two matches
+  require private owner-scoped review; do not infer or publish restrictions
+  solely from keyword hits.
+- The single `allin_training.preferences.limitation` field is a string
+  containing the literal normalized **`none` sentinel**, with zero
+  non-sentinel string values at this observation. The owner previously
+  reviewed the value locally in the isolated restore. Mapping:
+  `no_restriction_declared`; **zero V2 rules created from this field**.
+  Preserve the evidence/exclusion decision. This only describes that one
+  field, not all historical or currently active restriction sources.
+- Repeatable observation query:
+  `supabase/tests/all230_v1_extended_source_scope_readonly.sql`
+  (executed successfully against real V1 at **2026-11-13 15:24:31 UTC**).
+  The local manifest assessor now refuses metadata consistency unless this
+  extended catalog is present, the sentinel is explicitly mapped to zero
+  created rules, and the independently reviewed Coach-message/candidate
+  source evidence is supplied. This is review logic, not signed source
+  authenticity.
+
+**Release gates:** keep `fullHistoricalCoverageEstablished=false`,
+`externalImportJobHistoryVerified=false`,
+`initialCertificationAuthorized=false`, and the hosted restriction restore
+blocked. Source message review must happen in a protected operator workflow
+without sending content to GitHub/Linear/ChatGPT. Do not transplant Coach
+free-text into a V2 medical restriction automatically. The V2 Training
+restriction schema remains a review candidate.
+
+**Recovery limitations:** the local subset restore intentionally used pre-data
+table definitions plus three V1 validation functions. It did **not** recover
+the full `auth.users`/profile-goal FK graph, post-data constraints, private
+Storage, full V1 history or a provider-managed hosted physical recovery.
