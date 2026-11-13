@@ -52,7 +52,7 @@ export function composeKitchenShoppingView(input:{
     ||!exact(planned.unit)||!positive(planned.shortage)
     ||!Array.isArray(planned.occurrenceIds)
     ||planned.occurrenceIds.length===0
-    ||planned.occurrenceIds.some(id=>!exact(id))
+    ||planned.occurrenceIds.some((id:string)=>!exact(id))
     ||new Set(planned.occurrenceIds).size!==planned.occurrenceIds.length)
    throw Error('Incomplete planned Shopping shortage.');
   add(planned.foodId,planned.preparationState,planned.unit,'needed',
