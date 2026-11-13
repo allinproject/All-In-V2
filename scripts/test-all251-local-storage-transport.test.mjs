@@ -81,6 +81,33 @@ test('authorization and 5xx are never treated as object absence',async()=>{
  await assert.rejects(f.client.deleteObject({ownerId:A,requestId:R,bucketId:bucket,path:A+'/sensor-000.fit'}),/Transient/);
  assert.ok(f.files.has(A+'/sensor-000.fit'));
 });
+test('local legacy 400 is absence only for explicit NoSuchKey Object not found',async()=>{
+ const scoped=A+'/missing.fit';
+ for(const reply of [
+  {status:400,body:{code:'NoSuchKey',message:'Object not found'},absent:true},
+  {status:400,body:{error:'not_found',message:'Object not found'},absent:true},
+  {status:400,body:{code:'InvalidRequest',message:'Object not found'},absent:false},
+  {status:400,body:{code:'NoSuchKey',message:'Access denied'},absent:false},
+  {status:400,body:{error:'Unauthorized',message:'Object not found'},absent:false},
+  {status:400,body:'malformed',absent:false},
+ ]) {
+  const client=createLocalDeletionStorageTransport({
+   apiUrl:'http://127.0.0.1:54321',serviceRoleKey:key,
+   fetchImpl:async()=>({status:reply.status,json:async()=>{
+    if(typeof reply.body==='string')throw Error('not JSON');
+    return reply.body;
+   }}),
+  });
+  const args={ownerId:A,requestId:R,bucketId:bucket,path:scoped};
+  if(reply.absent){
+   assert.equal(await client.objectExists(args),false);
+   assert.deepEqual(await client.deleteObject(args),{alreadyAbsent:true});
+  }else{
+   await assert.rejects(client.objectExists(args),/could not be verified/);
+   await assert.rejects(client.deleteObject(args),/not acknowledged/);
+  }
+ }
+});
 test('never accept hosted endpoint, client key, or malformed paths',async()=>{
  assert.throws(()=>createLocalDeletionStorageTransport({
   apiUrl:'https://project.supabase.co',serviceRoleKey:key,fetchImpl:async()=>{},
