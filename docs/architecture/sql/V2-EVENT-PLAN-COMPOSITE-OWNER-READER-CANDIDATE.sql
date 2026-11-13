@@ -55,6 +55,13 @@ BEGIN
     THEN RAISE EXCEPTION 'Invalid or repeated Event owner evidence'
       USING ERRCODE='42501'; END IF;
     v_event_ids:=pg_catalog.array_append(v_event_ids,v_event->>'eventId');
+    -- Provisional, postponed, cancelled or incomplete organizer facts stay
+    -- visible only as explicit review evidence, never certified execution.
+    IF v_event->>'verification' IS DISTINCT FROM 'organizer_verified' OR
+       nullif(v_event->>'date','') IS NULL OR
+       nullif(v_event->>'timezone','') IS NULL OR
+       v_event->'cancelled' IS DISTINCT FROM 'false'::jsonb
+    THEN v_requires_review:=true; END IF;
   END LOOP;
 
   FOR v_goal IN SELECT value FROM pg_catalog.jsonb_array_elements(v_goals->'records')
@@ -64,7 +71,13 @@ BEGIN
     THEN RAISE EXCEPTION 'Invalid or repeated Goal evidence'
       USING ERRCODE='42501'; END IF;
     v_goal_ids:=pg_catalog.array_append(v_goal_ids,v_goal->>'goalId');
-    IF v_goal->>'eventId' IS NULL THEN CONTINUE; END IF;
+    IF v_goal->>'eventId' IS NULL THEN
+      IF v_goal->>'editionId' IS NOT NULL OR
+         v_goal->>'boundEventVersion' IS NOT NULL
+      THEN RAISE EXCEPTION 'Partial Goal Event link is invalid'
+        USING ERRCODE='42501'; END IF;
+      CONTINUE;
+    END IF;
     -- Only the accepted, currently active Goal revision may bind an Event.
     IF v_goal->>'revisionStatus' IS DISTINCT FROM 'accepted' OR
        nullif(v_goal->>'activeRevisionId','') IS NULL OR
@@ -87,7 +100,7 @@ BEGIN
     'ownerId',v_user,
     'complete',true,'nextCursor',null,
     'status',CASE WHEN v_requires_review THEN 'review_required'
-                  ELSE 'certified_owner_sources' END,
+                  ELSE 'owner_sources_complete' END,
     'eventSnapshotVersion',v_events->'snapshotVersion',
     'goalSnapshotVersion',v_goals->'snapshotVersion',
     'events',v_events->'events','goals',v_goals->'records',
