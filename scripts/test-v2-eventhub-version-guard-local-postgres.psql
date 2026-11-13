@@ -6,9 +6,9 @@ DECLARE
  e uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
  old_version bigint;
 BEGIN
- INSERT INTO public.v2_events(id,name,sport,event_kind,start_local_date,
+ INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind,start_local_date,
    event_timezone,source_verification,source_revision)
- VALUES(e,'Autumn Ultra','running','ultra',DATE '2027-10-03',
+ VALUES(e,'10000000-0000-4000-8000-000000000001','Autumn Ultra','running','ultra',DATE '2027-10-03',
   'America/Chicago','organizer_verified','organizer-v1');
  BEGIN
   UPDATE public.v2_events SET start_local_date=DATE '2027-10-10' WHERE id=e;
