@@ -55,12 +55,14 @@ BEGIN
  THEN RAISE EXCEPTION 'Complete checkpoints must prove ONLY DB coverage: %',v; END IF;
 
  -- Discovery of an extra private bucket invalidates exact catalog coverage.
+ SAVEPOINT all251_extra_bucket_probe;
  INSERT INTO storage.buckets(id,name,public)
  VALUES('v2-surprise-bucket','v2-surprise-bucket',false);
  v:=public.v2_verify_account_deletion_storage_readiness(a,req);
  IF (v->>'durableCheckpointVerified')::boolean IS DISTINCT FROM false
  THEN RAISE EXCEPTION 'Undiscovered bucket unexpectedly accepted'; END IF;
- DELETE FROM storage.buckets WHERE id='v2-surprise-bucket';
+ ROLLBACK TO SAVEPOINT all251_extra_bucket_probe;
+ RELEASE SAVEPOINT all251_extra_bucket_probe;
 
  -- Public Storage is not approved private data coverage.
  UPDATE storage.buckets SET public=true WHERE id='v2-private-account-exports';
