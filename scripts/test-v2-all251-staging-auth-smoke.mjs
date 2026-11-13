@@ -1,5 +1,6 @@
 
 import assert from 'node:assert/strict';
+import {runAll222AuthMatrix,checkAll222RevokedToken} from './test-v2-all222-staging-auth-matrix.mjs';
 import {randomUUID} from 'node:crypto';
 import {verifyAccountExportDownload} from '../supabase/functions/_shared/trainingExportDownloadVerifier.mjs';
 // ALL-251 only: create and remove two staging-only Auth users. Never log secrets.
@@ -176,6 +177,10 @@ try{
  }
  process.stdout.write('PASS: invalid passwords rejected for both synthetic owners\\n');
  process.stdout.write('PASS: two real isolated synthetic GoTrue sessions\\n');
+ if(env.ALL222_STAGING_AUTH_MATRIX_ALLOW==='true') {
+   acceptanceStep='ALL-222 genuine two-account authenticated RPC matrix';
+   await runAll222AuthMatrix({request,a,b,aToken,bToken,anon});
+ }
  // Storage byte upload/readback belongs to the separately guarded,
  // lease-aware ALL-251 acceptance. This general Auth smoke must instead
  // prove that even the protected staging secret cannot upload without a
@@ -505,6 +510,10 @@ try{
  const logout=await request('/auth/v1/logout',{method:'POST',userJwt:bToken,apiKey:anon});
  assert([200,204].includes(logout.status),'Auth logout failed');
  process.stdout.write('PASS: synthetic Auth session revoked\\n');
+ if(env.ALL222_STAGING_AUTH_MATRIX_ALLOW==='true') {
+   acceptanceStep='ALL-222 revoked access token rejection';
+   await checkAll222RevokedToken({request,bToken,anon});
+ }
  if(positive){
   acceptanceStep='ALL251 revoked session download denial';
   const revoked=await download(bToken);
