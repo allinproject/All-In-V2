@@ -74,3 +74,10 @@ test('malformed, duplicated and cross-type blocks cannot pass review',()=>{
  const corrupted={...draft,id:'other-owner-template'} as unknown as typeof draft;
  assert.equal(inspectRoutineDraft(corrupted).ready,false);
 });
+
+test('routine sport selection derives from canonical V2 activity registry',async()=>{
+ const {V2_ACTIVITY_SPORTS}=await import('../activityEntryContract.ts');
+ for(const sport of V2_ACTIVITY_SPORTS){
+  assert.equal(newRoutineDraft(sport).sport,sport);
+ }
+});
