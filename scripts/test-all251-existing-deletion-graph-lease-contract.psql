@@ -48,6 +48,35 @@ ALTER TABLE storage.objects ENABLE TRIGGER v2_privileged_storage_metadata_write_
 CREATE TABLE public.v2_unreviewed_owner_history (
   id uuid PRIMARY KEY,
   owner_id uuid NOT NULL);
+-- An owner-domain child with only a join FK still needs Auth cascade.
+-- An unrelated global ingredient reference without such a join is not
+-- automatically user data. This prevents false positives on global catalog.
+CREATE TABLE public.v2_test_owned_parent(
+ id uuid PRIMARY KEY,
+ user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE);
+CREATE TABLE public.v2_test_join_child(
+ id uuid PRIMARY KEY,
+ parent_id uuid NOT NULL REFERENCES public.v2_test_owned_parent(id));
+CREATE TABLE public.v2_test_global_reference(id uuid PRIMARY KEY);
+DO $join_missing$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+  WHERE table_name='v2_test_join_child'
+   AND reason='join_only_owner_child_without_verified_auth_cascade')
+ THEN RAISE EXCEPTION 'Join-only no-action FK escaped canonical deletion coverage'; END IF;
+ IF EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+  WHERE table_name='v2_test_global_reference')
+ THEN RAISE EXCEPTION 'Unrelated global reference incorrectly treated as owner data'; END IF;
+END $join_missing$;
+ALTER TABLE public.v2_test_join_child DROP CONSTRAINT v2_test_join_child_parent_id_fkey;
+ALTER TABLE public.v2_test_join_child ADD CONSTRAINT v2_test_join_child_parent_id_fkey
+ FOREIGN KEY(parent_id) REFERENCES public.v2_test_owned_parent(id) ON DELETE CASCADE;
+DO $join_fixed$
+BEGIN
+ IF EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
+  WHERE table_name='v2_test_join_child')
+ THEN RAISE EXCEPTION 'Verified join-only Auth cascade was not recognized'; END IF;
+END $join_fixed$;
 DO $new_table$
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM allin_private.v2_deletion_owner_graph_gaps_review()
