@@ -119,3 +119,39 @@ REVOKE ALL ON FUNCTION allin_private.v2_deletion_checkpoint_absence_review(uuid,
 -- Deliberately NO EXECUTE grant. Future approved worker wrapper must authorize
 -- server calls and recheck Storage absence; this is not usable via API.
 
+
+-- REFERENCE ONLY. Checks that each immutable planned object has a matching
+-- checkpoint. This does not prove Storage absence, writer freeze, or approved
+-- cleanup across every bucket; the privileged worker must establish those.
+CREATE FUNCTION allin_private.v2_deletion_storage_bucket_checkpoints_review(
+ p_owner_id uuid,p_request_id uuid,p_bucket_id text
+) RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $verify$
+DECLARE v_paths text[];
+BEGIN
+ IF p_owner_id IS NULL OR p_request_id IS NULL OR p_bucket_id IS NULL
+   OR p_bucket_id !~ '^[a-z0-9][a-z0-9-]{1,80}$'
+ THEN RAISE EXCEPTION 'Exact Storage checkpoint scope required' USING ERRCODE='22023'; END IF;
+ IF NOT EXISTS (
+  SELECT 1 FROM allin_private.v2_account_deletion_execution_audit
+   WHERE request_id=p_request_id AND user_id=p_owner_id
+    AND status IN ('processing','failed') AND completed_at IS NULL
+ ) THEN RAISE EXCEPTION 'Active exact deletion audit required' USING ERRCODE='42501'; END IF;
+ SELECT planned_paths INTO v_paths
+ FROM allin_private.v2_account_deletion_storage_plan_review
+ WHERE request_id=p_request_id AND bucket_id=p_bucket_id;
+ IF NOT FOUND THEN
+   RAISE EXCEPTION 'Unplanned Storage bucket cannot complete'
+    USING ERRCODE='42501';
+ END IF;
+ RETURN NOT EXISTS (
+   SELECT 1 FROM unnest(v_paths) AS p(path)
+   WHERE NOT EXISTS (
+     SELECT 1 FROM allin_private.v2_account_deletion_storage_checkpoint_review c
+     WHERE c.request_id=p_request_id AND c.bucket_id=p_bucket_id
+       AND c.object_path=p.path AND c.status='absent_verified'
+   )
+ );
+END $verify$;
+REVOKE ALL ON FUNCTION allin_private.v2_deletion_storage_bucket_checkpoints_review(uuid,uuid,text)
+ FROM PUBLIC,anon,authenticated,service_role;
+-- No callable endpoint or deletion-completion integration.
