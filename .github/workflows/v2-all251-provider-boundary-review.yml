@@ -1,0 +1,29 @@
+name: ALL-251 provider boundary fail-closed review
+on:
+  push:
+    branches:
+      - review/all251-provider-isolation-acceptance-20261113
+    paths:
+      - 'scripts/test-all251-runtime-storage-writer-inventory.mjs'
+      - 'docs/architecture/ALL-251-PRIVILEGED-STORAGE-CREDENTIAL-ROUTE-AUDIT.md'
+      - '.github/workflows/v2-all251-provider-boundary-review.yml'
+  pull_request:
+    paths:
+      - 'scripts/test-all251-runtime-storage-writer-inventory.mjs'
+      - 'docs/architecture/ALL-251-PRIVILEGED-STORAGE-CREDENTIAL-ROUTE-AUDIT.md'
+      - '.github/workflows/v2-all251-provider-boundary-review.yml'
+permissions:
+  contents: read
+jobs:
+  enforce-unapproved-freeze-stays-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Inspect canonical writer and project-key custody guards
+        run: node --test scripts/test-all251-runtime-storage-writer-inventory.mjs
+      - name: Check current server-side operational deletion readiness refusal
+        run: node --experimental-strip-types --test supabase/functions/_shared/trainingDeletionOperationalStorageReadiness.test.mjs
