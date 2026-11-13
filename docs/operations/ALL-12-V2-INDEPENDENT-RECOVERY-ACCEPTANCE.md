@@ -279,6 +279,8 @@ On the founder's Windows PC (from the current ALL-IN V2 checkout, with the
 encrypted V: volume unlocked), this is a **local operator action**:
 
 ~~~powershell
+if ((git branch --show-current) -ne 'integration/v2-foundation') { throw 'Wrong local branch; switch to the V2 integration branch manually' }
+if (git status --porcelain) { throw 'Uncommitted work detected; preserve it before updating' }
 git pull --ff-only origin integration/v2-foundation
 $m = Get-ChildItem 'V:\ALL-12-Recovery\*.capture.json' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $m) { throw 'No local ALL-12 capture manifest' }
