@@ -30,6 +30,42 @@ REVOKE ALL ON allin_private.v2_community_posts
 COMMENT ON TABLE allin_private.v2_community_posts IS
   'Review-only one-post-per-explicit-share candidate; canonical source ownership pending.';
 
+-- ALL-244/251 REVIEW ONLY: comments/replies extend this SAME post owner.
+-- Author ownership and parent-post ownership are different privacy concepts.
+-- No user writer, feed grant, media acceptance or export registration follows.
+CREATE TABLE allin_private.v2_community_comments (
+  id uuid PRIMARY KEY,
+  post_id uuid NOT NULL REFERENCES allin_private.v2_community_posts(id)
+    ON DELETE CASCADE,
+  author_id uuid NOT NULL REFERENCES public.v2_profiles(user_id)
+    ON DELETE CASCADE,
+  parent_comment_id uuid,
+  body text NOT NULL CHECK (length(btrim(body)) BETWEEN 1 AND 4000),
+  revision bigint NOT NULL DEFAULT 1 CHECK (revision>0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  deleted_at timestamptz,
+  -- The same parent must belong to the SAME canonical post. When its
+  -- author leaves, detach surviving replies rather than cascading into
+  -- another author's content. Deleting the post still cascades all comments.
+  CONSTRAINT v2_community_comments_post_identity UNIQUE(post_id,id),
+  CONSTRAINT v2_community_comments_parent_not_self
+    CHECK (parent_comment_id IS NULL OR parent_comment_id<>id),
+  CONSTRAINT v2_community_comments_parent_same_post
+    FOREIGN KEY(post_id,parent_comment_id)
+    REFERENCES allin_private.v2_community_comments(post_id,id)
+    ON DELETE SET NULL (parent_comment_id)
+);
+CREATE INDEX v2_community_comments_author_time
+  ON allin_private.v2_community_comments(author_id,created_at,id);
+CREATE INDEX v2_community_comments_post_time
+  ON allin_private.v2_community_comments(post_id,created_at,id);
+ALTER TABLE allin_private.v2_community_comments ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON allin_private.v2_community_comments
+  FROM PUBLIC,anon,authenticated,service_role;
+COMMENT ON TABLE allin_private.v2_community_comments IS
+  'ALL-244 review-only comments/replies: author-owned, parent-post-scoped, no client API or approved media/export yet.';
+
 -- One SQL SELECT statement for server-side authorization. Never fetch all
 -- posts and filter after data has crossed the client/API boundary. Private
 -- profile: public posts are not visible to an unapproved follower. An
