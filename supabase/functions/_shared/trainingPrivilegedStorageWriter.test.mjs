@@ -97,3 +97,32 @@ test('no credentialed write for arbitrary paths, buckets, owners, operations or 
  for(const input of cases)await assert.rejects(f.write(input),/Invalid scoped/);
  assert.equal(f.calls.length,0);
 });
+
+test('existing durable lease also fences canonical export custom HTTP upload callback',async()=>{
+ const calls=[],bytes=new Uint8Array([1,2,3,4]);
+ const client={
+  rpc:async(name,args)=>{
+   calls.push(name);
+   return name==='v2_begin_privileged_storage_write_review'
+    ? {data:leaseId,error:null}:{data:true,error:null};
+  },
+  storage:{from:()=>({
+   download:async()=>{calls.push('readback');return {
+    data:{arrayBuffer:async()=>bytes.buffer},error:null,
+   };},
+  })},
+ };
+ const writer=createPrivilegedStorageWriter({supabase:client});
+ const result=await writer.writeWithBarrier({
+   verifiedOwnerId:owner,bucketId,path,bytes,
+   operation:'create',contentType:'application/octet-stream',
+   upload:async()=>{calls.push('archiveUpload');return {data:{path},error:null};},
+ });
+ assert.equal(result.verified,true);
+ assert.deepEqual(calls,['v2_begin_privileged_storage_write_review',
+  'archiveUpload','readback','v2_settle_privileged_storage_write_review']);
+ assert.throws(()=>writer.writeWithBarrier({
+   verifiedOwnerId:owner,bucketId,path,bytes,
+   operation:'create',contentType:'application/octet-stream',
+ }),/upload callback required/);
+});
