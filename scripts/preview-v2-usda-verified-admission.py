@@ -53,6 +53,9 @@ def preview_archive(path, *, runner=subprocess.run):
     for row in evidence["records"]:
         fdc = row["fdcId"]
         raw = indexed[fdc]
+        # Guard against archive replacement between initial ZIP verification and
+        # this second read: recheck exact source digest and nutrient facts here.
+        verifier.verify_food(raw, row, digests[fdc])
         # The verifier already checked exact full-row digest; this projection
         # intentionally preserves only policy-relevant nutrient observations.
         nutrients = [n for n in raw["foodNutrients"]
