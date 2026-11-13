@@ -330,5 +330,56 @@ test('eight-food canonical bulk seed flows through machine review, independent s
   assert.deepEqual((await db.query(
    'SELECT DISTINCT reviewer_db_login::text AS actor FROM allin_private.v2_ingredient_energy_attestations')).rows,
    [{actor:'allin_ing_workload_eight_ingest_v1'}]);
+
+  // Prepare complete, source-scoped exact alias/default evidence. These are
+  // fixture writes by the disposable DB owner, never a public write route.
+  await db.exec("UPDATE public.v2_ingredient_nutrition_profiles SET is_default=true WHERE review_status='reviewed'");
+  for(const [i,row] of rows.entries()){
+    const scope=aliasPolicy.records.find(x=>x.source_profile_key===row.key);
+    assert(scope?.exact_alias_candidates?.length>0);
+    const name=scope.exact_alias_candidates[0].value.toLowerCase();
+    const ingredientId=uuid(i+1,'1'),aliasId=uuid(i+1,'4');
+    await db.query(
+      'INSERT INTO public.v2_ingredient_aliases(id,ingredient_id,normalized_alias,locale,preparation_state,alias_kind,resolution_scope,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
+      [aliasId,ingredientId,name,'en',scope.preparation_state,'source_description','exact','active']
+    );
+  }
+  await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_eight_ingest_v1');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
+  await assert.rejects(()=>db.query(
+    'SELECT allin_private.v2_review_ingredient_profile_status($1,3,$2,$3,$4,$5)',
+    [rows[0].id,rows[0].digest,'calculation_ready',
+     'All source facts verified but publisher capability not yet granted',
+     'aaaaaaaa-aaaa-4aaa-8aaa-000000000078']),
+    e=>e.code==='0A000');
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  assert.equal((await db.query(
+   "SELECT count(*)::int AS n FROM public.v2_ingredient_nutrition_profiles WHERE review_status='calculation_ready'")).rows[0].n,0);
+  // This authorization exists exclusively inside disposable PGlite. Production
+  // must never infer publisher permission from source attestation or test PASS.
+  await db.exec('GRANT allin_v2_ingredient_publisher TO allin_ing_workload_eight_ingest_v1 WITH INHERIT FALSE, SET TRUE');
+  await db.exec('SET SESSION AUTHORIZATION allin_ing_workload_eight_ingest_v1');
+  await db.exec('SET ROLE allin_v2_ingredient_reviewer');
+  for(const [i,row] of rows.entries()){
+    const argumentsFor=[row.id,3,row.digest,'calculation_ready',
+      'Controlled test-only publication after all independent source and nutrient gates',
+      'aaaaaaaa-aaaa-4aaa-8aaa-'+String(i+41).padStart(12,'0')];
+    const statement='SELECT allin_private.v2_review_ingredient_profile_status($1::uuid,$2::integer,$3::text,$4::text,$5::text,$6::uuid) AS out';
+    const published=(await db.query(statement,argumentsFor)).rows[0].out;
+    assert.equal(published.review_status,'calculation_ready');
+    assert.equal(published.profile_revision,4);
+    assert.equal((await db.query(statement,argumentsFor)).rows[0].out.status,'replayed');
+  }
+  await db.exec('SET SESSION AUTHORIZATION postgres');
+  assert.equal((await db.query(
+    "SELECT count(*)::int AS n FROM public.v2_ingredient_nutrition_profiles WHERE review_status='calculation_ready'")).rows[0].n,8);
+  assert.equal((await db.query(
+    'SELECT count(*)::int AS n FROM allin_private.v2_ingredient_review_events')).rows[0].n,24);
+  await db.exec('SET SESSION AUTHORIZATION authenticated');
+  assert.equal((await db.query(
+    'SELECT count(*)::int AS n FROM public.v2_ingredient_nutrition_profiles')).rows[0].n,8);
+  await assert.rejects(()=>db.query(
+    "UPDATE public.v2_ingredient_nutrition_profiles SET review_status='retired'"),
+    e=>e.code==='42501');
  }finally{await db.close()}
 });
