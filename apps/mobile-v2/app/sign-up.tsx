@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import * as Linking from 'expo-linking';
@@ -29,6 +29,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [reviewed, setReviewed] = useState<Record<string, boolean>>({});
+  const [openDocument, setOpenDocument] = useState<V2LegalDocument | null>(null);
   const [ageConfirmedScope, setAgeConfirmedScope] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -198,14 +199,13 @@ p_founder_beta_terms_version: founderBetaVersion,
                 <Text style={styles.legalHeading}>Review and accept</Text>
                 <Text style={styles.legalIntro}>Read each document before continuing. Your acceptance is required to create an account.</Text>
                 {documents.map(doc => (
-                  <View key={reviewKey(doc)} style={styles.document}>
-                    <Text style={styles.documentTitle}>{doc.title} · {doc.version}</Text>
-                    <ScrollView nestedScrollEnabled style={styles.documentBody}>
-                      <Text selectable style={styles.legalText}>{doc.content_markdown}</Text>
-                    </ScrollView>
-                    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!reviewed[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => { if (requestGuard.current.isBusy()) return; setReviewed(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] })); }} style={styles.reviewRow}>
+                  <View key={reviewKey(doc)} style={styles.legalLine}>
+                    <Pressable accessibilityRole="checkbox" accessibilityLabel={`I agree to ${doc.title}`} accessibilityState={{ checked: !!reviewed[reviewKey(doc)], disabled: submitting }} disabled={submitting} onPress={() => { if (requestGuard.current.isBusy()) return; setReviewed(old => ({ ...old, [reviewKey(doc)]: !old[reviewKey(doc)] })); }} style={styles.reviewRow}>
                       <Text style={styles.checkbox}>{reviewed[reviewKey(doc)] ? '☑' : '☐'}</Text>
-                      <Text style={styles.reviewText}>I have read and reviewed this document</Text>
+                      <Text style={styles.reviewText}>I agree to {doc.title}</Text>
+                    </Pressable>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Read ${doc.title}`} onPress={() => setOpenDocument(doc)} style={styles.readLink}>
+                      <Text style={styles.readLinkText}>Read</Text>
                     </Pressable>
                   </View>
                 ))}
@@ -224,6 +224,22 @@ p_founder_beta_terms_version: founderBetaVersion,
             <Text style={styles.footer}><Link href="/welcome" style={styles.backLink}>Back to welcome</Link></Text>
           </View>
         </ScrollView>
+        <Modal visible={!!openDocument} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpenDocument(null)}>
+          <SafeAreaView style={styles.modalSafe}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleGroup}>
+                <Text accessibilityRole="header" style={styles.modalTitle}>{openDocument?.title}</Text>
+                <Text style={styles.modalVersion}>{openDocument?.version}</Text>
+              </View>
+              <Pressable accessibilityRole="button" accessibilityLabel="Close legal document" onPress={() => setOpenDocument(null)} style={styles.modalClose}>
+                <Text style={styles.modalCloseText}>Close</Text>
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <Text selectable style={styles.legalText}>{openDocument?.content_markdown}</Text>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -249,14 +265,22 @@ const styles = StyleSheet.create({
   visibilityToggle: {minHeight: 48, minWidth: 56, justifyContent: 'center', alignItems: 'center', paddingRight: 8},
   visibilityText: {color: colors.goldSoft, fontWeight: '700', fontSize: 14},
   passwordHint: {color: colors.mutedText, fontSize: 12, lineHeight: 17},
-  legalSection: {gap: 14, marginTop: 6},
+  legalSection: {gap: 6, marginTop: 4},
   legalHeading: {color: colors.warmWhite, fontSize: 19, fontWeight: '800'},
-  legalIntro: {color: colors.mutedText, fontSize: 14, lineHeight: 21},
-  document: {backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 16, gap: 10},
-  documentTitle: {color: colors.warmWhite, fontSize: 15, fontWeight: '800'},
-  documentBody: {maxHeight: 210},
+  legalIntro: {color: colors.mutedText, fontSize: 12, lineHeight: 17, marginBottom: 4},
+  legalLine: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8},
+  readLink: {minHeight: 44, minWidth: 48, justifyContent: 'center', alignItems: 'center'},
+  readLinkText: {color: colors.gold, textDecorationLine: 'underline', fontSize: 13, fontWeight: '700'},
+  modalSafe: {flex: 1, backgroundColor: colors.background},
+  modalHeader: {flexDirection: 'row', alignItems: 'center', padding: 20, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border},
+  modalTitleGroup: {flex: 1, gap: 4},
+  modalTitle: {color: colors.warmWhite, fontWeight: '800', fontSize: 18},
+  modalVersion: {color: colors.mutedText, fontSize: 12},
+  modalClose: {minHeight: 44, minWidth: 56, alignItems: 'center', justifyContent: 'center'},
+  modalCloseText: {color: colors.gold, fontWeight: '700'},
+  modalContent: {padding: 20, paddingBottom: 48},
   legalText: {color: colors.mutedText, fontSize: 13, lineHeight: 20},
-  reviewRow: {flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44},
+  reviewRow: {flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, flexShrink: 1},
   checkbox: {color: colors.gold, fontSize: 22, width: 28},
   reviewText: {flex: 1, color: colors.warmWhite, fontSize: 14, lineHeight: 20},
   button: {minHeight: 54, borderRadius: 14, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center'},
