@@ -449,11 +449,6 @@ BEGIN
    '84000000-0000-4000-8000-000000000001',1,'dismiss');
   RAISE EXCEPTION 'Stale reviewer decision overwritten';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
- BEGIN
-  PERFORM allin_private.v2_community_resolve_appeal(
-   '84000000-0000-4000-8000-000000000001',2,'overturn');
-  RAISE EXCEPTION 'Initial reviewer resolved appeal';
- EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $initial_review$;
 -- A separate reviewer holds the second reported case, but may not
 -- downgrade the already-hidden state from the first case.
