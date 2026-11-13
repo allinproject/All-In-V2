@@ -11,11 +11,11 @@ DECLARE
  group_b uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 BEGIN
  INSERT INTO auth.users(id) VALUES(a),(b);
- INSERT INTO public.v2_events(id,name,sport,event_kind,start_local_date,
+ INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind,start_local_date,
    event_timezone,source_verification)
- VALUES(event_a,'Spring Trail','running','ultra',DATE '2027-04-10',
+ VALUES(event_a,'10000000-0000-4000-8000-000000000001','Spring Trail','running','ultra',DATE '2027-04-10',
          'America/Chicago','organizer_verified'),
-       (event_b,'Local Triathlon','triathlon','multisport',DATE '2027-04-10',
+       (event_b,'10000000-0000-4000-8000-000000000002','Local Triathlon','triathlon','multisport',DATE '2027-04-10',
          'America/Chicago','organizer_verified');
  INSERT INTO public.v2_event_url_aliases(
    id,event_id,canonical_url,evidence_kind,source_checked_at)
@@ -56,9 +56,9 @@ BEGIN
   RAISE EXCEPTION 'Registration falsely became verified race result';
  EXCEPTION WHEN check_violation THEN NULL; END;
  BEGIN
-  INSERT INTO public.v2_events(id,name,sport,event_kind,source_verification)
+  INSERT INTO public.v2_events(id,edition_id,name,sport,event_kind,source_verification)
   VALUES('44444444-4444-4444-8444-444444444444',
-      'Undated purported official race','running','race','organizer_verified');
+      '10000000-0000-4000-8000-000000000003','Undated purported official race','running','race','organizer_verified');
   RAISE EXCEPTION 'Verified event accepted without known date/timezone';
  EXCEPTION WHEN check_violation THEN NULL; END;
  BEGIN
