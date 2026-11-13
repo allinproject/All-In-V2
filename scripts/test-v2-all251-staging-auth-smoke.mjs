@@ -136,8 +136,25 @@ try{
  const trainingRead=await all222Rpc('v2_training_day_read_candidate',{
    p_expected_user_id:a.id,p_athlete_date:all222Date,
  },aToken);
+ if(trainingRead.status!==200){
+   let sqlstate='unknown';
+   try {
+     const payload=await trainingRead.clone().json();
+     if(typeof payload?.code==='string' && /^[A-Z0-9_]{3,24}$/.test(payload.code))
+       sqlstate=payload.code;
+   }catch{}
+   process.stderr.write('ALL222 Training reader HTTP '+trainingRead.status+
+      ' SQLSTATE '+sqlstate+' (no response body or identities)\\n');
+ }
  assert.equal(trainingRead.status,200,'Training owner reader rejected');
  const trainingState=await trainingRead.json();
+ if(trainingState.ownerId!==a.id ||
+    trainingState.liveWorkout?.executionId!==all222Session ||
+    trainingState.liveWorkout?.status!=='active')
+   process.stderr.write('ALL222 Training reader shape: ownerMatch='+
+      (trainingState.ownerId===a.id)+' executionMatch='+
+      (trainingState.liveWorkout?.executionId===all222Session)+
+      ' activeMatch='+(trainingState.liveWorkout?.status==='active')+'\\n');
  assert.equal(trainingState.ownerId,a.id);
  assert.equal(trainingState.liveWorkout?.executionId,all222Session);
  assert.equal(trainingState.liveWorkout?.status,'active');
