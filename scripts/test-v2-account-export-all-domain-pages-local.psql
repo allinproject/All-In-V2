@@ -158,8 +158,8 @@ DECLARE
 BEGIN
  v:=public.v2_account_export_inventory_review_candidate(v_owner,v_session,v_request);
  v_list:=v->'collections';
- IF v->>'ownerTableCount'<>'42'
-   OR pg_catalog.jsonb_array_length(v_list)<>49
+ IF v->>'ownerTableCount'<>'43'
+   OR pg_catalog.jsonb_array_length(v_list)<>50
    OR NOT (v->'internalOperationalTables' ? 'allin_private.v2_coach_turn_claims')
    OR v_list ? 'allin_private.v2_coach_turn_claims'
    OR v->>'paginationReady'<>'true'
@@ -209,7 +209,7 @@ BEGIN
   THEN RAISE EXCEPTION 'Community action receipt leaked internal CAS or replay metadata'; END IF;
   v_count:=v_count+1;
  END LOOP;
- IF v_count<>49 THEN RAISE EXCEPTION 'Not all 49 portable owner collections were probed'; END IF;
+ IF v_count<>50 THEN RAISE EXCEPTION 'Not all 50 portable owner collections were probed'; END IF;
  -- The worker's own request ledger is portable history, not a raw Auth
  -- session export. Verify the real SQL reader redacts session_id.
  v_page:=public.v2_account_export_page_review_candidate(
