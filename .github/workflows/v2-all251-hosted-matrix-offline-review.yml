@@ -68,6 +68,10 @@ jobs:
           node --test infra/cloudflare/all251-storage-staging/attested-rpc-review.test.mjs
       - name: Syntax check protected real Auth A/B acceptance without credentials
         run: node --check scripts/test-all251-hosted-worker-session-gate.mjs
+      - name: Validate synthetic-only private R2 Worker candidate (never deploy)
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/worker-r2-proof-candidate.mjs
+          node --test infra/cloudflare/all251-storage-staging/worker-r2-proof-candidate.test.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
