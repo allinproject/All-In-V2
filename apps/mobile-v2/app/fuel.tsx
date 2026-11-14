@@ -9,6 +9,7 @@ import {FuelFoodLogPanel} from '../src/features/fuel/FuelFoodLogPanel';
 import {KitchenWeekPlanPanel} from '../src/features/kitchen/KitchenWeekPlanPanel';
 import {KitchenStockSummaryPanel} from '../src/features/kitchen/KitchenStockSummaryPanel';
 import {V2BottomNavigation} from '../src/navigation/V2BottomNavigation';
+import { V2WorkspaceHeader } from '../src/navigation/V2WorkspaceHeader';
 import {deviceLocalToday} from '../src/features/today/todayEntry';
 import {parseFuelDayContext} from '../src/features/today/todayFuelNavigation';
 import {shiftCalendarDate} from '../src/features/training/calendarDayView';
@@ -56,8 +57,7 @@ function OwnedFuelScreen(){
  return (
   <SafeAreaView style={styles.safe}>
    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-    <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-    <Text accessibilityRole="header" style={styles.title}>Fuel</Text>
+    <V2WorkspaceHeader title="Fuel" />
     <Text style={styles.description}>Your food, recipes and meal planning in one place.</Text>
     <View accessibilityRole="tablist" style={styles.tabs}>
      {sections.map(tab=><Pressable key={tab.id}
@@ -125,9 +125,6 @@ function OwnedFuelScreen(){
 const styles=StyleSheet.create({
  safe:{flex:1,backgroundColor:colors.background},
  content:{padding:22,paddingBottom:50,gap:16},
- brand:{fontSize:16,color:colors.warmWhite,fontWeight:'800'},
- gold:{color:colors.gold},
- title:{color:colors.warmWhite,fontSize:30,fontWeight:'800'},
  description:{color:colors.mutedText,fontSize:14,lineHeight:22},
  tabs:{flexDirection:'row',gap:6,backgroundColor:colors.surface,padding:5,borderRadius:14},
  tab:{flex:1,paddingVertical:12,alignItems:'center',justifyContent:'center',borderRadius:10},
