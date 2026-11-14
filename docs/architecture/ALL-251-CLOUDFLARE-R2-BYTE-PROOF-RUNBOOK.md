@@ -20,6 +20,13 @@ default-deny until explicit operator review. Account deletion OFF.
 - Synthetic-only GET `/v1/workouts/:uuid/checksum` returns **only** SHA-256
   and byte length after real account/session validation. No raw file bytes
   or unrestricted read, multipart, presign or S3 endpoint exposed.
+- Synthetic-only DELETE `/v1/workouts/:uuid` is permitted ONLY for an
+  authenticated synthetic owner with an existing `requested` deletion
+  fixture and zero unsettled leases. The Worker confirms the object is
+  absent after R2 deletion; it cannot delete arbitrary account data.
+- Guarded HEAD `/__all251_proof_ready` returns 204 only after explicit
+  proof activation plus valid-format signer and publishable key. The
+  protected test runner preflights this before creating any users.
 - The candidate is DISABLED by default: it returns 403 unless an explicit
   staging-only environment switch is set. It is not imported by the live
   `worker.mjs`.
@@ -64,8 +71,8 @@ default-deny until explicit operator review. Account deletion OFF.
    browser screenshots, emails or terminal history. Do not generate a new
    signer or read the value via automated assistant tools. Confirm the
    original 32-byte value remains unchanged in DB.
-5. Configure `SUPABASE_PUBLISHABLE_KEY` in the Cloudflare Worker variables
-   (a publishable, not service key). `SUPABASE_URL` is the pinned
+5. Configure `SUPABASE_PUBLISHABLE_KEY` as a **Cloudflare Worker secret**
+   (a publishable, not service key), so Wrangler deployment will preserve it. `SUPABASE_URL` is the pinned
    disposable staging URL in the Wrangler proof config. DO NOT configure
    `ALL251_STAGING_PRIVILEGED_KEY`, any `sb_secret_` key, S3 master
    token, or production credentials in this Worker.
@@ -80,7 +87,10 @@ default-deny until explicit operator review. Account deletion OFF.
    (separate explicit operator action). A successful HTTP upload remains
    impossible without a legitimate synthetic Auth user JWT and a signed
    lease. Deploying this variable may create a new Worker version.
-8. For rapid rollback, disable the switch / revert to the prior
+8. Confirm HEAD `/__all251_proof_ready` returns 204 only after the
+   explicit activation switch. A 403 means the protected hosted runner
+   must abort BEFORE creating any synthetic Auth users.
+9. For rapid rollback, disable the switch / revert to the prior
    default-deny Worker version using Cloudflare's deployment controls;
    independently verify HTTP 403 on all methods. Do not rotate the
    database signer while any lease remains open.
@@ -101,10 +111,20 @@ run a separately approved protected disposable staging HTTP test:
   POST fresh bytes and read back the verified digest.
 - Exercise invalid sessions, bad signatures, attempted replay, unsigned
   lease paths and R2 cleanup/recovery; unresolved leases remain blocking.
-- All test R2 objects must be inventoried and securely removed by an
-  independently controlled operator. The current Worker has NO HTTP
-  object deletion endpoint, intentionally; therefore cleanup is not
-  automated and full acceptance cannot PASS until cleanup is proven.
+- After testing, freeze each synthetic account, prove zero unsettled
+  leases, DELETE only its own synthetic objects through the guarded
+  cleanup route and require R2 HEAD to confirm absence. Then remove
+  each synthetic deletion request and Auth user. Any ambiguous write,
+  open lease or cleanup denial must FAIL and preserve audit evidence.
+- The protected test source is
+  `scripts/test-all251-hosted-r2-byte-proof.mjs` and its manual-only
+  `v2-all251-hosted-r2-byte-proof.yml` workflow. Like the earlier
+  session workflow, GitHub will NOT show a Run workflow button until
+  the workflow exists on the default branch; use a separately reviewed
+  exact-path one-time integration push trigger only AFTER the Worker
+  is verified active. No trigger/marker is currently approved.
+- The test is **not yet executed**, and a passing sequential R2
+  upload/delete test is not an in-flight deletion-race proof.
 - Test an in-flight A upload begun before the freeze separately with
   controllable, safe scheduling; a simple sequential post-freeze denial
   does NOT prove the in-flight race.
