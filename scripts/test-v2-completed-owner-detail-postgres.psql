@@ -214,6 +214,40 @@ BEGIN
 END $qa$;
 RESET ROLE;
 
+-- An additional eligible source makes attribution ambiguous, even if it has
+-- no scalar values. Do not choose by provider name, row order, or UUID.
+INSERT INTO public.v2_activity_sources(
+ id,activity_id,user_id,provider,source_kind,source_record_id,
+ quality,source_payload_hash
+) VALUES(
+ '85858585-8585-4858-8858-858585858585',
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ '11111111-1111-4111-8111-111111111111',
+ 'apple_watch','sensor_summary','second-eligible-source','partial',repeat('7',64)
+);
+SET ROLE authenticated;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',
+ '11111111-1111-4111-8111-111111111111',false);
+SELECT pg_catalog.set_config('request.jwt.claim.session_id',
+ '10101010-1010-4010-8010-101010101010',false);
+DO $ambiguous_primary$
+DECLARE detail jsonb;
+BEGIN
+ detail:=public.v2_completed_activity_detail_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+ IF detail->'primarySourceId'<>'null'::jsonb THEN
+   RAISE EXCEPTION 'Ambiguous sources promoted a fabricated primary source';
+ END IF;
+ IF pg_catalog.jsonb_array_length(detail->'sources')<>3 THEN
+   RAISE EXCEPTION 'Ambiguous source evidence lost during owner read';
+ END IF;
+ RAISE NOTICE 'PASS ALL-271: two eligible sources never imply a primary';
+END $ambiguous_primary$;
+RESET ROLE;
+DELETE FROM public.v2_activity_sources
+ WHERE id='85858585-8585-4858-8858-858585858585';
+
 -- Expired live Auth session rows must be denied, even when a valid-looking
 -- JWT keeps presenting the same owner and session ID.
 UPDATE auth.sessions SET not_after=pg_catalog.clock_timestamp()-interval '1 minute'
