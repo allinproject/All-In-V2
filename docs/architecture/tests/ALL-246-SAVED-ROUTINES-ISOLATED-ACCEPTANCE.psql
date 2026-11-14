@@ -74,6 +74,26 @@ FROM (SELECT allin_private.v2_training_routine_write_candidate(
  :'user_a'::uuid,NULL,0,:'test_create_action'::uuid,
  'Strength A','strength','',:'workout_block'::jsonb) AS result) x \gset
 
+SELECT (result->>'replayed')::boolean AS test_replayed,
+       (result->>'version')::bigint AS test_replay_version,
+       (result->>'routineId')::uuid AS test_replay_routine
+FROM (SELECT allin_private.v2_training_routine_write_candidate(
+ :'user_a'::uuid,NULL,0,:'test_create_action'::uuid,
+ 'Strength A','strength','',:'workout_block'::jsonb) AS result) x \gset
+\if :test_replayed
+\else
+ \echo 'FAIL: exact action replay was not recognized'
+ \quit 1
+\endif
+SELECT pg_catalog.set_config('allin.test.replay_version',:'test_replay_version',true);
+DO $replay$
+BEGIN
+ IF pg_catalog.current_setting('allin.test.replay_version')::bigint<>1 THEN
+  RAISE EXCEPTION 'FAIL: replay changed the immutable version';
+ END IF;
+END;
+$replay$;
+
 DO $check$
 DECLARE v_id uuid:=pg_catalog.current_setting('allin.test.user_a')::uuid;
 BEGIN
