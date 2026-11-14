@@ -98,3 +98,16 @@ test('FINALIZE cannot settle incomplete upload or without exact bytes and signed
  assert.deepEqual(await finished.execute(request('FINALIZE')),
   {status:'finalized_verified'});
 });
+
+test('provider bearer URL and internal upload metadata never appear in public receipts',async()=>{
+ const raw='https://example.storage.supabase.co/storage/v1/upload/resumable/secret';
+ const {boundary}=setup({perform:async()=>({
+  verified:true,offset:15,location:raw,providerUrl:raw,
+  signingKey:'do-not-export',authorization:'Bearer do-not-export',
+ })});
+ const receipt=await boundary.execute(request());
+ assert.deepEqual(Object.keys(receipt).sort(),['offset','status']);
+ assert.equal(JSON.stringify(receipt).includes(raw),false);
+ assert.equal(JSON.stringify(receipt).includes('signingKey'),false);
+ assert.equal(JSON.stringify(receipt).includes('authorization'),false);
+});
