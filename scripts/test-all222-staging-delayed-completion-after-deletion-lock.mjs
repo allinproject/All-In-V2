@@ -26,6 +26,20 @@ const pub=env.ALL251_TEMP_STAGING_PUBLISHABLE_KEY;
 assert(/^sb_secret_[A-Za-z0-9_-]+$/.test(secret??''),'Staging secret missing');
 assert(/^sb_publishable_[A-Za-z0-9_-]+$/.test(pub??''),'Staging publishable missing');
 
+// This test deliberately cannot be executed until the canonical writer has
+// attested CANCEL/ABANDON semantics. Unleased TUS mint returned HTTP 403 in
+// real staging (2026-11-14). A legitimate open lease blocks deletion, and
+// 'settle' currently does not verify completed bytes, so calling settle for
+// an unfinished session would manufacture a false completion. Neither
+// weakening RLS nor writing fake lease state is acceptable test setup.
+// Prepare an authorized under-lease TUS session plus an attested cancellation
+// and prove the session remains denied after the verified deletion lock.
+throw new Error(
+ 'BLOCKED BY DESIGN: attested lease cancellation and authorized TUS setup are not implemented. '+
+ 'Do not rerun the unleased pre-mint test or falsely settle unfinished uploads.'
+);
+
+
 let phase='preflight',failed=false;
 const users=[],paths=[],sessions=[];
 let owner=null,locked=false;
