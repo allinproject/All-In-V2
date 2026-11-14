@@ -303,3 +303,30 @@ test('hosted recovery cannot be accepted from generic restore claims without res
   'restrictionLegacyAndImportSourceProvenanceReconciled',
  ])assert(denied.missing.includes(field),field);
 });
+
+test('Saved Routine rows require all four owner tables and independently verified recovery',()=>{
+ const names=[
+  'public.v2_training_routines',
+  'public.v2_training_routine_versions',
+  'allin_private.v2_training_routine_owner_epochs',
+  'allin_private.v2_training_routine_actions',
+ ];
+ const domain=recoveryDomains.find(d=>d.name==='training_saved_routines');
+ assert.deepEqual(domain?.tables,names);
+ assert.equal(domain?.kind,'database');
+ const absent=assessRecoveryCoverage({presentTables:[],verifiedTables:[],actualTables:names});
+ assert.equal(absent.complete,false);
+ assert.equal(absent.domains.find(d=>d.name==='training_saved_routines').status,'absent');
+ const partial=assessRecoveryCoverage({
+  presentTables:names.slice(0,3),verifiedTables:names.slice(0,3),actualTables:names,
+ });
+ assert.equal(partial.complete,false);
+ assert.deepEqual(partial.domains.find(d=>d.name==='training_saved_routines').absent,
+  [names[3]]);
+ const unverified=assessRecoveryCoverage({presentTables:names,verifiedTables:names.slice(0,2),actualTables:names});
+ assert.equal(unverified.domains.find(d=>d.name==='training_saved_routines').status,'unverified');
+ assert.deepEqual(unverified.domains.find(d=>d.name==='training_saved_routines').unverified,names.slice(2));
+ assert.deepEqual(findUntrackedRecoveryTables(names),[]);
+ const withNew=[...names,'allin_private.v2_training_routine_private_media'];
+ assert.deepEqual(findUntrackedRecoveryTables(withNew),['allin_private.v2_training_routine_private_media']);
+});
