@@ -1,8 +1,14 @@
 name: ALL-246 temporary staging real Auth and Routine HTTP acceptance
 
-# Manual-only because this test provisions disposable Auth accounts using
-# a privileged staging service key. Never issue that credential on pushes.
+# Default branch is main, so GitHub does not offer manual dispatch for
+# this integration-only workflow. Permit a ONE-TIME tightly path-scoped push
+# on the integration branch. The existing protected staging environment must
+# still be approved by its designated reviewer before any secret is released.
 on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - '.github/workflows/v2-all246-temporary-staging-auth.yml'
   workflow_dispatch:
 
 permissions:
