@@ -7,11 +7,14 @@ test('Routes/Routines mounts library only when owner services are injected',()=>
  const workspace=read('../RoutesRoutinesContent.tsx');
  const train=read('../../../../app/train.tsx');
  assert.match(workspace,/savedRoutineReaderServices\?:SavedRoutineReadServices/);
- assert.match(workspace,/<SavedRoutineLibraryContent services=\{savedRoutineReaderServices\}/);
+ assert.match(workspace,/<SavedRoutineLibraryContent key=\{libraryRevision\} services=\{savedRoutineReaderServices\}/);
  assert.match(workspace,/expectedOwnerId=\{currentOwnerId\}/);
  assert.match(workspace,/sessionGeneration=\{sessionGeneration\}/);
- assert.match(workspace,/<RoutineBuilderContent \/>/);
- assert.doesNotMatch(train,/savedRoutineReaderServices=/);
+ assert.match(workspace,/<RoutineBuilderContent key=\{builderRevision\}/);
+ assert.match(train,/EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE/);
+ assert.match(train,/savedRoutineReaderServices=\{localRoutine\?\.reader\}/);
+ assert.match(train,/currentOwnerId=\{localRoutine\?user\.id:undefined\}/);
+ assert.match(workspace,/sessionGeneration!==undefined&&routineView==='library'/);
 });
 test('saved reader fails closed on partial pages, stale session and missing exact version',()=>{
  const reader=read('./savedRoutineOwnerReader.ts');
