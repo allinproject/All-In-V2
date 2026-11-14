@@ -92,7 +92,7 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   '.github/workflows/v2-all246-temporary-staging-auth.yml'),'utf8');
  assert(routineAuthWorkflow.includes('workflow_dispatch:'),
   'ALL-246 privileged Auth staging probe must be explicitly invoked');
- assert.equal(/^\\s*(?:push|pull_request|schedule|workflow_run)\\s*:/m.test(routineAuthWorkflow),false,
+ assert.equal(/^\s*(?:push|pull_request|schedule|workflow_run)\s*:/m.test(routineAuthWorkflow),false,
   'ALL-246 privileged Auth probe cannot auto-run on repository events');
  assert(routineAuthWorkflow.includes('environment: all251-temporary-staging'),
   'ALL-246 Auth credentials must remain in approved staging environment');
