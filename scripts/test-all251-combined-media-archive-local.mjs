@@ -259,12 +259,17 @@ try{
  for(const source of [...uploaded].reverse()){
   try{
    const r=await api('DELETE','/storage/v1/object/'+source.bucket+'/'+enc(source.path));
-   if(!r.ok&&r.status!==404)errors.push('object');
-   const absent=await storage.objectBytesAbsent({
-    ownerId:source.path.split('/')[0],requestId:randomUUID(),
-    bucketId:source.bucket,path:source.path,
-   });
-   if(absent!==true)errors.push('remaining-bytes');
+   // A failed DELETE response is not evidence of a leak or of absence.
+   // Supabase may report an explicit NoSuchKey as HTTP 400 when a fixture
+   // was tracked before its initial upload, or after a prior removal.
+   // Independently require BOTH metadata absence and privileged byte absence;
+   // never treat an arbitrary HTTP 400 as success on its own.
+   const scope={ownerId:source.path.split('/')[0],requestId:randomUUID(),
+    bucketId:source.bucket,path:source.path};
+   const exists=await storage.objectExists(scope);
+   const absent=await storage.objectBytesAbsent(scope);
+   if(exists!==false||absent!==true)
+    errors.push('object-not-proven-absent HTTP '+r.status);
   }catch{errors.push('object-cleanup');}
  }
  for(const policy of [...policies].reverse()){
