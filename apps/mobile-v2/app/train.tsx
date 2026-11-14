@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Redirect, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +19,9 @@ import {EventPlanListContent} from '../src/features/training/EventPlanListConten
 import {TrainingPlanContent} from '../src/features/training/TrainingPlanContent';
 import {projectAcceptedTrainingPlans} from '../src/features/training/trainingPlanOwnerProjection';
 import {RoutesRoutinesContent} from '../src/features/training/RoutesRoutinesContent';
+import {supabase} from '../src/lib/supabase';
+import {createStagedSavedRoutineReadServices,type OwnerAuthTransport} from '../src/features/training/routines/savedRoutineRpcAdapter';
+import {createStagedSavedRoutineMutationServices} from '../src/features/training/routines/savedRoutineRpcWriter';
 
 function todayOnDevice(): string {
   const now = new Date();
@@ -52,6 +55,33 @@ function TrainingCalendarOwnerScreen() {
   const { user, loading, sessionGeneration } = useAuth();
   const params = useLocalSearchParams<{ date?: string }>();
   const gate = useAccessGate();
+  // Local Supabase GoTrue/PostgREST acceptance ONLY; never activate in hosted builds.
+  const routineOwnerRef=useRef({ownerId:user?.id??null,generation:sessionGeneration});
+  routineOwnerRef.current={ownerId:user?.id??null,generation:sessionGeneration};
+  useEffect(()=>()=>{routineOwnerRef.current={ownerId:null,generation:-1};},[]);
+  const localRoutine=useMemo(()=>{
+   if(process.env.EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE!=='true'||!user?.id)return null;
+   const ownerId=user.id;
+   const allowed=new Set([
+    'v2_training_routine_list_owner_candidate',
+    'v2_training_routine_read_owner_candidate',
+    'v2_training_routine_save_owner_candidate',
+    'v2_training_routine_archive_owner_candidate',
+   ]);
+   const transport:OwnerAuthTransport={
+    auth:{getUser:()=>supabase.auth.getUser(),getSession:()=>supabase.auth.getSession()},
+    rpc:async(name,args)=>{
+     if(!allowed.has(name))throw Error('Unapproved Routine RPC');
+     const response=await supabase.rpc(name as never,args as never);
+     return {data:response.data,error:response.error};
+    },
+   };
+   const identity={ownerId,sessionGeneration,
+    isCurrent:()=>routineOwnerRef.current.ownerId===ownerId&&
+     routineOwnerRef.current.generation===sessionGeneration};
+   const reader=createStagedSavedRoutineReadServices(transport,identity);
+   return {reader,writer:createStagedSavedRoutineMutationServices(transport,identity,reader)};
+  },[user?.id,sessionGeneration]);
   const initialDay = typeof params.date === 'string' && validAthleteLocalDate(params.date)
     ? params.date : todayOnDevice();
   const [day, setDay] = useState(initialDay);
@@ -263,7 +293,10 @@ function TrainingCalendarOwnerScreen() {
         <View style={{display:activeTab === 'routes_routines' ? 'flex' : 'none'}}
           accessibilityElementsHidden={activeTab !== 'routes_routines'}
           importantForAccessibility={activeTab === 'routes_routines' ? 'auto' : 'no-hide-descendants'}>
-          <RoutesRoutinesContent />
+          <RoutesRoutinesContent currentOwnerId={localRoutine?user.id:undefined}
+           sessionGeneration={localRoutine?sessionGeneration:undefined}
+           savedRoutineReaderServices={localRoutine?.reader}
+           savedRoutineMutationServices={localRoutine?.writer}/>
         </View>
       </ScrollView>
       <V2BottomNavigation />
