@@ -320,3 +320,17 @@ owner isolation, redaction, cursor consistency and recovery on a
 representative populated database. No production migration, new table,
 client permission, export-download switch or AWS KMS resource is approved
 by this classification checkpoint.
+
+
+## ALL-246/251 Saved Routine integration verification — 2026-11-14
+
+**Scoped verification now passed in the existing ALL-251 architecture; these are NOT whole-account release approvals.**
+
+- `public.v2_training_routines` and `public.v2_training_routine_versions` are reviewed, owner-filtered portable **paginated collections**. They preserve template identities, archived state, source-backed sport/blocks, immutable version IDs and timestamps, and stable owner ordering.
+- `allin_private.v2_training_routine_owner_epochs` and `allin_private.v2_training_routine_actions` remain mandatory **owner/deletion/backup inventory** but are not directly downloadable collections. Their private replay hashes and concurrency metadata must never enter the athlete's archive. The inventory rejects any partial four-table Routine installation, unexpected new owner table, unsafe direct grants or broken reviewed composite version-owner cascade.
+- **PASS** [GitHub PG17 run 43547436153](https://github.com/allinproject/All-In-V2/actions/runs/43547436153): existing full Training+Coach+Billing inline export, plus scoped Routine paginated pages (25+7 A templates and B isolation), archival/version preservation, private action exclusion and fail-closed unknown/partial-owner checks. Unrelated Goals/EventHub/Community entries are EMPTY PRIVILEGELESS disposable fixtures in this *scoped* test, not evidence of complete cross-domain export.
+- **PASS** [Routine deletion preflight PG17 run 43547845212](https://github.com/allinproject/All-In-V2/actions/runs/43547845212): review-only future canonical deletion claim accepts **only** verified Routine-version composite cascade through Auth-owned parent; still denies a disabled processor, unreviewed noncascade table, or missing Routine FK. Existing migration is unchanged, and no hosted deletion worker was enabled.
+- **PASS** [GitHub PG17 run 43548458081](https://github.com/allinproject/All-In-V2/actions/runs/43548458081): separate disposable PostgreSQL logical `pg_dump`/`pg_restore` destination; source/restored all-four-table row fingerprints, exact historic versions/action receipts, RLS/no-client-grant parity, and independent Routine-only Auth cascade. The restored populated account with noncascading Profile graph correctly remains **blocked** from direct full Auth deletion; no constraints were dropped to claim whole-account completion.
+- ALL-12 recovery-domain manifest now requires all four Routine tables as one verified database domain. Partial/missing/unknown owner-table coverage still fails.
+
+**Outstanding mandatory release gates:** real hosted ALL-251 complete inline/paginated owner graph and encrypted downloadable file with private Storage/media bytes, approved operational-ledger retention/redaction policy, KMS/credential custody, consistent pinned snapshot/page transport, actual deletion worker/Storage fence and cross-domain cascade acceptance, provider-side independent backup/restore plus measured RPO/RTO under ALL-12, installed-device/account-switch/reinstall acceptance, and privacy/legal authority. The current staging inline export is still the older fail-closed v1; **do not** present the review-only v2 candidate or Routine fragment as a deployed complete archive. `complete=false` and all production gates stay unchanged.
