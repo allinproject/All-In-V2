@@ -1,0 +1,14 @@
+{
+  // REVIEW ONLY: no GitHub deployment action or production connection.
+  // Keep Worker public endpoint fail-closed; do not add R2 access routes.
+  "name": "allin365-storage-staging",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": true,
+  "r2_buckets": [
+    {
+      "binding": "PRIVATE_STORAGE",
+      "bucket_name": "allin365-private-staging"
+    }
+  ]
+}

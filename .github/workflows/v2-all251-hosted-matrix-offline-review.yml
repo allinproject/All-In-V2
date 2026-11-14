@@ -1,0 +1,102 @@
+name: ALL-251 hosted Storage matrix source and diagnostics (no secrets)
+on:
+  push:
+    branches:
+      - review/all251-hosted-route-matrix-baselines-20261113
+    paths:
+      - 'scripts/test-all251-hosted-storage-http-routes.mjs'
+      - 'scripts/all251-s3-sigv4.mjs'
+      - 'scripts/all251-s3-sigv4.test.mjs'
+      - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
+      - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
+      - 'infra/cloudflare/all251-storage-staging/**'
+      - 'scripts/test-all251-hosted-worker-session-gate.mjs'
+      - '.github/workflows/v2-all251-hosted-worker-session-gate.yml'
+      - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
+  pull_request:
+    paths:
+      - 'scripts/test-all251-hosted-storage-http-routes.mjs'
+      - 'scripts/all251-s3-sigv4.mjs'
+      - 'scripts/all251-s3-sigv4.test.mjs'
+      - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
+      - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
+      - 'infra/cloudflare/all251-storage-staging/**'
+      - 'scripts/test-all251-hosted-worker-session-gate.mjs'
+      - '.github/workflows/v2-all251-hosted-worker-session-gate.yml'
+      - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
+permissions:
+  contents: read
+jobs:
+  static-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Syntax validate hosted test with no protected credentials
+        run: node --check scripts/test-all251-hosted-storage-http-routes.mjs
+      - name: Validate privileged S3 SigV4 construction without any secrets
+        run: |
+          node --check scripts/all251-s3-sigv4.mjs
+          node --test scripts/all251-s3-sigv4.test.mjs
+      - name: Validate non-deployed canonical R2 storage adapter
+        run: |
+          node --check supabase/functions/_shared/all251R2StorageReviewAdapter.mjs
+          node --test supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs
+      - name: Assert default-deny Cloudflare Worker and live-session guard (offline)
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/worker.mjs
+          node --check infra/cloudflare/all251-storage-staging/identity-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/worker.test.mjs
+      - name: Prove session RPC review guard denies stale and missing sessions
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/session-authority-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/session-authority-review.test.mjs
+      - name: Verify composed Auth session and canonical R2 writer stay off public routes
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/internal-writer-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/internal-writer-review.test.mjs
+      - name: Validate non-deployed authenticated upload ingress
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/upload-ingress-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/upload-ingress-review.test.mjs
+      - name: Validate internal attested RPC transport without privileged secrets
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/attested-rpc-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/attested-rpc-review.test.mjs
+      - name: Syntax check protected real Auth A/B acceptance without credentials
+        run: node --check scripts/test-all251-hosted-worker-session-gate.mjs
+      - name: Require correct pre-freeze and post-freeze positive controls
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          const s=readFileSync('scripts/test-all251-hosted-storage-http-routes.mjs','utf8');
+          for(const needle of [
+            "verifiedSigner()",
+            "createAttestedPrivilegedStorageLeaseAuthority",
+            "verifiedWriterUpload(a.id,canonicalA",
+            "verifiedWriterUpload(b.id,canonicalB",
+            "canonical A signed write denied after deletion",
+            "canonical B signed write accepted after A deletion",
+            "signingKey.fill(0)",
+
+            "bPreWorked=verify.ok&&sha(Buffer.from(await verify.arrayBuffer()))===sha(bPreBytes)",
+            "preRestWorked=verify.ok&&sha(Buffer.from(await verify.arrayBuffer()))===sha(preRestBytes)",
+            "aJwtPreWorked=verify.ok&&sha(Buffer.from(await verify.arrayBuffer()))===sha(aJwtPreBytes)",
+            "denied(rest.status)?(preRestWorked?'PASS':'RESTRICTED'):'FAIL'",
+            "denied(ordinary.status)?(aJwtPreWorked?'PASS':'RESTRICTED'):'FAIL'",
+            "denied(completed.status)?(signedBaselinePassed?'PASS':'RESTRICTED'):'FAIL'",
+            "denied(result.status)?(tusBaselinePassed?'PASS':'RESTRICTED'):'FAIL'",
+            "cross-owner JWT private byte read",
+            "cross-owner JWT private upload denied",
+            "x.status==='OBSERVED'",
+            "postFreezePaths",
+            "safeStorageCode",
+            "if(failed.length||untested.length)throw Error(",
+            "cleanupIssues.length"
+          ])assert(s.includes(needle),'Must retain failing-open denial: '+needle);
+          assert(!s.includes("for(const p of objects){\n  const r=await read(p);"),'Deletion request cannot be treated as completed byte deletion');
+          NODE
