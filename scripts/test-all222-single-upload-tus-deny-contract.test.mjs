@@ -42,7 +42,7 @@ test('operator active-termination mode never marks acceptance before fixture cle
 
 test('staging cleanup candidate is rollback-only and exact synthetic owner guarded',()=>{
  const file=readFileSync(new URL('./fixtures/all222-hosted-termination-cleanup-dryrun-review.sql',import.meta.url),'utf8');
- assert.match(file,/^ROLLBACK;\\s*$/);
+ assert.match(file,/ROLLBACK;\\s*$/);
  assert.doesNotMatch(file,/^\\s*COMMIT\\s*;/mi);
  assert(file.includes("all222_fixture'='terminate-active'"));
  assert(file.includes("all222_disposable'='true'"));
