@@ -69,3 +69,21 @@ test('Fuel staging-only read and write require the exact approved project and a 
   EXPO_PUBLIC_SUPABASE_URL:'https://xarhuczrtzuiljmtdaeu.supabase.co'
  }));
 });
+
+test('Routine acceptance is default-off and refuses ALL hosted Supabase targets',()=>{
+ const local={EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE:'true',
+  EXPO_PUBLIC_SUPABASE_URL:'http://127.0.0.1:54321',
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'local-test-only'};
+ assert.doesNotThrow(()=>assertCoachStagingBuildEnvironment(local));
+ assert.doesNotThrow(()=>assertCoachStagingBuildEnvironment({...local,EXPO_PUBLIC_SUPABASE_URL:'http://localhost:54321'}));
+ for(const url of ['https://xarhuczrtzuiljmtdaeu.supabase.co',
+  'https://fbtgknlxjyeqrxemskbl.supabase.co','https://other.supabase.co',
+  'http://192.168.1.10:54321','http://127.0.0.1:54322','']){
+  assert.throws(()=>assertCoachStagingBuildEnvironment({...local,EXPO_PUBLIC_SUPABASE_URL:url}),/ONLY target disposable local Supabase/);
+ }
+ assert.throws(()=>assertCoachStagingBuildEnvironment({...local,EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:''}),/ephemeral local publishable key/);
+ assert.doesNotThrow(()=>assertCoachStagingBuildEnvironment({
+  EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE:'false',
+  EXPO_PUBLIC_SUPABASE_URL:'https://xarhuczrtzuiljmtdaeu.supabase.co',
+ }));
+});
