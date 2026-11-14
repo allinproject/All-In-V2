@@ -74,3 +74,38 @@ Release gates stay `uploadBarrierEnforced=false`,
 `completePrivateStorage=false`, and operational account deletion **OFF**
 until ALL-222/ALL-251 acceptance and independent legal/privacy review.
 Do not close the issues or merge the positive-test draft as a PASS.
+
+
+## Next isolated negative test — stale completion after deletion lock
+
+Prepared: `scripts/test-all222-staging-delayed-completion-after-deletion-lock.mjs`.
+**Not yet run; no PASS claimed.** This is a separate operator-only negative
+test that does **not** require or receive the attested signer:
+
+- Creates its own real, explicitly tagged disposable `all251-http-*` Auth
+  fixture because the existing staging-only account-deletion RPC requires
+  that exact verified identity type.
+- Pre-mints an unfinished TUS session and an authenticated signed upload
+  capability **before** any deletion lock, without granting a write lease.
+  The reviewed account-deletion request trigger forbids a new deletion
+  request while a lease is open; testing with an open lease would not reach
+  the delayed-completion scenario.
+- Calls the existing reviewed `v2_all251_http_matrix_request_deletion`
+  RPC with the user's real fixture JWT, and requires a confirmed request.
+- Attempts TUS completion, signed PUT and ordinary POST after the lock;
+  each must deny and have provider-confirmed missing object bytes and
+  metadata. Exact HTTP numeric statuses only are recorded, never tokens.
+- Uses the existing fixture-only
+  `v2_all251_http_matrix_cleanup_deletion` RPC before removing its own
+  synthetic Auth user. It records unfinished-provider-session HEAD status
+  separately. If TUS session expiry/termination cannot be confirmed, the
+  **whole test remains failed** despite database/object cleanup.
+
+Execution requires the already authorized operator's disposable staging
+API credentials, `ALL222_STORAGE_HTTP_ALLOW=true`, exact
+`ALL251_STAGING_REF` and `ALL251_STAGING_URL`, and `CI != true`.
+Do not move the independent signer to CI or into this test.
+Run this only from the isolated PR worktree after verifying the exact
+latest script commit and running `node --check`; verify staging has zero
+unrelated fixtures and open leases first. Do not repeat on failure
+without reconciliation of any active upload session or deletion fixture.
