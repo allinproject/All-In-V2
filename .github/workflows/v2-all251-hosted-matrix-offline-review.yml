@@ -72,6 +72,10 @@ jobs:
         run: |
           node --check infra/cloudflare/all251-storage-staging/worker-r2-proof-candidate.mjs
           node --test infra/cloudflare/all251-storage-staging/worker-r2-proof-candidate.test.mjs
+      - name: Assert owner-JWT attested lease never needs privileged Supabase keys
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/owner-jwt-attested-rpc-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/owner-jwt-attested-rpc-review.test.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
