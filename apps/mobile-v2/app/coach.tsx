@@ -30,5 +30,5 @@ function OwnedCoach(){
 }
 const styles=StyleSheet.create({
  safe:{flex:1,backgroundColor:colors.background},
- content:{padding:22,paddingBottom:50,gap:16},
+ content:{paddingHorizontal:20,paddingTop:10,paddingBottom:50,gap:12},
 });
