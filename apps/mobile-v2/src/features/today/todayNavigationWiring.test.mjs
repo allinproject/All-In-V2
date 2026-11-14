@@ -18,7 +18,7 @@ test('Today preserves five-section order and four compact verified food tiles', 
   assert.match(home, /foodLog\.visible\.map\(row => \(/);
   assert.match(home, /<Link key=\{row\.id\} href=\{foodLogDestination\} asChild>/);
   assert.match(home, /accessibilityLabel=\{`View \$\{row\.label\} in this day's Food Log`\}/);
-  assert.match(home, /foodTile: \{ width: '22%', maxWidth: 88/);
+  assert.match(home, /foodTile: \{\s*width: '22%', maxWidth: 88/);
   assert.match(home, /source=\{\{ uri: row\.photoUri \}\}/);
   assert.match(home, /foodPhotoFallback/);
   // Four compact 22% columns + three 8px gaps fit narrow mobile cards.
