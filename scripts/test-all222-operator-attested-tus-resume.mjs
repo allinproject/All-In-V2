@@ -186,11 +186,26 @@ async function run(){
  checkpoint='TUS cross-account HEAD boundary';
  const foreignHead=await callTus(locationUrl,'HEAD',b.jwt);
  crossOwnerHeadDenied=[401,403,404].includes(foreignHead.status);
- // Do not upload competing bytes; a bearer TUS URL may be usable by anyone holding it.
+ console.log('TUS DIAGNOSTIC: B HEAD status='+foreignHead.status+
+   ' offset-present='+String(foreignHead.headers.has('upload-offset'))+
+   ' denied='+String(crossOwnerHeadDenied));
+ checkpoint='TUS cross-account PATCH boundary';
+ // A sacrificial one-byte append contains the exact next expected byte.
+ // If accepted, the owner can still finish safely without corrupted fixtures.
+ const foreignPatch=await callTus(locationUrl,'PATCH',b.jwt,
+  {'upload-offset':String(split),'content-type':'application/offset+octet-stream'},
+  bytes.subarray(split,split+1));
+ const ownerOffsetCheck=await callTus(locationUrl,'HEAD',a.jwt);
+ assert.equal(ownerOffsetCheck.status,200,'Owner lost TUS session after cross-account test');
+ const effectiveOffset=Number(ownerOffsetCheck.headers.get('upload-offset'));
+ assert([split,split+1].includes(effectiveOffset),'Unexpected TUS offset after cross-account attempt');
+ const foreignPatchAccepted=effectiveOffset===split+1;
+ console.log('TUS DIAGNOSTIC: B PATCH status='+foreignPatch.status+
+   ' offset-advanced='+String(foreignPatchAccepted));
  checkpoint='TUS resume from verified offset';
  const second=await callTus(locationUrl,'PATCH',a.jwt,
-  {'upload-offset':String(split),'content-type':'application/offset+octet-stream'},
-  bytes.subarray(split));
+  {'upload-offset':String(effectiveOffset),'content-type':'application/offset+octet-stream'},
+  bytes.subarray(effectiveOffset));
  assert([200,204].includes(second.status),'TUS resumed PATCH failed');
  checkpoint='TUS actual bytes and SHA-256';
  await verifyReadback(path,bytes);
@@ -200,17 +215,21 @@ async function run(){
  assert(!settled.error&&settled.data===true,'TUS attested settlement failed');
  console.log('PASS: TUS resumed completion, exact bytes SHA-256 and attested settlement');
  assert(crossOwnerHeadDenied,'SECURITY FAIL: B can inspect A TUS session URL using its own JWT');
- console.log('PASS: cross-owner TUS session HEAD rejected');
+ assert(!foreignPatchAccepted,'SECURITY FAIL: B appended bytes to A TUS session using B JWT');
+ console.log('PASS: cross-owner TUS HEAD and PATCH rejected');
 }
 async function cleanup(){
  for(const {url,jwt} of tusUrls){
   try{
    const terminated=await callTus(url,'DELETE',jwt);
-   if(![200,202,204,404,410].includes(terminated.status)){
-    // HEAD is evidence only when the endpoint definitively reports absence.
-    const again=await callTus(url,'HEAD',jwt);
-    if(![404,410].includes(again.status))throw Error('TUS session still active or unverified');
-   }
+   const again=await callTus(url,'HEAD',jwt);
+   const absent=[404,410].includes(again.status);
+   // A 405 DELETE is not necessarily session leakage: provider may not support
+   // termination of a completed transfer. Require independent HEAD absence.
+   console.log('TUS CLEANUP DIAGNOSTIC: DELETE status='+terminated.status+
+    ' post-completion HEAD status='+again.status+
+    ' session-absent='+String(absent));
+   if(!absent)throw Error('TUS session still active or unverified');
   }catch{
    error=true;console.error('CLEANUP FAIL: TUS session termination requires inspection');
   }
