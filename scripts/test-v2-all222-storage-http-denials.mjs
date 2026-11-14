@@ -55,7 +55,7 @@ async function makeUser(){
  assert(session.access_token?.split('.').length===3,'No signed Auth JWT');
  return {id:record.id,token:session.access_token};
 }
-const statusDenied=(code)=>[400,401,403,404,409,422].includes(code);
+const statusDenied=(code)=>[400,401,403,409,422].includes(code);
 async function assertAbsent(ownerToken,path){
  const read=await call('/storage/v1/object/authenticated/'+bucket+'/'+path,{token:ownerToken});
  assert([400,401,403,404].includes(read.status),'Unexpectedly readable private object');
