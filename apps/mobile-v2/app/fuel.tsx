@@ -58,7 +58,6 @@ function OwnedFuelScreen(){
   <SafeAreaView style={styles.safe}>
    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
     <V2WorkspaceHeader title="Fuel" />
-    <Text style={styles.description}>Your food, recipes and meal planning in one place.</Text>
     <View accessibilityRole="tablist" style={styles.tabs}>
      {sections.map(tab=><Pressable key={tab.id}
       accessibilityRole="tab" accessibilityLabel={tab.label}
@@ -80,7 +79,7 @@ function OwnedFuelScreen(){
      </View>
      {section==='daily'?<View style={styles.card}>
       <Text accessibilityRole="header" style={styles.subhead}>Daily Overview</Text>
-      <Text style={styles.description}>Hydration and exercise-adjusted nutrition totals are not connected yet. No drinking, calories or workout energy is inferred.</Text>
+      <Text style={styles.description}>Daily nutrition totals are not available yet.</Text>
       <Pressable accessibilityRole="button" onPress={()=>setSection('food-log')}>
        <Text style={styles.linkText}>Open Food Log</Text>
       </Pressable>
@@ -89,7 +88,7 @@ function OwnedFuelScreen(){
     </>:
      section==='recipes'?<View style={styles.card}>
       <Text accessibilityRole="header" style={styles.subhead}>Recipes</Text>
-      <Text style={styles.description}>Recipe browsing and Cook Now will appear here after the canonical Cookbook connects. Each recipe is one serving; planning and shopping are separate.</Text>
+      <Text style={styles.description}>Recipes aren't available yet.</Text>
      </View>:
      <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.subhead}>Food Plan</Text>
@@ -103,17 +102,11 @@ function OwnedFuelScreen(){
        </Pressable>)}
       </View>
       {foodPlanSection==='plan'?<>
-       <Text style={styles.description}>Choose the recipes and individual foods you intend to eat on specific days and at breakfast, lunch, dinner or snacks.</Text>
-       <Text style={styles.description}>A banana, an apple and a protein bar may each be planned as separate foods for the same lunch. Planning is not logging food as eaten.</Text>
        <KitchenWeekPlanPanel ownerId={user.id} day={day} accessReady={gate.status==='ready'}/>
-       <Text style={styles.note}>Adding foods and starting Meal Prep remain unavailable until the approved Recipe/Food owner writers and Kitchen session backend are connected.</Text>
+       <Text style={styles.note}>Adding foods and starting Meal Prep aren't available yet.</Text>
       </>:foodPlanSection==='shopping'?<>
-       <Text style={styles.description}>Shopping will combine missing ingredients from planned recipes with individual scheduled foods, including fruit, snacks and drinks.</Text>
-       <Text style={styles.description}>Only verified shortages after usable Pantry quantities and reservations are considered belong on this list. Purchases must be confirmed before changing Pantry.</Text>
        <KitchenStockSummaryPanel ownerId={user.id} kind="shopping" accessReady={gate.status==='ready'}/>
       </>:<>
-       <Text style={styles.description}>Pantry will track actual available stock, reserved quantities, and food stored in the pantry, fridge or freezer.</Text>
-       <Text style={styles.description}>Planning and Shopping never assume an item was purchased or eaten. Only verified inventory writes change available stock.</Text>
        <KitchenStockSummaryPanel ownerId={user.id} kind="pantry" accessReady={gate.status==='ready'}/>
       </>}
      </View>}
