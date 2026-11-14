@@ -10,6 +10,8 @@ on:
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
       - 'infra/cloudflare/all251-storage-staging/**'
+      - 'scripts/test-all251-hosted-worker-session-gate.mjs'
+      - '.github/workflows/v2-all251-hosted-worker-session-gate.yml'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
   pull_request:
     paths:
@@ -19,6 +21,8 @@ on:
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
       - 'infra/cloudflare/all251-storage-staging/**'
+      - 'scripts/test-all251-hosted-worker-session-gate.mjs'
+      - '.github/workflows/v2-all251-hosted-worker-session-gate.yml'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
 permissions:
   contents: read
@@ -62,6 +66,8 @@ jobs:
         run: |
           node --check infra/cloudflare/all251-storage-staging/attested-rpc-review.mjs
           node --test infra/cloudflare/all251-storage-staging/attested-rpc-review.test.mjs
+      - name: Syntax check protected real Auth A/B acceptance without credentials
+        run: node --check scripts/test-all251-hosted-worker-session-gate.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
