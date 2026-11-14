@@ -88,6 +88,42 @@ test('synthetic user writes and exact R2 byte readback are lease protected',asyn
  assert.deepEqual(f.calls,{auth:2,session:1,begin:1,settle:1,put:1,get:1,rpc:1});
 });
 
+test('fixture cleanup waits for an in-flight R2 write to settle',{timeout:2000},async()=>{
+ const f=fixture({cleanupAllowed:true});
+ const binding=f.env.PRIVATE_STORAGE;
+ const put=binding.put.bind(binding);
+ const {promise:entered,resolve:markEntered}=Promise.withResolvers();
+ const {promise:release,resolve:releasePut}=Promise.withResolvers();
+ const cleanupRequest=()=>new Request(URL,{method:'DELETE',
+  headers:{authorization:'Bearer '+JWT},
+ });
+ const path=A+'/'+OBJECT+'.bin';
+ binding.put=async(...args)=>{
+  markEntered();
+  await release;
+  return put(...args);
+ };
+ const writing=f.candidate.fetch(request(),f.env);
+ try{
+  await entered;
+  assert.equal(f.calls.begin,1);
+  assert.equal(f.calls.settle,0);
+  // Simulate the database refusing cleanup while the lease is unsettled.
+  const pending=fixture({cleanupAllowed:false});
+  pending.env.PRIVATE_STORAGE=binding;
+  assert.equal((await pending.candidate.fetch(cleanupRequest(),pending.env)).status,403);
+  assert.equal(f.stored.has(path),false);
+ }finally{
+  releasePut();
+  await writing;
+ }
+ assert.equal((await writing).status,201);
+ assert.equal(f.calls.settle,1);
+ assert.deepEqual(f.stored.get(path).bytes,data);
+ assert.equal((await f.candidate.fetch(cleanupRequest(),f.env)).status,204);
+ assert.equal(f.stored.has(path),false);
+});
+
 test('repeat create cannot overwrite R2 private bytes and leaves unresolved lease',async()=>{
  const f=fixture();
  assert.equal((await f.candidate.fetch(request(),f.env)).status,201);

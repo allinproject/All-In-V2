@@ -1,6 +1,6 @@
 # ALL-251 — Cloudflare R2 provider byte-proof operator runbook
 
-**Staging candidate deployed with proof disabled. Hosted R2 byte acceptance pending.**
+**Hosted synthetic R2 byte proof passed. The staging proof switch is off.**
 Cloudflare version `490cba46-50fe-4620-829e-55537ecb58c9` contains the
 candidate code from `ae308df22a96205e32daa8244df2cf5d3b9d49af`.
 The operator reported HTTP 403 for the root, readiness HEAD, and unauthenticated
@@ -97,7 +97,17 @@ upload after deployment. Prior deny-only rollback version:
    independently verify HTTP 403 on all methods. Do not rotate the
    database signer while any lease remains open.
 
-## Actual hosted R2 proof (NOT RUN)
+## Hosted R2 proof
+
+[GitHub attempt 2](https://github.com/allinproject/All-In-V2/actions/runs/43556336586/attempts/2)
+verified synthetic A/B uploads, matching SHA-256 and byte length, cross-owner
+checksum denial, A's post-freeze read and write denials, continued B access,
+and fixture cleanup. Cloudflare's Objects view showed an empty staging bucket
+afterward. Wrangler confirmed version `490cba46-50fe-4620-829e-55537ecb58c9`
+restored at 100% traffic. A fresh HTTP probe after rollback is pending.
+Provider bypass and the in-flight deletion race still require hosted evidence.
+
+### Procedure for a future approved run
 
 Once the operator completes steps 1–7 and verifies the deployed endpoint,
 run a separately approved protected disposable staging HTTP test:
@@ -126,8 +136,7 @@ run a separately approved protected disposable staging HTTP test:
   the workflow exists on the default branch; use a separately reviewed
   exact-path one-time integration push trigger only AFTER the Worker
   is verified active. No trigger/marker is currently approved.
-- The test is **not yet executed**, and a passing sequential R2
-  upload/delete test is not an in-flight deletion-race proof.
+- A passing sequential R2 upload/delete test does not cover the in-flight deletion race.
 - Test an in-flight A upload begun before the freeze separately with
   controllable, safe scheduling; a simple sequential post-freeze denial
   does NOT prove the in-flight race.
