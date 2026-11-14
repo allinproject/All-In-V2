@@ -138,11 +138,6 @@ function TrainingCalendarOwnerScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.topBar}>
           <Text accessibilityRole="header" style={styles.title}>Train</Text>
-          <Link href="/goals" asChild>
-            <Pressable accessibilityRole="button" accessibilityLabel="Review your goals" style={styles.goalsAction}>
-              <Text style={styles.muted}>Goals ›</Text>
-            </Pressable>
-          </Link>
         </View>
         <View style={styles.compactTabs} accessibilityRole="tablist">
           {([
@@ -310,7 +305,6 @@ const styles = StyleSheet.create({
   safe: {flex:1,backgroundColor:colors.background},
   content:{padding:20,gap:12,paddingBottom:52},
   topBar:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:44,gap:12},
-  goalsAction:{minHeight:44,justifyContent:'center',paddingHorizontal:8},
   title:{fontSize:24,fontWeight:'800',color:colors.warmWhite},
   muted:{color:colors.mutedText,fontSize:13,lineHeight:20},
   white:{color:colors.warmWhite,fontSize:15,fontWeight:'700'},
