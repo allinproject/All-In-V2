@@ -1,0 +1,147 @@
+-- ALL-246. ONLY FOR DISPOSABLE ISOLATED POSTGRES WITH TWO SYNTHETIC
+-- Supabase Auth users, v2_profiles and CURRENT auth.sessions.
+-- Never use against hosted/production V2. Candidate SQL is not deployable.
+--
+-- Required psql variables supplied by the local fixture creator:
+--   -v disposable_test=1 -v user_a=<UUID> -v session_a=<UUID>
+--   -v user_b=<UUID> -v session_b=<UUID>
+-- Preapply BOTH review-only candidate SQL files on the isolated database.
+-- All temporary authenticated grants and test data are ROLLED BACK.
+\set ON_ERROR_STOP on
+\if :{?disposable_test}
+\else
+ \echo 'REFUSING: explicit disposable_test marker required'
+ \quit 1
+\endif
+\if :{?user_a}
+\else
+ \echo 'REFUSING: seeded user_a missing'
+ \quit 1
+\endif
+\if :{?session_a}
+\else
+ \echo 'REFUSING: seeded session_a missing'
+ \quit 1
+\endif
+\if :{?user_b}
+\else
+ \echo 'REFUSING: seeded user_b missing'
+ \quit 1
+\endif
+\if :{?session_b}
+\else
+ \echo 'REFUSING: seeded session_b missing'
+ \quit 1
+\endif
+
+BEGIN;
+-- Testing privilege grant exists ONLY inside this rolled-back transaction.
+GRANT USAGE ON SCHEMA allin_private TO authenticated;
+GRANT EXECUTE ON FUNCTION allin_private.v2_training_routine_assert_owner_candidate(uuid)
+ TO authenticated;
+GRANT EXECUTE ON FUNCTION allin_private.v2_training_routine_write_candidate(
+ uuid,uuid,bigint,uuid,text,text,text,jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.v2_training_routines_list_candidate(
+ uuid,bigint,uuid,integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.v2_training_routine_version_candidate(
+ uuid,bigint,uuid,bigint) TO authenticated;
+
+SELECT pg_catalog.set_config('allin.test.user_a',:'user_a',true);
+SELECT pg_catalog.set_config('allin.test.user_b',:'user_b',true);
+SELECT pg_catalog.set_config('allin.test.session_a',:'session_a',true);
+SELECT pg_catalog.set_config('allin.test.session_b',:'session_b',true);
+SELECT pg_catalog.set_config('request.jwt.claim.sub',:'user_a',true);
+SELECT pg_catalog.set_config('request.jwt.claim.session_id',:'session_a',true);
+SELECT pg_catalog.gen_random_uuid() AS test_create_action \gset
+-- Actual fixture is explicitly authored; performance history is never
+-- fabricated from Completed Activity evidence.
+\set workout_block '[{"id":"draft-1","kind":"strength","exercise":"Squat","equipment":null,"notes":"","sets":3,"reps":"5","weight":null,"restSeconds":90,"setType":"working","groupId":null}]'
+
+SET LOCAL ROLE authenticated;
+DO $deny$
+BEGIN
+ BEGIN
+  PERFORM 1 FROM public.v2_training_routines;
+  RAISE EXCEPTION 'FAIL: direct table read unexpectedly allowed';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END;
+$deny$;
+-- Create once, then verify exact idempotent replay does not bump version.
+SELECT (result->>'routineId')::uuid AS test_routine_a,
+       (result->>'version')::bigint AS test_version
+FROM (SELECT allin_private.v2_training_routine_write_candidate(
+ :'user_a'::uuid,NULL,0,:'test_create_action'::uuid,
+ 'Strength A','strength','',:'workout_block'::jsonb) AS result) x \gset
+
+DO $check$
+DECLARE v_id uuid:=pg_catalog.current_setting('allin.test.user_a')::uuid;
+BEGIN
+ IF v_id IS NULL THEN RAISE EXCEPTION 'Fixture owner missing'; END IF;
+END;
+$check$;
+SELECT pg_catalog.set_config('allin.test.routine_a',:'test_routine_a',true);
+DO $check$
+DECLARE v_record jsonb;
+BEGIN
+ v_record:=public.v2_training_routine_version_candidate(
+  pg_catalog.current_setting('allin.test.user_a')::uuid,1,
+  pg_catalog.current_setting('allin.test.routine_a')::uuid,1);
+ IF v_record->>'name'<>'Strength A' OR
+  pg_catalog.jsonb_array_length(v_record->'blocks')<>1 THEN
+  RAISE EXCEPTION 'FAIL: source-backed exact owner version'; END IF;
+END;
+$check$;
+
+DO $deny$
+DECLARE v_id uuid:=pg_catalog.current_setting('allin.test.routine_a')::uuid;
+ v_owner uuid:=pg_catalog.current_setting('allin.test.user_a')::uuid;
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_training_routine_write_candidate(
+   v_owner,v_id,0,pg_catalog.gen_random_uuid(),
+   'Bad stale change','strength','',
+   '[{"id":"draft-1","kind":"strength","exercise":"Squat","equipment":null,"notes":"","sets":3,"reps":"5","weight":null,"restSeconds":90,"setType":"working","groupId":null}]'::jsonb);
+  RAISE EXCEPTION 'FAIL: stale version unexpectedly accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL;
+ END;
+END;
+$deny$;
+
+RESET ROLE;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',:'user_b',true);
+SELECT pg_catalog.set_config('request.jwt.claim.session_id',:'session_b',true);
+SET LOCAL ROLE authenticated;
+DO $isolate$
+DECLARE v_detail jsonb;v_page jsonb;
+BEGIN
+ v_detail:=public.v2_training_routine_version_candidate(
+  pg_catalog.current_setting('allin.test.user_b')::uuid,1,
+  pg_catalog.current_setting('allin.test.routine_a')::uuid,1);
+ IF v_detail IS NOT NULL THEN
+  RAISE EXCEPTION 'FAIL: user B can read user A routine'; END IF;
+ v_page:=public.v2_training_routines_list_candidate(
+  pg_catalog.current_setting('allin.test.user_b')::uuid,1,NULL,100);
+ IF pg_catalog.jsonb_array_length(v_page->'records')<>0 THEN
+  RAISE EXCEPTION 'FAIL: user B can list user A routine'; END IF;
+ BEGIN
+  PERFORM public.v2_training_routine_version_candidate(
+   pg_catalog.current_setting('allin.test.user_a')::uuid,1,
+   pg_catalog.current_setting('allin.test.routine_a')::uuid,1);
+  RAISE EXCEPTION 'FAIL: B can impersonate expected user A';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ BEGIN
+  PERFORM allin_private.v2_training_routine_write_candidate(
+   pg_catalog.current_setting('allin.test.user_a')::uuid,
+   pg_catalog.current_setting('allin.test.routine_a')::uuid,1,
+   pg_catalog.gen_random_uuid(),'Hijacked','strength','',
+   '[{"id":"draft-1","kind":"strength","exercise":"Squat","equipment":null,"notes":"","sets":3,"reps":"5","weight":null,"restSeconds":90,"setType":"working","groupId":null}]'::jsonb);
+  RAISE EXCEPTION 'FAIL: B can write A routine';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END;
+$isolate$;
+RESET ROLE;
+ROLLBACK;
+\echo 'PASS only if every assertion completed; test data and test grants rolled back'
