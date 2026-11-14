@@ -30,9 +30,11 @@ export function createStagedSavedRoutineReadServices(
   if(!validId(ownerId)||identity.ownerId!==ownerId||
      identity.sessionGeneration!==generation||!identity.isCurrent())throw Error('Stale Routine owner');
   const session=await transport.auth.getSession();
-  if(session.error||session.data.session?.user.id!==ownerId||
-    (session.data.session.expires_at!==undefined&&
-      session.data.session.expires_at<=Math.floor(Date.now()/1000)))throw Error('Routine session unavailable');
+  const currentSession=session.data.session;
+  if(session.error||!currentSession||currentSession.user.id!==ownerId||
+    (currentSession.expires_at!==undefined&&
+      currentSession.expires_at<=Math.floor(Date.now()/1000)))
+   throw Error('Routine session unavailable');
   const actor=await transport.auth.getUser();
   if(actor.error||actor.data.user?.id!==ownerId||!identity.isCurrent())
    throw Error('Routine authenticated owner unavailable');
@@ -57,7 +59,7 @@ export function createStagedSavedRoutineReadServices(
    if(!isObject(data)||!Array.isArray(data.records)||
      data.expectedOwnerId!==expectedOwnerId||data.sessionGeneration!==sessionGeneration)
     throw Error('Invalid Routine page from server');
-   return data as SavedRoutineListPage;
+   return data as unknown as SavedRoutineListPage;
   },
   readVersion:async({expectedOwnerId,sessionGeneration,routineId,version})=>{
    if(!validId(expectedOwnerId)||!validId(routineId)||!Number.isSafeInteger(version)||version<1)
@@ -71,7 +73,7 @@ export function createStagedSavedRoutineReadServices(
       data.ownerId!==expectedOwnerId||data.sessionGeneration!==sessionGeneration||
       data.routineId!==routineId||data.version!==version||data.complete!==true||
       !Array.isArray(data.blocks))throw Error('Invalid Routine version from server');
-   return data as SavedRoutineOwnerSnapshot;
+   return data as unknown as SavedRoutineOwnerSnapshot;
   },
  };
 }
