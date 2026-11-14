@@ -282,6 +282,28 @@ BEGIN
 END;
 $export_a$;
 RESET ROLE;
+-- A syntactically valid session belonging to a different user is not
+-- sufficient authorization, even if request.jwt.claim.sub still says A.
+SELECT pg_catalog.set_config('request.jwt.claim.session_id',:'session_b',true);
+SET LOCAL ROLE authenticated;
+DO $revoke$
+BEGIN
+ BEGIN
+  PERFORM public.v2_training_routines_list_candidate(
+   pg_catalog.current_setting('allin.test.user_a')::uuid,1,NULL,100);
+  RAISE EXCEPTION 'FAIL: cross-account Auth session accepted for Routine read';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ BEGIN
+  PERFORM allin_private.v2_training_routine_export_fragment_candidate(
+   pg_catalog.current_setting('allin.test.user_a')::uuid);
+  RAISE EXCEPTION 'FAIL: cross-account Auth session accepted for Routine export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END;
+$revoke$;
+RESET ROLE;
+SELECT pg_catalog.set_config('request.jwt.claim.session_id',:'session_a',true);
 -- Synthetic account deletion is performed by the disposable fixture owner,
 -- not by any client or proposed account-deletion API. The user's other domains
 -- remain under ALL-251 canonical account-deletion acceptance.
