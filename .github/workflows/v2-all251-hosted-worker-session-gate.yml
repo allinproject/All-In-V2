@@ -1,0 +1,37 @@
+name: ALL-251 protected hosted Worker session A/B acceptance
+# Protected synthetic Auth only. No R2, upload, or account deletion activation.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: all251-protected-session-gate
+  cancel-in-progress: false
+jobs:
+  protected-disposable-staging-only:
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    environment: all251-temporary-staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CI: 'true'
+      ALL251_SESSION_GATE_APPROVED: 'true'
+      ALL251_STAGING_REF: fbtgknlxjyeqrxemskbl
+      ALL251_STAGING_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
+      ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
+      ALL251_TEMP_STAGING_PUBLISHABLE_KEY: ${{ vars.ALL251_TEMP_STAGING_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Validate protected disposable staging inputs
+        run: |
+          test "${ALL251_STAGING_REF}" = 'fbtgknlxjyeqrxemskbl'
+          test -n "${ALL251_TEMP_STAGING_SECRET_KEY}"
+          test -n "${ALL251_TEMP_STAGING_PUBLISHABLE_KEY}"
+          node --check scripts/test-all251-hosted-worker-session-gate.mjs
+      - name: Real A/B sign-in, freeze, independent session, revocation, cleanup
+        run: node scripts/test-all251-hosted-worker-session-gate.mjs
+# Test verifies only the narrow staging session gate. ALL-251 Storage, R2
+# writer, S3 and multipart barriers remain blocked until separately proven.
