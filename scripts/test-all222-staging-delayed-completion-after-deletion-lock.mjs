@@ -53,12 +53,18 @@ async function admin(path,method='GET',body){
 }
 const pathFor=label=>owner.id+'/all222-delayed-'+randomUUID()+'-'+label+'.bin';
 const denial=status=>[400,401,403,404,409,410,422].includes(status);
+async function assertConfirmedAbsence(res,label){
+ assert([400,404].includes(res.status),label+' must return explicit absent status');
+ const info=await res.clone().json().catch(()=>null);
+ assert(info&&(info.code==='NoSuchKey'||info.error==='not_found')&&
+   info.message==='Object not found',label+' returned unverified absence');
+}
 async function absence(path){
  const response=await request('/storage/v1/object/authenticated/'+bucket+'/'+encode(path),
   {admin:true});
- assert(!response.ok,'SECURITY FAIL: private bytes readable after deletion lock');
+ await assertConfirmedAbsence(response,'private object bytes');
  const obj=await request('/storage/v1/object/info/'+bucket+'/'+encode(path),{admin:true});
- assert(!obj.ok,'SECURITY FAIL: private object metadata exists after deletion lock');
+ await assertConfirmedAbsence(obj,'private object metadata');
 }
 async function tus(url,method,jwt,headers={},body){
  const parsed=new URL(url,direct);
