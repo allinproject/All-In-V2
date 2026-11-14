@@ -11,7 +11,7 @@
  */
 import {createAll251InternalWriterReview} from './internal-writer-review.mjs';
 import {createAll251UploadIngressReview} from './upload-ingress-review.mjs';
-import {createAll251AttestedRpcReview} from './attested-rpc-review.mjs';
+import {createAll251OwnerJwtAttestedRpcReview} from './owner-jwt-attested-rpc-review.mjs';
 import {createAttestedPrivilegedStorageLeaseAuthority}
  from '../../../supabase/functions/_shared/trainingPrivilegedStorageWriterAttestor.mjs';
 
@@ -37,7 +37,7 @@ function signerBytes(value){
 export function createAll251R2ProofCandidate({
  fetchImpl=fetch,
  createAuthority=createAttestedPrivilegedStorageLeaseAuthority,
- createRPC=createAll251AttestedRpcReview,
+ createRPC=createAll251OwnerJwtAttestedRpcReview,
  createWriter=createAll251InternalWriterReview,
 }={}){
  return {
@@ -71,7 +71,7 @@ export function createAll251R2ProofCandidate({
     // Separate session/deletion-state RPC is checked again by canonical
     // internal writer *before* reading any request bytes.
     const signing=signerBytes(env.ALL251_WRITER_SIGNER_B64);
-    const rpc=createRPC({env,fetchImpl});
+    const rpc=createRPC({env,fetchImpl,accessToken:bearer.slice(7)});
     const authority=createAuthority({supabase:rpc,signingKey:signing});
     signing.fill(0);
     const writer=createWriter({
