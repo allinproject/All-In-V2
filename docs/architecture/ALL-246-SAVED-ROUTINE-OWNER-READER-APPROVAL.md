@@ -28,6 +28,19 @@
 
 **Remaining (NOT accepted):** the real downloadable/encrypted ALL-251 archive and Storage coverage; retention/worker execution; authenticated server JWT/real-session checks in an approved Supabase staging deployment; exact Routine reader/writer privilege grants and gateway choice under ALL-222; account deletion/restore in the complete data graph with real restore procedure; client service injection; TypeScript/Expo/iPhone E2E. No hosted Routine migration, public feature activation or production deployment has happened.
 
+## 2026-11-13 founder follow-up: authenticated staging RPC implementation approval
+
+**Approved:** implement and security-test *only* the authenticated private Routine reader/writer in an isolated staging environment, least-privilege Auth, existing Training owner, no unrestricted client table grants. **Not approved:** production migrations, shared staging changes, public activation or ALL-222 bypass.
+
+**New review-only implementation and evidence:**
+- [Narrow owner RPC gateway](sql/V2-TRAINING-SAVED-ROUTINES-AUTH-GATEWAY-CANDIDATE.sql) exposes exactly four function-scoped calls to the `authenticated` role (list, read exact version, save CAS, archive CAS). The existing private owner assertion checks `auth.uid()`, the expected owner, `auth.sessions` and `v2_profiles`; no direct owner-table or private writer permission. No new executable migration, live hosted grant, or client service-role key.
+- [PostgreSQL gateway acceptance](tests/ALL-246-SAVED-ROUTINES-GATEWAY-ACCEPTANCE.psql) is executed after the existing owner/export/restore suite by [no-deploy GitHub workflow](../../.github/workflows/v2-saved-routines-isolated-postgres.yml). GitHub PG17 [run 43538096666](https://github.com/allinproject/All-In-V2/actions/runs/43538096666) passed the gateway and prior two-owner/auth-session test set, with rights never granted outside the disposable fixture.
+- [Dormant authenticated client read adapter](../../apps/mobile-v2/src/features/training/routines/savedRoutineRpcAdapter.ts) validates session, owner and sessionGeneration before/after calls and returns only source-backed records.
+- [Dormant explicit-action client write/archive adapter](../../apps/mobile-v2/src/features/training/routines/savedRoutineRpcWriter.ts) validates the authored structure, action UUID, expected version, matching returned Routine ID and version; does not auto-save Coach suggestions.
+- [Client adapter tests](../../apps/mobile-v2/src/features/training/routines/savedRoutineRpcAdapter.test.ts) cover owner-only read, account-switch denial, session invalidation, explicit save and archive. Dedicated GitHub Actions run 43538503671 has a passing client adapter job; confirm final PG job status separately.
+- No live Auth backend or Supabase staging project has these Routine tables/RPCs. Existing temporary staging project `fbtgknlxjyeqrxemskbl` contains unrelated work and MUST NOT be repurposed as isolated without a conflict-free environment plan. Canonical V2 project `xarhuczrtzuiljmtdaeu` remains unchanged; its Supabase branches list is empty. A new development branch may incur hourly compute costs and must not be created without cost review.
+- **Release gate remains blocked**: owner-verified two real Supabase Auth sessions/JWT and live RLS/grants; all ALL-251 account export/deletion/retention/download and restore acceptance; legal/privacy review of private Coach/Routine action receipts; TypeScript/Expo/iPhone workout lifecycle. Neither adapter is connected in `app/train.tsx`, and `ALL-222` remains in progress.
+
 ## Verified physical state
 
 2026-11-13 read-only `list_tables` confirms no Saved Routine table in `public` or `allin_private`. Public tables remain Profile/Settings/Onboarding/Legal; private tables include action ledgers, provider cache and account lifecycle objects. These reads were NOT migrations or grant changes.
