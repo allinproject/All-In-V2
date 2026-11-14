@@ -77,14 +77,27 @@ function OwnedFuelScreen(){
        style={styles.dayControl} onPress={()=>adjust(1)}>
        <Text style={styles.dayText}>›</Text></Pressable>
      </View>
-     {section==='daily'?<View style={styles.card}>
-      <Text accessibilityRole="header" style={styles.subhead}>Daily Overview</Text>
-      <Text style={styles.description}>Daily nutrition totals are not available yet.</Text>
-      <Pressable accessibilityRole="button" onPress={()=>setSection('food-log')}>
-       <Text style={styles.linkText}>Open Food Log</Text>
-      </Pressable>
+     {section==='daily'?<View style={styles.nutritionDetails}>
+      <View style={styles.nutritionHeading}>
+       <View style={styles.nutritionTitleGroup}>
+        <View style={styles.goldAccent}/>
+        <Text accessibilityRole="header" style={styles.subhead}>Nutrition</Text>
+       </View>
+       <Pressable accessibilityRole="button" accessibilityLabel="Return to Food Log"
+        style={styles.backAction} onPress={()=>setSection('food-log')}>
+        <Text style={styles.linkText}>‹ Food Log</Text>
+       </Pressable>
+      </View>
+      {(['Calories','Protein','Carbs','Fat'] as const).map(label=>(
+       <View key={label} style={styles.nutritionRow}>
+        <Text style={styles.nutritionLabel}>{label}</Text>
+        <Text style={styles.nutritionUnknown}>—</Text>
+       </View>
+      ))}
+      <Text style={styles.description}>Nutrition totals aren't available yet.</Text>
      </View>:
-      <FuelFoodLogPanel ownerId={user.id} day={day} onDayChange={setDay} accessReady={gate.status==='ready'}/>}
+      <FuelFoodLogPanel ownerId={user.id} day={day} onDayChange={setDay}
+       accessReady={gate.status==='ready'} onOpenNutrition={()=>setSection('daily')}/>}
     </>:
      section==='recipes'?<View style={styles.card}>
       <Text style={styles.description}>Recipes aren't available yet.</Text>
@@ -130,4 +143,13 @@ const styles=StyleSheet.create({
  subhead:{color:colors.warmWhite,fontSize:21,fontWeight:'800'},
  linkText:{color:colors.goldSoft,fontSize:15,fontWeight:'700'},
  note:{color:colors.goldSoft,fontSize:13,lineHeight:20},
+ nutritionDetails:{backgroundColor:colors.background,paddingHorizontal:2,paddingVertical:18,gap:12},
+ nutritionHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
+ nutritionTitleGroup:{flexDirection:'row',alignItems:'center',gap:10},
+ goldAccent:{width:4,height:20,borderRadius:2,backgroundColor:colors.gold},
+ backAction:{minHeight:44,justifyContent:'center',paddingHorizontal:4},
+ nutritionRow:{minHeight:52,flexDirection:'row',alignItems:'center',justifyContent:'space-between',
+  borderBottomWidth:1,borderBottomColor:colors.border,paddingVertical:10},
+ nutritionLabel:{color:colors.warmWhite,fontSize:15,fontWeight:'700'},
+ nutritionUnknown:{color:colors.warmWhite,fontSize:20,fontWeight:'800'},
 });
