@@ -47,6 +47,8 @@ GRANT EXECUTE ON FUNCTION public.v2_training_routines_list_candidate(
  uuid,bigint,uuid,integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.v2_training_routine_version_candidate(
  uuid,bigint,uuid,bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION allin_private.v2_training_routine_export_fragment_candidate(uuid)
+ TO authenticated;
 
 SELECT pg_catalog.set_config('allin.test.user_a',:'user_a',true);
 SELECT pg_catalog.set_config('allin.test.user_b',:'user_b',true);
@@ -164,6 +166,31 @@ BEGIN
  END;
 END;
 $isolate$;
+-- B owns a separate routine; deleting A later must preserve B's history.
+SELECT pg_catalog.gen_random_uuid() AS test_create_action_b \gset
+SELECT (result->>'routineId')::uuid AS test_routine_b
+FROM (SELECT allin_private.v2_training_routine_write_candidate(
+ :'user_b'::uuid,NULL,0,:'test_create_action_b'::uuid,
+ 'Strength B','strength','',:'workout_block'::jsonb) AS result) x \gset
+DO $export_b$
+DECLARE v jsonb;
+BEGIN
+ v:=allin_private.v2_training_routine_export_fragment_candidate(
+   pg_catalog.current_setting('allin.test.user_b')::uuid);
+ IF v->>'completeAccountExport'<>'false'
+   OR pg_catalog.jsonb_array_length(v#>'{records,public.v2_training_routines}')<>1
+   OR v#>>'{records,public.v2_training_routines,0,user_id}'<>
+     pg_catalog.current_setting('allin.test.user_b') THEN
+  RAISE EXCEPTION 'FAIL: B export is incomplete or leaked another owner';
+ END IF;
+ BEGIN
+  PERFORM allin_private.v2_training_routine_export_fragment_candidate(
+   pg_catalog.current_setting('allin.test.user_a')::uuid);
+  RAISE EXCEPTION 'FAIL: user B could export user A routines';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END;
+$export_b$;
 RESET ROLE;
 -- Archive is a soft lifecycle operation, not a completed-workout deletion.
 SELECT pg_catalog.set_config('request.jwt.claim.sub',:'user_a',true);
@@ -205,5 +232,42 @@ BEGIN
  ) THEN RAISE EXCEPTION 'FAIL: archive destroyed immutable Routine version'; END IF;
 END;
 $history$;
+-- Export includes archived immutable versions and private owner action receipts.
+SET LOCAL ROLE authenticated;
+DO $export_a$
+DECLARE v jsonb;
+BEGIN
+ v:=allin_private.v2_training_routine_export_fragment_candidate(
+   pg_catalog.current_setting('allin.test.user_a')::uuid);
+ IF pg_catalog.jsonb_array_length(v#>'{records,public.v2_training_routines}')<>1
+   OR pg_catalog.jsonb_array_length(v#>'{records,public.v2_training_routine_versions}')<>1
+   OR pg_catalog.jsonb_array_length(v#>'{records,allin_private.v2_training_routine_owner_epochs}')<>1
+   OR pg_catalog.jsonb_array_length(v#>'{records,allin_private.v2_training_routine_actions}')<>2
+   OR v->>'completeAccountExport'<>'false' THEN
+  RAISE EXCEPTION 'FAIL: A Routine export fragment omitted owner data';
+ END IF;
+END;
+$export_a$;
+RESET ROLE;
+-- Synthetic account deletion is performed by the disposable fixture owner,
+-- not by any client or proposed account-deletion API. The user's other domains
+-- remain under ALL-251 canonical account-deletion acceptance.
+DELETE FROM auth.users WHERE id=:'user_a'::uuid;
+DO $teardown$
+DECLARE v_owner uuid:=pg_catalog.current_setting('allin.test.user_a')::uuid;
+ v_other uuid:=pg_catalog.current_setting('allin.test.user_b')::uuid;
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.v2_training_routines WHERE user_id=v_owner)
+  OR EXISTS(SELECT 1 FROM public.v2_training_routine_versions WHERE user_id=v_owner)
+  OR EXISTS(SELECT 1 FROM allin_private.v2_training_routine_owner_epochs WHERE user_id=v_owner)
+  OR EXISTS(SELECT 1 FROM allin_private.v2_training_routine_actions WHERE user_id=v_owner)
+  OR EXISTS(SELECT 1 FROM auth.sessions WHERE user_id=v_owner)
+  THEN RAISE EXCEPTION 'FAIL: routine private owner graph survived Auth deletion'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.v2_training_routines WHERE user_id=v_other)
+  OR NOT EXISTS(SELECT 1 FROM public.v2_training_routine_versions WHERE user_id=v_other)
+  OR NOT EXISTS(SELECT 1 FROM auth.sessions WHERE user_id=v_other)
+  THEN RAISE EXCEPTION 'FAIL: deleting user A damaged B routines'; END IF;
+END;
+$teardown$;
 ROLLBACK;
 \echo 'PASS only if every assertion completed; test data and test grants rolled back'
