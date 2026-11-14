@@ -6,7 +6,7 @@
 -- candidate extension of EXISTING ALL-251 owner export, not a competing API.
 -- Requires the full candidate Training/Completed Activity owner graph.
 -- Does NOT export private Storage objects/bytes; export remains incomplete.
-CREATE FUNCTION allin_private.v2_training_account_export_fragment_candidate(
+CREATE OR REPLACE FUNCTION allin_private.v2_training_account_export_fragment_candidate(
  p_user_id uuid
 ) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=''
