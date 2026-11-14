@@ -6,6 +6,10 @@ on:
     paths:
       - 'apps/mobile-v2/src/features/community/**'
       - 'scripts/test-all251-community-photo-two-auth-local.mjs'
+      - 'supabase/functions/_shared/communityPhotoPrivacyCoverageReview.mjs'
+      - 'supabase/functions/_shared/communityPhotoPrivacyCoverageReview.node.test.mjs'
+      - 'supabase/functions/_shared/communityPhotoOwnerStorageReview.mjs'
+      - 'supabase/functions/_shared/communityPhotoOwnerStorageReview.node.test.mjs'
       - 'apps/mobile-v2/package.json'
       - 'scripts/test-v2-community-sql-guard.test.mjs'
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
