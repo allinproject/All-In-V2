@@ -1,0 +1,19 @@
+{
+  // ALL-251 REVIEW-ONLY: DO NOT DEPLOY before operator approval.
+  // Existing live worker.mjs remains default-deny.
+  // This alternate config intentionally lacks ALL251_ENABLE_SYNTHETIC_PROOF:
+  // without separately enabling that staging-only setting, ALL requests 403.
+  "name": "allin365-storage-staging",
+  "main": "worker-r2-proof-candidate.mjs",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": true,
+  "vars": {
+    "SUPABASE_URL": "https://fbtgknlxjyeqrxemskbl.supabase.co"
+  },
+  "r2_buckets": [
+    {
+      "binding": "PRIVATE_STORAGE",
+      "bucket_name": "allin365-private-staging"
+    }
+  ]
+}
