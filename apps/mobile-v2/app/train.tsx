@@ -60,7 +60,8 @@ function TrainingCalendarOwnerScreen() {
   routineOwnerRef.current={ownerId:user?.id??null,generation:sessionGeneration};
   useEffect(()=>()=>{routineOwnerRef.current={ownerId:null,generation:-1};},[]);
   const localRoutine=useMemo(()=>{
-   if(process.env.EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE!=='true'||!user?.id)return null;
+   if((process.env.EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE!=='true'&&
+      process.env.EXPO_PUBLIC_V2_ROUTINE_TEMP_STAGING_ACCEPTANCE!=='true')||!user?.id)return null;
    const ownerId=user.id;
    const allowed=new Set([
     'v2_training_routine_list_owner_candidate',
