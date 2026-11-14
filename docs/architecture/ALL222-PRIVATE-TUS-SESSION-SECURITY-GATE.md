@@ -244,6 +244,56 @@ latest script commit and running `node --check`; verify staging has zero
 unrelated fixtures and open leases first. Do not repeat on failure
 without reconciliation of any active upload session or deletion fixture.
 
+## Hosted termination fixture reconciliation — operator gate
+
+The operator-only `--terminate-active` probe intentionally **does not
+release** an unfinished attested lease on a transient TUS DELETE. The
+database Auth-deletion trigger keeps any unsettled lease (including a
+cancelled one) as an owner-deletion blocker. This is deliberate until the
+provider upload has been independently invalidated. The probe now prints
+a **CHECKPOINT / PARTIAL** and exits nonzero while cleanup is outstanding;
+a successful DELETE 204 is not an end-to-end acceptance PASS.
+
+The read-only query in
+`scripts/fixtures/all222-hosted-termination-fixture-inventory-readonly.sql`
+selects only Auth owners tagged `all222_disposable=true` and
+`all222_fixture=terminate-active` with the exact synthetic-email prefix.
+It inventories all their leases (open, cancelled, settled and
+out-of-scope), private workout objects and deletion-request presence.
+The query has been checked on the zero-fixture disposable staging
+project and returned zero rows; it has **not** been validated against a
+populated fixture. It does not read provider TUS transient state and
+must not be confused with proof of cleanup.
+
+**Before any hosted active-session run:**
+
+1. Independently approve a *staging-only* cleanup that is limited to
+   the exact tagged synthetic Auth owner and its specific cancelled lease.
+   Do not create a generic service-role client deletion bypass or change
+   the normal Auth/deletion fencing.
+2. Obtain provider evidence for *that* TUS session: DELETE=204,
+   subsequent HEAD/PATCH=404 or 410 without offset, privileged object
+   download/info explicit `NoSuchKey`, and no surviving physical bytes.
+3. Reconcile under the canonical owner advisory lock after verifying
+   the exact tagged owner, lease UUID, path, digest, no other unresolved
+   leases, zero owned private objects and no deletion request. An
+   interrupted or ambiguous cleanup must remain blocked for operator
+   inspection. Never delete another user's lease to make a test green.
+4. Remove only the approved synthetic lease with a separately reviewed,
+   audited administrative action, then delete the matching synthetic
+   Auth account through GoTrue Admin and confirm absence and no residual
+   objects/leases. Re-run the stale provider-session check afterward.
+5. Only after independent verification of every checkpoint may a
+   completed hosted acceptance result be recorded. The current test
+   script has no approved automated cleanup adapter, so **do not run
+   it merely to get a green result**.
+
+The staging provider network check still requires the operator-held
+private signer and separate credentials; no secrets should go into
+GitHub Actions, Edge project-wide settings, docs or chat. Cross-owner
+raw-TUS HEAD metadata leakage remains a known failing gate, independent
+of the above termination path.
+
 ## Operator-only active termination probe
 
 The disposable staging cancellation migration is installed. Confirm there is
