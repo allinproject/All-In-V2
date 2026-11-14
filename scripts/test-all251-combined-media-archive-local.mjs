@@ -34,7 +34,16 @@ assert.ok(typeof anon==='string'&&anon.length>20);
 const nonce=randomBytes(8).toString('hex');
 const workoutBucket='v2-private-workout-objects';
 const photoBucket='v2-private-community-photos';
-const users=[],buckets=[],uploaded=[];
+const users=[],buckets=[],uploaded=[],policies=[];
+const dbContainers=execFileSync('docker',['ps','--filter','name=supabase_db_','--format','{{.ID}}'],{
+ encoding:'utf8',timeout:15000,
+}).trim().split(/\r?\n/).filter(Boolean);
+assert.equal(dbContainers.length,1,'Exactly one disposable Supabase DB required');
+const db=dbContainers[0];
+function sql(statement){
+ return execFileSync('docker',['exec',db,'psql','-X','-U','postgres','-d','postgres',
+  '-v','ON_ERROR_STOP=1','-c',statement],{encoding:'utf8',timeout:15000});
+}
 const sha=b=>createHash('sha256').update(b).digest('hex');
 function chunk(type,data){
  const b=Buffer.alloc(8);b.writeUInt32BE(data.length,0);b.write(type,4);
@@ -103,6 +112,12 @@ try{
   assert.ok(r.ok,'Private fixture bucket creation failed');
   buckets.push(bucket);
  }
+ for(const bucket of [workoutBucket,photoBucket]){
+  const policy='all251_combined_'+nonce+'_'+(bucket===photoBucket?'photo':'workout');
+  sql(`CREATE POLICY "${policy}" ON storage.objects FOR SELECT TO authenticated
+   USING(bucket_id='${bucket}' AND split_part(name,'/',1)=(SELECT auth.uid()::text))`);
+  policies.push(policy);
+ }
  const requestId=randomUUID(),snapshotId=randomUUID();
  const postId=randomUUID(),photoId=randomUUID();
  const seriesPath=a.id+'/series/'+randomUUID()+'.fit';
@@ -121,9 +136,8 @@ try{
   });
   assert.ok(r.ok,'Privileged test-only fixture byte upload failed');
   const own=await ownerRead(a,source.bucket,source.path);
-  // No owner SELECT policy has been approved for the disposable bucket:
-  // verify the default-deny behavior, not an invented public access policy.
-  assert(checkedAbsent(own),'Unapproved direct owner Storage read was allowed');
+  assert.equal(own.status,200,'Owner could not access approved local-only private object');
+  assert.equal(sha(Buffer.from(await own.arrayBuffer())),sha(source.bytes));
   const foreign=await ownerRead(b,source.bucket,source.path);
   assert(checkedAbsent(foreign),'B accessed A private Storage object');
  }
@@ -233,6 +247,9 @@ try{
   });
   assert(restored.ok,'Fixture Storage restore failed');
   assert.equal(sha(await getBytes(source.bucket,source.path)),sha(originals.get(source.path)));
+  const restoredOwner=await ownerRead(a,source.bucket,source.path);
+  assert.equal(restoredOwner.status,200,'Owner could not read restored file');
+  assert.equal(sha(Buffer.from(await restoredOwner.arrayBuffer())),sha(originals.get(source.path)));
   assert(checkedAbsent(await ownerRead(b,source.bucket,source.path)),
    'B accessed restored owner object');
  }
@@ -249,6 +266,10 @@ try{
    });
    if(absent!==true)errors.push('remaining-bytes');
   }catch{errors.push('object-cleanup');}
+ }
+ for(const policy of [...policies].reverse()){
+  try{sql(`DROP POLICY IF EXISTS "${policy}" ON storage.objects`);}
+  catch{errors.push('policy-cleanup');}
  }
  for(const bucket of [...buckets].reverse()){
   try{const r=await api('DELETE','/storage/v1/bucket/'+bucket);
