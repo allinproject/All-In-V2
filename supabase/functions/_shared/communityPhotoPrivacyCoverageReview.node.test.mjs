@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {auditCommunityPhotoCoverageReview as audit,
  auditCommunityPhotoDeletionAbsenceReview as deletion,
+ auditCommunityPhotoDeletionPlanReview as planReview,
  REVIEW_COMMUNITY_PHOTO_BUCKET as bucket} from './communityPhotoPrivacyCoverageReview.mjs';
 const a='a1111111-a111-4111-8111-a11111111111';
 const b='b2222222-b222-4222-8222-b22222222222';
@@ -81,4 +82,37 @@ test('real legacy deletion verifier requires complete scoped immutable plan and 
  await assert.rejects(deletion({...args,approvedBucketIds:[]}),/absent from exact deletion scope/);
  await assert.rejects(deletion({...args,assertOwnerWritesQuiesced:async()=>false}),/barrier/);
  await assert.rejects(deletion({...args,objectBytesAbsent:async()=>false}),/bytes remain/);
+});
+
+test('canonical photo deletion plan reconciles exact owner records before byte proof',async()=>{
+ const steps=[];
+ const input={ownerId:a,requestId:request,
+  listCanonicalPostPhotos:async()=>{steps.push('canonical');return {ownerId:a,complete:true,rows:[row]};},
+  readExistingObjectPlan:async()=>{steps.push('plan');return {
+   ownerId:a,requestId:request,bucketId:bucket,durable:true,paths:[path],
+  };},
+  approvedBucketIds:[bucket],
+  listBucketCatalog:async()=>[{id:bucket,public:false}],
+  assertOwnerWritesQuiesced:async()=>true,
+  verifyBucketCheckpoints:async()=>true,
+  objectExists:async()=>{steps.push('exists');return false;},
+  objectBytesAbsent:async()=>{steps.push('bytes');return true;},
+  listOwnerStorageObjects:async()=>({ownerId:a,bucketId:bucket,exhaustive:true,totalCount:0,paths:[]}),
+ };
+ const proof=await planReview(input);
+ assert.equal(proof.canonicalPlanReconciled,true);
+ assert.equal(proof.canonicalPhotoCount,1);
+ assert.equal(proof.accountDeletionReady,false);
+ assert.equal(proof.uploadBarrierEnforced,false);
+ assert.deepEqual(steps,['canonical','plan','plan','exists','bytes']);
+ for(const paths of [[],[b+'/other.png'],[path,path]]){
+  steps.length=0;
+  await assert.rejects(planReview({...input,readExistingObjectPlan:async()=>{
+   steps.push('plan');return {ownerId:a,requestId:request,bucketId:bucket,durable:true,paths};
+  }}),/diverged/);
+  assert.deepEqual(steps,['canonical','plan']);
+ }
+ await assert.rejects(planReview({...input,listCanonicalPostPhotos:async()=>({
+  ownerId:a,complete:false,rows:[row],
+ })}),/Incomplete canonical/);
 });
