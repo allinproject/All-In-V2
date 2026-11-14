@@ -10,7 +10,7 @@ test('Saved Routine review is owner/version gated, default routine editor still 
  assert.match(workspace,/savedRoutineSnapshot.ownerId===currentOwnerId/);
  assert.match(workspace,/savedRoutineSnapshot.sessionGeneration===sessionGeneration/);
  assert.match(workspace,/<RoutineWorkoutReviewContent/);
- assert.match(workspace,/<RoutineBuilderContent \/>/);
+ assert.match(workspace,/<RoutineBuilderContent key=\{builderRevision\}/);
 });
 test('Coach preview offers explicit keep or apply and no forced mutation',()=>{
  const screen=read('./RoutineWorkoutReviewContent.tsx');
