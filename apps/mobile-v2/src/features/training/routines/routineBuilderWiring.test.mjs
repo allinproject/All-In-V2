@@ -6,8 +6,9 @@ const source=relative=>readFileSync(fileURLToPath(new URL(relative,import.meta.u
 test('Routines now mounts a real strength and endurance editor without secondary storage',()=>{
  const workspace=source('../RoutesRoutinesContent.tsx');
  const screen=source('./RoutineBuilderContent.tsx');
- assert.match(workspace,/<RoutineBuilderContent \/>/);
+ assert.match(workspace,/<RoutineBuilderContent key=\{builderRevision\}/);
  assert.match(workspace,/selected !== 'routines' && styles.hidden/);
+ assert.match(workspace,/savedRoutineMutationServices&&currentOwnerId&&sessionGeneration!==undefined/);
  assert.match(screen,/draft\.blocks\.map/);
  for(const action of ['addRoutineBlock','updateRoutineBlock','moveRoutineBlock',
   'duplicateRoutineBlock','deleteRoutineBlock','changeRoutineSport',
