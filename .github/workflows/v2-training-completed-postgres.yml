@@ -92,6 +92,8 @@ on:
       - 'docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql'
       - 'scripts/test-v2-account-export-training-integration-postgres.psql'
       - 'scripts/test-v2-saved-routines-full-export-integration-postgres.psql'
+      - 'scripts/test-v2-account-export-routines-paginated-postgres.psql'
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-ROUTINES-ACCOUNT-EXPORT-INTEGRATED-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-ROUTINES-INTEGRATED-CANDIDATE.sql'
       - 'scripts/v2-training-storage-export-integrity.mjs'
@@ -628,6 +630,19 @@ jobs:
           done
           docker cp scripts/test-v2-saved-routines-full-export-integration-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-saved-routines-full-export-integration-postgres.psql"
           docker exec "$PG_CONTAINER" psql -X -U "$PGUSER" -d training_routine_export -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-saved-routines-full-export-integration-postgres.psql
+      - name: Verify canonical paginated ALL-251 Routine owner export and fail-closed inventory
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          # Clone the already-tested Routine + Coach + Training + Billing
+          # account export fixture; no hosted DB, no API secrets.
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_routine_export training_routine_pages
+          for f in V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql; do
+            docker cp "docs/architecture/sql/$f" "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/$f"
+          done
+          docker cp scripts/test-v2-account-export-routines-paginated-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-account-export-routines-paginated-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -X -U "$PGUSER" -d training_routine_pages -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-routines-paginated-postgres.psql
       - name: Verify private Training Activity owner export fragment in disposable PostgreSQL
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
