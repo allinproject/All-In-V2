@@ -5,6 +5,7 @@ on:
     branches: [integration/v2-foundation]
     paths:
       - 'apps/mobile-v2/src/features/community/**'
+      - 'scripts/test-all251-community-photo-two-auth-local.mjs'
       - 'apps/mobile-v2/package.json'
       - 'scripts/test-v2-community-sql-guard.test.mjs'
       - 'docs/architecture/sql/V2-COMMUNITY-PRIVACY-OWNER-CANDIDATE.sql'
