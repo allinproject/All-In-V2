@@ -1,4 +1,4 @@
-import candidate from './worker-r2-proof-candidate.mjs';
+import {createAll251R2ProofCandidate} from './worker-r2-proof-candidate.mjs';
 
 const ownerId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const staging = 'https://fbtgknlxjyeqrxemskbl.supabase.co';
@@ -22,10 +22,23 @@ export default {
   let path;
   let entered = false;
   let freezeAttempted = false;
+  let phase = 'auth';
+  let upstreamStatus;
+  const candidate = createAll251R2ProofCandidate({
+   async fetchImpl(url, options) {
+    const route = new URL(url).pathname.split('/').at(-1);
+    phase = route;
+    upstreamStatus = undefined;
+    const response = await fetch(url, options);
+    upstreamStatus = response.status;
+    return response;
+   },
+  });
   try {
    const auth = await fetch(staging + '/auth/v1/user', {
-    headers: rpcHeaders, redirect: 'error', signal: AbortSignal.timeout(5000),
+    headers: rpcHeaders, redirect: 'manual', signal: AbortSignal.timeout(5000),
    });
+   upstreamStatus = auth.status;
    if (!auth.ok) throw Error('Auth lookup failed');
    const profile = await auth.json();
    if (profile.id !== env.ALL251_LOCAL_RACE_OWNER || profile.app_metadata?.all251_httpmatrix !== true ||
@@ -35,33 +48,47 @@ export default {
    owner = profile.id;
    path = owner + '/' + id + '.bin';
    const put = async (key, ...args) => {
+    phase = 'before-r2-put';
+    upstreamStatus = undefined;
     if (entered || key !== path) throw Error('Unexpected R2 write');
     entered = true;
     freezeAttempted = true;
+    phase = 'synthetic-freeze';
     const freeze = await fetch(staging + '/rest/v1/rpc/v2_all251_http_matrix_request_deletion', {
-     method: 'POST', redirect: 'error', signal: AbortSignal.timeout(5000),
+     method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(5000),
      headers: {...rpcHeaders, 'content-type': 'application/json'},
      body: JSON.stringify({p_expected_user_id: owner, p_confirmation: 'DELETE MY ACCOUNT'}),
     });
+    upstreamStatus = freeze.status;
     if (!freeze.ok || await freeze.json() !== true) throw Error('Freeze failed');
     const denied = await candidate.fetch(new Request(objectUrl, {method: 'DELETE', headers}), fixtureEnv);
     if (denied.status !== 403 || (await denied.json()).code !== 'CLEANUP_DENIED') {
      throw Error('Expected unsettled lease to deny cleanup');
     }
+    phase = 'r2-put';
+    upstreamStatus = undefined;
     return bucket.put(key, ...args);
    };
+   phase = 'candidate-start';
+   upstreamStatus = undefined;
    const written = await candidate.fetch(new Request(objectUrl, {
     method: 'POST', headers: {...headers, 'content-type': 'application/octet-stream'},
     body: new Uint8Array([65, 76, 76, 50, 53, 49]),
    }), {...fixtureEnv, PRIVATE_STORAGE: {
-    put, get: bucket.get.bind(bucket), head: bucket.head.bind(bucket),
+    put, get: (...args) => bucket.get(...args), head: (...args) => bucket.head(...args),
    }});
    if (!entered || written.status !== 201) throw Error('Write did not settle');
    const deleted = await candidate.fetch(new Request(objectUrl, {method: 'DELETE', headers}), fixtureEnv);
    if (deleted.status !== 204 || await bucket.head(path) !== null) throw Error('Cleanup unverified');
    return Response.json({code: 'RACE_PASSED', owner, object: id});
-  } catch {
-   return Response.json({code: 'RACE_UNVERIFIED', owner, object: id, freezeAttempted}, {status: 503});
+  } catch (error) {
+   const message = String(error?.message ?? '');
+   const transport = /certificate|tls|ssl/i.test(message) ? 'tls' :
+    /dns|resolve/i.test(message) ? 'dns' :
+    /timeout|timed out|abort/i.test(message) ? 'timeout' :
+    /network|connect|socket/i.test(message) ? 'connection' : 'other';
+   console.warn('ALL251 race phase=' + phase + ' transport=' + transport);
+   return Response.json({code: 'RACE_UNVERIFIED', owner, object: id, freezeAttempted, phase, upstreamStatus}, {status: 503});
   }
  },
 };
