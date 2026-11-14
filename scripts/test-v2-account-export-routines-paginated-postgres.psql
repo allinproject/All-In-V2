@@ -2,7 +2,8 @@
 -- ALL-251/246 disposable full-Training-graph paginated export acceptance.
 -- Source DB is cloned from training_routine_export in PG17 CI.
 -- All writes are rolled back; DO NOT execute against hosted Supabase.
-\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql
+-- Parent Training foundation already owns the canonical session authorization function.
+-- Do not duplicate its definition in the paginated export clone.
 \i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql
 BEGIN ISOLATION LEVEL REPEATABLE READ;
