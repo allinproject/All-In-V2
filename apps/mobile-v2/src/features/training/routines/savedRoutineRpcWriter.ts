@@ -4,7 +4,7 @@
  * lifecycle acceptance. Never call on initial render, Coach proposal arrival
  * or silent background synchronization. Athlete action is mandatory.
  */
-import {inspectRoutineDraft,type RoutineDraft} from './routineDraftEditor';
+import {inspectRoutineDraft,type RoutineDraft} from './routineDraftEditor.ts';
 import type {OwnerAuthTransport,RoutineRpcAuthIdentity} from './savedRoutineRpcAdapter';
 import type {SavedRoutineReadServices} from './savedRoutineOwnerReader';
 
