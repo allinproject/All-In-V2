@@ -6,7 +6,10 @@
 set -euo pipefail
 [[ "${CI:-}" == "1" ]] || { echo 'Refusing non-CI restore rehearsal' >&2; exit 1; }
 db="${1:?Expected the disposable PG17 service container ID}"
-docker ps --format '{{.ID}}' | grep -Fxq "$db" || { echo 'Refusing unknown database container' >&2; exit 1; }
+running="$(docker inspect --format '{{.State.Running}}' "$db" 2>/dev/null || true)"
+image="$(docker inspect --format '{{.Config.Image}}' "$db" 2>/dev/null || true)"
+[[ "$running" == "true" && "$image" == "postgres:17" ]] || {
+ echo 'Refusing non-running/non-disposable PostgreSQL 17 container' >&2; exit 1; }
 source_db='training_routine_export'
 target_db='all251_independent_routine_restore'
 dump_path='/tmp/all251-routines-independent-restore.dump'
