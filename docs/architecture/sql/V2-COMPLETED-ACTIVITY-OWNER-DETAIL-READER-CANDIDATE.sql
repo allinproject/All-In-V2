@@ -50,14 +50,18 @@ BEGIN
       WHERE activity_id=p_activity_id AND user_id=v_user)>2048 THEN
   RAISE EXCEPTION 'Completed Activity detail exceeds bounded response'
     USING ERRCODE='54000'; END IF;
+ -- Expose canonical owner-scoped source UUIDs for mobile evidence correlation;
+ -- provider-native record IDs, device refs, credentials and Storage keys remain private.
+ -- This is only a partial DTO; source priority, registry definitions and
+ -- validated display values still require a reviewed owner adapter.
  -- Provider's private record ID/device ref intentionally omitted.
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-   'provider',provider,'sourceKind',source_kind,'quality',quality
+   'id',id,'provider',provider,'sourceKind',source_kind,'quality',quality
  ) ORDER BY provider,source_kind,id),'[]'::jsonb)
  INTO v_sources FROM public.v2_activity_sources
  WHERE activity_id=p_activity_id AND user_id=v_user;
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-   'segmentId',seg.id,'parentSegmentId',seg.parent_segment_id,
+   'segmentId',seg.id,'sourceId',seg.source_id,'parentSegmentId',seg.parent_segment_id,
    'kind',seg.segment_kind,'sequence',seg.sequence_number,
    'sport',seg.sport,'label',seg.label,
    'startedAt',seg.started_at,'finishedAt',seg.finished_at,
@@ -72,7 +76,7 @@ BEGIN
    src.id=seg.source_id AND src.activity_id=seg.activity_id AND src.user_id=seg.user_id
  WHERE seg.activity_id=p_activity_id AND seg.user_id=v_user;
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-    'setId',sets.id,'exerciseSegmentId',sets.exercise_segment_id,
+    'setId',sets.id,'sourceId',sets.source_id,'exerciseSegmentId',sets.exercise_segment_id,
     'exerciseId',sets.exercise_id,'setIndex',sets.set_index,'setKind',sets.set_kind,
     'reps',sets.reps,'loadValue',sets.load_value,'loadUnit',sets.load_unit,
     'loadMode',sets.load_mode,'rpe',sets.rpe,'rir',sets.rir,
@@ -104,7 +108,7 @@ BEGIN
  RETURN pg_catalog.jsonb_build_object(
    -- Certified identity/revision is required by the existing mobile
    -- CompletedActivityScreenContent state isolation and owner reader.
-   'activityId',v_activity.id,'ownerId',v_activity.user_id,
+   'id',v_activity.id,'activityId',v_activity.id,'ownerId',v_activity.user_id,
    'version',v_activity.version,'sport',v_activity.sport,
    'sportSubtype',v_activity.sport_subtype,
    'activityKind',v_activity.activity_kind,'status',v_activity.status,
