@@ -2,13 +2,6 @@ name: ALL-251 protected hosted Worker session A/B acceptance
 # Protected synthetic Auth only. No R2, upload, or account deletion activation.
 on:
   workflow_dispatch:
-  # No default-branch manual button: this guarded integration-only push
-  # trigger runs ONLY when the exact reviewed one-time fixture changes.
-  push:
-    branches:
-      - integration/v2-foundation
-    paths:
-      - .github/all251-session-gate-dispatch/run-20261114.txt
 permissions:
   contents: read
 concurrency:
