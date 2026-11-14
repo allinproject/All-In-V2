@@ -22,6 +22,12 @@ CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $uid$
    pg_catalog.current_setting('request.jwt.claim.sub',true),''
  )::uuid;
 $uid$;
+CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $jwt$
+ SELECT pg_catalog.jsonb_build_object('sub',
+   NULLIF(pg_catalog.current_setting('request.jwt.claim.sub',true),''),
+   'session_id',
+   NULLIF(pg_catalog.current_setting('request.jwt.claim.session_id',true),''));
+$jwt$;
 GRANT USAGE ON SCHEMA auth TO authenticated;
 GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
 CREATE TABLE public.v2_profiles (
