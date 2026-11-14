@@ -78,6 +78,13 @@ BEGIN
     v_lease.writer_sha256_review IS DISTINCT FROM p_sha256
  THEN RAISE EXCEPTION 'Exact unresolved attested lease required'
   USING ERRCODE='42501'; END IF;
+ -- A completed object is NOT an abandoned upload. This check is serialized
+ -- with the private Storage metadata fence through the same owner advisory lock.
+ IF EXISTS (
+   SELECT 1 FROM storage.objects
+   WHERE bucket_id=p_bucket_id AND name=p_object_path
+ ) THEN RAISE EXCEPTION 'Completed Storage object cannot be cancelled'
+   USING ERRCODE='42501'; END IF;
  PERFORM allin_private.v2_verify_storage_writer_attestation_review(
   'cancel',p_owner_id,p_bucket_id,p_object_path,p_operation,
   p_sha256,p_lease_id,p_nonce,p_issued_epoch,p_signature);
@@ -125,6 +132,11 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
 AS $$
 DECLARE v_lease record;
 BEGIN
+ IF p_owner_id IS NULL OR p_lease_id IS NULL THEN
+  RAISE EXCEPTION 'Exact owner and lease required' USING ERRCODE='42501'; END IF;
+ -- Match begin/cancel/base-settle: advisory owner lock FIRST, row lock SECOND.
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('v2-delete-request:'||p_owner_id::text,0));
  SELECT bucket_id,object_path,operation,writer_sha256_review,settled_at,cancelled_at
  INTO v_lease FROM allin_private.v2_privileged_storage_write_leases_review
  WHERE owner_id=p_owner_id AND lease_id=p_lease_id FOR UPDATE;
