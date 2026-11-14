@@ -42,6 +42,68 @@ post-completion retention, and stale-session replay behavior is not established
 by that documentation; the real negative/positive HTTP outcomes above are
 the acceptance evidence. Do not treat unsupported DELETE as cancellation.
 
+## Gateway boundary and method-by-method authorization (design-only)
+
+This is a **review contract, not implemented behavior**. The existing
+`createAttestedPrivilegedStorageLeaseAuthority` is the only permitted
+authority for beginning, settling and cancelling a lease. Its `cancel`
+operation only transitions database state; it cannot be used as evidence
+that a third-party TUS URL was terminated.
+
+### Ingress and credential boundary
+
+- Mobile clients may authenticate to an ALL IN 365 controlled endpoint, but
+  **must never be handed a raw Supabase private TUS session URL**, storage
+  service-role credential, signed writer key or internal provider upload token.
+- A protected gateway must terminate client requests and perform current
+  owner, session, lease, file scope, range and deletion authorization **before
+  each request**, rather than trust the prior authorization at TUS creation.
+- Server-to-provider forwarding is allowed only if **all** applicable
+  client-accessible direct provider upload paths are denied. A mobile client
+  retaining a direct Supabase JWT + provider URL can bypass a gateway's
+  per-request decision; a gateway alone is not a security fix.
+- Use existing attested lease ownership, exact bucket/path/operation/digest
+  scope, the existing owner deletion lock and canonical storage writer. Never
+  create a parallel independent lease table or accept client-supplied owner
+  identity as authorization.
+
+### Required per-method decisions
+
+| Client action | Precondition before touching provider/session |
+| --- | --- |
+| CREATE/initiate | Valid current Auth session, owner/path authority, no deletion lock, exact active attested lease, bounded size and expiry |
+| HEAD/status | Same current owner/session validation as PATCH; session scope and deletion/cancel/expiry checked; no foreign offset or metadata |
+| PATCH/resume | Recheck owner/session/lease/deletion state; permit only expected offset and bounded chunk/total bytes, serialized with cancellation/deletion |
+| FINALIZE | Recheck everything, confirm **provider-side exact object bytes and SHA-256** before canonical signed settlement; never settle partial or missing data |
+| CANCEL/abandon | Stop further client operations, coordinate provider-session invalidation or durable deny, invoke canonical signed cancel separately from settlement, preserve deletion barrier until provider safety proved |
+| EXPIRED/revoked session | Deny HEAD/PATCH/finalize immediately; reject reused capabilities and stale Auth sessions, including a JWT that still cryptographically validates after account/session revocation |
+
+**Atomicity caveat:** checking the DB once before a provider PATCH and then
+allowing the PATCH to finish after a deletion lock is a TOCTOU race. The
+gateway must use a **demonstrated** lock/serialization or equivalent
+provider-side mechanism that covers the asynchronous byte commit boundary.
+Do not claim this is solved by a preflight SELECT, an expired lease,
+`cancelled_at`, or an eventually consistent cleanup job.
+
+### Required proof before activation
+
+- Reproduce existing B-on-A HEAD exposure with the raw provider route only
+  in explicitly approved disposable staging; prove the **new client-facing**
+  endpoint denies B HEAD, PATCH and finalize with no offset/bytes leak.
+- Prove that B cannot bypass gateway controls through a known provider
+  upload URL, ordinary Storage REST, signed URL, S3 or multipart credentials.
+  If provider ingress remains reachable with a user credential, do not launch
+  private resumable upload.
+- Prove active partial-upload cancellation invalidates further provider
+  HEAD/PATCH, not just object metadata; independently confirm zero object
+  bytes and no surviving writable transient session.
+- Race cancellation and deletion lock against an in-flight last PATCH and
+  finalize; assert no post-lock byte commit, metadata visibility, or signed
+  settlement, including session expiry/logout/account switching.
+- Keep direct private TUS and account deletion disabled while any test is
+  inconclusive. No hosted configuration or schema change is authorized by
+  this document.
+
 ## Shipping policy (fail closed; no code bypass)
 
 1. Do **not** offer direct-to-Supabase private TUS initiation, continuation,
