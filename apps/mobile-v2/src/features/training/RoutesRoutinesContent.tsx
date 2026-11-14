@@ -53,7 +53,6 @@ export function RoutesRoutinesContent({
     <View style={[styles.body, selected !== 'routes' && styles.hidden]}
       accessibilityElementsHidden={selected !== 'routes'}
       importantForAccessibility={selected === 'routes' ? 'auto' : 'no-hide-descendants'}>
-      <Text accessibilityRole="header" style={styles.title}>Routes</Text>
       <RouteBuilderContent />
       <Text style={styles.muted}>Your existing saved routes have not been checked. Canonical route saving and provider-backed rerouting remain gated.</Text>
     </View>
@@ -116,7 +115,6 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 14, fontWeight: '700', color: colors.mutedText },
   selectedText: { color: colors.goldSoft },
   body: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 18, gap: 12 },
-  title: { fontSize: 23, fontWeight: '900', color: colors.warmWhite },
   subheading: { fontSize: 16, fontWeight: '800', color: colors.goldSoft },
   muted: { fontSize: 13, color: colors.mutedText, lineHeight: 19 },
 });
