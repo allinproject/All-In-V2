@@ -58,6 +58,10 @@ jobs:
         run: |
           node --check infra/cloudflare/all251-storage-staging/upload-ingress-review.mjs
           node --test infra/cloudflare/all251-storage-staging/upload-ingress-review.test.mjs
+      - name: Validate internal attested RPC transport without privileged secrets
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/attested-rpc-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/attested-rpc-review.test.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
