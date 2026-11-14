@@ -265,6 +265,19 @@ project and returned zero rows; it has **not** been validated against a
 populated fixture. It does not read provider TUS transient state and
 must not be confused with proof of cleanup.
 
+A second **unexecuted, rollback-only** candidate,
+`scripts/fixtures/all222-hosted-termination-cleanup-dryrun-review.sql`,
+documents the exact staging-only cancellation-lease reconciliation rules.
+It starts with impossible UUID placeholders, holds the canonical owner
+lock, requires a tagged synthetic Auth owner, one cancelled/unsettled
+attested lease with the expected path and digest, zero other leases,
+zero owned private objects, and no deletion request; it always ends in
+`ROLLBACK`. It does not delete an Auth user, validate hidden provider
+sessions or establish operator sign-off. **It has not been executed on
+hosted or populated local fixtures and must not be treated as an approved
+cleanup tool.** An actual cleanup still requires separate authorization
+and exact provider/session evidence.
+
 **Before any hosted active-session run:**
 
 1. Independently approve a *staging-only* cleanup that is limited to
