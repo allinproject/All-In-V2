@@ -77,7 +77,9 @@ function HomeOwnerScreen() {
     return () => listener.remove();
   }, []);
   const trainingDestination = todayTrainingDestination(localDay) ?? '/train';
-  const dailyDestination = todayFuelDestination(localDay, 'daily') ?? '/fuel';
+  const dailyDestination = localDay
+    ? { pathname: '/daily-extended' as const, params: { date: localDay } }
+    : '/daily-extended';
   const foodLogDestination = todayFuelDestination(localDay, 'food-log') ?? '/fuel';
   // Consume exactly the Train calendar read contract; no separate Today writer.
   // Both sources remain unavailable until their canonical backend owners are live.
@@ -164,7 +166,7 @@ function HomeOwnerScreen() {
               <Text accessibilityRole="header" style={styles.sectionTitle}>Daily Energy</Text>
             </View>
             <Link href={dailyDestination} asChild>
-              <Pressable accessibilityRole="button" accessibilityLabel="View daily nutrition details" style={styles.inlineAction}>
+              <Pressable accessibilityRole="button" accessibilityLabel="View Daily Extended" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View more ›</Text>
               </Pressable>
             </Link>
