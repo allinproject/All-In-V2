@@ -1,0 +1,49 @@
+name: ALL-246 real Supabase Auth and Routine RPC (disposable local, no deploy)
+
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - '.github/workflows/v2-all246-local-real-auth.yml'
+      - 'scripts/test-all246-local-supabase-real-auth.mjs'
+      - 'docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-OWNER-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-READ-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-ARCHIVE-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-AUTH-GATEWAY-CANDIDATE.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all246-local-real-auth-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-auth:
+    name: Two real GoTrue JWT sessions / PostgREST owner boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      CI: '1'
+      ALL246_LOCAL_REAL_AUTH: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: supabase/setup-cli@v3
+        with:
+          version: latest
+      - name: Start disposable local Supabase (never a hosted project)
+        run: |
+          set -euo pipefail
+          supabase start
+          supabase status
+      - name: Verify real Auth user JWT and PostgREST Routine RPC isolation
+        run: node scripts/test-all246-local-supabase-real-auth.mjs
+      - name: Stop disposable local Supabase containers
+        if: always()
+        run: supabase stop --no-backup || true
