@@ -138,9 +138,12 @@ try{
   p_expected_user_id:A.id,p_confirmation:'DELETE MY ACCOUNT'},{jwt:A.jwt});
  assert.equal(requested.status,200,'Synthetic canonical deletion request unavailable');
  assert.equal(await requested.json(),true);
- const after=await trustedUpload(A,A.id+'/'+tag+'-late.bin',randomBytes(35));
+ const lateTrustedPath=A.id+'/'+tag+'-late.bin';
+ const lateRestPath=A.id+'/'+tag+'-late-rest.bin';
+ paths.add(lateTrustedPath);paths.add(lateRestPath);
+ const after=await trustedUpload(A,lateTrustedPath,randomBytes(35));
  assert(denied(after),'Trusted writer accepted A after deletion request');
- const blockedREST=await restUpload(A.id+'/'+tag+'-late-rest.bin',
+ const blockedREST=await restUpload(lateRestPath,
   randomBytes(35),{jwt:A.jwt});
  assert(denied(blockedREST),'Direct owner REST accepted A after deletion');
  console.log('PASS canonical deletion fences A trusted and direct REST writes');
