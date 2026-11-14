@@ -7,12 +7,28 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: all222-storage-http-disposable-staging
   cancel-in-progress: false
 
 jobs:
+  queue-protected-integration-run:
+    # Runs without staging environment/secrets; can only dispatch the reviewed integration workflow.
+    if: github.repository == 'allinproject/All-In-V2' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Queue protected ALL-222 HTTP tests on integration/v2-foundation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST \
+            repos/allinproject/All-In-V2/actions/workflows/all222-storage-http-acceptance.yml/dispatches \
+            -f ref=integration/v2-foundation
+          echo 'Queued protected integration branch workflow; inspect its separate run for actual test results.'
+
   real-auth-upload-denials:
     if: github.ref == 'refs/heads/integration/v2-foundation'
     runs-on: ubuntu-latest
