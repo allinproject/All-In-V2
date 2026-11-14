@@ -3,6 +3,8 @@
 -- No client/Coach role receives an EXECUTE grant or direct table privileges.
 -- Training owns routine identity and immutable versions, not Completed Activity.
 BEGIN;
+-- Deliberate domain-version conflicts use non-retryable PostgREST PT409.
+-- SQLSTATE 40001 is reserved for genuine transactional serialization failures.
 
 CREATE TABLE public.v2_training_routines (
  id uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
@@ -219,7 +221,7 @@ BEGIN
  END IF;
  IF p_routine_id IS NULL THEN
   IF p_expected_version<>0 THEN
-   RAISE EXCEPTION 'Create Routine expects zero prior version' USING ERRCODE='40001'; END IF;
+   RAISE EXCEPTION 'Create Routine expects zero prior version' USING ERRCODE='PT409'; END IF;
   INSERT INTO public.v2_training_routines(user_id) VALUES(p_expected_user_id)
    RETURNING id INTO v_id;
   v_result:=1;
@@ -230,7 +232,7 @@ BEGIN
      AND r.archived_at IS NULL FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Routine inaccessible' USING ERRCODE='42501'; END IF;
   IF v_previous<>p_expected_version THEN
-   RAISE EXCEPTION 'Routine version changed' USING ERRCODE='40001'; END IF;
+   RAISE EXCEPTION 'Routine version changed' USING ERRCODE='PT409'; END IF;
   v_result:=v_previous+1;
  END IF;
  INSERT INTO public.v2_training_routine_versions
