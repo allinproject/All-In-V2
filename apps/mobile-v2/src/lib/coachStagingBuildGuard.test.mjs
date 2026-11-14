@@ -87,3 +87,31 @@ test('Routine acceptance is default-off and refuses ALL hosted Supabase targets'
   EXPO_PUBLIC_SUPABASE_URL:'https://xarhuczrtzuiljmtdaeu.supabase.co',
  }));
 });
+
+test('Routine hosted acceptance cannot target production, other staging or local while default stays off',()=>{
+ const hosted={
+  EXPO_PUBLIC_V2_ROUTINE_TEMP_STAGING_ACCEPTANCE:'true',
+  EXPO_PUBLIC_SUPABASE_URL:'https://fbtgknlxjyeqrxemskbl.supabase.co',
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_only_for_test',
+ };
+ assert.doesNotThrow(()=>assertCoachStagingBuildEnvironment(hosted));
+ for(const url of [
+  'https://xarhuczrtzuiljmtdaeu.supabase.co',
+  'https://impulecgsgaruvniuttc.supabase.co',
+  'https://unapproved.supabase.co',
+  'http://127.0.0.1:54321',
+  '',
+ ])assert.throws(()=>assertCoachStagingBuildEnvironment({
+  ...hosted,EXPO_PUBLIC_SUPABASE_URL:url,
+ }),/exact temporary staging project/);
+ assert.throws(()=>assertCoachStagingBuildEnvironment({
+  ...hosted,EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'',
+ }),/staging publishable key/);
+ assert.throws(()=>assertCoachStagingBuildEnvironment({
+  ...hosted,EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE:'true',
+ }),/cannot be combined/);
+ assert.doesNotThrow(()=>assertCoachStagingBuildEnvironment({
+  EXPO_PUBLIC_V2_ROUTINE_TEMP_STAGING_ACCEPTANCE:'false',
+  EXPO_PUBLIC_SUPABASE_URL:'https://xarhuczrtzuiljmtdaeu.supabase.co',
+ }));
+});
