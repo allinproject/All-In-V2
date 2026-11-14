@@ -1,4 +1,13 @@
 \set ON_ERROR_STOP on
+-- Synthetic PostgreSQL fixture exposes auth.uid(), but not the real
+-- GoTrue/PostgREST auth.jwt() helper used by the Routine session guard.
+-- Reconstruct only that claim shape in this disposable clone.
+CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
+ LANGUAGE sql STABLE AS $jwt$
+ SELECT pg_catalog.jsonb_build_object(
+ 'sub',NULLIF(pg_catalog.current_setting('request.jwt.claim.sub',true),''),
+ 'session_id',NULLIF(pg_catalog.current_setting('request.jwt.claim.session_id',true),''));
+$jwt$;
 -- ALL-246/251 disposable full-graph integration regression only.
 -- Run in clone of passing training_export_bridge; NEVER on hosted Supabase.
 -- Requires original ALL-251 export RPC, Coaching/Billing/Training/Activity
