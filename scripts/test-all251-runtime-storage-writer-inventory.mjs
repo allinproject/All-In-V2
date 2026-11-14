@@ -68,6 +68,7 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   'v2-all251-hosted-privileged-writer.yml',
   'v2-all251-hosted-http-route-matrix.yml',
   'v2-all251-hosted-owner-rest-isolation.yml',
+  'v2-all246-temporary-staging-auth.yml',
  ]);
  const seen=new Set();
  for(const file of readdirSync(resolve(root,'.github/workflows'))){
@@ -84,6 +85,22 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
  }
  assert.deepEqual([...seen].sort(),[...approved].sort(),
   'Protected privileged Storage credential workflow inventory changed');
+ // ALL-246 Auth fixture needs service-role only for disposable identity setup
+ // and cleanup, never for client Routine access. Require human-invoked protected
+ // staging CI, no push/PR/schedule and no independent writer signer.
+ const routineAuthWorkflow=readFileSync(resolve(root,
+  '.github/workflows/v2-all246-temporary-staging-auth.yml'),'utf8');
+ assert(routineAuthWorkflow.includes('workflow_dispatch:'),
+  'ALL-246 privileged Auth staging probe must be explicitly invoked');
+ assert.equal(/^\\s*(?:push|pull_request|schedule|workflow_run)\\s*:/m.test(routineAuthWorkflow),false,
+  'ALL-246 privileged Auth probe cannot auto-run on repository events');
+ assert(routineAuthWorkflow.includes('environment: all251-temporary-staging'),
+  'ALL-246 Auth credentials must remain in approved staging environment');
+ assert(routineAuthWorkflow.includes('fbtgknlxjyeqrxemskbl'),
+  'ALL-246 Auth acceptance must target only disposable staging');
+ assert.equal(routineAuthWorkflow.includes('ALLIN_WRITER_ATTESTATION_SECRET_B64'),false,
+  'ALL-246 Auth probe must not hold writer signing key');
+
  // The separate writer attestation signing key must never be provided to
  // GitHub Actions: a protected environment is not exclusive writer custody.
  for(const file of readdirSync(resolve(root,'.github/workflows'))){
