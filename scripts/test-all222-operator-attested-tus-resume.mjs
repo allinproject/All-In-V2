@@ -24,6 +24,8 @@ assert(process.argv.length<=3&&(mode===undefined||mode==='--terminate-active'),
 const terminationOnly=mode==='--terminate-active';
 assert(!terminationOnly||env.ALL222_TERMINATION_FIXTURE_CLEANUP_ACK==='true',
  'Active termination requires operator acknowledgement of manual fixture cleanup');
+// This flag only acknowledges manual reconciliation; it is NOT proof that
+// provider upload state or database/Auth cleanup has already succeeded.
 assert.equal(env.ALL251_OPERATOR_APPROVED,'true','Explicit operator approval required');
 assert.equal(env.ALL251_STAGING_REF,ref,'Wrong Supabase project');
 assert.equal(env.ALL251_STAGING_URL,origin,'Wrong Supabase origin');
@@ -181,8 +183,10 @@ async function terminateActive(){
  checkpoint='attested lease cancellation';
  const cancelled=await lease.cancel({...scope,leaseId:started.data});
  assert(!cancelled.error&&cancelled.data===true,'Attested cancellation was not acknowledged');
- console.log('Operator cleanup required: reconcile the tagged terminate-active fixture through an approved staging-only cleanup path.');
- console.log('PASS: active TUS terminated, stale session absent, object absent and lease cancelled');
+ // These checks are provisional until the exact cancelled lease and tagged
+ // synthetic Auth owner are independently reconciled. Never print PASS here.
+ console.log('CHECKPOINT: provider TUS termination, stale-session denial, byte absence and lease cancellation observed');
+ console.log('BLOCKED: reconcile tagged synthetic lease and Auth fixture before hosted acceptance');
 }
 async function run(){
  const a=await createUser(),b=await createUser();
