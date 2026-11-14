@@ -133,3 +133,37 @@ test('missing or invalid identity cannot grant session or write',async()=>{
  }),/AUTH_DENIED/);
  assert.deepEqual(f.stats,{auth:0,session:0,lease:0,put:0,settle:0});
 });
+
+
+test('derived-key upload authenticates before invoking request body loader',async()=>{
+ const objectId='55555555-5555-4555-8555-555555555555';
+ const f=fixture({active:false});
+ let reads=0;
+ await assert.rejects(f.writer.writeNewObjectFromVerifiedRequest({
+  request:request(),objectId,loadBytes:async()=>{reads++;return bytes();},
+ }),/AUTH_DENIED/);
+ assert.equal(reads,0);
+ assert.deepEqual(f.stats,{auth:1,session:1,lease:0,put:0,settle:0});
+});
+
+test('derived-key upload cannot accept a caller-supplied owner or bucket',async()=>{
+ const objectId='55555555-5555-4555-8555-555555555555';
+ const f=fixture({owner:A});
+ const receipt=await f.writer.writeNewObjectFromVerifiedRequest({
+  request:request(),objectId,loadBytes:async()=>bytes(),
+  verifiedOwnerId:B,bucketId:'other-bucket',path:B+'/attacker.bin',
+  operation:'replace',
+ });
+ assert.equal(receipt.verified,true);
+ assert.equal(f.objects.has(A+'/'+objectId+'.bin'),true);
+ assert.equal(f.objects.has(B+'/attacker.bin'),false);
+ assert.deepEqual(f.stats,{auth:1,session:1,lease:1,put:1,settle:1});
+});
+
+test('invalid object ID cannot access Auth, leases or private bytes',async()=>{
+ const f=fixture();
+ await assert.rejects(f.writer.writeNewObjectFromVerifiedRequest({
+  request:request(),objectId:'../../escape',loadBytes:async()=>bytes(),
+ }),/INVALID_OBJECT_REQUEST/);
+ assert.deepEqual(f.stats,{auth:0,session:0,lease:0,put:0,settle:0});
+});
