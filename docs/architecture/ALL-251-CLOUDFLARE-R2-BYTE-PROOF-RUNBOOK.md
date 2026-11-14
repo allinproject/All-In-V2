@@ -1,15 +1,17 @@
 # ALL-251 — Cloudflare R2 provider byte-proof operator runbook
 
-**As of 2026-11-14 UTC: NOT DEPLOYED; real R2 byte acceptance NOT PASSED.**
-The existing user-provisioned Cloudflare Worker
-`allin365-storage-staging.durbenventures.workers.dev` must remain
-default-deny until explicit operator review. Account deletion OFF.
+**Staging candidate deployed with proof disabled. Hosted R2 byte acceptance pending.**
+Cloudflare version `490cba46-50fe-4620-829e-55537ecb58c9` contains the
+candidate code from `ae308df22a96205e32daa8244df2cf5d3b9d49af`.
+The operator reported HTTP 403 for the root, readiness HEAD, and unauthenticated
+upload after deployment. Prior deny-only rollback version:
+`0dcfcef5-cfbd-4f39-afa0-ae503f3ba086`. Account deletion remains off.
 
 ## Verified preparation
 
 - Existing private R2 bucket `allin365-private-staging` with binding
   `PRIVATE_STORAGE` on `allin365-storage-staging` (founder verified).
-- Existing default entry `worker.mjs` returns only 403.
+- The original rollback entry `worker.mjs` returns only 403.
 - Offline isolated R2 candidate `worker-r2-proof-candidate.mjs` uses real
   existing canonical HMAC writer, owner-JWT RPC, durable deletion lease,
   create-only atomic R2 conditional writes and provider-byte readback.
@@ -114,8 +116,9 @@ run a separately approved protected disposable staging HTTP test:
 - After testing, freeze each synthetic account, prove zero unsettled
   leases, DELETE only its own synthetic objects through the guarded
   cleanup route and require R2 HEAD to confirm absence. Then remove
-  each synthetic deletion request and Auth user. Any ambiguous write,
-  open lease or cleanup denial must FAIL and preserve audit evidence.
+  each synthetic deletion request and Auth user. If R2 absence cannot be
+  confirmed for an owner, keep that synthetic Auth user and deletion freeze
+  available for recovery. An open lease or cleanup denial fails the run.
 - The protected test source is
   `scripts/test-all251-hosted-r2-byte-proof.mjs` and its manual-only
   `v2-all251-hosted-r2-byte-proof.yml` workflow. Like the earlier

@@ -7,6 +7,11 @@
   "main": "worker-r2-proof-candidate.mjs",
   "compatibility_date": "2026-11-13",
   "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "logs": {"enabled": true}
+  },
   "vars": {
     "SUPABASE_URL": "https://fbtgknlxjyeqrxemskbl.supabase.co"
   },

@@ -109,33 +109,41 @@ async function cleanup(){
    failures.push('freeze-before-cleanup:'+user.label+':'+String(err.message).slice(0,70));
   }
  }
+ const unresolved=new Set();
  for(const {user,id} of [...objects].reverse()){
-  if(!user.frozen){failures.push('r2-cleanup-blocked:'+user.label+'/'+id);continue;}
+  if(!user.frozen){
+   unresolved.add(user);
+   failures.push('r2-cleanup-blocked:'+user.label+'/'+id);
+   continue;
+  }
   try{
    const removed=await worker('DELETE',user,id);
    if(removed.status!==204){
+    unresolved.add(user);
     failures.push('r2-cleanup-not-confirmed:'+user.label+'/'+id+':'+removed.status);
-    continue;
    }
-   // Do not claim a deleted object without independent owner-context check:
-   const check=await digest(user,id);
-   // After deletion freeze, checksum is forbidden either way; operator must
-   // reconcile exact R2 bucket object inventory before final signoff.
-   if(check.status===200)
-    failures.push('deleted-object-still-readable:'+user.label+'/'+id);
-  }catch(err){
+  }catch{
+   unresolved.add(user);
    failures.push('r2-cleanup-unverified:'+user.label+'/'+id);
   }
  }
  for(const user of [...users].reverse()){
+  // Keep the synthetic owner and its deletion freeze available for recovery
+  // until the Worker has confirmed that every tracked object is absent.
+  if(unresolved.has(user))continue;
   if(user.frozen){
    try{
     const res=await supa('/rest/v1/rpc/v2_all251_http_matrix_cleanup_deletion',{
      p_expected_user_id:user.id,
     },{jwt:user.jwt});
-    if(res.status!==200||(await res.json())!==true)
+    if(res.status!==200||(await res.json())!==true){
      failures.push('synthetic-deletion-cleanup:'+user.label+':'+res.status);
-   }catch{failures.push('synthetic-deletion-cleanup:'+user.label);}
+     continue;
+    }
+   }catch{
+    failures.push('synthetic-deletion-cleanup:'+user.label);
+    continue;
+   }
   }
   try{
    const res=await fetch(SUPABASE+'/auth/v1/admin/users/'+user.id,{
