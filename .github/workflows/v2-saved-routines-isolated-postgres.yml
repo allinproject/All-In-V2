@@ -7,6 +7,10 @@ on:
       - '.github/workflows/v2-saved-routines-isolated-postgres.yml'
       - 'docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-*.sql'
       - 'docs/architecture/tests/ALL-246-SAVED-ROUTINES-*.psql'
+      - 'apps/mobile-v2/src/features/training/routines/savedRoutineRpcAdapter.ts'
+      - 'apps/mobile-v2/src/features/training/routines/savedRoutineRpcWriter.ts'
+      - 'apps/mobile-v2/src/features/training/routines/savedRoutineRpcAdapter.test.ts'
+
   workflow_dispatch:
 
 permissions:
@@ -47,3 +51,19 @@ jobs:
           sudo cp docs/architecture/tests/ALL-246-SAVED-ROUTINES-*.psql /tmp/allin/docs/architecture/tests/
           psql -X -h localhost -U postgres -d all246_disposable -v ON_ERROR_STOP=1 -v disposable_test=1 \
             -f /tmp/allin/docs/architecture/tests/ALL-246-SAVED-ROUTINES-STANDALONE-SETUP.psql
+
+  routines-mobile-adapter:
+    name: Authenticated Routine client adapter owner-fence tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Execute isolated TypeScript DTO / Auth / CAS tests
+        run: |
+          node --experimental-strip-types --test \
+            apps/mobile-v2/src/features/training/routines/savedRoutineRpcAdapter.test.ts
