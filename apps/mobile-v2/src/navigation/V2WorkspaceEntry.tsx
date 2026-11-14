@@ -31,6 +31,6 @@ export function V2WorkspaceEntry({ title, contextDescription }: { title: Workspa
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { flex: 1, padding: 24, gap: 16 },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 24, gap: 12 },
   description: { color: colors.mutedText, fontSize: 15, lineHeight: 23 },
 });
