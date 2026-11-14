@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
-const file=fileURLToPath(new URL('../../../scripts/test-all251-community-photo-two-auth-local.mjs',import.meta.url));
+const file=fileURLToPath(new URL('../../../../../scripts/test-all251-community-photo-two-auth-local.mjs',import.meta.url));
 const source=readFileSync(file,'utf8');
 
 test('real Community photo fixture syntax is valid, but never executes in regular CI',()=>{
