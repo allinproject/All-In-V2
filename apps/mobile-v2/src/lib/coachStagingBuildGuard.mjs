@@ -6,6 +6,14 @@
 const STAGING_URL='https://fbtgknlxjyeqrxemskbl.supabase.co';
 export function assertCoachStagingBuildEnvironment(env){
  const routine=env.EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE==='true';
+ const hostedRoutine=env.EXPO_PUBLIC_V2_ROUTINE_TEMP_STAGING_ACCEPTANCE==='true';
+ if(routine&&hostedRoutine)throw Error('Routine acceptance modes cannot be combined.');
+ if(hostedRoutine){
+  const url=env.EXPO_PUBLIC_SUPABASE_URL?.trim().replace(/\/$/,'');
+  if(url!==STAGING_URL)throw Error('Saved Routine hosted acceptance requires the exact temporary staging project.');
+  if(!env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim())
+   throw Error('Saved Routine hosted acceptance requires a staging publishable key.');
+ }
  if(routine){
   const url=env.EXPO_PUBLIC_SUPABASE_URL?.trim().replace(/\/$/,'');
   if(url!=='http://127.0.0.1:54321'&&url!=='http://localhost:54321')
