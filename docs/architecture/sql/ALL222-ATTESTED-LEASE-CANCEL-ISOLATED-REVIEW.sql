@@ -97,7 +97,7 @@ CREATE OR REPLACE FUNCTION public.v2_settle_privileged_storage_write_review(
  p_owner_id uuid,p_lease_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
-AS $
+AS $all222base$
 DECLARE v_count integer;
 BEGIN
  IF p_owner_id IS NULL OR p_lease_id IS NULL THEN
@@ -114,7 +114,7 @@ BEGIN
   RAISE EXCEPTION 'Unknown, cancelled or already settled Storage lease'
    USING ERRCODE='42501'; END IF;
  RETURN true;
-END $;
+END $all222base$;
 
 -- An existing settled lease cannot be cancelled; a cancelled one cannot
 -- be settled. Preserve the original authorized signed settlement mechanism.
