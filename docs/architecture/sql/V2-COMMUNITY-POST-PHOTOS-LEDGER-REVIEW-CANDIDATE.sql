@@ -15,7 +15,7 @@ CREATE TABLE allin_private.v2_community_post_photos (
     CHECK (length(object_path) BETWEEN 1 AND 1024 AND
            object_path !~ '[[:cntrl:]]' AND
            object_path NOT LIKE '%..%' AND
-           object_path NOT LIKE '%\\%'),
+           position(chr(92) in object_path)=0),
   content_type text NOT NULL CHECK (content_type='image/png'),
   byte_length bigint NOT NULL CHECK (byte_length BETWEEN 1 AND 8388608),
   width integer NOT NULL CHECK (width BETWEEN 1 AND 200000),
