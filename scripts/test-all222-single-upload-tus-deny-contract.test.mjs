@@ -59,3 +59,24 @@ test('staging cleanup candidate is rollback-only and exact synthetic owner guard
  assert(file.includes("Account deletion request present: reconciliation denied"));
  assert(file.includes("00000000-0000-0000-0000-000000000000"));
 });
+
+test('isolated populated cleanup replay never contacts hosted Supabase',()=>{
+ const outer=readFileSync(new URL('./run-all222-hosted-cleanup-isolated-replay.sh',import.meta.url),'utf8');
+ const inner=readFileSync(new URL('./fixtures/all222-hosted-cleanup-replay-inside.sh',import.meta.url),'utf8');
+ const fixture=readFileSync(new URL('./fixtures/all222-hosted-cleanup-populated-replay-bootstrap.sql',import.meta.url),'utf8');
+ assert(outer.includes('ALL222_ISOLATED_REPLAY_APPROVED'));
+ assert(outer.includes('--pull=never')&&outer.includes('--network=none'));
+ assert(outer.includes('--read-only')&&outer.includes('readonly'));
+ assert(outer.includes('postgres:16'));
+ assert(outer.includes('all222-hosted-cleanup-replay-inside.sh'));
+ assert(inner.includes('all222-hosted-termination-cleanup-dryrun-review.sql'));
+ assert(inner.includes('all222-hosted-cleanup-populated-replay-bootstrap.sql'));
+ assert(inner.includes('PASS: isolated cleanup replay complete'));
+ for(const denial of ['impossible UUID placeholders','untagged owner','extra owner lease',
+   'object-present owner','deletion record','active lease']){
+   assert(inner.includes('FAIL: '+denial),'Missing isolated denial: '+denial);
+ }
+ assert(fixture.includes('all222_fixture')&&fixture.includes('cancelled_at'));
+ assert(!outer.includes('SUPABASE_SERVICE_ROLE_KEY')&&!inner.includes('SUPABASE_SERVICE_ROLE_KEY'));
+ assert(!outer.includes('https://')&&!inner.includes('https://'));
+});
