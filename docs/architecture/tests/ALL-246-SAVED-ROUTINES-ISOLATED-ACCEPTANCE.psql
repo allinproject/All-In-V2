@@ -34,6 +34,39 @@
  \quit 1
 \endif
 
+-- Verify candidate roles have zero table access and no EXECUTE BEFORE
+-- the disposable transaction temporarily grants authenticated testing.
+DO $closed$
+DECLARE v_role text; v_table text; v_fn text;
+BEGIN
+ FOREACH v_role IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+  FOREACH v_table IN ARRAY ARRAY[
+    'public.v2_training_routines','public.v2_training_routine_versions',
+    'allin_private.v2_training_routine_owner_epochs',
+    'allin_private.v2_training_routine_actions'
+  ] LOOP
+   IF pg_catalog.has_table_privilege(v_role,v_table,'SELECT') OR
+     pg_catalog.has_table_privilege(v_role,v_table,'INSERT') OR
+     pg_catalog.has_table_privilege(v_role,v_table,'UPDATE') OR
+     pg_catalog.has_table_privilege(v_role,v_table,'DELETE') THEN
+    RAISE EXCEPTION 'FAIL: unexpected Routine table privilege for % on %',v_role,v_table;
+   END IF;
+  END LOOP;
+  FOREACH v_fn IN ARRAY ARRAY[
+   'allin_private.v2_training_routine_write_candidate(uuid,uuid,bigint,uuid,text,text,text,jsonb)',
+   'allin_private.v2_training_routine_archive_candidate(uuid,uuid,bigint,uuid)',
+   'allin_private.v2_training_routine_export_fragment_candidate(uuid)',
+   'public.v2_training_routines_list_candidate(uuid,bigint,uuid,integer)',
+   'public.v2_training_routine_version_candidate(uuid,bigint,uuid,bigint)'
+  ] LOOP
+   IF pg_catalog.has_function_privilege(v_role,v_fn,'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: unexpected Routine EXECUTE for % on %',v_role,v_fn;
+   END IF;
+  END LOOP;
+ END LOOP;
+END;
+$closed$;
+
 BEGIN;
 -- Testing privilege grant exists ONLY inside this rolled-back transaction.
 GRANT USAGE ON SCHEMA allin_private TO authenticated;
