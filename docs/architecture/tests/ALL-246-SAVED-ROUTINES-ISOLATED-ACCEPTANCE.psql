@@ -41,6 +41,8 @@ GRANT EXECUTE ON FUNCTION allin_private.v2_training_routine_assert_owner_candida
  TO authenticated;
 GRANT EXECUTE ON FUNCTION allin_private.v2_training_routine_write_candidate(
  uuid,uuid,bigint,uuid,text,text,text,jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION allin_private.v2_training_routine_archive_candidate(
+ uuid,uuid,bigint,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.v2_training_routines_list_candidate(
  uuid,bigint,uuid,integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.v2_training_routine_version_candidate(
@@ -163,5 +165,45 @@ BEGIN
 END;
 $isolate$;
 RESET ROLE;
+-- Archive is a soft lifecycle operation, not a completed-workout deletion.
+SELECT pg_catalog.set_config('request.jwt.claim.sub',:'user_a',true);
+SELECT pg_catalog.set_config('request.jwt.claim.session_id',:'session_a',true);
+SELECT pg_catalog.gen_random_uuid() AS test_archive_action \gset
+SET LOCAL ROLE authenticated;
+SELECT (result->>'archived')::boolean AS test_archived,
+       (result->>'replayed')::boolean AS test_archive_replayed
+FROM (SELECT allin_private.v2_training_routine_archive_candidate(
+ :'user_a'::uuid,:'test_routine_a'::uuid,1,:'test_archive_action'::uuid
+) AS result) x \gset
+\if :test_archived
+\else
+ \echo 'FAIL: archive was not recorded'
+ \quit 1
+\endif
+DO $archive$
+DECLARE v_detail jsonb;v_page jsonb;
+BEGIN
+ v_detail:=public.v2_training_routine_version_candidate(
+  pg_catalog.current_setting('allin.test.user_a')::uuid,1,
+  pg_catalog.current_setting('allin.test.routine_a')::uuid,1);
+ IF v_detail IS NOT NULL THEN
+  RAISE EXCEPTION 'FAIL: archived Routine still served as active'; END IF;
+ v_page:=public.v2_training_routines_list_candidate(
+  pg_catalog.current_setting('allin.test.user_a')::uuid,1,NULL,100);
+ IF pg_catalog.jsonb_array_length(v_page->'records')<>0 THEN
+  RAISE EXCEPTION 'FAIL: archived Routine listed as active'; END IF;
+END;
+$archive$;
+RESET ROLE;
+DO $history$
+BEGIN
+ IF NOT EXISTS(
+  SELECT 1 FROM public.v2_training_routine_versions v
+  WHERE v.routine_id=pg_catalog.current_setting('allin.test.routine_a')::uuid
+    AND v.user_id=pg_catalog.current_setting('allin.test.user_a')::uuid
+    AND v.version=1
+ ) THEN RAISE EXCEPTION 'FAIL: archive destroyed immutable Routine version'; END IF;
+END;
+$history$;
 ROLLBACK;
 \echo 'PASS only if every assertion completed; test data and test grants rolled back'
