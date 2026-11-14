@@ -35,6 +35,24 @@ export function createAll251InternalWriterReview({
   requireAttestedLease:true,
  });
  return Object.freeze({
+  async writeNewObjectFromVerifiedRequest({
+   request,objectId,loadBytes,contentType='application/octet-stream',
+  }){
+   // No caller-supplied owner or bucket. Source-only, not exposed by worker.mjs.
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(objectId??'')||
+      typeof loadBytes!=='function')
+    throw Error('INVALID_OBJECT_REQUEST');
+   const {verifiedOwnerId}=await verifyAll251OwnerSession({
+    request,env,sessionIsActive,fetchImpl,
+   });
+   const path=requireOwnedPrivatePath(verifiedOwnerId,verifiedOwnerId+'/'+objectId+'.bin');
+   // Read potentially large request bytes ONLY AFTER a valid active session
+   // is established. Attested lease still gates the actual provider write.
+   const bytes=await loadBytes();
+   return writer.write({
+    verifiedOwnerId,bucketId:BUCKET,path,bytes,operation:'create',contentType,
+   });
+  },
   async writeFromVerifiedRequest({request,path,bytes,operation='create',
    contentType='application/octet-stream'}){
    // Never accept verifiedOwnerId as a request field.
