@@ -89,6 +89,7 @@ async function verifiedWriterUpload(owner,path,bytes){
 }
 let a=null,b=null;
 let signerToken=null,signedPath=null;
+let signedBaselinePassed=false;
 const password=randomUUID()+'Aa!9';
 const prefix='all251-httpmatrix-'+randomUUID();
 const bucketPath=p=>BUCKET+'/'+p.split('/').map(encodeURIComponent).join('/');
@@ -179,9 +180,9 @@ async function upload(p,{key=privileged,jwt=null,bytes=randomBytes(40)}={}){
 async function issueSignedUpload(p,{key=privileged,jwt=null}={}){
  return json(API+'object/upload/sign/'+bucketPath(p),{}, {key,jwt});
 }
-async function redeemSigned(p,token){
+async function redeemSigned(p,token,bytes=randomBytes(46)){
  const url=API+'object/upload/sign/'+bucketPath(p)+'?token='+encodeURIComponent(token);
- return request(url,{method:'PUT',key:publishable,body:randomBytes(46),
+ return request(url,{method:'PUT',key:publishable,body:bytes,
   headers:{'content-type':'application/octet-stream'}});
 }
 async function deletionRequest(owner,otherOwner){
@@ -244,7 +245,30 @@ try{
  mark('S3 unsigned endpoint',denied(s3.status)?'PASS':'FAIL','HTTP '+s3.status);
  mark('S3 privileged SigV4 / multipart','UNTESTED','no generated S3 credentials provisioned');
 
- // Pre-request signed upload capability only for a disposable object.
+ // A successful token mint alone does not prove signed upload writes work.
+ // Require a separate, completed, byte-verified pre-freeze signed upload.
+ const signedControlPath=addObject(a.id,'signed-control');
+ const signedControlMint=await issueSignedUpload(signedControlPath);
+ if(signedControlMint.ok){
+  const signedControlData=await signedControlMint.json();
+  const token=signedControlData.token??signedControlData.data?.token;
+  if(typeof token==='string'&&token.length){
+   const sourceBytes=randomBytes(46);
+   const control=await redeemSigned(signedControlPath,token,sourceBytes);
+   if(control.ok){
+    const observed=await read(signedControlPath);
+    if(observed.ok&&sha(Buffer.from(await observed.arrayBuffer()))===sha(sourceBytes))
+     signedBaselinePassed=true;
+    else mark('pre-deletion signed upload readback','FAIL','Provider bytes absent or changed');
+   }else mark('pre-deletion signed upload redemption',denied(control.status)?'RESTRICTED':'FAIL',
+    await statusDetail(control));
+  }else mark('pre-deletion signed control token','FAIL','No token');
+ }else mark('pre-deletion signed control mint',
+  denied(signedControlMint.status)?'RESTRICTED':'FAIL',await statusDetail(signedControlMint));
+ mark('pre-deletion signed upload byte control',
+  signedBaselinePassed?'PASS':'RESTRICTED',signedBaselinePassed?'SHA256 matched':'no successful write baseline');
+
+ // Pre-request delayed token must remain unredeemed until deletion.
  signedPath=addObject(a.id,'signed-delayed');
  const minted=await issueSignedUpload(signedPath);
  if(minted.ok){
@@ -318,12 +342,14 @@ try{
  const freshSignedPath=addObject(a.id,'signed-mint-late');
  postFreezePaths.add(freshSignedPath);
  const mintLate=await issueSignedUpload(freshSignedPath);
- mark('post-deletion privileged signed upload mint',denied(mintLate.status)?(minted.ok?'PASS':'RESTRICTED'):'FAIL',await statusDetail(mintLate));
+ mark('post-deletion privileged signed upload mint',denied(mintLate.status)?(signedBaselinePassed?'PASS':'RESTRICTED'):'FAIL',await statusDetail(mintLate));
 
  if(signerToken){
   const completed=await redeemSigned(signedPath,signerToken);
   if(completed.ok)postFreezePaths.add(signedPath);
-  mark('delayed pre-minted signed upload completion',denied(completed.status)?'PASS':'FAIL',await statusDetail(completed));
+  mark('delayed pre-minted signed upload completion',
+   denied(completed.status)?(signedBaselinePassed?'PASS':'RESTRICTED'):'FAIL',
+   await statusDetail(completed));
  }else mark('delayed pre-minted signed upload completion','UNTESTED','no valid signed token');
 
  // No TUS session is created prior to deletion: a dangling pre-deletion
