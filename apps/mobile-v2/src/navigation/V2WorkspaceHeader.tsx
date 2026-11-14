@@ -18,7 +18,7 @@ export function V2WorkspaceHeader({ title }: { title: string }) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 44, gap: 12 },
-  title: { fontSize: 24, fontWeight: '800', color: colors.warmWhite },
+  title: { fontSize: 22, fontWeight: '800', color: colors.warmWhite },
   profile: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
   profileText: { color: colors.goldSoft, fontWeight: '800', fontSize: 13 },
 });
