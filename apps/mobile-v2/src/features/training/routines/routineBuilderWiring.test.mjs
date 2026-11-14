@@ -13,7 +13,11 @@ test('Routines now mounts a real strength and endurance editor without secondary
  for(const action of ['addRoutineBlock','updateRoutineBlock','moveRoutineBlock',
   'duplicateRoutineBlock','deleteRoutineBlock','changeRoutineSport',
   'inspectRoutineDraft']) assert.match(screen,new RegExp(action));
- assert.match(screen,/Saving, starting and scheduling require the approved private V2 Routine and Training services/);
+ // Saving is only offered with an injected canonical owner writer.
+ // Starting a workout is still explicitly unconnected, not silently enabled.
+ assert.match(screen,/\{onSave\?<View style=\{styles\.review\}>/);
+ assert.match(screen,/disabled=\{!review\.ready\|\|saving\}/);
+ assert.match(screen,/Start Workout remains unconnected/);
  assert.doesNotMatch(screen,/\.from\(|\.rpc\(|saveRoutine\(/);
 });
 test('routine draft cannot be mistaken for completion, saved version, or Coach acceptance',()=>{
