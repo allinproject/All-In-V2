@@ -87,11 +87,9 @@ function OwnedFuelScreen(){
       <FuelFoodLogPanel ownerId={user.id} day={day} onDayChange={setDay} accessReady={gate.status==='ready'}/>}
     </>:
      section==='recipes'?<View style={styles.card}>
-      <Text accessibilityRole="header" style={styles.subhead}>Recipes</Text>
       <Text style={styles.description}>Recipes aren't available yet.</Text>
      </View>:
      <View style={styles.card}>
-      <Text accessibilityRole="header" style={styles.subhead}>Food Plan</Text>
       <View accessibilityRole="tablist" style={styles.tabs}>
        {foodPlanSections.map(tab=><Pressable key={tab.id}
         accessibilityRole="tab" accessibilityLabel={tab.label}
