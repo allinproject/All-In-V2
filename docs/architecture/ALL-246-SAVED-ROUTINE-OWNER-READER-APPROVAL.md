@@ -83,6 +83,20 @@
 - **Retired** the one-time privileged-staging push trigger after success. Protected workflow remains manual-only in branch source and requires re-enablement on `integration/v2-foundation` plus normal environment review for future tests. No uncontrolled rerun or production deployment.
 - **Still pending:** ALL-222 final permissions/security release acceptance, ALL-243 completed workout/session connection, ALL-251 full downloadable export/retention/deletion/restore coverage (existing staging account export v1 is fail-closed and does not cover all new owner tables), actual iPhone app build/login/reinstall and workout handoff. Do not mark ALL-246 Done or publicly activate.
 
+## 2026-11-14 ALL-251 Routine portability + recovery evidence
+
+**PASS — isolated canonical account snapshot:** [full Training PostgreSQL run 43547436153](https://github.com/allinproject/All-In-V2/actions/runs/43547436153) proved versioned Saved Routine ownership, archived history and A/B data isolation through the existing ALL-251 owner snapshot.
+
+**PASS — paginated source:** The SAME ALL-251 paginated source now inventories all four Routine owner relations only if their complete RLS/cascade chain is present. Portable collections carry template identities, archived states, authored blocks and immutable version history; private owner-epoch and idempotency digests are accounted for but never downloadable. Tests prove >25 records over pages, A/B isolation, blocked internal receipt pages and fail-closed unknown/partial owner relations. This is a scoped fixture with intentionally empty, ACL-denied unrelated Goals/EventHub/Community relations; it is **not** whole-account/Storage readiness.
+
+**PASS — Routine deletion-preflight protection:** [isolated PG17 run 43547845212](https://github.com/allinproject/All-In-V2/actions/runs/43547845212) validates a narrowly authored, review-only derived variant of the existing ALL-251 deletion preflight: immutable Routine versions inherit Auth cascade via their verified composite FK to the Auth-owned parent Routine. Default-off processor, broken FK and unknown noncascading relation still refuse processing. No past migration rewritten, no worker enabled.
+
+**PASS — independent disposable logical restore:** [full Training run 43548458081](https://github.com/allinproject/All-In-V2/actions/runs/43548458081), job 132305146963, independently restored a populated Routine source via pg_dump/pg_restore into a separate PostgreSQL database, compared all four Routine-table row digests, verified RLS/direct grants and tested synthetic Routine-only owner Auth cascade without affecting other users. The same test explicitly proves a populated canonical account's Auth deletion remains blocked by Profile's existing FK; it **does not** bypass that FK, prove ALL-251 full deletion worker readiness, or qualify as an independently hosted Supabase physical restore.
+
+**Recovery inventory:** `scripts/all12-recovery-domain-manifest.mjs` tracks all four Routine owner tables as one required database domain. Missing/partial/unverified tables make coverage incomplete; tests passed in Node CI.
+
+**Still gated:** Staging's deployed account snapshot is v1 fail-closed; no hosted fully scoped downloadable account archive activated. Complete owner-domain classification, real private Storage/R2 writes, attested upload barriers, retention, legal authority, whole-account deletion (including Profile/Training/Activity and object bytes), independent hosted recovery, and installed-device download/account-switch acceptance remain separate. Linear ALL-251 currently says Done, but that administrative state is not evidence these specific release gates passed; retain default-off deletion and production safeguards.
+
 ## Verified physical state
 
 2026-11-13 read-only `list_tables` confirms no Saved Routine table in `public` or `allin_private`. Public tables remain Profile/Settings/Onboarding/Legal; private tables include action ledgers, provider cache and account lifecycle objects. These reads were NOT migrations or grant changes.
