@@ -35,7 +35,16 @@ BEGIN
  ) AS required(schema_name,table_name)
  LOOP
   IF pg_catalog.to_regclass(v.schema_name||'.'||v.table_name) IS NULL THEN
-   EXECUTE pg_catalog.format('CREATE TABLE %I.%I (user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE)',v.schema_name,v.table_name);
+   IF v.schema_name='allin_private' AND v.table_name IN
+    ('v2_community_pair_revisions','v2_community_follows',
+     'v2_community_blocks','v2_community_action_receipts') THEN
+    -- These four directional Community ledgers are NOT user_id-owned.
+    -- Do not create a synthetic user_id and accidentally change the
+    -- owning ALL-251 inventory's alternate-key classification.
+    EXECUTE pg_catalog.format('CREATE TABLE %I.%I (actor_id uuid REFERENCES auth.users(id) ON DELETE CASCADE)',v.schema_name,v.table_name);
+   ELSE
+    EXECUTE pg_catalog.format('CREATE TABLE %I.%I (user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE)',v.schema_name,v.table_name);
+   END IF;
    EXECUTE pg_catalog.format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY',v.schema_name,v.table_name);
    EXECUTE pg_catalog.format('REVOKE ALL ON %I.%I FROM PUBLIC,anon,authenticated,service_role',v.schema_name,v.table_name);
   END IF;
