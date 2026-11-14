@@ -4,7 +4,8 @@
 -- All writes are rolled back; DO NOT execute against hosted Supabase.
 -- Parent Training foundation already owns the canonical session authorization function.
 -- Do not duplicate its definition in the paginated export clone.
-\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql
+-- Canonical approved-request table and owner authorization are already in the
+-- training_routine_export clone; preserve them rather than re-creating.
 \i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql
 BEGIN ISOLATION LEVEL REPEATABLE READ;
 INSERT INTO allin_private.v2_account_export_requests_candidate
