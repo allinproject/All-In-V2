@@ -1,0 +1,48 @@
+name: ALL-251 Community real photo bytes (disposable local, no deploy)
+
+# No hosted access, deployment, environment secrets or production migrations.
+# This runs the existing real two-session Storage acceptance against a
+# disposable Supabase stack, not merely the static wiring checks.
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - 'scripts/test-all251-community-photo-two-auth-local.mjs'
+      - 'supabase/functions/_shared/trainingDeletionLocalStorageTransport.mjs'
+      - '.github/workflows/v2-all251-community-photo-local.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all251-community-photo-local-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  photo-bytes:
+    name: Real A/B GoTrue private PNG lifecycle — local only
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: supabase/setup-cli@v3
+        with:
+          version: latest
+      - name: Start disposable local Supabase (never hosted)
+        run: |
+          set -euo pipefail
+          supabase start
+          supabase status
+      - name: Exercise real owner/foreign photo bytes, delete and restore
+        run: node scripts/test-all251-community-photo-two-auth-local.mjs
+      - name: Stop all disposable local Supabase containers
+        if: always()
+        run: supabase stop --no-backup || true
