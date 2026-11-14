@@ -205,6 +205,17 @@ test('synthetic B cannot delete A object using same object identifier',async()=>
  assert.equal(a.stored.size,1);
 });
 
+test('readiness requires an explicit switch and configured signer',async()=>{
+ const ready=new Request('https://allin365-storage-staging.durbenventures.workers.dev/__all251_proof_ready',{method:'HEAD'});
+ const f=fixture();
+ assert.equal((await f.candidate.fetch(ready,f.env)).status,204);
+ assert.equal(f.calls.auth+f.calls.put+f.calls.get,0);
+ const disabled=fixture({enabled:false});
+ assert.equal((await disabled.candidate.fetch(ready,disabled.env)).status,403);
+ const missing=fixture();
+ delete missing.env.ALL251_WRITER_SIGNER_B64;
+ assert.equal((await missing.candidate.fetch(ready,missing.env)).status,403);
+});
 test('default test Worker remains deny-only, not the proof candidate',async()=>{
  const worker=(await import('./worker.mjs')).default;
  const f=fixture();
