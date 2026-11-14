@@ -4,6 +4,8 @@
 -- Archive removes a template from active library; it DOES NOT delete
 -- Completed Activities, accepted Training plans or immutable routine versions.
 BEGIN;
+-- Deliberate domain-version conflicts use non-retryable PostgREST PT409.
+-- SQLSTATE 40001 is reserved for genuine transactional serialization failures.
 CREATE FUNCTION allin_private.v2_training_routine_archive_candidate(
  p_expected_user_id uuid,p_routine_id uuid,p_expected_version bigint,p_action_id uuid
 ) RETURNS jsonb
@@ -37,12 +39,12 @@ BEGIN
  IF NOT FOUND THEN
   RAISE EXCEPTION 'Routine inaccessible' USING ERRCODE='42501'; END IF;
  IF v_version<>p_expected_version THEN
-  RAISE EXCEPTION 'Routine version changed' USING ERRCODE='40001'; END IF;
+  RAISE EXCEPTION 'Routine version changed' USING ERRCODE='PT409'; END IF;
  UPDATE public.v2_training_routines SET archived_at=now(),updated_at=now()
   WHERE id=p_routine_id AND user_id=p_expected_user_id
     AND current_version=p_expected_version AND archived_at IS NULL;
  IF NOT FOUND THEN
-  RAISE EXCEPTION 'Routine archive conflict' USING ERRCODE='40001'; END IF;
+  RAISE EXCEPTION 'Routine archive conflict' USING ERRCODE='PT409'; END IF;
  INSERT INTO allin_private.v2_training_routine_owner_epochs(user_id,epoch)
  VALUES(p_expected_user_id,1)
  ON CONFLICT(user_id) DO UPDATE
