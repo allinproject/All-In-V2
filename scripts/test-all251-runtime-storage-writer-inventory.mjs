@@ -68,6 +68,7 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   'v2-all251-hosted-privileged-writer.yml',
   'v2-all251-hosted-http-route-matrix.yml',
   'v2-all251-hosted-owner-rest-isolation.yml',
+  'v2-all251-hosted-r2-byte-proof.yml',
   'v2-all246-temporary-staging-auth.yml',
   'all222-storage-http-acceptance.yml',
  ]);
@@ -119,6 +120,23 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   'ALL-222 must target the disposable staging project');
  assert.equal(all222Workflow.includes('ALLIN_WRITER_ATTESTATION_SECRET_B64'),false,
   'ALL-222 HTTP probe must never receive the writer signer');
+
+ // R2 byte proof uses a privileged synthetic Auth setup key. Only manual,
+ // integration-branch-scoped execution is allowed; no push marker or signer.
+ const r2Workflow=readFileSync(resolve(root,
+  '.github/workflows/v2-all251-hosted-r2-byte-proof.yml'),'utf8');
+ assert(r2Workflow.includes('workflow_dispatch:'),
+  'R2 byte proof requires explicit manual dispatch');
+ assert.equal(/^\\s*(?:push|pull_request|schedule|workflow_run)\\s*:/m.test(r2Workflow),false,
+  'Privileged R2 byte proof must not auto-run');
+ assert(r2Workflow.includes("if: github.ref == 'refs/heads/integration/v2-foundation'"),
+  'R2 byte proof must stay pinned to integration branch');
+ assert(r2Workflow.includes('environment: all251-temporary-staging'),
+  'R2 byte proof must use protected staging');
+ assert(r2Workflow.includes('fbtgknlxjyeqrxemskbl'),
+  'R2 byte proof must target disposable staging');
+ assert.equal(r2Workflow.includes('ALLIN_WRITER_ATTESTATION_SECRET_B64'),false,
+  'R2 proof must never receive writer signer');
 
  // The separate writer attestation signing key must never be provided to
  // GitHub Actions: a protected environment is not exclusive writer custody.
