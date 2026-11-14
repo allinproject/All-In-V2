@@ -1,0 +1,6 @@
+ALL-251 protected synthetic A/B session acceptance — one-time trigger
+Intent: invoke existing staging-only HTTP Auth A/B session gate test.
+Date: 2026-11-14 UTC.
+Only fires on push to integration/v2-foundation containing this exact file change.
+Requires existing all251-temporary-staging environment approval.
+No production, private Storage access, Worker deployment, or account deletion enablement.
