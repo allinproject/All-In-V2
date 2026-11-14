@@ -15,7 +15,16 @@ BEGIN
 END $$;
 
 ALTER TABLE allin_private.v2_privileged_storage_write_leases_review
-  ADD COLUMN expires_at timestamptz NOT NULL DEFAULT (now() + interval '30 minutes');
+  ADD COLUMN expires_at timestamptz;
+
+-- Backfill historical settled leases with their original lifetime, not now().
+UPDATE allin_private.v2_privileged_storage_write_leases_review
+SET expires_at = created_at + interval '30 minutes'
+WHERE expires_at IS NULL;
+
+ALTER TABLE allin_private.v2_privileged_storage_write_leases_review
+  ALTER COLUMN expires_at SET NOT NULL,
+  ALTER COLUMN expires_at SET DEFAULT (now() + interval '30 minutes');
 
 ALTER TABLE allin_private.v2_privileged_storage_write_leases_review
   ADD CONSTRAINT v2_privileged_storage_lease_expiry_review_check
