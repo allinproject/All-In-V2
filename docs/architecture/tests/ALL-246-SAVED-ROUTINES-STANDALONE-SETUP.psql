@@ -38,6 +38,7 @@ INSERT INTO public.v2_profiles(user_id) SELECT id FROM auth.users;
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-OWNER-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-READ-CANDIDATE.sql
 \i /tmp/allin/docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-ARCHIVE-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-EXPORT-FRAGMENT-CANDIDATE.sql
 
 -- Session fixtures are constrained to a genuine matching record in this
 -- isolated auth.sessions table. Real hosted Supabase auth is NOT substituted.
