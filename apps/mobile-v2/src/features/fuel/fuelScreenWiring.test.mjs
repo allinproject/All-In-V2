@@ -46,35 +46,32 @@ test('Food Log uses only the approved owner-guarded RPC and no shadow store',()=
 
 test('Food Log never fabricates nutrition totals or meal photos',()=>{
  const panel=source('./FuelFoodLogPanel.tsx');
- assert.match(panel,/Nutrition totals are not connected yet/);
+ assert.match(panel,/Food Log data is not available yet/);
  assert.match(panel,/Calories unknown/);
  assert.match(panel,/Calories \(optional, only if known\)/);
  assert.match(panel,/No entries in the verified log/);
  assert.doesNotMatch(panel,/https:\/\/.*\.(?:jpg|png)/);
 });
 
-test('Recipes and Food Plan do not mutate an unconnected meal plan',()=>{
+test('Recipes and Food Plan remain read-only until approved',()=>{
  const screen=source('../../../app/fuel.tsx');
- assert.match(screen,/Cook Now/);
- assert.match(screen,/Each recipe is one serving/);
- assert.match(screen,/type FoodPlanSection='plan'\|'shopping'\|'pantry'/);
- assert.match(screen,/\{id:'plan',label:'Plan'\}/);
- assert.match(screen,/\{id:'shopping',label:'Shopping'\}/);
- assert.match(screen,/\{id:'pantry',label:'Pantry'\}/);
- assert.match(screen,/selected:foodPlanSection===tab\.id/);
- assert.match(screen,/A banana, an apple and a protein bar may each be planned as separate foods/);
- assert.match(screen,/Shopping will combine missing ingredients from planned recipes with individual scheduled foods/);
- assert.match(screen,/KitchenStockSummaryPanel ownerId=\{user\.id\} kind="shopping"/);
- assert.match(screen,/KitchenStockSummaryPanel ownerId=\{user\.id\} kind="pantry"/);
- assert.match(screen,/KitchenWeekPlanPanel ownerId=\{user\.id\} day=\{day\}/);
- assert.match(screen,/Adding foods and starting Meal Prep remain unavailable/);
+ assert.match(screen,/Recipes aren't available yet/);
+ assert.match(screen,/type FoodPlanSection='plan'\\|'shopping'\\|'pantry'/);
+ assert.match(screen,/\\{id:'plan',label:'Plan'\\}/);
+ assert.match(screen,/\\{id:'shopping',label:'Shopping'\\}/);
+ assert.match(screen,/\\{id:'pantry',label:'Pantry'\\}/);
+ assert.match(screen,/selected:foodPlanSection===tab\\.id/);
+ assert.match(screen,/KitchenStockSummaryPanel ownerId=\\{user\\.id\\} kind="shopping"/);
+ assert.match(screen,/KitchenStockSummaryPanel ownerId=\\{user\\.id\\} kind="pantry"/);
+ assert.match(screen,/KitchenWeekPlanPanel ownerId=\\{user\\.id\\} day=\\{day\\}/);
+ assert.match(screen,/Adding foods and starting Meal Prep aren't available yet/);
  const plan=source('../kitchen/KitchenWeekPlanPanel.tsx');
- assert.match(plan,/readKitchenWeek\(ownedKitchenPlanServices\(supabase,ownerId\)/);
+ assert.match(plan,/readKitchenWeek\\(ownedKitchenPlanServices\\(supabase,ownerId\\)/);
  assert.match(plan,/existing plans are not assumed empty/);
  assert.match(plan,/verified week/);
- assert.doesNotMatch(plan,/insert\(|update\(|upsert\(|delete\(/);
+ assert.doesNotMatch(plan,/insert\\(|update\\(|upsert\\(|delete\\(/);
  const stock=source('../kitchen/KitchenStockSummaryPanel.tsx');
- assert.match(stock,/readOwnedKitchenStock\(ownedKitchenStockServices\(supabase,ownerId\)/);
+ assert.match(stock,/readOwnedKitchenStock\\(ownedKitchenStockServices\\(supabase,ownerId\\)/);
  assert.match(stock,/Existing stock is not assumed empty/);
  assert.match(stock,/No list changes have been made/);
  assert.doesNotMatch(screen,/create.*Shopping|write.*Shopping|addShoppingItem/);
