@@ -93,6 +93,7 @@ on:
       - 'scripts/test-v2-account-export-training-integration-postgres.psql'
       - 'scripts/test-v2-saved-routines-full-export-integration-postgres.psql'
       - 'scripts/test-v2-account-export-routines-paginated-postgres.psql'
+      - 'scripts/test-all251-routine-independent-logical-restore.sh'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-TRAINING-ROUTINES-ACCOUNT-EXPORT-INTEGRATED-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-ROUTINES-INTEGRATED-CANDIDATE.sql'
@@ -643,6 +644,12 @@ jobs:
           done
           docker cp scripts/test-v2-account-export-routines-paginated-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-account-export-routines-paginated-postgres.psql"
           docker exec "$PG_CONTAINER" psql -X -U "$PGUSER" -d training_routine_pages -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-routines-paginated-postgres.psql
+      - name: Independently restore complete Routine owner graph and verify Auth cascade
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          CI=1 bash scripts/test-all251-routine-independent-logical-restore.sh "$PG_CONTAINER"
       - name: Verify private Training Activity owner export fragment in disposable PostgreSQL
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
