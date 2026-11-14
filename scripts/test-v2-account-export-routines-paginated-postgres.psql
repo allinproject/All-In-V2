@@ -6,6 +6,38 @@
 -- Do not duplicate its definition in the paginated export clone.
 -- Canonical approved-request table and owner authorization are already in the
 -- training_routine_export clone; preserve them rather than re-creating.
+-- The already-populated Training/Coach/Billing clone intentionally does
+-- not install unrelated Goals/EventHub/Community owner tables. For THIS
+-- scoped Routine-pagination regression only, create empty and PRIVILEGELESS
+-- inventory placeholders for those missing sources. These have NO data or
+-- canonical schema semantics, and cannot constitute complete ALL-251
+-- multi-domain, retention, legal, or production export acceptance.
+-- A separate complete-schema test remains a required release gate.
+DO $fixture$
+DECLARE v record;
+BEGIN
+ FOR v IN SELECT * FROM (VALUES
+ ('public','v2_goals'),
+ ('public','v2_goal_revisions'),
+ ('public','v2_goal_revision_behavior_targets'),
+ ('public','v2_goal_event_edition_links'),
+ ('public','v2_event_group_memberships'),
+ ('public','v2_event_participations'),
+ ('allin_private','v2_event_group_actions'),
+ ('allin_private','v2_goal_approval_reviews'),
+ ('allin_private','v2_goal_acceptance_actions'),
+ ('allin_private','v2_community_visibility'),
+ ('allin_private','v2_coach_turn_claims')
+ ) AS required(schema_name,table_name)
+ LOOP
+  IF pg_catalog.to_regclass(v.schema_name||'.'||v.table_name) IS NULL THEN
+   EXECUTE pg_catalog.format('CREATE TABLE %I.%I (user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE)',v.schema_name,v.table_name);
+   EXECUTE pg_catalog.format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY',v.schema_name,v.table_name);
+   EXECUTE pg_catalog.format('REVOKE ALL ON %I.%I FROM PUBLIC,anon,authenticated,service_role',v.schema_name,v.table_name);
+  END IF;
+ END LOOP;
+END;
+$fixture$;
 \i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql
 BEGIN ISOLATION LEVEL REPEATABLE READ;
 INSERT INTO allin_private.v2_account_export_requests_candidate
