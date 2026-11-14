@@ -64,26 +64,64 @@ BEGIN
  IF n<>4 THEN RAISE EXCEPTION 'Restored Routine RLS or client grants changed'; END IF;
 END;
 \$verify\$;"
-# Delete A only inside a separate isolated RESTORED DB transaction. FK
-# cascading must remove all four A collections without disturbing B.
+# Full-populated-owner Auth deletion is *deliberately blocked* by the
+# unrelated Profile graph in this review fixture. Preserve that gate: do
+# not drop/alter Profile constraints to make a Routine test pass.
 pg "$target_db" "
 BEGIN;
-DELETE FROM auth.users WHERE id='11111111-1111-4111-8111-111111111111';
+DO \$blocked\$
+BEGIN
+ BEGIN
+  DELETE FROM auth.users WHERE id='11111111-1111-4111-8111-111111111111';
+  RAISE EXCEPTION 'Unexpected populated account deletion succeeded';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+END;
+\$blocked\$;
+ROLLBACK;"
+# A separate third identity, created only in the restored disposable DB,
+# has exactly the four Routine-owned rows and NO Profile/Coach/other data.
+# This tests the actual Auth cascade without bypassing broader constraints.
+pg "$target_db" "
+BEGIN;
+INSERT INTO auth.users(id) VALUES ('33333333-3333-4333-8333-333333333333');
+INSERT INTO public.v2_training_routines(id,user_id,current_version)
+ VALUES ('cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+ '33333333-3333-4333-8333-333333333333',1);
+INSERT INTO public.v2_training_routine_versions
+(routine_id,user_id,version,name,sport,notes,blocks)
+VALUES (
+ 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+ '33333333-3333-4333-8333-333333333333',
+ 1,'Restored Synthetic Routine','strength','',
+ '[{\"kind\":\"strength\",\"id\":\"step-1\",\"exercise\":\"Squat\",
+ \"equipment\":null,\"notes\":\"\",\"sets\":3,\"reps\":\"5\",
+ \"weight\":null,\"restSeconds\":90,\"setType\":\"working\",\"groupId\":null}]'::jsonb);
+INSERT INTO allin_private.v2_training_routine_owner_epochs(user_id,epoch)
+ VALUES ('33333333-3333-4333-8333-333333333333',1);
+INSERT INTO allin_private.v2_training_routine_actions
+(user_id,action_id,payload_digest,routine_id,result_version)
+VALUES('33333333-3333-4333-8333-333333333333',
+ 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+ '00000000000000000000000000000000',
+ 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',1);
+DELETE FROM auth.users WHERE id='33333333-3333-4333-8333-333333333333';
 DO \$deletion\$
-DECLARE a uuid:='11111111-1111-4111-8111-111111111111';
+DECLARE c uuid:='33333333-3333-4333-8333-333333333333';
+ a uuid:='11111111-1111-4111-8111-111111111111';
  b uuid:='22222222-2222-4222-8222-222222222222';
 BEGIN
- IF EXISTS(SELECT 1 FROM public.v2_training_routines WHERE user_id=a)
- OR EXISTS(SELECT 1 FROM public.v2_training_routine_versions WHERE user_id=a)
- OR EXISTS(SELECT 1 FROM allin_private.v2_training_routine_owner_epochs WHERE user_id=a)
- OR EXISTS(SELECT 1 FROM allin_private.v2_training_routine_actions WHERE user_id=a)
- THEN RAISE EXCEPTION 'Auth account deletion retained Routine user data'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.v2_training_routines WHERE user_id=b)
+ IF EXISTS(SELECT 1 FROM public.v2_training_routines WHERE user_id=c)
+ OR EXISTS(SELECT 1 FROM public.v2_training_routine_versions WHERE user_id=c)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_training_routine_owner_epochs WHERE user_id=c)
+ OR EXISTS(SELECT 1 FROM allin_private.v2_training_routine_actions WHERE user_id=c)
+ THEN RAISE EXCEPTION 'Restored Routine cascade retained synthetic user data'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.v2_training_routines WHERE user_id=a)
+ OR NOT EXISTS(SELECT 1 FROM public.v2_training_routine_versions WHERE user_id=a)
+ OR NOT EXISTS(SELECT 1 FROM public.v2_training_routines WHERE user_id=b)
  OR NOT EXISTS(SELECT 1 FROM public.v2_training_routine_versions WHERE user_id=b)
- THEN RAISE EXCEPTION 'Owner B was damaged by owner A account deletion'; END IF;
+ THEN RAISE EXCEPTION 'Unrelated owner lost data during test'; END IF;
 END;
 \$deletion\$;
 ROLLBACK;"
-# Auth deletion is deliberately rolled back; only the ephemeral target changes.
 docker exec "$db" rm -f "$dump_path"
-echo 'PASS ALL-251/ALL-12: independently restored all four Routine owner tables, source-equal digests, RLS/ACL and account cascade owner isolation'
+echo 'PASS ALL-251/ALL-12: independent Routine restore equality, RLS/ACL; isolated Routine Auth cascade passes, full populated account deletion remains blocked'
