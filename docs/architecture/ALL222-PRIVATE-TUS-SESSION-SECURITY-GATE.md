@@ -265,6 +265,38 @@ project and returned zero rows; it has **not** been validated against a
 populated fixture. It does not read provider TUS transient state and
 must not be confused with proof of cleanup.
 
+The rollback-only SQL draft had an incomplete SHA-256 regex and a
+duplicated tail; both were corrected in the draft PR, with an invariant
+test requiring a single DO block, single terminal ROLLBACK, and exact
+64-hex SHA-256 guard. The new offline populated replay consists of
+`scripts/fixtures/all222-hosted-cleanup-populated-replay-bootstrap.sql`,
+`scripts/fixtures/all222-hosted-cleanup-replay-inside.sh`, and
+`scripts/run-all222-hosted-cleanup-isolated-replay.sh`.
+
+The replay creates an **empty, disposable PostgreSQL 16 instance** from
+the existing cancellation bootstrap, seeds a synthetic tagged GoTrue-like
+owner and cancelled lease, substitutes fixed synthetic IDs into a *temporary
+copy* of the rollback-only cleanup script, and asserts that the qualifying
+lease is still present after the transaction. Separate negative cases reject
+impossible IDs, untagged owner, extra lease, an existing private object,
+an account-deletion record and an active (noncancelled) lease. It runs with
+no network/ports, read-only image filesystem, a tmpfs database, preinstalled
+`postgres:16` image (no pull), and read-only source mount. It never
+touches hosted staging.
+
+On an already approved disposable local Docker host, from the exact
+checked-in review branch:
+
+```sh
+ALL222_ISOLATED_REPLAY_APPROVED=YES bash scripts/run-all222-hosted-cleanup-isolated-replay.sh
+```
+
+**Execution status:** this new PostgreSQL replay has been committed and
+read back, but has not yet been executed on PostgreSQL; code/static
+invariants are not an acceptance pass. Even a successful local replay
+cannot prove hosted provider session termination or authorize real fixture
+cleanup.
+
 A second **unexecuted, rollback-only** candidate,
 `scripts/fixtures/all222-hosted-termination-cleanup-dryrun-review.sql`,
 documents the exact staging-only cancellation-lease reconciliation rules.
