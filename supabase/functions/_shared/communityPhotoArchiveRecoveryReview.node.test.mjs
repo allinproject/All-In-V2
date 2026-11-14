@@ -100,7 +100,7 @@ test('valid archive footer still refuses changed photo metadata, checksum and by
   r=>({...r,bucket:'v2-private-workout-objects'}),
   r=>({...r,user_id:b}),
  ]){
-  await assert.rejects(verifyCommunityPhotoRecoveryReview({
+  await assert.rejects(async()=>verifyCommunityPhotoRecoveryReview({
    response:await archive({transform:page=>({...page,
     rows:page.rows.map((r,i)=>i===0?mutate(r):r)})}),
    ownerId:a,requestId:request,collections:['community.private_photos'],
