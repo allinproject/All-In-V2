@@ -94,6 +94,43 @@ export async function auditCommunityPhotoCoverageReview({
  });
 }
 /**
+ * Reconcile the actual canonical photo owner ledger against the EXISTING
+ * immutable Storage deletion plan before any byte-absence claim. The
+ * deletion verifier alone cannot know whether omitted canonical rows exist.
+ * Keep all pending and delete-pending photo records in the required plan.
+ * Never mutate the plan here or declare the whole account deletion complete.
+ */
+export async function auditCommunityPhotoDeletionPlanReview({
+ ownerId,requestId,listCanonicalPostPhotos,readExistingObjectPlan,
+ ...deletionDependencies
+}={}){
+ assertIdentity(ownerId,requestId);
+ if(typeof listCanonicalPostPhotos!=='function'||
+  typeof readExistingObjectPlan!=='function')
+  throw Error('Canonical owner photo and durable deletion plan required');
+ const snapshot=await listCanonicalPostPhotos({ownerId,requestId});
+ if(snapshot?.ownerId!==ownerId||snapshot.complete!==true)
+  throw Error('Incomplete canonical photo deletion source');
+ const canonical=checkRows(snapshot.rows,ownerId);
+ const plan=await readExistingObjectPlan({
+  ownerId,requestId,bucketId:REVIEW_COMMUNITY_PHOTO_BUCKET,
+ });
+ if(plan?.durable!==true||plan.ownerId!==ownerId||
+  plan.requestId!==requestId||plan.bucketId!==REVIEW_COMMUNITY_PHOTO_BUCKET||
+  !Array.isArray(plan.paths)||new Set(plan.paths).size!==plan.paths.length||
+  plan.paths.length!==canonical.size||
+  plan.paths.some(path=>!canonical.has(path)))
+  throw Error('Community photo ledger and durable deletion plan diverged');
+ const result=await auditCommunityPhotoDeletionAbsenceReview({
+  ...deletionDependencies,ownerId,requestId,readExistingObjectPlan,
+  approvedBucketIds:[REVIEW_COMMUNITY_PHOTO_BUCKET],
+ });
+ return Object.freeze({...result,canonicalPhotoCount:canonical.size,
+  canonicalPlanReconciled:true,accountDeletionReady:false,
+  completePrivateStorage:false,uploadBarrierEnforced:false});
+}
+
+/**
  * Exercise the EXISTING immutable-plan and Storage-byte-absence verifier.
  * Requires the caller's authoritative barrier, durable checkpoints and
  * complete exact bucket inventory; cannot unlock operational deletion.
