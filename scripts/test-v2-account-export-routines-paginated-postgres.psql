@@ -27,6 +27,10 @@ BEGIN
  ('allin_private','v2_goal_approval_reviews'),
  ('allin_private','v2_goal_acceptance_actions'),
  ('allin_private','v2_community_visibility'),
+ ('allin_private','v2_community_pair_revisions'),
+ ('allin_private','v2_community_follows'),
+ ('allin_private','v2_community_blocks'),
+ ('allin_private','v2_community_action_receipts'),
  ('allin_private','v2_coach_turn_claims')
  ) AS required(schema_name,table_name)
  LOOP
