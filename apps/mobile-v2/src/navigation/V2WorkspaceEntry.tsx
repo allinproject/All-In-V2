@@ -21,7 +21,7 @@ export function V2WorkspaceEntry({ title, contextDescription }: { title: Workspa
     <SafeAreaView style={styles.safe}>
       <View style={styles.content}>
         <V2WorkspaceHeader title={title} />
-        <Text style={styles.description}>This workspace is part of the approved V2 navigation. Its account-owned features are not connected yet. No records or activity are being reported as empty or complete.</Text>
+        <Text style={styles.description}>Features aren't available yet.</Text>
         {contextDescription ? <Text style={styles.description}>{contextDescription}</Text> : null}
       </View>
       <V2BottomNavigation />
