@@ -175,7 +175,7 @@ BEGIN
    'Bad stale change','strength','',
    '[{"id":"draft-1","kind":"strength","exercise":"Squat","equipment":null,"notes":"","sets":3,"reps":"5","weight":null,"restSeconds":90,"setType":"working","groupId":null}]'::jsonb);
   RAISE EXCEPTION 'FAIL: stale version unexpectedly accepted';
- EXCEPTION WHEN serialization_failure THEN NULL;
+ EXCEPTION WHEN SQLSTATE 'PT409' THEN NULL;
  END;
 END;
 $deny$;
