@@ -146,6 +146,18 @@ run a separately approved protected disposable staging HTTP test:
   resulting state and lease settlement, then clean up and reconcile the bucket.
   If the harness cannot confirm that ordering, report the race as unverified.
 
+The staging synthetic freeze RPC can create a pending request while a write
+lease is open. The fixture cleanup RPC checks both the pending request and the
+absence of open leases. Verify the freeze succeeds before testing the cleanup
+denial. Capture the open lease before releasing the pause, then verify it is
+settled before retrying cleanup.
+
+A loopback-only Wrangler harness can bind the real private staging R2 bucket
+remotely. It would need the existing staging signer supplied privately by the
+operator to the isolated local process. Wrangler does not import the deployed
+Worker's secret values into local execution. Keep the signer outside shared CI
+and keep the public staging Worker in deny-only mode during this approach.
+
 All testing remains disposable. Do not treat offline CI, a worker deploy,
 201 status alone, or a checksum read without owner/session checks as
 account deletion release acceptance. `uploadBarrierEnforced=false`.
