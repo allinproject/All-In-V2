@@ -19,13 +19,16 @@ function candidateTables(text){
  return [...fragment.matchAll(/\('(public|allin_private)','(v2_[a-z0-9_]+)'\)/g)]
   .map(m=>m[1]+'.'+m[2]).sort();
 }
-test('all 43 authoritative owner tables match the canonical snapshot allowlist exactly',()=>{
+test('all authoritative owner tables match the canonical snapshot and paginated inventory exactly',()=>{
  const owned=sourceTables(source),candidate=candidateTables(reader);
- assert.equal(owned.length,43);
  assert(owned.includes('public.v2_goal_event_edition_links'),
   'Event edition links must remain part of explicit owner export review');
- assert.equal(new Set(candidate).size,candidate.length);
- assert.deepEqual(candidate,owned,'any added owner table must be explicitly reviewed and paginated');
+ assert.equal(new Set(owned).size,owned.length,'duplicate canonical owner entry');
+ assert.equal(new Set(candidate).size,candidate.length,'duplicate paginated owner entry');
+ const missing=owned.filter(table=>!candidate.includes(table));
+ const unexpected=candidate.filter(table=>!owned.includes(table));
+ assert.deepEqual({missing,unexpected},{missing:[],unexpected:[]},
+  'Unreviewed owner-domain drift: do not increase a fixed count or ignore internal Coach receipts; explicitly classify and reconcile ownership/privacy in both export contracts');
 });
 test('Food/Hydration quartet joins the existing paginated registry only with complete Auth-owner protection',()=>{
  const inventory=reader.slice(0,reader.indexOf('$inventory$;'));
