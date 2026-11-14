@@ -135,6 +135,20 @@ try{
  assert.equal(digest(Buffer.from(await ownerRead.arrayBuffer())),expected);
  const deniedB=await read(path,b.token);
  assert.ok([400,401,403,404].includes(deniedB.status),'B read A private photo');
+ // Even a valid B session may not CREATE a new object under A's prefix.
+ // Probe a different path so an existing-object conflict cannot masquerade
+ // as an authorization denial.
+ const foreignAttemptPath=a.id+'/posts/'+postId+'/'+randomUUID()+'.png';
+ objects.push(foreignAttemptPath);
+ const foreignWrite=await request('POST',
+  '/storage/v1/object/'+bucket+'/'+encodedPath(foreignAttemptPath),{
+   key:anon,jwt:b.token,body:bytes,contentType:'image/png',
+  });
+ assert.ok([400,401,403].includes(foreignWrite.status),
+  'Valid B session wrote a new A-owned photo');
+ assert.equal(await storageTransport.objectExists({
+  ownerId:a.id,requestId:postId,bucketId:bucket,path:foreignAttemptPath,
+ }),false,'Cross-owner fixture upload became durable');
  const anonymous=await read(path,anon);
  assert.ok([400,401,403,404].includes(anonymous.status),'Anonymous photo access');
  const verified=await storageTransport.listOwnerStorageObjects({
