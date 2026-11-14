@@ -58,7 +58,15 @@ export async function readAuthenticatedTrainingCalendar(args: {
   // A user switch, sign-out or new session generation during either network
   // request invalidates BOTH results, even when their row owner IDs match.
   if (!session.isCurrent()) return safeResult();
+  // Runtime readers may return malformed/null data despite their TypeScript
+  // signature (network deserialization, stale adapter or partial rollout).
+  // Never let such data crash the Train screen or certify a known-empty day.
+  const safeRead = <T>(read: OwnerCalendarRead<T>): OwnerCalendarRead<T> =>
+    read && typeof read === 'object' &&
+    ['ready', 'unavailable', 'loading', 'error'].includes(read.status)
+      ? read : unavailable();
   return combineCalendarReads({
-    ownerId: session.ownerId, fromDate, throughDate, planned, completed,
+    ownerId: session.ownerId, fromDate, throughDate,
+    planned: safeRead(planned), completed: safeRead(completed),
   });
 }
