@@ -47,3 +47,4 @@ INSERT INTO public.v2_profiles(user_id) SELECT id FROM auth.users;
 \set user_b 22222222-2222-4222-8222-222222222222
 \set session_b bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb
 \i /tmp/allin/docs/architecture/tests/ALL-246-SAVED-ROUTINES-ISOLATED-ACCEPTANCE.psql
+\i /tmp/allin/docs/architecture/tests/ALL-246-SAVED-ROUTINES-GATEWAY-ACCEPTANCE.psql
