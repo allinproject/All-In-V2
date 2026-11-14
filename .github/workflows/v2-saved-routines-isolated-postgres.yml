@@ -7,6 +7,8 @@ on:
       - '.github/workflows/v2-saved-routines-isolated-postgres.yml'
       - 'docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-*.sql'
       - 'docs/architecture/tests/ALL-246-SAVED-ROUTINES-*.psql'
+      - 'docs/architecture/tests/ALL251-ROUTINE-DELETION-PREFLIGHT-ISOLATED.psql'
+      - 'docs/architecture/sql/V2-ALL251-ROUTINE-DELETE-CASCADE-PREFLIGHT-REVIEW-CANDIDATE.sql'
       - 'apps/mobile-v2/src/features/training/routines/savedRoutineRpcAdapter.ts'
       - 'apps/mobile-v2/src/features/training/routines/savedRoutineRpcWriter.ts'
       - 'apps/mobile-v2/src/features/training/routines/savedRoutineRpcAdapter.test.ts'
@@ -51,6 +53,13 @@ jobs:
           sudo cp docs/architecture/tests/ALL-246-SAVED-ROUTINES-*.psql /tmp/allin/docs/architecture/tests/
           psql -X -h localhost -U postgres -d all246_disposable -v ON_ERROR_STOP=1 -v disposable_test=1 \
             -f /tmp/allin/docs/architecture/tests/ALL-246-SAVED-ROUTINES-STANDALONE-SETUP.psql
+          # The canonical deletion intake remains disabled outside this rolled
+          # back fixture. Verify the exact two-step Routine cascade does not
+          # weaken safeguards for arbitrary other owner-data tables.
+          sudo cp docs/architecture/sql/V2-ALL251-ROUTINE-DELETE-CASCADE-PREFLIGHT-REVIEW-CANDIDATE.sql /tmp/allin/docs/architecture/sql/
+          sudo cp docs/architecture/tests/ALL251-ROUTINE-DELETION-PREFLIGHT-ISOLATED.psql /tmp/allin/docs/architecture/tests/
+          psql -X -h localhost -U postgres -d all246_disposable -v ON_ERROR_STOP=1 -v disposable_test=1 \
+            -f /tmp/allin/docs/architecture/tests/ALL251-ROUTINE-DELETION-PREFLIGHT-ISOLATED.psql
 
   routines-mobile-adapter:
     name: Authenticated Routine client adapter owner-fence tests
