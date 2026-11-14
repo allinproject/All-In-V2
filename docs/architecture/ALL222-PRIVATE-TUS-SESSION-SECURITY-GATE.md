@@ -67,6 +67,28 @@ that a third-party TUS URL was terminated.
   create a parallel independent lease table or accept client-supplied owner
   identity as authorization.
 
+### Source-controlled authorization policy (not activated)
+
+Draft PR #25 now contains
+`supabase/functions/_shared/trainingPrivateResumableAuthorization.mjs`
+with isolated tests in
+`scripts/test-all222-private-resumable-authorization.test.mjs`.
+The pure policy rejects owner/session mismatches, stale Auth sessions,
+deletion locks, cancelled/settled/expired leases, foreign paths, wrong
+upload offsets and oversized chunks. It refuses all requests unless its
+trusted caller supplies both an explicitly proven restricted-provider
+ingress boundary and a proven exclusive deletion/cancel/byte-commit
+fence. Its authorized receipt contains no provider URL.
+
+**This is not a runnable resumable endpoint.** No server-side source of
+authoritative upload-session facts, durable chunk store, provider ingress
+isolation, exclusive asynchronous byte-commit locking, or HTTP handler
+has been wired. Callers must not infer these controls from boolean
+parameters. They must be independently implemented and verified before
+the policy is activated. The new tests are synthetic policy tests, not
+real provider HTTP evidence. Do not route private mobile uploads through
+this module or enable direct TUS while these dependencies are missing.
+
 ### Required per-method decisions
 
 | Client action | Precondition before touching provider/session |
