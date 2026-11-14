@@ -7,6 +7,7 @@ import { v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
+import { V2WorkspaceHeader } from '../src/navigation/V2WorkspaceHeader';
 import {
   formatCalendarDay, formatCalendarMonth, firstOfMonth, monthCalendarWeeks,
   shiftCalendarDate, shiftCalendarMonth, weekDaysForDate, visibleCalendarReadRange,
@@ -136,9 +137,7 @@ function TrainingCalendarOwnerScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topBar}>
-          <Text accessibilityRole="header" style={styles.title}>Train</Text>
-        </View>
+        <V2WorkspaceHeader title="Train" />
         <View style={styles.compactTabs} accessibilityRole="tablist">
           {([
             ['calendar', 'Calendar'], ['plans', 'Plans'], ['routes_routines', 'Routes/Routines'],
@@ -304,8 +303,6 @@ function TrainingCalendarOwnerScreen() {
 const styles = StyleSheet.create({
   safe: {flex:1,backgroundColor:colors.background},
   content:{padding:20,gap:12,paddingBottom:52},
-  topBar:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:44,gap:12},
-  title:{fontSize:24,fontWeight:'800',color:colors.warmWhite},
   muted:{color:colors.mutedText,fontSize:13,lineHeight:20},
   white:{color:colors.warmWhite,fontSize:15,fontWeight:'700'},
   header:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
