@@ -15,7 +15,16 @@ const headers={'content-type':'application/json','cache-control':'no-store'};
 function reply(status:number,code:string){return new Response(JSON.stringify({code}),
  {status,headers});}
 Deno.serve(async(req:Request)=>{
+ // This endpoint accepts one complete, bounded object body only. It is NOT
+ // a resumable/TUS gateway. Do not allow session creation or chunk metadata
+ // without per-request Auth/ownership, lease, deletion and offset checks.
  if(req.method!=='POST')return reply(405,'method_not_allowed');
+ if(req.headers.has('tus-resumable')||req.headers.has('upload-offset')||
+    req.headers.has('upload-length')||req.headers.has('upload-metadata')||
+    req.headers.has('upload-defer-length')||
+    /^application\/offset\+octet-stream(?:\s*;|$)/i.test(
+      req.headers.get('content-type')??''))
+   return reply(403,'resumable_upload_disabled');
  // Hard default OFF even if this review function is deployed accidentally.
  if(Deno.env.get('ALLIN_PRIVATE_WRITER_ACCEPTED')!=='true')
   return reply(503,'private_writer_not_accepted');

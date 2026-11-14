@@ -61,6 +61,37 @@ test('all runtime client/server direct Storage upload paths must use the canonic
  assert.deepEqual(unsafe,[],'New runtime Storage uploads require all-writer barrier review');
 });
 
+// ALL-222: prevent raw private TUS session URLs from being introduced into
+// a mobile or server handler while provider HEAD isolation is unproven.
+// This is a source invariant, not a network ingress control or HTTP proof.
+test('mobile and Edge runtime cannot mint or forward raw private TUS sessions',()=>{
+ const offenders=[];
+ const runtime=[
+  ...enumerate('apps/mobile-v2/src'),
+  ...enumerate('apps/mobile-v2/app'),
+  ...enumerate('supabase/functions'),
+ ];
+ // Existing review-only operator probes intentionally live under scripts/,
+ // not in app/Edge runtime; this guard must not block those tests.
+ const patterns=[
+  /\/storage\/v1\/upload\/resumable/i,
+  /\.storage\.supabase\.co\/storage\/v1\/upload/i,
+  /\btus\s*\.\s*Upload\s*\(/,
+  /\bnew\s+tus\s*\.\s*Upload\s*\(/,
+  /\bcreateSignedUploadUrl\s*\(/,
+  /\bcreateUploadSignedUrl\s*\(/,
+  /\buploadToSignedUrl\s*\(/,
+ ];
+ for(const file of runtime){
+  // Scan executable code as well as string constants. These are deliberately
+  // conservative markers, not a complete secret-flow analysis.
+  const source=readFileSync(resolve(root,file),'utf8');
+  if(patterns.some(pattern=>pattern.test(source)))offenders.push(file);
+ }
+ assert.deepEqual(offenders,[],
+  'Direct TUS session creation or signed bearer upload path in runtime needs ALL-222 security approval');
+});
+
 test('protected ALL-251 staging Storage secret stays in approved staging workflows',()=>{
  const approved=new Set([
   'v2-all251-temporary-auth-smoke.yml',
@@ -71,20 +102,41 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   'v2-all246-temporary-staging-auth.yml',
   'all222-storage-http-acceptance.yml',
  ]);
+ // These workflows live on the integration base and can be absent from a PR head.
+ const integrationOnly = new Map([
+  ['v2-all251-hosted-worker-session-gate.yml',
+   '.github/all251-session-gate-dispatch/run-20261114.txt'],
+  ['v2-all251-hosted-r2-byte-proof.yml',
+   '.github/all251-r2-byte-proof-dispatch/approved-once.txt'],
+ ]);
  const seen=new Set();
  for(const file of readdirSync(resolve(root,'.github/workflows'))){
   if(!/\.(?:yml|yaml)$/.test(file))continue;
   const src=readFileSync(resolve(root,'.github/workflows',file),'utf8');
   if(!src.includes('secrets.ALL251_TEMP_STAGING_SECRET_KEY'))continue;
   seen.add(file);
-  assert(approved.has(file),
+  assert(approved.has(file) || integrationOnly.has(file),
    'New privileged Storage credential holder requires ALL-251 review: '+file);
+  if (integrationOnly.has(file)) {
+   const events = src.replace(/\r\n/g, '\n').split('\npermissions:')[0]
+    .split('\non:\n')[1]?.split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
+   assert.equal(events, [
+    '  workflow_dispatch:',
+    '  push:',
+    '    branches:',
+    '      - integration/v2-foundation',
+    '    paths:',
+    '      - ' + integrationOnly.get(file),
+   ].join('\n'), 'Protected staging trigger changed: '+file);
+   assert(src.includes("if: github.ref == 'refs/heads/integration/v2-foundation'"),
+    'Protected staging job must target integration only: '+file);
+  }
   assert(src.includes('environment: all251-temporary-staging'),
    'Privileged staging credential must remain behind protected environment: '+file);
   assert(src.includes('fbtgknlxjyeqrxemskbl'),
    'Privileged staging credential must be pinned to disposable project: '+file);
  }
- assert.deepEqual([...seen].sort(),[...approved].sort(),
+ assert.deepEqual([...seen].filter(file => !integrationOnly.has(file)).sort(),[...approved].sort(),
   'Protected privileged Storage credential workflow inventory changed');
  // ALL-246 Auth fixture needs service-role only for disposable identity setup
  // and cleanup, never for client Routine access. Require human-invoked protected
