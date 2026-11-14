@@ -43,6 +43,11 @@ test('operator active-termination mode never marks acceptance before fixture cle
 test('staging cleanup candidate is rollback-only and exact synthetic owner guarded',()=>{
  const file=readFileSync(new URL('./fixtures/all222-hosted-termination-cleanup-dryrun-review.sql',import.meta.url),'utf8');
  assert.match(file,/ROLLBACK;\\s*$/);
+ assert.equal((file.match(/^ROLLBACK;$/gm)??[]).length,1,'Only one terminal ROLLBACK is allowed');
+ assert.equal((file.match(/^DO \\$all222\\$$/gm)??[]).length,1,'Duplicate reconciliation blocks are forbidden');
+ assert.equal((file.match(/^\\$all222\\$;$/gm)??[]).length,1,'Single completed DO body required');
+ assert(file.includes("v_row.writer_sha256_review !~ '^[0-9a-f]{64}$'"),
+   'The attested digest regex must be complete and correctly quoted');
  assert.doesNotMatch(file,/^\\s*COMMIT\\s*;/mi);
  assert(file.includes("all222_fixture'='terminate-active'"));
  assert(file.includes("all222_disposable'='true'"));
