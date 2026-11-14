@@ -122,6 +122,7 @@ FROM (SELECT allin_private.v2_training_routine_write_candidate(
  \echo 'FAIL: exact action replay was not recognized'
  \quit 1
 \endif
+SELECT pg_catalog.set_config('allin.test.create_action',:'test_create_action',true);
 SELECT pg_catalog.set_config('allin.test.replay_version',:'test_replay_version',true);
 DO $replay$
 BEGIN
@@ -130,6 +131,20 @@ BEGIN
  END IF;
 END;
 $replay$;
+-- Reusing the same action ID with altered workout content MUST reject the
+-- replay, not return the earlier success or silently overwrite version 1.
+DO $changed_replay$
+BEGIN
+ BEGIN
+  PERFORM allin_private.v2_training_routine_write_candidate(
+   pg_catalog.current_setting('allin.test.user_a')::uuid,NULL,0,
+   pg_catalog.current_setting('allin.test.create_action')::uuid,'Changed after retry','strength','',
+   '[{"id":"draft-1","kind":"strength","exercise":"Squat","equipment":null,"notes":"","sets":3,"reps":"5","weight":null,"restSeconds":90,"setType":"working","groupId":null}]'::jsonb);
+  RAISE EXCEPTION 'FAIL: conflicting action replay accepted';
+ EXCEPTION WHEN unique_violation THEN NULL;
+ END;
+END;
+$changed_replay$;
 
 DO $check$
 DECLARE v_id uuid:=pg_catalog.current_setting('allin.test.user_a')::uuid;
@@ -379,5 +394,34 @@ BEGIN
  END IF;
 END;
 $restored$;
+-- Revoking the Auth session invalidates all Routine read/write/export paths.
+DELETE FROM auth.sessions WHERE id=:'session_a'::uuid;
+SET LOCAL ROLE authenticated;
+DO $revoked_session$
+DECLARE v_owner uuid:=pg_catalog.current_setting('allin.test.user_a')::uuid;
+ v_id uuid:=pg_catalog.current_setting('allin.test.routine_a')::uuid;
+BEGIN
+ BEGIN
+  PERFORM public.v2_training_routines_list_candidate(v_owner,1,NULL,100);
+  RAISE EXCEPTION 'FAIL: revoked session could list routines';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_training_routine_version_candidate(v_owner,1,v_id,1);
+  RAISE EXCEPTION 'FAIL: revoked session could open version';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_training_routine_export_fragment_candidate(v_owner);
+  RAISE EXCEPTION 'FAIL: revoked session could export';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM allin_private.v2_training_routine_write_candidate(
+   v_owner,v_id,1,pg_catalog.gen_random_uuid(),
+   'Revoked session change','strength','',
+   '[{"id":"draft-1","kind":"strength","exercise":"Squat","equipment":null,"notes":"","sets":3,"reps":"5","weight":null,"restSeconds":90,"setType":"working","groupId":null}]'::jsonb);
+  RAISE EXCEPTION 'FAIL: revoked session could write';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END;
+$revoked_session$;
+RESET ROLE;
 ROLLBACK;
 \echo 'PASS only if every assertion completed; test data and test grants rolled back'
