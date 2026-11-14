@@ -90,6 +90,32 @@ BEGIN
  RETURN true;
 END $$;
 
+-- Also guard the legacy base settlement RPC, even if a trusted service
+-- invokes it directly. This prevents either settlement path from accepting
+-- a cancelled lease. Keep its existing scope, return and locking behavior.
+CREATE OR REPLACE FUNCTION public.v2_settle_privileged_storage_write_review(
+ p_owner_id uuid,p_lease_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $
+DECLARE v_count integer;
+BEGIN
+ IF p_owner_id IS NULL OR p_lease_id IS NULL THEN
+  RAISE EXCEPTION 'Exact privileged Storage lease scope required'
+   USING ERRCODE='22023'; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('v2-delete-request:'||p_owner_id::text,0));
+ UPDATE allin_private.v2_privileged_storage_write_leases_review
+ SET settled_at=now()
+ WHERE owner_id=p_owner_id AND lease_id=p_lease_id
+   AND settled_at IS NULL AND cancelled_at IS NULL;
+ GET DIAGNOSTICS v_count=ROW_COUNT;
+ IF v_count<>1 THEN
+  RAISE EXCEPTION 'Unknown, cancelled or already settled Storage lease'
+   USING ERRCODE='42501'; END IF;
+ RETURN true;
+END $;
+
 -- An existing settled lease cannot be cancelled; a cancelled one cannot
 -- be settled. Preserve the original authorized signed settlement mechanism.
 CREATE OR REPLACE FUNCTION public.v2_settle_privileged_storage_write_attested_review(
