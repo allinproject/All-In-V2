@@ -5,6 +5,14 @@
  */
 const STAGING_URL='https://fbtgknlxjyeqrxemskbl.supabase.co';
 export function assertCoachStagingBuildEnvironment(env){
+ const routine=env.EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE==='true';
+ if(routine){
+  const url=env.EXPO_PUBLIC_SUPABASE_URL?.trim().replace(/\/$/,'');
+  if(url!=='http://127.0.0.1:54321'&&url!=='http://localhost:54321')
+   throw Error('Saved Routine acceptance may ONLY target disposable local Supabase.');
+  if(!env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim())
+   throw Error('Saved Routine local acceptance requires an ephemeral local publishable key.');
+ }
  const coach=env.EXPO_PUBLIC_V2_COACH_STAGING_ACCEPTANCE==='true';
  const fuel=env.EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED==='true'
   || env.EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED==='true';
