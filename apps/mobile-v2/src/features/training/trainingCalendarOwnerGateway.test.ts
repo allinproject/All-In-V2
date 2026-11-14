@@ -96,3 +96,13 @@ test('foreign-owner and truncated owner data cannot produce verified markers', a
     assert.equal(result.markers.status, 'unavailable');
   }
 });
+
+test('malformed network reader response fails closed without crashing calendar', async () => {
+  const result = await readAuthenticatedTrainingCalendar({
+    ...makeArgs(),
+    readCompleted: async () => null as unknown as OwnerCalendarRead<CompletedCalendarItem>,
+  });
+  assert.equal(result.status, 'partial');
+  assert.equal(result.completed.status, 'unavailable');
+  assert.equal(result.markers.status, 'unavailable');
+});
