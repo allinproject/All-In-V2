@@ -15,7 +15,7 @@ const request=()=>new Request(URL,{method:'POST',
  body:data,
 });
 function fixture({enabled=true,owner=A,synthetic=true,active=true,
- frozen=false,corrupt=false}={}){
+ frozen=false,corrupt=false,cleanupAllowed=false}={}){
  const stored=new Map(),calls={auth:0,session:0,begin:0,settle:0,put:0,get:0,rpc:0};
  const binding={
   async put(path,bytes,{onlyIf}){
@@ -34,6 +34,7 @@ function fixture({enabled=true,owner=A,synthetic=true,active=true,
    }};
   },
   async head(path){return stored.has(path)?{etag:'test-etag'}:null;},
+  async delete(path){stored.delete(path);},
  };
  const fetchImpl=async(url)=>{
   if(url.endsWith('/auth/v1/user')){
@@ -46,6 +47,8 @@ function fixture({enabled=true,owner=A,synthetic=true,active=true,
    calls.session++;
    return new Response(active?'true':'false',{status:200});
   }
+  if(url.endsWith('/v2_all251_owner_r2_fixture_cleanup_allowed_review'))
+   return new Response(cleanupAllowed?'true':'false',{status:cleanupAllowed?200:403});
   throw Error('Unexpected network destination');
  };
  const authority={
@@ -166,6 +169,40 @@ test('checksum route does not disclose raw bytes or permit cross-owner read',asy
   revoked.env);
  assert.equal(res.status,403);
  assert.equal(revoked.calls.get,0);
+});
+
+test('synthetic frozen owner with no unsettled leases can clean up only own bytes',async()=>{
+ const f=fixture({cleanupAllowed:true});
+ assert.equal((await f.candidate.fetch(request(),f.env)).status,201);
+ assert.equal(f.stored.size,1);
+ const del=new Request(URL,{method:'DELETE',
+  headers:{authorization:'Bearer '+JWT}});
+ const deleted=await f.candidate.fetch(del,f.env);
+ assert.equal(deleted.status,204);
+ assert.equal(f.stored.size,0);
+ assert.equal(f.calls.begin,1);
+ assert.equal(f.calls.settle,1);
+});
+
+test('cleanup without requested deletion freeze is denied and retains bytes',async()=>{
+ const f=fixture({cleanupAllowed:false});
+ assert.equal((await f.candidate.fetch(request(),f.env)).status,201);
+ const res=await f.candidate.fetch(new Request(URL,{method:'DELETE',
+  headers:{authorization:'Bearer '+JWT}}),f.env);
+ assert.equal(res.status,403);
+ assert.equal(f.stored.size,1);
+});
+
+test('synthetic B cannot delete A object using same object identifier',async()=>{
+ const a=fixture({owner:A,cleanupAllowed:true});
+ const b=fixture({owner:B,cleanupAllowed:true});
+ assert.equal((await a.candidate.fetch(request(),a.env)).status,201);
+ assert.equal((await b.candidate.fetch(request(),b.env)).status,201);
+ const del=new Request(URL,{method:'DELETE',
+  headers:{authorization:'Bearer '+JWT}});
+ assert.equal((await b.candidate.fetch(del,b.env)).status,204);
+ assert.equal(b.stored.size,0);
+ assert.equal(a.stored.size,1);
 });
 
 test('default test Worker remains deny-only, not the proof candidate',async()=>{
