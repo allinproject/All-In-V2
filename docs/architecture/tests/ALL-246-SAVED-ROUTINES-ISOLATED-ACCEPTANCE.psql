@@ -282,6 +282,9 @@ BEGIN
 END;
 $export_a$;
 RESET ROLE;
+CREATE TEMP TABLE all246_restore_snapshot AS
+ SELECT allin_private.v2_training_routine_export_fragment_candidate(
+ pg_catalog.current_setting('allin.test.user_a')::uuid) AS payload;
 -- A syntactically valid session belonging to a different user is not
 -- sufficient authorization, even if request.jwt.claim.sub still says A.
 SELECT pg_catalog.set_config('request.jwt.claim.session_id',:'session_b',true);
@@ -324,5 +327,57 @@ BEGIN
   THEN RAISE EXCEPTION 'FAIL: deleting user A damaged B routines'; END IF;
 END;
 $teardown$;
+-- Recreate the same synthetic Auth owner and restore ONLY from the captured,
+-- owner-scoped Routine fragment (not another user's rows).
+INSERT INTO auth.users(id) VALUES (:'user_a'::uuid);
+INSERT INTO auth.sessions(id,user_id) VALUES (:'session_a'::uuid,:'user_a'::uuid);
+INSERT INTO public.v2_profiles(user_id) VALUES (:'user_a'::uuid);
+INSERT INTO public.v2_training_routines(
+ id,user_id,current_version,is_favorite,archived_at,created_at,updated_at
+) SELECT x.id,x.user_id,x.current_version,x.is_favorite,
+ x.archived_at,x.created_at,x.updated_at
+ FROM all246_restore_snapshot s,
+ pg_catalog.jsonb_to_recordset(s.payload#>'{records,public.v2_training_routines}')
+ AS x(id uuid,user_id uuid,current_version bigint,is_favorite boolean,
+      archived_at timestamptz,created_at timestamptz,updated_at timestamptz);
+INSERT INTO public.v2_training_routine_versions(
+ routine_id,user_id,version,schema_version,name,sport,notes,blocks,source_kind,created_at
+) SELECT x.routine_id,x.user_id,x.version,x.schema_version,
+ x.name,x.sport,x.notes,x.blocks,x.source_kind,x.created_at
+ FROM all246_restore_snapshot s,
+ pg_catalog.jsonb_to_recordset(s.payload#>'{records,public.v2_training_routine_versions}')
+ AS x(routine_id uuid,user_id uuid,version bigint,schema_version integer,
+      name text,sport text,notes text,blocks jsonb,source_kind text,created_at timestamptz);
+INSERT INTO allin_private.v2_training_routine_owner_epochs(user_id,epoch)
+ SELECT x.user_id,x.epoch
+ FROM all246_restore_snapshot s,
+ pg_catalog.jsonb_to_recordset(s.payload#>'{records,allin_private.v2_training_routine_owner_epochs}')
+ AS x(user_id uuid,epoch bigint);
+INSERT INTO allin_private.v2_training_routine_actions(
+ user_id,action_id,payload_digest,routine_id,result_version,created_at
+) SELECT x.user_id,x.action_id,x.payload_digest,x.routine_id,x.result_version,x.created_at
+ FROM all246_restore_snapshot s,
+ pg_catalog.jsonb_to_recordset(s.payload#>'{records,allin_private.v2_training_routine_actions}')
+ AS x(user_id uuid,action_id uuid,payload_digest text,routine_id uuid,
+      result_version bigint,created_at timestamptz);
+DO $restored$
+DECLARE a uuid:=pg_catalog.current_setting('allin.test.user_a')::uuid;
+ b uuid:=pg_catalog.current_setting('allin.test.user_b')::uuid;
+ v jsonb;
+BEGIN
+ IF (SELECT count(*) FROM public.v2_training_routines WHERE user_id=a)<>1
+ OR (SELECT count(*) FROM public.v2_training_routine_versions WHERE user_id=a)<>1
+ OR (SELECT count(*) FROM allin_private.v2_training_routine_owner_epochs WHERE user_id=a)<>1
+ OR (SELECT count(*) FROM allin_private.v2_training_routine_actions WHERE user_id=a)<>2
+ OR (SELECT count(*) FROM public.v2_training_routines WHERE user_id=b)<>1 THEN
+   RAISE EXCEPTION 'FAIL: restored Routine graph does not match isolated snapshot';
+ END IF;
+ v:=allin_private.v2_training_routine_export_fragment_candidate(a);
+ IF (v->'records') IS DISTINCT FROM
+   (SELECT payload->'records' FROM all246_restore_snapshot) THEN
+   RAISE EXCEPTION 'FAIL: re-export differs after Routine restore round trip';
+ END IF;
+END;
+$restored$;
 ROLLBACK;
 \echo 'PASS only if every assertion completed; test data and test grants rolled back'
