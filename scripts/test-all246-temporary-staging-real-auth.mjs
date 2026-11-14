@@ -29,6 +29,10 @@ const call=async(path,{method='GET',body,token=null,apiKey=anon}={})=>{
 };
 const rpc=(name,args,token)=>call('/rest/v1/rpc/'+name,{method:'POST',body:args,token});
 const denied=({status},label)=>assert([400,401,403,404].includes(status),label+' unexpectedly allowed');
+const expectedSqlRejection=({status,body},sqlstate,label)=>{
+ assert(status>=400&&status<600,label+' unexpectedly succeeded');
+ assert.equal(body?.code,sqlstate,label+' returned the wrong rejection type');
+};
 const list=(u,owner=u.id)=>rpc('v2_training_routine_list_owner_candidate',
  {p_expected_user_id:owner,p_session_generation:1,p_cursor:null,p_limit:100},u.token);
 const read=(u,routine,version)=>rpc('v2_training_routine_read_owner_candidate',
@@ -67,16 +71,22 @@ try{
  denied(noToken,'Anonymous owner RPC');
  denied(await call('/rest/v1/v2_training_routines?select=id',{token:a.token}),'Direct owner table read');
  denied(await call('/rest/v1/v2_training_routine_versions?select=version',{token:b.token}),'Direct version table read');
- step='authenticated create/read/replay';
+ step='authenticated create';
  const action=randomUUID();
  const one=await save(a,null,0,action);
  assert.equal(one.status,200,'A create refused');
  assert.equal(one.body?.version,1);
  const routine=one.body?.routineId;assert(typeof routine==='string');
+ step='idempotent same-action replay';
  const replay=await save(a,null,0,action);
- assert.equal(replay.status,200);
- assert.equal(replay.body?.routineId,routine);assert.equal(replay.body?.replayed,true);
- denied(await save(a,null,0,action,'Conflicting replay'),'Conflicting action replay');
+ assert.equal(replay.status,200,'Identical action replay refused');
+ assert.equal(replay.body?.routineId,routine);
+ assert.equal(replay.body?.replayed,true);
+ step='changed-payload action conflict';
+ expectedSqlRejection(
+  await save(a,null,0,action,'Conflicting replay'),
+  '23505','Conflicting action replay');
+ step='authenticated owner read';
  const own=await list(a);
  assert.equal(own.status,200);assert.equal(own.body?.records?.length,1);
  assert.equal(own.body.records[0].routineId,routine);
@@ -86,11 +96,15 @@ try{
  assert.equal((await read(b,routine,1)).body,null,'User B guessed exact Routine');
  denied(await list(a,b.id),'Cross-owner identity');
  denied(await save(b,routine,1,randomUUID(),'Hijack'),'Cross-owner version modification');
- step='version CAS and archive';
+ step='version CAS update';
  const updated=await save(a,routine,1,randomUUID(),'Updated Staged Routine');
  assert.equal(updated.status,200);
  assert.equal(updated.body?.version,2);
- denied(await save(a,routine,1,randomUUID(),'Stale change'),'Stale CAS');
+ step='stale-version CAS rejection';
+ expectedSqlRejection(
+  await save(a,routine,1,randomUUID(),'Stale change'),
+  '40001','Stale CAS');
+ step='immutable version and archive';
  assert.equal((await read(a,routine,1)).body?.name,'Staged Auth Routine');
  const archived=await rpc('v2_training_routine_archive_owner_candidate',
   {p_expected_user_id:a.id,p_routine_id:routine,p_expected_version:2,p_action_id:randomUUID()},a.token);
@@ -113,11 +127,16 @@ try{
 }finally{
  for(const id of created.reverse()){
   try{
-   // Existing ALL-222 cleanup adapter handles any other Training children
-   // created by concurrent synthetic staging scenarios, without worker activation.
-   const cleanup=await call('/rest/v1/rpc/v2_all222_cleanup_synthetic_training_fixture',{
-    method:'POST',apiKey:key,body:{p_expected_user_id:id}});
-   if(cleanup.status!==200)throw Error('Training cleanup RPC refused');
+   // Do NOT call ALL-251's synthetic cleanup RPC: its all251-only identity
+   // prefix and metadata checks correctly reject these unrelated ALL-246 users.
+   // Exact Auth identity and synthetic marker must match what THIS run created.
+   const checked=await call('/auth/v1/admin/users/'+encodeURIComponent(id),{apiKey:key});
+   assert.equal(checked.status,200,'Synthetic Auth user lookup refused');
+   const person=checked.body?.user??checked.body;
+   assert.equal(person?.id,id,'Synthetic Auth identity mismatch');
+   assert.match(person?.email??'',/^all246-[ab]-[a-f0-9-]+@example\.invalid$/);
+   assert.equal(person?.user_metadata?.all246_staging_only,true,
+    'Refusing delete of unmarked synthetic user');
    const del=await call('/auth/v1/admin/users/'+encodeURIComponent(id),{method:'DELETE',apiKey:key});
    assert([200,204].includes(del.status),'Synthetic user deletion refused');
    const gone=await call('/auth/v1/admin/users/'+encodeURIComponent(id),{apiKey:key});
