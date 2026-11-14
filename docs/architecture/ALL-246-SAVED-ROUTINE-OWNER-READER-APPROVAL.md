@@ -1,6 +1,18 @@
 # ALL-246 — canonical Saved Routine owner reader approval gate
 
-**Status:** REVIEW ONLY; no V2 Routine table, deployed API, grant, migration, or hosted approval.
+**Status:** Founder APPROVED 2026-11-13 for architecture and isolated/staging implementation only; SQL candidates remain REVIEW ONLY and NOT migration/release-approved. No production table, API grant or public rollout authorized.
+
+**Approved scope:** One versioned Training-owned Routine aggregate, private reader/writer, account export/deletion coverage, two-user security testing and honest unavailable states. Apply no production SQL or general authenticated access before ALL-222 release gates.
+
+**Implementation checkpoint (2026-11-13):**
+- [Review-only schema/CAS writer candidate](sql/V2-TRAINING-SAVED-ROUTINES-OWNER-CANDIDATE.sql) — immutable versions, expected-owner/current-session check, duplicate action receipts, owner epoch for stable pagination, no client SQL grants.
+- [Review-only paginated list/exact-version reader](sql/V2-TRAINING-SAVED-ROUTINES-READ-CANDIDATE.sql) — correct owner+session, immutable revision, snapshot token, no client EXECUTE permission.
+- [Disposable PostgreSQL denial test](tests/ALL-246-SAVED-ROUTINES-ISOLATED-ACCEPTANCE.psql) — requires two synthetic Auth users with real sessions; temporarily grants authenticated test role and rolls back all test data and grants.
+- Extended the existing ALL-251 [Training account export fragment](sql/V2-TRAINING-ACCOUNT-EXPORT-FRAGMENT-CANDIDATE.sql) to register Routine identities/versions/owner epoch/action receipts; no competing account export system.
+- Existing shared temporary staging project `fbtgknlxjyeqrxemskbl` contains other workstreams; **no Routine schema was applied there**. No isolated Supabase branch is currently present. Avoid creating a potentially billable branch or touching that shared environment without a controlled isolation plan.
+- Static source-contract checks passed; **PostgreSQL DDL/test execution, two-session JWT/RLS verification, typecheck, installed app and export/deletion acceptance remain unverified**. The candidates are not deployed or enabled.
+
+
 **Owner:** ALL-246 Training, security/DDL gate ALL-222; Completed Activity source ALL-243; account lifecycle ALL-251; Coach action governance ALL-240.
 **Deployment target:** Existing canonical V2 project `xarhuczrtzuiljmtdaeu` only after release approval; never create a parallel Coach/Workout/Template database.
 
