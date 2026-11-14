@@ -4,11 +4,6 @@ name: ALL-251 protected R2 A/B bytes and synthetic fixture cleanup
 # matching secret and isolated private R2 bucket.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - integration/v2-foundation
-    paths:
-      - .github/all251-r2-byte-proof-dispatch/approved-once.txt
 permissions:
   contents: read
 concurrency:
