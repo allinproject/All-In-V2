@@ -156,7 +156,7 @@ test('unverified or orphan photo and mismatched workout Storage block the entire
   {corruptTraining:true},
  ]){
   await assert.rejects(fixture(options),
-   /Community|Unreferenced|missing|checksum|incomplete|Invalid|changed/);
+   /Community|Unreferenced|missing|checksum|incomplete|Invalid|changed|Canonical media reference/);
  }
 });
 test('synthetic combined inventory cannot authorize incomplete or foreign owner export',async()=>{
