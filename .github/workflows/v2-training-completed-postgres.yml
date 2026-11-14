@@ -119,6 +119,7 @@ on:
       - 'supabase/functions/_shared/trainingExportSupabaseArchive.node.test.mjs'
       - 'scripts/v2-training-account-export-worker-candidate.mjs'
       - 'scripts/v2-training-account-export-worker-candidate.test.mjs'
+      - 'scripts/test-all251-routine-encrypted-export-lifecycle.test.mjs'
       - 'supabase/migrations/**'
       - 'scripts/check-v2-applied-migration-integrity.mjs'
       - 'scripts/check-v2-applied-migration-integrity.test.mjs'
@@ -419,7 +420,7 @@ jobs:
       - name: Guard private device ingest owner RLS candidate (static, no deploy)
         run: node --test scripts/test-v2-device-ingest-rls-guard.mjs
       - name: Check review-only private Storage export integrity contract
-        run: node --test scripts/v2-training-storage-export-integrity.test.mjs scripts/v2-training-private-storage-stage.test.mjs scripts/v2-training-encrypted-export-envelope.test.mjs scripts/v2-training-export-archive-writer.test.mjs supabase/functions/_shared/trainingExportSupabaseStorage.node.test.mjs supabase/functions/_shared/trainingExportAuthServices.node.test.mjs scripts/v2-training-account-export-worker-candidate.test.mjs supabase/functions/_shared/trainingExportSupabaseArchive.node.test.mjs
+        run: node --test scripts/v2-training-storage-export-integrity.test.mjs scripts/v2-training-private-storage-stage.test.mjs scripts/v2-training-encrypted-export-envelope.test.mjs scripts/v2-training-export-archive-writer.test.mjs supabase/functions/_shared/trainingExportSupabaseStorage.node.test.mjs supabase/functions/_shared/trainingExportAuthServices.node.test.mjs scripts/v2-training-account-export-worker-candidate.test.mjs scripts/test-all251-routine-encrypted-export-lifecycle.test.mjs supabase/functions/_shared/trainingExportSupabaseArchive.node.test.mjs
       - name: Replay canonical workout owner proposal and cross-domain FKs
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
