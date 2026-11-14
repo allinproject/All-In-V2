@@ -79,10 +79,10 @@ BEGIN
  RAISE NOTICE 'PASS 4: double cancellation denied';
 
  -- A second, otherwise valid lease must reject a previously consumed nonce.
- sig:=public.all222_replay_signature('cancel',a,bucket,p2,'create',digest,l2,nonce1,ep);
+ sig:=public.all222_replay_signature('cancel',a,bucket,p4,'create',digest,l4,nonce1,ep);
  BEGIN
   PERFORM public.v2_cancel_privileged_storage_write_attested_review(
-   a,l2,bucket,p2,'create',digest,nonce1,ep,sig);
+   a,l4,bucket,p4,'create',digest,nonce1,ep,sig);
   RAISE EXCEPTION 'Replayed nonce accepted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  RAISE NOTICE 'PASS 5: HMAC nonce replay rejected';
