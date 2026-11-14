@@ -7,6 +7,7 @@ import { v2AuthenticatedScreenKey } from '../src/auth/authRoute';
 import { useAccessGate } from '../src/auth/AccessGateProvider';
 import { colors } from '../src/theme/tokens';
 import { V2BottomNavigation } from '../src/navigation/V2BottomNavigation';
+import { V2ProfileAvatarButton } from '../src/navigation/V2ProfileAvatarButton';
 import { deviceLocalToday, millisecondsUntilNextLocalDay, shouldRefreshTodayOnAppState, todayTrainingDestination } from '../src/features/today/todayEntry';
 import { combineCalendarReads } from '../src/features/training/trainingCalendarReadModel';
 import { summarizeTodayTraining } from '../src/features/today/todayTrainingCard';
@@ -133,11 +134,7 @@ function HomeOwnerScreen() {
               <Text accessibilityRole="header" style={styles.heading}>Today</Text>
             </View>
           </View>
-          <Link href="/profile" asChild>
-            <Pressable accessibilityRole="button" accessibilityLabel="Profile and settings" style={styles.profile}>
-              <Text style={styles.profileText}>Profile</Text>
-            </Pressable>
-          </Link>
+          <V2ProfileAvatarButton />
         </View>
         <View style={styles.dayStrip}>
           <Text style={styles.dayLabel}>{localDay ? new Date(`${localDay}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : 'Current day unavailable'}</Text>
@@ -280,8 +277,6 @@ const styles = StyleSheet.create({
   brandMark: {width: 44, height: 44, borderRadius: 22},
   kicker: {color: colors.goldSoft, fontSize: 11, fontWeight: '900', letterSpacing: 1.8},
   heading: {color: colors.warmWhite, fontSize: 25, lineHeight: 30, fontWeight: '900'},
-  profile: {paddingHorizontal: 8, minHeight: 44, justifyContent: 'center'},
-  profileText: {color: colors.goldSoft, fontWeight: '800', fontSize: 13},
   dayStrip: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', minHeight: 36, paddingHorizontal: 2, borderBottomColor: colors.border, borderBottomWidth: 1, gap: 6},
   dayLabel: {color: colors.mutedText, fontSize: 13, fontWeight: '600'},
   weather: {color: colors.mutedText, fontSize: 12},
