@@ -1,11 +1,12 @@
-import {useMemo,useState} from 'react';
+import {useMemo,useRef,useState} from 'react';
+import * as Crypto from 'expo-crypto';
 import {Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 import {colors} from '../../../theme/tokens';
 import type {TrainingSport} from '../trainingPlanSynthesis';
 import {
  addRoutineBlock,changeRoutineSport,deleteRoutineBlock,duplicateRoutineBlock,inspectRoutineDraft,
  moveRoutineBlock,newRoutineDraft,renameRoutineDraft,setRoutineNotes,updateRoutineBlock,
- type RoutineBlock,type RoutineIntervalBlock,type RoutineStrengthBlock,
+ type RoutineBlock,type RoutineIntervalBlock,type RoutineStrengthBlock,type RoutineDraft,
 } from './routineDraftEditor';
 import {applyRoutineDraftEdit,createRoutineDraftHistory,redoRoutineDraftEdit,undoRoutineDraftEdit} from './routineDraftHistory';
 import {projectRoutineDraftPreview} from './routineDraftPreview';
@@ -58,7 +59,10 @@ function BlockActions({position,count,onMove,onDuplicate,onDelete}:{position:num
 /** Actual in-session routine editor. Do not invent completion or infer load targets.
  * Canonical owner/versioned persistence, Coach Apply and Start Workout are NOT connected.
  */
-export function RoutineBuilderContent(){
+export function RoutineBuilderContent({onSave}:{onSave?:(draft:RoutineDraft,actionId:string)=>Promise<void>}={}){
+ const pendingSave=useRef<{version:number;actionId:string}|null>(null);
+ const [saving,setSaving]=useState(false);
+ const [saveError,setSaveError]=useState<string|null>(null);
  const [history,setHistory]=useState(()=>createRoutineDraftHistory(newRoutineDraft()));
  const draft=history.present;
  const setDraft=(operation:(current:typeof draft)=>typeof draft)=>{
@@ -69,6 +73,16 @@ export function RoutineBuilderContent(){
  const preview=useMemo(()=>projectRoutineDraftPreview(draft),[draft]);
  const [showPreview,setShowPreview]=useState(false);
  const update=(block:RoutineBlock)=>setDraft(current=>updateRoutineBlock(current,block));
+ const save=async()=>{
+  if(!onSave||saving||!review.ready)return;
+  const actionId=pendingSave.current?.version===draft.version
+   ?pendingSave.current.actionId:Crypto.randomUUID();
+  pendingSave.current={version:draft.version,actionId};
+  setSaving(true);setSaveError(null);
+  try{await onSave(draft,actionId);pendingSave.current=null;}
+  catch{setSaveError('Routine was not confirmed saved. Review your connection before retrying.');}
+  finally{setSaving(false);}
+ };
  function setSport(sport:TrainingSport){
   if(sport===draft.sport)return;
   if(draft.blocks.length){setSportConfirm(sport);return;}
@@ -94,7 +108,7 @@ export function RoutineBuilderContent(){
       </Pressable>
     </View>
   </View>
-  <Text style={styles.note}>Build repeatable workout structure without recording a completed session. This draft stays in the open Train screen only. Saving, starting and scheduling require the approved private V2 Routine and Training services.</Text>
+  <Text style={styles.note}>Build repeatable workout structure without recording a completed session. {onSave?'Saving uses authenticated local-only Training storage.':'This draft stays in Train; saving requires the approved owner service.'} Starting and scheduling remain separate approvals.</Text>
   <EditorInput label="Routine name" value={draft.name} onChange={value=>setDraft(s=>renameRoutineDraft(s,value))}/>
   <Text style={styles.heading}>Sport</Text>
   <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false}
@@ -208,7 +222,16 @@ export function RoutineBuilderContent(){
         <Text style={styles.note}>Total workout duration not calculated: some blocks have no duration target.</Text>}
       {!preview.ready?<Text style={styles.note}>{preview.issues.join(' ')}</Text>:null}
     </View>:null}
-    <Text style={styles.note}>No completed workout, training plan, or Coach memory has been changed. Saved routine library and Start Workout are not connected.</Text>
+    {onSave?<View style={styles.review}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Save Routine"
+       accessibilityState={{disabled:!review.ready||saving}}
+       disabled={!review.ready||saving} onPress={()=>{void save();}}
+       style={[styles.add,(!review.ready||saving)&&styles.disabled]}>
+       <Text style={styles.addText}>{saving?'Saving…':'Save Routine'}</Text>
+      </Pressable>
+      {saveError?<Text accessibilityRole="alert" style={styles.note}>{saveError}</Text>:null}
+    </View>:null}
+    <Text style={styles.note}>No completed workout, training plan, or Coach memory has been changed. Start Workout remains unconnected.</Text>
   </View>
  </View>;
 }
