@@ -1,7 +1,7 @@
-name: ALL-222 manual launcher (disposable staging only)
+name: ALL-222 disposable staging Storage HTTP denial acceptance
 
-# Default-branch entry point for protected staging HTTP acceptance.
-# NEVER trigger on push or PR. Does not merge integration, deploy, or change production.
+# Privileged temporary-staging credentials require explicit manual approval.
+# A repository push must never trigger real service-role Auth/Storage probes.
 on:
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   real-auth-upload-denials:
-    if: github.repository == 'allinproject/All-In-V2' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/integration/v2-foundation'
     runs-on: ubuntu-latest
     environment: all251-temporary-staging
     timeout-minutes: 10
@@ -26,14 +26,11 @@ jobs:
       ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
       ALL251_TEMP_STAGING_PUBLISHABLE_KEY: ${{ vars.ALL251_TEMP_STAGING_PUBLISHABLE_KEY }}
     steps:
-      - name: Checkout pinned reviewed integration test only
+      - name: Checkout exact integration commit
         uses: actions/checkout@v4
-        with:
-          ref: ef5be237875622b34bcb872840b0834d469cf6ca
-          persist-credentials: false
       - name: Install Node 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Execute genuine staging Auth and Storage bypass tests
+      - name: Run isolated real-GoTrue Storage bypass probes
         run: node scripts/test-v2-all222-storage-http-denials.mjs
