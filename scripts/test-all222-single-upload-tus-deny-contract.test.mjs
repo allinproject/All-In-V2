@@ -39,3 +39,18 @@ test('operator active-termination mode never marks acceptance before fixture cle
  assert(!runner.includes("PASS ALL-222 active TUS termination and lease cancellation; operator fixture cleanup pending"),
   'Misleading acceptance on unresolved cleanup is forbidden');
 });
+
+test('staging cleanup candidate is rollback-only and exact synthetic owner guarded',()=>{
+ const file=readFileSync(new URL('./fixtures/all222-hosted-termination-cleanup-dryrun-review.sql',import.meta.url),'utf8');
+ assert.match(file,/^ROLLBACK;\\s*$/);
+ assert.doesNotMatch(file,/^\\s*COMMIT\\s*;/mi);
+ assert(file.includes("all222_fixture'='terminate-active'"));
+ assert(file.includes("all222_disposable'='true'"));
+ assert(file.includes("pg_advisory_xact_lock"));
+ assert(file.includes("v_row.cancelled_at IS NULL"));
+ assert(file.includes("v_row.settled_at IS NOT NULL"));
+ assert(file.includes("Additional leases exist: reconciliation denied"));
+ assert(file.includes("Private Storage objects remain: reconciliation denied"));
+ assert(file.includes("Account deletion request present: reconciliation denied"));
+ assert(file.includes("00000000-0000-0000-0000-000000000000"));
+});
