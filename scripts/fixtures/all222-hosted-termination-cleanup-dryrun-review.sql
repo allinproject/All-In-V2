@@ -42,7 +42,40 @@ BEGIN
  IF NOT FOUND OR v_row.bucket_id<>'v2-private-workout-objects'
     OR v_row.operation<>'create'
     OR v_row.object_path NOT LIKE v_owner::text || '/all222-positive-%-terminate-active.bin'
-    OR v_row.writer_sha256_review !~ '^[0-9a-f]{64}$'
+    OR v_row.writer_sha256_review IS NULL
+    OR v_row.writer_sha256_review !~ '^[0-9a-f]{64}
+    OR v_row.settled_at IS NOT NULL OR v_row.cancelled_at IS NULL
+ THEN RAISE EXCEPTION 'Exact cancelled attested synthetic lease required'
+   USING ERRCODE='42501'; END IF;
+ IF EXISTS(
+   SELECT 1 FROM allin_private.v2_privileged_storage_write_leases_review l
+   WHERE l.owner_id=v_owner AND l.lease_id<>v_lease
+ ) THEN RAISE EXCEPTION 'Additional leases exist: reconciliation denied'
+   USING ERRCODE='42501'; END IF;
+ IF EXISTS(
+   SELECT 1 FROM storage.objects o
+   WHERE o.name LIKE v_owner::text || '/%'
+     AND o.bucket_id IN ('v2-private-workout-objects','v2-private-account-exports')
+ ) THEN RAISE EXCEPTION 'Private Storage objects remain: reconciliation denied'
+   USING ERRCODE='42501'; END IF;
+ IF EXISTS(
+   SELECT 1 FROM allin_private.v2_account_deletion_requests d
+   WHERE d.user_id=v_owner
+ ) THEN RAISE EXCEPTION 'Account deletion request present: reconciliation denied'
+   USING ERRCODE='42501'; END IF;
+ -- This mutation is contained in a transaction that unconditionally
+ -- ROLLS BACK. It is not an accepted or deployed cleanup operation.
+ DELETE FROM allin_private.v2_privileged_storage_write_leases_review
+ WHERE owner_id=v_owner AND lease_id=v_lease
+   AND settled_at IS NULL AND cancelled_at IS NOT NULL;
+ GET DIAGNOSTICS v_removed=ROW_COUNT;
+ IF v_removed<>1 THEN RAISE EXCEPTION 'Lease reconciliation count mismatch'
+   USING ERRCODE='42501'; END IF;
+ RAISE NOTICE 'REVIEW ONLY: exactly one synthetic cancelled lease would qualify; no commit';
+END;
+$all222$;
+ROLLBACK;
+
     OR v_row.settled_at IS NOT NULL OR v_row.cancelled_at IS NULL
  THEN RAISE EXCEPTION 'Exact cancelled attested synthetic lease required'
    USING ERRCODE='42501'; END IF;
