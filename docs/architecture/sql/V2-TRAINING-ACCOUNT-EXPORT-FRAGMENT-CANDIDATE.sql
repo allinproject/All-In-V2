@@ -24,6 +24,10 @@ BEGIN
  -- metric definitions are intentionally not exported as personal records.
  FOR v_edge IN SELECT * FROM (VALUES
  ('public','v2_training_session_instances'),
+ ('public','v2_training_routines'),
+ ('public','v2_training_routine_versions'),
+ ('allin_private','v2_training_routine_owner_epochs'),
+ ('allin_private','v2_training_routine_actions'),
  ('public','v2_completed_activities'),
  ('public','v2_activity_sources'),
  ('public','v2_training_plans'),
@@ -67,6 +71,10 @@ BEGIN
  -- An unexpected new owner table cannot replace an expected table unnoticed.
  WITH expected(qualified_name) AS (VALUES
  ('public.v2_training_session_instances'),
+ ('public.v2_training_routines'),
+ ('public.v2_training_routine_versions'),
+ ('allin_private.v2_training_routine_owner_epochs'),
+ ('allin_private.v2_training_routine_actions'),
  ('public.v2_completed_activities'),
  ('public.v2_activity_sources'),
  ('public.v2_training_plans'),
