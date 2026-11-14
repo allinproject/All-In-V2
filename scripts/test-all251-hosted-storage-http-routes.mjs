@@ -300,7 +300,7 @@ try{
    headers:{'tus-resumable':'1.0.0','upload-offset':'0',
     'content-type':'application/offset+octet-stream'},body:randomBytes(50)});
   if(result.ok)postFreezePaths.add(pendingTusPath);
-  mark('delayed pre-deletion TUS completion',denied(result.status)?'PASS':'FAIL',await statusDetail(result));
+  mark('delayed pre-deletion TUS completion',denied(result.status)?'RESTRICTED':'FAIL',await statusDetail(result));
  }else mark('delayed pre-deletion TUS completion','UNTESTED','no pre-deletion session');
 
  const restPath=addObject(a.id,'privileged-rest-late');
@@ -313,12 +313,12 @@ try{
  const ordinaryPath=addObject(a.id,'owner-jwt-rest-late');
  postFreezePaths.add(ordinaryPath);
  const ordinary=await upload(ordinaryPath,{key:publishable,jwt:a.jwt});
- mark('post-deletion user JWT REST POST',denied(ordinary.status)?'PASS':'FAIL',await statusDetail(ordinary));
+ mark('post-deletion user JWT REST POST',denied(ordinary.status)?'RESTRICTED':'FAIL',await statusDetail(ordinary));
 
  const freshSignedPath=addObject(a.id,'signed-mint-late');
  postFreezePaths.add(freshSignedPath);
  const mintLate=await issueSignedUpload(freshSignedPath);
- mark('post-deletion privileged signed upload mint',denied(mintLate.status)?'PASS':'FAIL',await statusDetail(mintLate));
+ mark('post-deletion privileged signed upload mint',denied(mintLate.status)?(minted.ok?'PASS':'RESTRICTED'):'FAIL',await statusDetail(mintLate));
 
  if(signerToken){
   const completed=await redeemSigned(signedPath,signerToken);
@@ -333,7 +333,7 @@ try{
  postFreezePaths.add(tusPath);
  const tus=await tusCreate(tusPath);
  mark('post-deletion TUS resumable creation',
-  denied(tus.status)?([201,204].includes(pendingTus.status)?'PASS':'RESTRICTED'):'FAIL',
+  denied(tus.status)?'RESTRICTED':'FAIL',
   await statusDetail(tus));
  if([201,204].includes(tus.status)){
   const location=resumableLocation(tus);
@@ -341,7 +341,7 @@ try{
    const result=await request(location,{method:'PATCH',origin:DIRECT,
     headers:{'tus-resumable':'1.0.0','upload-offset':'0',
      'content-type':'application/offset+octet-stream'},body:randomBytes(50)});
-   mark('TUS post-deletion completion',denied(result.status)?'PASS':'FAIL',await statusDetail(result));
+   mark('TUS post-deletion completion',denied(result.status)?'RESTRICTED':'FAIL',await statusDetail(result));
   }else{
    mark('TUS completion','UNTESTED','creation had no Location header');
    cleanupIssues.push('TUS-session-created-without-terminable-location');
