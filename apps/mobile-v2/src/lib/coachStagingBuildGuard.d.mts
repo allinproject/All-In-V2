@@ -7,6 +7,7 @@ export type CoachStagingBuildEnvironment = {
   EXPO_PUBLIC_V2_FUEL_DAY_READ_ENABLED?: string;
   EXPO_PUBLIC_V2_FUEL_MANUAL_WRITE_ENABLED?: string;
   EXPO_PUBLIC_V2_ROUTINE_LOCAL_AUTH_ACCEPTANCE?: string;
+  EXPO_PUBLIC_V2_ROUTINE_TEMP_STAGING_ACCEPTANCE?: string;
 };
 export function assertCoachStagingBuildEnvironment(
   env: CoachStagingBuildEnvironment,
