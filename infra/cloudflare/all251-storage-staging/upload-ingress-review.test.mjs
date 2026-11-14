@@ -8,6 +8,7 @@ const bytes=new Uint8Array([1,2,3,4,5]);
 function req({method='POST',url=URL,body=bytes,headers={}}={}){
  return new Request(url,{method,
   ...(method==='GET'||method==='HEAD'?{}:{body}),
+  ...(body instanceof ReadableStream?{duplex:'half'}:{}),
   headers:{'content-type':'application/octet-stream',...headers}});
 }
 function handler({verified=true}={}){
