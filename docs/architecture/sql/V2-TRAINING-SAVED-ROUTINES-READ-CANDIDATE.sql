@@ -34,7 +34,7 @@ BEGIN
   'routineId',id,'ownerId',user_id,'version',current_version,
   'name',name,'sport',sport,'updatedAt',updated_at,
   'isFavorite',is_favorite) ORDER BY id),'[]'::jsonb),
-  max(id) INTO v_rows,v_last FROM selected;
+  (pg_catalog.array_agg(id ORDER BY id DESC))[1] INTO v_rows,v_last FROM selected;
  SELECT EXISTS(
   SELECT 1 FROM public.v2_training_routines r
   WHERE r.user_id=p_expected_user_id AND r.archived_at IS NULL
