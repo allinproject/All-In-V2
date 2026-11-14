@@ -91,6 +91,9 @@ on:
       - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-INTEGRATION-REVIEW-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COACH-PERSISTENCE-CANDIDATE.sql'
       - 'scripts/test-v2-account-export-training-integration-postgres.psql'
+      - 'scripts/test-v2-saved-routines-full-export-integration-postgres.psql'
+      - 'docs/architecture/sql/V2-TRAINING-ROUTINES-ACCOUNT-EXPORT-INTEGRATED-CANDIDATE.sql'
+      - 'docs/architecture/sql/V2-ACCOUNT-EXPORT-TRAINING-ROUTINES-INTEGRATED-CANDIDATE.sql'
       - 'scripts/v2-training-storage-export-integrity.mjs'
       - 'scripts/v2-training-storage-export-integrity.test.mjs'
       - 'scripts/v2-training-private-storage-stage.mjs'
@@ -611,6 +614,17 @@ jobs:
           docker cp docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_bridge -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_bridge -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-training-integration-postgres.psql
+      - name: Verify canonical ALL-251 snapshot with co-applied Saved Routine owner graph
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" -T training_export_bridge training_routine_export
+          for f in V2-TRAINING-SAVED-ROUTINES-OWNER-CANDIDATE.sql V2-TRAINING-SAVED-ROUTINES-READ-CANDIDATE.sql V2-TRAINING-SAVED-ROUTINES-ARCHIVE-CANDIDATE.sql V2-TRAINING-SAVED-ROUTINES-EXPORT-FRAGMENT-CANDIDATE.sql V2-TRAINING-ROUTINES-ACCOUNT-EXPORT-INTEGRATED-CANDIDATE.sql V2-ACCOUNT-EXPORT-TRAINING-ROUTINES-INTEGRATED-CANDIDATE.sql; do
+            docker cp "docs/architecture/sql/$f" "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/$f"
+          done
+          docker cp scripts/test-v2-saved-routines-full-export-integration-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-saved-routines-full-export-integration-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -X -U "$PGUSER" -d training_routine_export -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-saved-routines-full-export-integration-postgres.psql
       - name: Verify private Training Activity owner export fragment in disposable PostgreSQL
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
