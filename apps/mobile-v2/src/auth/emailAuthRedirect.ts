@@ -27,11 +27,16 @@ export function v2EmailAuthRedirectUrl(input: V2EmailRedirectInput): string {
     throw new Error('Email links in Expo Go need an approved Expo Go callback. Finish the secure redirect setup before requesting another email.');
   }
 
-  const base = String(input.expoGoLinkingUri ?? '').trim().replace(/\/--\/.*$/, '').replace(/\/+$/, '');
-  // Only the live development server URL may receive an email callback.
-  if (!/^exps?:\/\/[^/?#]+(?::\d+)?$/i.test(base)) {
+  const raw = String(input.expoGoLinkingUri ?? '').trim();
+  // Accept only the development server root (optionally Expo Router's
+  // exact /--/ prefix). Never normalize away an arbitrary route, token,
+  // query or fragment: that would turn a hostile supplied URL into a valid
+  // email recovery destination.
+  const match = /^(exps?:\/\/[^/?#]+)(?:\/|\/--\/)?$/i.exec(raw);
+  if (!match) {
     throw new Error('The Expo Go development address could not be verified. Restart Expo and try again.');
   }
+  const base = match[1];
   // This is the same device-local Expo Router path that handles one-time PKCE.
   const callback = `${base}/--/auth/callback`;
   return input.recovery ? appendRecovery(callback) : callback;
