@@ -61,6 +61,37 @@ test('all runtime client/server direct Storage upload paths must use the canonic
  assert.deepEqual(unsafe,[],'New runtime Storage uploads require all-writer barrier review');
 });
 
+// ALL-222: prevent raw private TUS session URLs from being introduced into
+// a mobile or server handler while provider HEAD isolation is unproven.
+// This is a source invariant, not a network ingress control or HTTP proof.
+test('mobile and Edge runtime cannot mint or forward raw private TUS sessions',()=>{
+ const offenders=[];
+ const runtime=[
+  ...enumerate('apps/mobile-v2/src'),
+  ...enumerate('apps/mobile-v2/app'),
+  ...enumerate('supabase/functions'),
+ ];
+ // Existing review-only operator probes intentionally live under scripts/,
+ // not in app/Edge runtime; this guard must not block those tests.
+ const patterns=[
+  /\/storage\/v1\/upload\/resumable/i,
+  /\.storage\.supabase\.co\/storage\/v1\/upload/i,
+  /\btus\s*\.\s*Upload\s*\(/,
+  /\bnew\s+tus\s*\.\s*Upload\s*\(/,
+  /\bcreateSignedUploadUrl\s*\(/,
+  /\bcreateUploadSignedUrl\s*\(/,
+  /\buploadToSignedUrl\s*\(/,
+ ];
+ for(const file of runtime){
+  // Scan executable code as well as string constants. These are deliberately
+  // conservative markers, not a complete secret-flow analysis.
+  const source=readFileSync(resolve(root,file),'utf8');
+  if(patterns.some(pattern=>pattern.test(source)))offenders.push(file);
+ }
+ assert.deepEqual(offenders,[],
+  'Direct TUS session creation or signed bearer upload path in runtime needs ALL-222 security approval');
+});
+
 test('protected ALL-251 staging Storage secret stays in approved staging workflows',()=>{
  const approved=new Set([
   'v2-all251-temporary-auth-smoke.yml',
