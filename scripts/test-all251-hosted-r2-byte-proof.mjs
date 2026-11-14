@@ -166,21 +166,21 @@ try{
  const firstA=await write(a),firstB=await write(b);
  passes.push('PASS real synthetic A/B R2 writes and SHA-256 byte readback');
  const foreign=await digest(b,firstA.id);
- assert.notEqual(foreign.status,200,'B read A private R2 checksum');
+ assert.equal(foreign.status,403,'Expected explicit denial of cross-owner R2 checksum');
  passes.push('PASS cross-owner private R2 digest denied');
  await freeze(a);
  const frozenAttemptId=randomUUID();
  objects.push({user:a,id:frozenAttemptId,expected:null});
  const frozenAttempt=await worker('POST',a,frozenAttemptId,{bytes:randomBytes(48)});
- assert.notEqual(frozenAttempt.status,201,'Frozen A wrote after deletion request');
+ assert.equal(frozenAttempt.status,401,'Expected explicit session denial for frozen A upload');
  const frozenRead=await digest(a,firstA.id);
- assert.notEqual(frozenRead.status,200,'Frozen A retained authenticated checksum');
+ assert.equal(frozenRead.status,403,'Expected explicit denial of frozen A checksum');
  passes.push('PASS post-freeze A writer and checksum denied');
  await write(b);
  passes.push('PASS B remains writable after A deletion freeze');
  const malicious=await worker('DELETE',b,firstA.id);
- assert.notEqual(malicious.status,204,'B removed A object via test cleanup');
- passes.push('PASS B cannot remove A fixture');
+ assert.equal(malicious.status,403,'Expected explicit denial of cleanup from unfrozen B');
+ passes.push('PASS unfrozen B cannot invoke fixture cleanup');
 }catch(err){
  // Only fixture-safe summary, never full provider error / headers / JWTs.
  failures.push('hosted-test:'+String(err?.message??'Unknown failure')
