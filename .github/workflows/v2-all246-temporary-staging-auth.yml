@@ -1,5 +1,6 @@
 name: ALL-246 temporary staging real Auth and Routine HTTP acceptance
 
+# ALL-246 PT409 retry acceptance: DB/CAS correction tested in isolated PG17; run protected hosted JWT verification.
 # Default branch is main, so GitHub does not offer manual dispatch for
 # this integration-only workflow. Permit a ONE-TIME tightly path-scoped push
 # on the integration branch. The existing protected staging environment must
