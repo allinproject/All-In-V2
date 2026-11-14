@@ -36,7 +36,7 @@ CREATE TABLE allin_private.v2_community_post_photos (
     width::bigint * height::bigint <= 20000000
   ),
   CONSTRAINT v2_community_photo_object_owner CHECK (
-    object_path LIKE owner_id::text || '/%'
+    object_path = owner_id::text || '/posts/' || post_id::text || '/' || id::text || '.png'
   )
 );
 -- Prevent attaching another owner's file to a post: composite FK targets
