@@ -372,3 +372,60 @@ The updated hosted test in [draft PR #18](https://github.com/allinproject/All-In
 **Required next *separately reviewed* staging operations before a real hosted acceptance:** reconcile the canonical `V2-ALL251-ATTESTED-PRIVILEGED-STORAGE-WRITER-REVIEW.sql` with the deployed DB and concurrently changing integration branch; verify backup/recovery and old RPC revocation; provision a random HMAC key into the **private** DB signer table and a protected, authorized writer test runner, never the app, repo, logs or browser; verify it is not accessible to unrelated backend secret consumers; run the protected hosted suite with two disposable A/B sessions, exact independent real byte readbacks, A post-freeze rejection and B continuity; independently inspect and purge every synthetic file/session; separately test real credentialed S3/multipart and delayed signed/TUS completion. The signer in the existing shared GitHub environment is a **staging acceptance credential, not by itself provider-level exclusive custody**.
 
 **Current status: NOT PASSED / BLOCKED on missing reviewed hosted signer + attested RPC.** The no-secret CI syntax and invariant test passed, but no new protected hosted write acceptance was run, no shared staging migration, credential or production change was made, and `uploadBarrierEnforced=false`, `completePrivateStorage=false` and deletion worker OFF remain authoritative.
+
+
+
+## 2026-11-13 — Privileged S3 SigV4/multipart harness and independent custody decision
+
+The existing PR #18 now includes a **secret-free, locally testable** SigV4 request signer
+(`scripts/all251-s3-sigv4.mjs`) plus its own offline unit tests. The protected
+HTTP matrix accepts an **optional, separately reviewed** disposable S3 keypair
+only via `ALL251_TEMP_STAGING_S3_ACCESS_KEY_ID`,
+`ALL251_TEMP_STAGING_S3_SECRET_ACCESS_KEY`, and
+`ALL251_TEMP_STAGING_S3_REGION` in the protected GitHub environment.
+No credentials were created, retrieved, uploaded or deployed here. In the
+absence of approved credentials, privileged S3 PUT and multipart paths remain
+`UNTESTED`, which **blocks acceptance**.
+
+When separately authorized credentials exist, the suite attempts actual
+pre-freeze A/B SigV4 PUT with private byte SHA-256 readback; post-request A PUT
+denial and B continuity; and a pre-request multipart session with an uploaded
+part whose completion is attempted only *after* A's real deletion request.
+New multipart initiation after freeze is separately probed. Any successful
+post-freeze A provider byte write is a `FAIL`. Outstanding multipart uploads
+are tracked for abort/cleanup, and failed abort is visible. All provider
+privileged requests use the approved staging direct Storage hostname.
+
+**Security architecture result, not an implementation approval:**
+Current Supabase S3 documentation explicitly states generated S3 keypairs
+bypass Storage RLS and have access to all buckets. Project-wide Edge Function
+secrets cannot independently isolate the writer signer among the deployed
+functions. Putting a second HMAC in a project-level Edge Secret or a protected
+GitHub environment does **not** by itself prove an exclusive provider
+Storage boundary. Staging currently has only `v2-account-export-download`
+and `v2-coach` Edge Functions, not a dedicated private writer; the reviewed
+attested begin/settle RPCs are absent. Legacy unsigned lease grants remain
+revoked. No release-acceptable `uploadBarrierEnforced` proof exists.
+
+**Supported path before deletion activation:** independently scoped
+credential custody AND a provider-backed Storage upload/delete barrier that
+cannot be bypassed by any remaining generated S3, service/secret, signed URL,
+TUS/multipart, or administrative writer. This may require moving controlled
+private bytes to a distinct independently administered Storage/credential
+boundary and routing all writes through the canonical Training writer, rather
+than trusting this project's shared privileged keys. The no-new-infrastructure
+review-only candidate remains an experiment, not a security guarantee; any
+new provider or paid resource requires explicit owner cost/security/recovery
+approval. Do not create credentials or change project protections until that
+review is complete.
+
+**Hosted acceptance prerequisites:** (1) verify GitHub
+`all251-temporary-staging` reviewer/deployment branch protection;
+(2) verify restore/backout and deploy matching DB attested RPC + private signer
+only within an independently trusted boundary; (3) approve temporary generated
+S3 credentials only if their privileged reach and revocation are covered;
+(4) run protected A/B real HTTP suite with all route baselines, retain
+`FAIL`/`RESTRICTED`/`UNTESTED`/observed-only blocking outcomes;
+(5) independently check no leaked synthetic objects, pending leases,
+TUS/multipart sessions and revoke test credentials. No production change,
+no account deletion, no ALL-222 gate override occurred in this slice.
