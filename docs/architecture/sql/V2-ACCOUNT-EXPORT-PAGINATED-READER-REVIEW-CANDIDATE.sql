@@ -78,6 +78,7 @@ BEGIN
     ('allin_private','v2_training_action_receipts'),
     ('allin_private','v2_training_completion_outbox'),
     ('allin_private','v2_coach_turn_claims'),
+    ('allin_private','v2_coach_message_actions'),
     ('allin_private','v2_training_plan_accept_receipts'),
     ('allin_private','v2_account_export_requests_candidate')
     -- ALL-247 Food Log/Hydration candidate projections exist below, but
@@ -261,7 +262,9 @@ BEGIN
     FROM (
       SELECT owner_collection AS value
         FROM pg_catalog.unnest(v_expected) AS reviewed(owner_collection)
-       WHERE owner_collection <> 'allin_private.v2_coach_turn_claims'
+       WHERE owner_collection NOT IN (
+         'allin_private.v2_coach_turn_claims',
+         'allin_private.v2_coach_message_actions')
       UNION ALL SELECT 'auth.users'
       UNION ALL SELECT 'community.outgoing_follows'
       UNION ALL SELECT 'community.incoming_follow_requests'
@@ -272,8 +275,13 @@ BEGIN
       UNION ALL SELECT 'billing.verified_events'
     ) AS ordered),
   'ownerTableCount',pg_catalog.cardinality(v_expected),
+  -- Coach message-action rows contain idempotency/replay metadata, not
+  -- portable transcript content. Count for owner/deletion completeness,
+  -- but never register a raw client-download collection for these receipts.
+  -- ALL-251 retention/legal acceptance remains pending, complete=false.
   'internalOperationalTables',pg_catalog.jsonb_build_array(
-    'allin_private.v2_coach_turn_claims'),
+    'allin_private.v2_coach_turn_claims',
+    'allin_private.v2_coach_message_actions'),
   'snapshotIsRepeatableRead',true,
   'paginationReady',true,
   'privacyPending','community_pair_revisions_and_storage_media',
