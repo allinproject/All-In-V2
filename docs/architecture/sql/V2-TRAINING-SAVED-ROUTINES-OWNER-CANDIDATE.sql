@@ -92,7 +92,7 @@ CREATE FUNCTION allin_private.v2_training_routine_blocks_valid_candidate(
 AS $validate$
 DECLARE b jsonb; v_ids text[]:=ARRAY[]::text[]; v_id text; v_num numeric;
 BEGIN
- IF p_blocks IS NULL OR pg_catalog.jsonb_typeof(p_blocks)<>'array'
+ IF p_sport IS NULL OR p_blocks IS NULL OR pg_catalog.jsonb_typeof(p_blocks)<>'array'
     OR pg_catalog.jsonb_array_length(p_blocks) NOT BETWEEN 1 AND 60 THEN RETURN false; END IF;
  FOR b IN SELECT value FROM pg_catalog.jsonb_array_elements(p_blocks)
  LOOP
@@ -104,6 +104,8 @@ BEGIN
   IF pg_catalog.jsonb_typeof(b->'notes')<>'string'
      OR pg_catalog.length(b->>'notes')>1000 THEN RETURN false; END IF;
   IF p_sport='strength' THEN
+   IF NOT (b ?& ARRAY['id','kind','exercise','sets','reps','weight',
+        'restSeconds','setType','equipment','notes','groupId']) THEN RETURN false; END IF;
    IF b->>'kind'<>'strength'
      OR pg_catalog.jsonb_typeof(b->'exercise')<>'string'
      OR pg_catalog.length(pg_catalog.btrim(b->>'exercise')) NOT BETWEEN 1 AND 150
@@ -126,6 +128,8 @@ BEGIN
       (b->>'restSeconds')::integer NOT BETWEEN 0 AND 3600 THEN RETURN false; END IF;
    END IF;
   ELSE
+   IF NOT (b ?& ARRAY['id','kind','phase','repetitions','durationSeconds',
+        'distance','distanceUnit','effort','notes']) THEN RETURN false; END IF;
    IF b->>'kind'<>'interval' OR
       b->>'phase' NOT IN ('warmup','work','recovery','cooldown') OR
       pg_catalog.jsonb_typeof(b->'repetitions')<>'number' OR
