@@ -13,6 +13,7 @@ DECLARE
  v_session_id uuid;
  v_activity public.v2_completed_activities%ROWTYPE;
  v_sources jsonb;
+ v_definitions jsonb;
  v_segments jsonb;
  v_strength jsonb;
  v_routes bigint;
@@ -54,6 +55,28 @@ BEGIN
  -- provider-native record IDs, device refs, credentials and Storage keys remain private.
  -- This is only a partial DTO; source priority, registry definitions and
  -- validated display values still require a reviewed owner adapter.
+ -- Metric definitions come only from published versions actually referenced
+ -- by this owner's activity evidence. A registry definition alone is not
+ -- a measured fact or permission to display an unverified metric.
+ IF (SELECT count(*) FROM public.v2_activity_metric_definitions d
+      WHERE d.status='published' AND v_activity.sport=ANY(d.sport_scope)
+      AND EXISTS(SELECT 1 FROM public.v2_activity_metric_values m
+        WHERE m.user_id=v_user AND m.activity_id=p_activity_id
+          AND m.metric_code=d.metric_code
+          AND m.definition_version=d.definition_version))>1200 THEN
+  RAISE EXCEPTION 'Completed Activity metric definitions exceed bounded response'
+    USING ERRCODE='54000'; END IF;
+ SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+   'code',d.metric_code,'version',d.definition_version,
+   'displayName',d.display_name,'canonicalUnit',d.canonical_unit,
+   'sportScope',d.sport_scope,'measurementKinds',d.measurement_kinds
+ ) ORDER BY d.metric_code,d.definition_version),'[]'::jsonb)
+ INTO v_definitions FROM public.v2_activity_metric_definitions d
+ WHERE d.status='published' AND v_activity.sport=ANY(d.sport_scope)
+   AND EXISTS(SELECT 1 FROM public.v2_activity_metric_values m
+     WHERE m.user_id=v_user AND m.activity_id=p_activity_id
+       AND m.metric_code=d.metric_code
+       AND m.definition_version=d.definition_version);
  -- Provider's private record ID/device ref intentionally omitted.
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
    'id',id,'provider',provider,'sourceKind',source_kind,'quality',quality
@@ -118,7 +141,7 @@ BEGIN
    'elapsedSeconds',v_activity.elapsed_seconds,
    'captureKind',v_activity.capture_kind,
    'trainingSessionId',v_activity.training_session_instance_id,
-   'sources',v_sources,
+   'sources',v_sources,'definitions',v_definitions,
    'activityMetrics',allin_private.v2_activity_scalar_evidence_projection_candidate(
       v_user,p_activity_id),
    'segments',v_segments,'strengthSets',v_strength,
