@@ -43,14 +43,16 @@ function packageValid(p:RacePacePackage):boolean{
  if(!p||typeof p.workoutId!=='string'||!p.workoutId.trim()||!p.routeId?.trim()||
    !p.courseVersion?.trim()||!Array.isArray(p.sections)||p.sections.length===0||p.sections.length>10000)return false;
  let previousEnd=0;
+ const sectionIds=new Set<string>();
  for(const [index,s]of p.sections.entries()){
-  if(!s||typeof s.id!=='string'||!s.id.trim()||!finiteIn(s.startMeters,0,MAX_METERS)||
+  if(!s||typeof s.id!=='string'||!s.id.trim()||sectionIds.has(s.id)||!finiteIn(s.startMeters,0,MAX_METERS)||
    !finiteIn(s.endMeters,0,MAX_METERS)||s.endMeters<=s.startMeters||
    !finiteIn(s.targetSecondsPerKm,60,3600)||
    !['flat','climb','descent','rolling','unknown'].includes(s.terrain)||
    !(s.gradePercent===null||finiteIn(s.gradePercent,-50,50))||
    (index===0&&s.startMeters!==0)||
    (index>0&&Math.abs(s.startMeters-previousEnd)>0.01))return false;
+  sectionIds.add(s.id);
   previousEnd=s.endMeters;
  }
  return true;

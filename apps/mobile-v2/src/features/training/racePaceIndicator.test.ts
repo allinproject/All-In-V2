@@ -81,6 +81,7 @@ test('unverified or discontinuous elevation sections never create a race target'
   [plan().sections[0],{...plan().sections[1],startMeters:1100}],
   [{...plan().sections[0],targetSecondsPerKm:Number.NaN}],
   [{...plan().sections[0],gradePercent:120}],
+  [plan().sections[0],{...plan().sections[1],id:'flat'},plan().sections[2]],
  ]){
   assert.equal(racePaceIndicator({...plan(),sections},observation()).status,'unavailable');
  }
