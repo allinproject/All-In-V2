@@ -17,7 +17,13 @@ const origin='https://'+ref+'.supabase.co';
 const direct='https://'+ref+'.storage.supabase.co';
 const bucket='v2-private-workout-objects';
 const env=process.env;
-assert.notEqual(env.CI,'true','Operator-only: CI forbidden');
+assert(!env.CI&&!env.GITHUB_ACTIONS,'Operator-only: CI forbidden');
+const mode=process.argv[2];
+assert(process.argv.length<=3&&(mode===undefined||mode==='--terminate-active'),
+ 'Expected no argument or --terminate-active');
+const terminationOnly=mode==='--terminate-active';
+assert(!terminationOnly||env.ALL222_TERMINATION_FIXTURE_CLEANUP_ACK==='true',
+ 'Active termination requires operator acknowledgement of manual fixture cleanup');
 assert.equal(env.ALL251_OPERATOR_APPROVED,'true','Explicit operator approval required');
 assert.equal(env.ALL251_STAGING_REF,ref,'Wrong Supabase project');
 assert.equal(env.ALL251_STAGING_URL,origin,'Wrong Supabase origin');
@@ -55,10 +61,10 @@ async function adminJson(path,method='GET',data){
  return fetchStaging(path,{method,admin:true,headers:data===undefined?{}:{'content-type':'application/json'},
   body:data===undefined?undefined:JSON.stringify(data)});
 }
-async function createUser(){
- const email='all222-pos-'+randomUUID()+'@example.invalid';
+async function createUser(label='positive'){
+ const email='all222-'+label+'-'+randomUUID()+'@example.invalid';
  const createdUser=await adminJson('/auth/v1/admin/users','POST',
-  {email,password,email_confirm:true,app_metadata:{all222_disposable:true}});
+  {email,password,email_confirm:true,app_metadata:{all222_disposable:true,all222_fixture:label}});
  assert([200,201].includes(createdUser.status),'GoTrue synthetic create failed');
  const u=await createdUser.json();
  assert(typeof u.id==='string','Missing synthetic Auth ID');
@@ -116,6 +122,66 @@ async function callTus(url,method,jwt,headers={},body){
  return fetchStaging(parsed.pathname+parsed.search,{host:direct,method,jwt,
   body,headers:{'tus-resumable':'1.0.0',...headers}});
 }
+async function startTus(owner,path,length){
+ const init=await fetchStaging('/storage/v1/upload/resumable',{
+  host:direct,method:'POST',jwt:owner.jwt,
+  headers:{'tus-resumable':'1.0.0','upload-length':String(length),
+   'upload-metadata':tusMeta({bucketName:bucket,objectName:path,
+      contentType:'application/octet-stream'})}});
+ assert.equal(init.status,201,'TUS session creation failed');
+ const location=init.headers.get('location');
+ assert(location,'TUS server omitted session Location');
+ const url=new URL(location,direct);
+ assert(url.origin===direct&&url.pathname.startsWith('/storage/v1/upload/resumable/'),
+  'Unexpected TUS session location');
+ return url;
+}
+async function requireObjectAbsent(path){
+ for(const route of ['object/authenticated','object/info']){
+  const response=await fetchStaging('/storage/v1/'+route+'/'+bucket+'/'+enc(path),{admin:true});
+  const missing=await response.json().catch(()=>null);
+  assert([400,404].includes(response.status)&&
+   (missing?.code==='NoSuchKey'||missing?.error==='not_found')&&
+   missing?.message==='Object not found','Explicit Storage absence required before reconciliation');
+ }
+}
+async function terminateActive(){
+ checkpoint='synthetic owner and attested lease creation';
+ const owner=await createUser('terminate-active');
+ const split=6*1024*1024;
+ const bytes=randomBytes(split+1024);
+ const path=pathFor(owner.id,'terminate-active');
+ // The deletion fence intentionally retains cancelled-but-unsettled leases.
+ const scope={ownerId:owner.id,bucketId:bucket,path,operation:'create',bytes};
+ users.pop();
+ const started=await lease.begin(scope);
+ assert(!started.error&&typeof started.data==='string','Attested TUS lease unavailable');
+ checkpoint='unfinished TUS positive control';
+ const url=await startTus(owner,path,bytes.length);
+ const patch=(offset,body)=>callTus(url,'PATCH',owner.jwt,
+  {'upload-offset':String(offset),'content-type':'application/offset+octet-stream'},body);
+ const partial=await patch(0,bytes.subarray(0,split));
+ assert.equal(partial.status,204,'TUS first chunk failed');
+ const before=await callTus(url,'HEAD',owner.jwt);
+ assert(before.status===200&&before.headers.get('upload-offset')===String(split),
+  'Unfinished TUS offset was not confirmed');
+ checkpoint='active provider termination and object absence';
+ const deleted=await callTus(url,'DELETE',owner.jwt);
+ const after=await callTus(url,'HEAD',owner.jwt);
+ console.log('Active TUS statuses: DELETE='+deleted.status+' HEAD='+after.status);
+ assert.equal(deleted.status,204,'Provider did not acknowledge termination');
+ assert([404,410].includes(after.status)&&!after.headers.has('upload-offset'),
+  'Terminated TUS HEAD did not show explicit absence');
+ const stale=await patch(split,bytes.subarray(split));
+ console.log('Terminated TUS PATCH status='+stale.status);
+ assert([404,410].includes(stale.status),'Terminated TUS PATCH did not show explicit absence');
+ await requireObjectAbsent(path);
+ checkpoint='attested lease cancellation';
+ const cancelled=await lease.cancel({...scope,leaseId:started.data});
+ assert(!cancelled.error&&cancelled.data===true,'Attested cancellation was not acknowledged');
+ console.log('Operator cleanup required: reconcile the tagged terminate-active fixture through an approved staging-only cleanup path.');
+ console.log('PASS: active TUS terminated, stale session absent, object absent and lease cancelled');
+}
 async function run(){
  const a=await createUser(),b=await createUser();
  checkpoint='authorized attested HTTP create';
@@ -162,16 +228,7 @@ async function run(){
  assert(!started.error&&typeof started.data==='string','Attested TUS lease unavailable');
  const leaseId=started.data;
  checkpoint='TUS creation';
- const init=await fetchStaging('/storage/v1/upload/resumable',{
-  host:direct,method:'POST',jwt:a.jwt,
-  headers:{'tus-resumable':'1.0.0','upload-length':String(bytes.length),
-   'upload-metadata':tusMeta({bucketName:bucket,objectName:path,
-      contentType:'application/octet-stream'})}});
- assert.equal(init.status,201,'TUS session creation failed');
- const location=init.headers.get('location');
- assert(location,'TUS server omitted session Location');
- const locationUrl=new URL(location,direct);
- assert.equal(locationUrl.origin,direct,'Unexpected TUS location origin');
+ const locationUrl=await startTus(a,path,bytes.length);
  tusUrls.push({url:locationUrl.toString(),jwt:a.jwt});
  checkpoint='TUS first chunk';
  const split=6*1024*1024;
@@ -262,10 +319,13 @@ async function cleanup(){
   }catch{error=true;console.error('CLEANUP FAIL: synthetic Auth account requires inspection');}
  }
 }
-try{await run();}catch(e){
+try{await (terminationOnly?terminateActive():run());}catch(e){
  error=true;
- console.error('FAIL checkpoint: '+checkpoint+' ('+(e instanceof Error?e.message:'unexpected')+
+ if(terminationOnly)console.error('Review the synthetic fixture in staging before retrying.');
+ console.error('FAIL checkpoint: '+checkpoint+' ('+(!terminationOnly&&e?.code==='ERR_ASSERTION'?e.message:'request or assertion failed')+
   '; no credentials, file URLs or identities logged)');
 }finally{await cleanup();}
-if(!error)console.log('PASS ALL-222 positive Storage/TUS staging acceptance, cleanup confirmed');
+if(!error)console.log(terminationOnly?
+ 'PASS ALL-222 active TUS termination and lease cancellation; operator fixture cleanup pending':
+ 'PASS ALL-222 positive Storage/TUS staging acceptance, cleanup confirmed');
 if(error)process.exitCode=1;

@@ -243,3 +243,28 @@ Run this only from the isolated PR worktree after verifying the exact
 latest script commit and running `node --check`; verify staging has zero
 unrelated fixtures and open leases first. Do not repeat on failure
 without reconciliation of any active upload session or deletion fixture.
+
+## Operator-only active termination probe
+
+The disposable staging cancellation migration is installed. Confirm there is
+an approved way to remove the tagged synthetic fixture before running this
+mode. The cancellation fence deliberately keeps a cancelled lease unsettled,
+so automatic Auth deletion is skipped for this probe. Keep the fixture for
+reconciliation if any step fails. Avoid reruns until the previous fixture
+has been reconciled.
+
+Load the existing operator signer and disposable staging keys privately.
+Use the pinned `ALL251_STAGING_REF` and `ALL251_STAGING_URL`, set
+`ALL251_OPERATOR_APPROVED=true`, then acknowledge the manual cleanup in
+`ALL222_TERMINATION_FIXTURE_CLEANUP_ACK=true` and run:
+
+```sh
+node scripts/test-all222-operator-attested-tus-resume.mjs --terminate-active
+```
+
+The probe requires a 6 MiB partial upload and exact owner offset, DELETE
+204, explicit session absence on HEAD and PATCH, and explicit object byte
+and metadata absence before requesting signed cancellation. It reports HTTP
+statuses without identifiers or session URLs. An acknowledged cancellation
+covers this termination probe only. Separately inspect and reconcile the
+`all222_fixture=terminate-active` synthetic owner and lease in staging.
