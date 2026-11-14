@@ -120,12 +120,20 @@ BEGIN
     OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_attribute a
      WHERE a.attrelid=v_routine_table AND a.attname='user_id'
        AND a.attnum>0 AND NOT a.attisdropped)
+    -- Root routines and private ledgers cascade directly from Auth.
+    -- Immutable versions cascade through (routine_id,user_id) -> the
+    -- parent Routine's unique (id,user_id), which itself cascades from Auth.
     OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint fk
      JOIN pg_catalog.pg_attribute a ON a.attrelid=fk.conrelid
        AND a.attname='user_id'
      WHERE fk.conrelid=v_routine_table AND fk.contype='f'
-      AND fk.confrelid='auth.users'::pg_catalog.regclass
-      AND fk.confdeltype='c' AND a.attnum=ANY(fk.conkey))
+      AND fk.confdeltype='c' AND a.attnum=ANY(fk.conkey)
+      AND (fk.confrelid='auth.users'::pg_catalog.regclass
+        OR (v_routine_table='public.v2_training_routine_versions'::pg_catalog.regclass
+          AND fk.confrelid='public.v2_training_routines'::pg_catalog.regclass
+          AND EXISTS(SELECT 1 FROM pg_catalog.pg_attribute a2
+            WHERE a2.attrelid=fk.conrelid AND a2.attname='routine_id'
+              AND a2.attnum=ANY(fk.conkey)))))
     OR pg_catalog.has_table_privilege('anon',v_routine_table,
       'SELECT,INSERT,UPDATE,DELETE')
     OR pg_catalog.has_table_privilege('authenticated',v_routine_table,
