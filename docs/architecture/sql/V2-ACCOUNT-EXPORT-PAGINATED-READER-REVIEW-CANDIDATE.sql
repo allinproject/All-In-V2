@@ -25,6 +25,16 @@ DECLARE
  v_fuel_count integer;
  v_fuel_table regclass;
  v_fuel_relation record;
+ -- ALL-246 / ALL-251: Routine data belongs to the SAME canonical paginated
+ -- export. Require all four interdependent tables, not an optional subset.
+ v_routine_expected text[]:=ARRAY[
+  'public.v2_training_routines',
+  'public.v2_training_routine_versions',
+  'allin_private.v2_training_routine_owner_epochs',
+  'allin_private.v2_training_routine_actions'];
+ v_routine_count integer;
+ v_routine_table regclass;
+ v_routine_relation record;
 BEGIN
  PERFORM allin_private.v2_account_export_authorize_request_candidate(
    p_owner,p_session,p_request);
@@ -88,6 +98,43 @@ BEGIN
     -- export_registered=false; the active owner-table inventory must fail
     -- closed if any of those candidate owner tables are introduced.
  ) AS reviewed(schema_name,table_name);
+ -- Routines are registered as one four-table domain: public athlete
+ -- templates + immutable versions, plus private owner epoch and action
+ -- receipts. No partial archive may pretend to represent the whole domain.
+ SELECT pg_catalog.count(*) INTO v_routine_count
+ FROM pg_catalog.unnest(v_routine_expected) AS r(table_name)
+ WHERE pg_catalog.to_regclass(r.table_name) IS NOT NULL;
+ IF v_routine_count NOT IN (0,4) THEN
+  RAISE EXCEPTION 'Incomplete Saved Routine export graph'
+   USING ERRCODE='42501';
+ END IF;
+ IF v_routine_count=4 THEN
+  FOR v_routine_relation IN
+   SELECT pg_catalog.to_regclass(r.table_name) AS relation_oid
+    FROM pg_catalog.unnest(v_routine_expected) AS r(table_name)
+  LOOP
+   v_routine_table:=v_routine_relation.relation_oid;
+   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+    WHERE c.oid=v_routine_table AND c.relkind IN ('r','p')
+      AND c.relrowsecurity)
+    OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_attribute a
+     WHERE a.attrelid=v_routine_table AND a.attname='user_id'
+       AND a.attnum>0 AND NOT a.attisdropped)
+    OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint fk
+     JOIN pg_catalog.pg_attribute a ON a.attrelid=fk.conrelid
+       AND a.attname='user_id'
+     WHERE fk.conrelid=v_routine_table AND fk.contype='f'
+      AND fk.confrelid='auth.users'::pg_catalog.regclass
+      AND fk.confdeltype='c' AND a.attnum=ANY(fk.conkey))
+    OR pg_catalog.has_table_privilege('anon',v_routine_table,
+      'SELECT,INSERT,UPDATE,DELETE')
+    OR pg_catalog.has_table_privilege('authenticated',v_routine_table,
+      'SELECT,INSERT,UPDATE,DELETE')
+   THEN RAISE EXCEPTION 'Unapproved Saved Routine export owner/security contract'
+      USING ERRCODE='42501'; END IF;
+  END LOOP;
+  v_expected:=v_expected||v_routine_expected;
+ END IF;
  -- Optional reviewed Fuel overlay extends THIS SAME owner inventory and
  -- paginated reader; it is never a second account-export source or endpoint.
  -- The quartet is atomic: partial Food/Hydration installs must refuse export.
@@ -264,7 +311,9 @@ BEGIN
         FROM pg_catalog.unnest(v_expected) AS reviewed(owner_collection)
        WHERE owner_collection NOT IN (
          'allin_private.v2_coach_turn_claims',
-         'allin_private.v2_coach_message_actions')
+         'allin_private.v2_coach_message_actions',
+         'allin_private.v2_training_routine_owner_epochs',
+         'allin_private.v2_training_routine_actions')
       UNION ALL SELECT 'auth.users'
       UNION ALL SELECT 'community.outgoing_follows'
       UNION ALL SELECT 'community.incoming_follow_requests'
@@ -281,7 +330,9 @@ BEGIN
   -- ALL-251 retention/legal acceptance remains pending, complete=false.
   'internalOperationalTables',pg_catalog.jsonb_build_array(
     'allin_private.v2_coach_turn_claims',
-    'allin_private.v2_coach_message_actions'),
+    'allin_private.v2_coach_message_actions',
+    'allin_private.v2_training_routine_owner_epochs',
+    'allin_private.v2_training_routine_actions'),
   'snapshotIsRepeatableRead',true,
   'paginationReady',true,
   'privacyPending','community_pair_revisions_and_storage_media',
@@ -462,6 +513,26 @@ BEGIN
    RAISE EXCEPTION 'Unreviewed Community export projection'
     USING ERRCODE='42501';
   END IF;
+ ELSIF p_collection='public.v2_training_routines' THEN
+  -- Export athlete-owned template identity/archived state. Do not append
+  -- private replay/epoch state to the portable file.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+   '''id'',r.id,''user_id'',r.user_id,''current_version'',r.current_version,'||
+   '''is_favorite'',r.is_favorite,''archived_at'',r.archived_at,'||
+   '''created_at'',r.created_at,''updated_at'',r.updated_at) '||
+   'FROM public.v2_training_routines r '||
+   'WHERE r.user_id=$1 ORDER BY r.id LIMIT $2 OFFSET $3';
+ ELSIF p_collection='public.v2_training_routine_versions' THEN
+  -- Complete authored structure, immutable schema/version, original sport
+  -- and created date. Preserve all archived historical versions.
+  v_query:='SELECT pg_catalog.jsonb_build_object('||
+   '''routine_id'',v.routine_id,''user_id'',v.user_id,'||
+   '''version'',v.version,''schema_version'',v.schema_version,'||
+   '''name'',v.name,''sport'',v.sport,''notes'',v.notes,'||
+   '''blocks'',v.blocks,''source_kind'',v.source_kind,'||
+   '''created_at'',v.created_at) '||
+   'FROM public.v2_training_routine_versions v '||
+   'WHERE v.user_id=$1 ORDER BY v.routine_id,v.version LIMIT $2 OFFSET $3';
  ELSIF p_collection='public.v2_training_athlete_restrictions' THEN
   -- ALL-230 / ALL-251 REVIEW ONLY / NOT INVENTORIED.
   -- The athlete's own active AND retired restrictions are portable; no
