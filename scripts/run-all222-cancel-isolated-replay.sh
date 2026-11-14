@@ -26,6 +26,7 @@ docker run --rm --pull=never --network=none --read-only \
       gosu postgres psql -X -v ON_ERROR_STOP=1 \
        -f /source/scripts/fixtures/all222-cancel-replay-bootstrap.sql \
        -f /source/docs/architecture/sql/ALL222-ATTESTED-LEASE-CANCEL-ISOLATED-REVIEW.sql \
-       -f /source/scripts/fixtures/all222-cancel-replay-assertions.sql
+       -f /source/scripts/fixtures/all222-cancel-replay-assertions.sql \
+       -f /source/scripts/fixtures/all222-cancel-replay-concurrency.sql
     echo "PASS: disposable SQL state-machine replay completed; container discarded on exit"
   '

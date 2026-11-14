@@ -214,4 +214,11 @@ REVOKE ALL ON FUNCTION public.v2_cancel_privileged_storage_write_attested_review
  uuid,uuid,text,text,text,text,uuid,bigint,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.v2_cancel_privileged_storage_write_attested_review(
  uuid,uuid,text,text,text,text,uuid,bigint,text) TO service_role;
+-- Reassert the attested cutover ACL on both settlement entry points.
+REVOKE ALL ON FUNCTION public.v2_settle_privileged_storage_write_review(uuid,uuid)
+ FROM PUBLIC,anon,authenticated,service_role;
+REVOKE ALL ON FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ uuid,uuid,uuid,bigint,text) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.v2_settle_privileged_storage_write_attested_review(
+ uuid,uuid,uuid,bigint,text) TO service_role;
 COMMIT;
