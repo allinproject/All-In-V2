@@ -88,13 +88,43 @@ function OwnedFuelScreen(){
         <Text style={styles.linkText}>‹ Food Log</Text>
        </Pressable>
       </View>
-      {(['Calories','Protein','Carbs','Fat'] as const).map(label=>(
-       <View key={label} style={styles.nutritionRow}>
-        <Text style={styles.nutritionLabel}>{label}</Text>
-        <Text style={styles.nutritionUnknown}>—</Text>
+      <View style={styles.nutritionMetrics}>
+       {(['Calories','Protein','Carbs','Fat'] as const).map(label=>(
+        <View key={label} style={styles.nutritionMetric}>
+         <Text style={styles.metricCaption}>{label}</Text>
+         <Text style={styles.nutritionUnknown}>—</Text>
+         <Text style={styles.metricCaption}>Target — · Remaining —</Text>
+        </View>
+       ))}
+      </View>
+      <Text style={styles.description}>Intake, targets and remaining amounts are unavailable.</Text>
+      <View style={styles.nutritionSection}>
+       <View style={styles.nutritionTitleGroup}>
+        <View style={styles.goldAccent}/>
+        <Text accessibilityRole="header" style={styles.nutritionSectionTitle}>Energy budget</Text>
        </View>
-      ))}
-      <Text style={styles.description}>Nutrition totals aren't available yet.</Text>
+       {(['Eaten','Burned','Left to eat'] as const).map(label=>(
+        <View key={label} style={styles.nutritionRow}>
+         <Text style={styles.nutritionLabel}>{label}</Text>
+         <Text style={styles.nutritionUnknown}>—</Text>
+        </View>
+       ))}
+       <Text style={styles.description}>Fixed or adaptive target: Not available</Text>
+      </View>
+      <View style={styles.nutritionSection}>
+       <View style={styles.nutritionTitleGroup}>
+        <View style={styles.goldAccent}/>
+        <Text accessibilityRole="header" style={styles.nutritionSectionTitle}>Trends</Text>
+       </View>
+       <Text style={styles.description}>Daily and weekly trends aren't available yet.</Text>
+      </View>
+      <View style={styles.nutritionSection}>
+       <View style={styles.nutritionTitleGroup}>
+        <View style={styles.goldAccent}/>
+        <Text accessibilityRole="header" style={styles.nutritionSectionTitle}>Coach insights</Text>
+       </View>
+       <Text style={styles.description}>Training-aware nutrition insights aren't available yet.</Text>
+      </View>
      </View>:
       <FuelFoodLogPanel ownerId={user.id} day={day} onDayChange={setDay}
        accessReady={gate.status==='ready'} onOpenNutrition={()=>setSection('daily')}/>}
@@ -148,8 +178,13 @@ const styles=StyleSheet.create({
  nutritionTitleGroup:{flexDirection:'row',alignItems:'center',gap:10},
  goldAccent:{width:4,height:20,borderRadius:2,backgroundColor:colors.gold},
  backAction:{minHeight:44,justifyContent:'center',paddingHorizontal:4},
- nutritionRow:{minHeight:52,flexDirection:'row',alignItems:'center',justifyContent:'space-between',
-  borderBottomWidth:1,borderBottomColor:colors.border,paddingVertical:10},
+ nutritionMetrics:{flexDirection:'row',flexWrap:'wrap',gap:12,paddingVertical:8},
+ nutritionMetric:{width:'47%',minWidth:0,gap:7,paddingVertical:10},
+ metricCaption:{color:colors.mutedText,fontSize:12},
+ nutritionSection:{borderTopWidth:1,borderTopColor:colors.border,paddingTop:18,gap:12},
+ nutritionSectionTitle:{color:colors.warmWhite,fontSize:17,fontWeight:'800'},
+ nutritionRow:{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'space-between',
+  borderBottomWidth:1,borderBottomColor:colors.border,paddingVertical:8},
  nutritionLabel:{color:colors.warmWhite,fontSize:15,fontWeight:'700'},
  nutritionUnknown:{color:colors.warmWhite,fontSize:20,fontWeight:'800'},
 });
