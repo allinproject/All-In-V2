@@ -7,7 +7,7 @@ const source = relative => readFileSync(fileURLToPath(new URL(relative, import.m
 
 test('Today preserves five-section order and four compact verified food tiles', () => {
   const home = source('../../../app/home.tsx');
-  const sections = ["TODAY'S TRAINING", '>Daily Energy</Text>', '>Food Log</Text>', '>Progress</Text>', '>Recovery</Text>'];
+  const sections = [">Today's Training</Text>", '>Daily Energy</Text>', '>Food Log</Text>', '>Progress</Text>', '>Recovery</Text>'];
   const offsets = sections.map(section => home.indexOf(section));
   assert.ok(offsets.every(position => position >= 0));
   assert.deepEqual(offsets, [...offsets].sort((a,b) => a-b));
@@ -34,7 +34,7 @@ test('Today preserves five-section order and four compact verified food tiles', 
 
 test('Today distinct Daily Extended and Food Log links preserve the date', () => {
   const home = source('../../../app/home.tsx');
-  assert.match(home, /todayFuelDestination\(localDay, 'daily'\)/);
+  assert.match(home, /pathname: '\/daily-extended' as const, params: \{ date: localDay \}/);
   assert.match(home, /todayFuelDestination\(localDay, 'food-log'\)/);
   assert.match(home, /href=\{dailyDestination\}/);
   assert.match(home, /href=\{foodLogDestination\}/);
