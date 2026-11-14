@@ -302,7 +302,7 @@ function TrainingCalendarOwnerScreen() {
 
 const styles = StyleSheet.create({
   safe: {flex:1,backgroundColor:colors.background},
-  content:{padding:20,gap:12,paddingBottom:52},
+  content:{paddingHorizontal:20,paddingTop:10,gap:10,paddingBottom:52},
   muted:{color:colors.mutedText,fontSize:13,lineHeight:20},
   white:{color:colors.warmWhite,fontSize:15,fontWeight:'700'},
   header:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
