@@ -21,7 +21,7 @@ export function V2ProfileAvatarButton() {
     <Link href="/profile" asChild>
       <Pressable accessibilityRole="button" accessibilityLabel="Profile and settings" style={styles.hitArea}>
         <View style={styles.circle}>
-          <Text style={styles.initials}>{initials || '◉'}</Text>
+          <Text style={styles.initials}>{initials || '👤'}</Text>
         </View>
       </Pressable>
     </Link>
