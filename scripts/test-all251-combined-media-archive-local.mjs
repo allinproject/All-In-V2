@@ -10,6 +10,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
+import {deflateSync} from 'node:zlib';
 import {createApprovedPrivateMediaPageReader} from '../supabase/functions/_shared/trainingExportPrivateMediaPages.mjs';
 import {createCommunityPhotoArchivePagesReview} from '../supabase/functions/_shared/communityPhotoArchivePagesReview.mjs';
 import {verifyCommunityPhotoRecoveryReview} from '../supabase/functions/_shared/communityPhotoArchiveRecoveryReview.mjs';
@@ -31,10 +32,29 @@ const admin=vars.SERVICE_ROLE_KEY,anon=vars.ANON_KEY;
 assert.ok(typeof admin==='string'&&admin.length>40);
 assert.ok(typeof anon==='string'&&anon.length>20);
 const nonce=randomBytes(8).toString('hex');
-const workoutBucket='all251-combined-workout-'+nonce;
-const photoBucket='all251-combined-photo-'+nonce;
+const workoutBucket='v2-private-workout-objects';
+const photoBucket='v2-private-community-photos';
 const users=[],buckets=[],uploaded=[];
 const sha=b=>createHash('sha256').update(b).digest('hex');
+function chunk(type,data){
+ const b=Buffer.alloc(8);b.writeUInt32BE(data.length,0);b.write(type,4);
+ const input=Buffer.concat([b,data]);let crc=0xffffffff;
+ for(let i=4;i<input.length;i++){
+  crc^=input[i];for(let k=0;k<8;k++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);
+ }
+ const tail=Buffer.alloc(4);tail.writeUInt32BE((crc^0xffffffff)>>>0);
+ return Buffer.concat([input,tail]);
+}
+function syntheticPng(){
+ const width=300,height=300,ihdr=Buffer.alloc(13);
+ ihdr.writeUInt32BE(width,0);ihdr.writeUInt32BE(height,4);
+ ihdr[8]=8;ihdr[9]=2;
+ const pixels=Buffer.alloc(height*(width*3+1));
+ randomBytes(pixels.length).copy(pixels);
+ for(let y=0;y<height;y++)pixels[y*(width*3+1)]=0;
+ return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),
+  chunk('IHDR',ihdr),chunk('IDAT',deflateSync(pixels)),chunk('IEND',Buffer.alloc(0))]);
+}
 const enc=p=>p.split('/').map(encodeURIComponent).join('/');
 async function api(method,path,{key=admin,jwt=key,body,type}={}){
  const headers={apikey:key,Authorization:'Bearer '+jwt};
@@ -91,7 +111,7 @@ try{
  const sources=[
   {bucket:workoutBucket,path:seriesPath,bytes:randomBytes(270000),type:'application/octet-stream'},
   {bucket:workoutBucket,path:routePath,bytes:randomBytes(180000),type:'application/json'},
-  {bucket:photoBucket,path:photoPath,bytes:randomBytes(300000),type:'image/png'},
+  {bucket:photoBucket,path:photoPath,bytes:syntheticPng(),type:'image/png'},
  ];
  const originals=new Map(sources.map(item=>[item.path,item.bytes]));
  for(const source of sources){
@@ -122,12 +142,8 @@ try{
     routes:[{user_id:a.id,object_path:routePath,
      checksum_sha256:sha(originals.get(routePath)),state:'ready',privacy_state:'private'}],
    }),
-   // The EXISTING workout reader requires the canonical production bucket
-   // name; this disposable test deliberately does not claim source approval.
-   listBucketCatalog:async()=>[{id:'v2-private-workout-objects',public:false}],
-   listOwnerStorageObjects:async()=>({
-    ...await inventory(workoutBucket),bucketId:'v2-private-workout-objects',
-   }),
+   listBucketCatalog:async()=>[{id:workoutBucket,public:false}],
+   listOwnerStorageObjects:async()=>inventory(workoutBucket),
   },
   downloadPrivateObject:async({ownerId,path,kind})=>{
    assert.equal(ownerId,a.id);
@@ -147,10 +163,8 @@ try{
   ownerId:a.id,requestId,snapshotId,
   scoped:{
    listCanonicalPostPhotos:async()=>snapshot,
-   listBucketCatalog:async()=>[{id:'v2-private-community-photos',public:false}],
-   listOwnerStorageObjects:async()=>({
-    ...await inventory(photoBucket),bucketId:'v2-private-community-photos',
-   }),
+   listBucketCatalog:async()=>[{id:photoBucket,public:false}],
+   listOwnerStorageObjects:async()=>inventory(photoBucket),
    downloadPrivatePhoto:async args=>{
     assert.equal(args.ownerId,a.id);
     assert.equal(args.path,photoPath);
