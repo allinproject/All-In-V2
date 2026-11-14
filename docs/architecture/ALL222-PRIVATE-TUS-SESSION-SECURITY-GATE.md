@@ -89,6 +89,32 @@ the policy is activated. The new tests are synthetic policy tests, not
 real provider HTTP evidence. Do not route private mobile uploads through
 this module or enable direct TUS while these dependencies are missing.
 
+### Canonical-fence operation wrapper — implemented in source, not active
+
+The review branch now includes
+`supabase/functions/_shared/trainingPrivateResumableOperationBoundary.mjs`
+and its synthetic regression tests. It rejects construction unless the trusted
+runtime explicitly enables BOTH verified restricted provider ingress and a
+verified exclusive commit fence. Once configured, the wrapper acquires the
+injected existing **canonical per-owner fence**, reads fresh authoritative
+Auth/session/lease/deletion state **inside** it, calls the shared per-method
+authorization policy, and holds the fence while invoking the trusted provider
+operation. Failure or ambiguous proof rejects completion. PATCH requires the
+confirmed new offset; CANCEL requires independently confirmed provider-session
+invalidation, provider-byte absence and canonical signed cancellation;
+FINALIZE requires verified exact bytes and signed lease settlement. Responses
+do not contain raw provider URLs or signing material.
+
+**Explicit remaining blockers:** no real durable owner-lock adapter spanning
+asynchronous provider I/O has been supplied, no authoritative resumable
+session reader/provider session invalidation exists, and no provider ingress
+isolation has been accepted. The dependency-injected functions and boolean
+flags are **not themselves evidence of a safe lock or real provider denial**.
+These staged modules are not imported by an HTTP handler; they do not secure
+existing direct Supabase TUS routes. The synthetic tests must be executed
+and later replaced/supplemented with hosted concurrency and real HTTP evidence.
+Do not enable the endpoint or release deletion on this basis.
+
 ### Required per-method decisions
 
 | Client action | Precondition before touching provider/session |
