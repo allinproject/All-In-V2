@@ -24,7 +24,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
-      - run: node --check scripts/test-all251-hosted-storage-http-routes.mjs
+      - run: |
+          node --check scripts/test-all251-hosted-storage-http-routes.mjs
+          node --check scripts/all251-s3-sigv4.mjs
+          node --check scripts/all251-s3-sigv4.mjs
   protected-disposable-staging-only:
     needs: offline-script-syntax-only
     if: github.ref == 'refs/heads/integration/v2-foundation'
@@ -38,6 +41,11 @@ jobs:
       ALL251_STAGING_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
       ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
       ALL251_TEMP_STAGING_WRITER_SIGNER_B64: ${{ secrets.ALL251_TEMP_STAGING_WRITER_SIGNER_B64 }}
+      # Optional ONLY after separate custody, deletion-barrier and cost review.
+      # Generated S3 keypairs bypass Storage RLS and may reveal a real bypass.
+      ALL251_TEMP_STAGING_S3_ACCESS_KEY_ID: ${{ secrets.ALL251_TEMP_STAGING_S3_ACCESS_KEY_ID }}
+      ALL251_TEMP_STAGING_S3_SECRET_ACCESS_KEY: ${{ secrets.ALL251_TEMP_STAGING_S3_SECRET_ACCESS_KEY }}
+      ALL251_TEMP_STAGING_S3_REGION: ${{ vars.ALL251_TEMP_STAGING_S3_REGION }}
       ALL251_TEMP_STAGING_PUBLISHABLE_KEY: ${{ vars.ALL251_TEMP_STAGING_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@v4
