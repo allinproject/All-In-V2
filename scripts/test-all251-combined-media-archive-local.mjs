@@ -235,13 +235,27 @@ try{
   assert.equal(sha(value),sha(originals.get(path)));
   recovered.set(path,value);
  }
+ // Delete every object before checking whole-bucket inventory. Workout
+ // has TWO objects; removing only one must NOT make that bucket empty.
  for(const source of sources){
   const r=await api('DELETE','/storage/v1/object/'+source.bucket+'/'+enc(source.path));
   assert.ok(r.ok,'Fixture Storage removal failed');
   assert.equal(await storage.objectBytesAbsent({
    ownerId:a.id,requestId,bucketId:source.bucket,path:source.path,
   }),true,'Storage bytes remained after delete');
-  assert.equal((await inventory(source.bucket)).totalCount,0);
+  assert.equal(await storage.objectExists({
+   ownerId:a.id,requestId,bucketId:source.bucket,path:source.path,
+  }),false,'Deleted Storage object metadata remains');
+ }
+ for(const bucket of [workoutBucket,photoBucket]){
+  const afterDelete=await inventory(bucket);
+  assert.equal(afterDelete.exhaustive,true);
+  assert.equal(afterDelete.totalCount,0,'Source bucket retained objects after full deletion');
+  assert.deepEqual(afterDelete.paths,[]);
+ }
+ // Restore every source from the SINGLE encrypted export, then independently
+ // confirm byte equality and real signed-in A/B access to restored objects.
+ for(const source of sources){
   const restored=await api('POST','/storage/v1/object/'+source.bucket+'/'+enc(source.path),{
    body:recovered.get(source.path),type:source.type,
   });
