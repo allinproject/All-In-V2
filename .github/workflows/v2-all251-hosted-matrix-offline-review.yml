@@ -10,6 +10,8 @@ on:
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
       - 'infra/cloudflare/all251-storage-staging/**'
+      - 'scripts/test-all251-hosted-r2-byte-proof.mjs'
+      - '.github/workflows/v2-all251-hosted-r2-byte-proof.yml'
       - 'scripts/test-all251-hosted-worker-session-gate.mjs'
       - '.github/workflows/v2-all251-hosted-worker-session-gate.yml'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
@@ -21,6 +23,8 @@ on:
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
       - 'infra/cloudflare/all251-storage-staging/**'
+      - 'scripts/test-all251-hosted-r2-byte-proof.mjs'
+      - '.github/workflows/v2-all251-hosted-r2-byte-proof.yml'
       - 'scripts/test-all251-hosted-worker-session-gate.mjs'
       - '.github/workflows/v2-all251-hosted-worker-session-gate.yml'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
@@ -81,6 +85,8 @@ jobs:
           CLOUDFLARE_SEND_METRICS: 'false'
         run: |
           npx --yes wrangler@4.136.0 deploy --dry-run --config infra/cloudflare/all251-storage-staging/wrangler.proof.jsonc --outdir /tmp/all251-r2-proof-build
+      - name: Syntax-check protected R2 HTTP bytes runner (no live credentials)
+        run: node --check scripts/test-all251-hosted-r2-byte-proof.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
