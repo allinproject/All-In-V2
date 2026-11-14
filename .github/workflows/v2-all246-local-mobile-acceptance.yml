@@ -1,0 +1,49 @@
+name: ALL-246 local-only Train Routine integration typecheck (no deploy)
+
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - '.github/workflows/v2-all246-local-mobile-acceptance.yml'
+      - 'apps/mobile-v2/app/train.tsx'
+      - 'apps/mobile-v2/src/features/training/RoutesRoutinesContent.tsx'
+      - 'apps/mobile-v2/src/features/training/routines/RoutineBuilderContent.tsx'
+      - 'apps/mobile-v2/src/features/training/routines/SavedRoutineLibraryContent.tsx'
+      - 'apps/mobile-v2/src/features/training/routines/savedRoutineRpcAdapter.ts'
+      - 'apps/mobile-v2/src/features/training/routines/savedRoutineRpcWriter.ts'
+      - 'apps/mobile-v2/src/features/training/routines/savedRoutineLocalWiring.test.mjs'
+      - 'apps/mobile-v2/src/lib/coachStagingBuildGuard*'
+      - 'apps/mobile-v2/src/lib/supabase.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all246-mobile-local-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-routine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/mobile-v2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: apps/mobile-v2/package-lock.json
+      - name: Check local-only guard and explicit routine UI wiring
+        run: |
+          node --test src/lib/coachStagingBuildGuard.test.mjs
+          node --test src/features/training/routines/savedRoutineLocalWiring.test.mjs
+      - name: Install committed mobile dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Type-check mobile-v2 (no Metro, no device build, no deploy)
+        run: npm run typecheck
