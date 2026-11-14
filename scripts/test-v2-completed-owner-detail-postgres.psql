@@ -162,6 +162,11 @@ BEGIN
  OR v->>'activityId'<>'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
  OR v->>'version'<>'1'
  OR v->>'status'<>'needs_review'
+ OR v->>'id'<>'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+ OR v->>'primarySourceId'<>'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+ OR v#>>'{sources,0,id}'<>'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+ OR v#>>'{definitions,0,code}'<>'avg_power_w'
+ OR v#>>'{definitions,0,canonicalUnit}'<>'W'
  OR pg_catalog.jsonb_array_length(v->'segments')<>2
  OR v#>>'{segments,0,sourceMetrics,metrics,0,valueNumeric}'<>'200'
  OR v#>>'{segments,1,sourceMetrics,metrics,0,valueNumeric}'<>'260'
