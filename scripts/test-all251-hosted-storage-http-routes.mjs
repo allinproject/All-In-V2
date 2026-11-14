@@ -235,9 +235,26 @@ try{
  // canonical signed HMAC lease. Raw privileged uploads should remain denied.
  const canonicalA=addObject(a.id,'attested-pre-freeze');
  const canonicalB=addObject(b.id,'attested-pre-freeze');
- await verifiedWriterUpload(a.id,canonicalA,randomBytes(491));
- await verifiedWriterUpload(b.id,canonicalB,randomBytes(533));
+ const aBytes=randomBytes(491),bBytes=randomBytes(533);
+ await verifiedWriterUpload(a.id,canonicalA,aBytes);
+ await verifiedWriterUpload(b.id,canonicalB,bBytes);
  mark('canonical A and B signed pre-freeze provider bytes','PASS');
+ // Cross-account read denial is meaningful only when the same owner JWT can
+ // actually read its own private bytes. Blanket 403s remain RESTRICTED.
+ const aSelfRead=await request(API+'object/authenticated/'+bucketPath(canonicalA),
+  {key:publishable,jwt:a.jwt});
+ let ownerReadWorked=false;
+ if(aSelfRead.ok){
+  ownerReadWorked=sha(Buffer.from(await aSelfRead.arrayBuffer()))===sha(aBytes);
+  if(!ownerReadWorked)mark('owner JWT own-object readback','FAIL','SHA256 mismatch');
+ }else mark('owner JWT own-object readback',denied(aSelfRead.status)?'RESTRICTED':'FAIL',
+  await statusDetail(aSelfRead));
+ if(ownerReadWorked)mark('owner JWT own-object readback','PASS','SHA256 matched');
+ const otherRead=await request(API+'object/authenticated/'+bucketPath(canonicalA),
+  {key:publishable,jwt:b.jwt});
+ mark('cross-owner JWT private byte read',
+  denied(otherRead.status)?(ownerReadWorked?'PASS':'RESTRICTED'):'FAIL',
+  await statusDetail(otherRead));
 
  // Attempt an unsigned S3 bucket request. Credentialed SigV4 remains
  // untested if no generated keypair exists, and must NEVER be marked PASS.
@@ -323,6 +340,11 @@ try{
  mark('independent B user-scoped REST baseline',
   bPre.ok?'OBSERVED':denied(bPre.status)?'RESTRICTED':'FAIL',
   await statusDetail(bPre));
+ const crossWritePath=addObject(a.id,'cross-owner-jwt');
+ const crossWrite=await upload(crossWritePath,{key:publishable,jwt:b.jwt});
+ mark('cross-owner JWT private upload denied',
+  denied(crossWrite.status)?(bPre.ok?'PASS':'RESTRICTED'):'FAIL',
+  await statusDetail(crossWrite));
  const preRestPath=addObject(a.id,'privileged-rest-before-delete');
  const preRest=await upload(preRestPath);
  mark('pre-deletion privileged REST upload baseline',
