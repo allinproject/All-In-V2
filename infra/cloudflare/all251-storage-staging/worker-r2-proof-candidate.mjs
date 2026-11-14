@@ -52,6 +52,16 @@ export function createAll251R2ProofCandidate({
     return deny();
    try{
     const uri=new URL(request.url);
+    // Prevent creating synthetic test accounts against a disabled Worker.
+    // This reveals only review-probe readiness, never private bytes or keys.
+    if(request.method==='HEAD'&&uri.pathname==='/__all251_proof_ready'&&!uri.search){
+     signerBytes(env.ALL251_WRITER_SIGNER_B64);
+     if(!/^sb_publishable_[A-Za-z0-9_-]+$/.test(env.SUPABASE_PUBLISHABLE_KEY??''))
+      return deny('STORAGE_NOT_READY');
+     return new Response(null,{status:204,headers:{
+      'cache-control':'no-store','x-content-type-options':'nosniff'},
+     });
+    }
     const writing=request.method==='POST'&&
      /^\/v1\/workouts\/[0-9a-f-]{36}$/i.test(uri.pathname);
     const reading=request.method==='GET'&&
