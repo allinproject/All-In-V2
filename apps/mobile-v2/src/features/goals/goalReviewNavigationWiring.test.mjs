@@ -8,8 +8,10 @@ const source = relative => readFileSync(fileURLToPath(new URL(relative,import.me
 test('Train links to the single authenticated canonical Goals screen',()=>{
  const train=source('../../../app/train.tsx');
  const goals=source('../../../app/goals.tsx');
- assert.match(train,/href="\/goals"/);
- assert.match(train,/accessibilityLabel="Review your goals"/);
+ // Compact Train intentionally omits the legacy Goals shortcut.
+ assert.doesNotMatch(train,/href="\\/goals"/);
+ assert.match(train,/\\['calendar', 'Calendar'\\]/);
+ assert.match(train,/\\['plans', 'Plans'\\]/);
  assert.match(goals,/v2AuthenticatedScreenKey\(user\?\.id \?\? null,sessionGeneration\)/);
  assert.match(goals,/gate\.status === 'legal_required'/);
  assert.match(goals,/gate\.status === 'onboarding_required'/);
