@@ -34,6 +34,10 @@ function OwnedGoalsScreen() {
         </Link>
         <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
         <Text accessibilityRole="header" style={styles.title}>Goals</Text>
+        <Link href="/train" asChild>
+          <Pressable accessibilityRole="button" accessibilityLabel="Back to Train"
+            style={styles.back}><Text style={styles.muted}>‹ Train</Text></Pressable>
+        </Link>
         <Text style={styles.muted}>
           Goals can include races, strength, activity habits, benchmarks, and
           intentions without a deadline. Each athlete must approve any
