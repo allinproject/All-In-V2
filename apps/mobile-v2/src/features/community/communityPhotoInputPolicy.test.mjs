@@ -21,9 +21,8 @@ test('rejects video, GIF, SVG, HEIC and unsupported image MIME even with a .png 
  }
 });
 test('rejects extension masquerading and unsafe filenames',()=>{
- for(const filename of ['clip.mp4','clip.mp4.png','../photo.png','photo.svg','photo.jpg',
+ for(const filename of ['clip.mp4','../photo.png','photo.svg','photo.jpg',
   '.png',' photo.png','photo.PNG.exe','a/other.png','a\\other.png','']){
-  if(filename==='clip.mp4.png')continue; // extension by itself is not a media security proof
   assert.equal(validateCommunityPhotoInput({...sample,filename}).ok,false,filename);
  }
 });
@@ -41,9 +40,6 @@ test('rejects content-type spoofing and animated or unreviewed WebP container',(
  assert.equal(validateCommunityPhotoInput({bytes:webp,contentType:'image/webp',filename:'photo.webp'}).ok,false);
 });
 test('never grants upload authorization or implies an approved Community bucket',()=>{
- const fs=requireNotNeeded();
- function requireNotNeeded(){return true;}
- assert.equal(fs,true);
  assert.equal(Object.hasOwn(validateCommunityPhotoInput(sample),'authorized'),false);
  assert.equal(Object.hasOwn(validateCommunityPhotoInput(sample),'storagePath'),false);
 });
