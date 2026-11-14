@@ -5,9 +5,10 @@
  * matched independent HMAC custody, protected ephemeral keys, rollback,
  * real A/B leased-write and deletion-race acceptance.
  *
- * No unauthenticated object access, no GET/download, presign, multipart,
- * arbitrary key, overwrite, operator override, or app-runtime integration.
- * Only pre-authorized *synthetic* Supabase Auth accounts may POST small bytes.
+ * No unauthenticated object access, no raw-byte GET/download, presign,
+ * multipart, arbitrary key, overwrite, or app-runtime integration.
+ * Only pre-authorized synthetic Auth owners may POST small bytes. Their
+ * pending-deletion fixtures may be deleted only when zero leases are open.
  */
 import {createAll251InternalWriterReview} from './internal-writer-review.mjs';
 import {verifyAll251OwnerSession} from './identity-review.mjs';
@@ -55,7 +56,9 @@ export function createAll251R2ProofCandidate({
      /^\/v1\/workouts\/[0-9a-f-]{36}$/i.test(uri.pathname);
     const reading=request.method==='GET'&&
      /^\/v1\/workouts\/[0-9a-f-]{36}\/checksum$/i.test(uri.pathname);
-    if((!writing&&!reading)||uri.search||
+    const deleting=request.method==='DELETE'&&
+     /^\/v1\/workouts\/[0-9a-f-]{36}$/i.test(uri.pathname);
+    if((!writing&&!reading&&!deleting)||uri.search||
        (writing&&request.headers.get('content-type')!=='application/octet-stream'))
      return deny('ROUTE_DENIED');
     const bearer=request.headers.get('authorization')??'';
@@ -73,6 +76,32 @@ export function createAll251R2ProofCandidate({
     if(profile?.app_metadata?.all251_httpmatrix!==true||
        typeof profile?.email!=='string'||!RESTRICTED.test(profile.email))
      return deny('SYNTHETIC_ONLY');
+    if(deleting){
+     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(profile?.id??'')||
+        typeof env.PRIVATE_STORAGE.delete!=='function'||
+        typeof env.PRIVATE_STORAGE.head!=='function')
+      return deny('CLEANUP_NOT_READY');
+     // Recheck the server-owned pending deletion freeze + zero open leases.
+     // Ordinary active sessions and normal accounts CANNOT delete objects.
+     const authorized=await fetchImpl(EXPECTED+
+       '/rest/v1/rpc/v2_all251_owner_r2_fixture_cleanup_allowed_review',{
+       method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+       headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,
+        authorization:bearer,'content-type':'application/json',
+        accept:'application/json'},
+       body:'{}',
+     });
+     if(authorized.status!==200||authorized.redirected||
+        (await authorized.json())!==true)return deny('CLEANUP_DENIED');
+     const objectId=uri.pathname.split('/')[3].toLowerCase();
+     const path=profile.id+'/'+objectId+'.bin';
+     await env.PRIVATE_STORAGE.delete(path);
+     if(await env.PRIVATE_STORAGE.head(path)!==null)
+      return deny('CLEANUP_UNVERIFIED');
+     return new Response(null,{status:204,headers:{
+       'cache-control':'no-store','x-content-type-options':'nosniff'},
+     });
+    }
     if(reading){
      const id=uri.pathname.split('/')[3].toLowerCase();
      const {verifiedOwnerId}=await verifyAll251OwnerSession({
