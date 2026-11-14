@@ -6,6 +6,7 @@ import { RoutineBuilderContent } from './routines/RoutineBuilderContent';
 import { RoutineWorkoutReviewContent } from './routines/RoutineWorkoutReviewContent';
 import { SavedRoutineLibraryContent } from './routines/SavedRoutineLibraryContent';
 import type {SavedRoutineReadServices} from './routines/savedRoutineOwnerReader';
+import type {SavedRoutineMutationServices} from './routines/savedRoutineRpcWriter';
 import type {CoachRoutineSuggestion,RoutineWorkoutReview,SavedRoutineOwnerSnapshot} from './routines/routineWorkoutReview';
 
 type Workspace = 'routes' | 'routines';
@@ -15,10 +16,11 @@ type Workspace = 'routes' | 'routines';
  * Routine storage and its editor remain separately gated by canonical V2 ownership.
  */
 export function RoutesRoutinesContent({
- savedRoutineSnapshot,savedRoutineReaderServices,currentOwnerId,sessionGeneration,coachSuggestion,onStartRoutineWorkout,
+ savedRoutineSnapshot,savedRoutineReaderServices,savedRoutineMutationServices,currentOwnerId,sessionGeneration,coachSuggestion,onStartRoutineWorkout,
 }:{
  savedRoutineSnapshot?:SavedRoutineOwnerSnapshot|null;
  savedRoutineReaderServices?:SavedRoutineReadServices;
+ savedRoutineMutationServices?:SavedRoutineMutationServices;
  currentOwnerId?:string|null;
  sessionGeneration?:number;
  coachSuggestion?:CoachRoutineSuggestion|null;
@@ -26,6 +28,8 @@ export function RoutesRoutinesContent({
 }={}) {
   const [selected, setSelected] = useState<Workspace>('routes');
   const [routineView,setRoutineView]=useState<'library'|'create'>('library');
+  const [libraryRevision,setLibraryRevision]=useState(0);
+  const [builderRevision,setBuilderRevision]=useState(0);
   // Unapproved sources cannot make a saved Routine appear connected.
   const certified=!!savedRoutineSnapshot&&!!currentOwnerId&&
     savedRoutineSnapshot.identity==='canonical_saved_routine'&&
@@ -78,14 +82,24 @@ export function RoutesRoutinesContent({
         </View>:null}
       {!certified&&savedRoutineReaderServices&&currentOwnerId&&
         sessionGeneration!==undefined&&routineView==='library'?
-        <SavedRoutineLibraryContent services={savedRoutineReaderServices}
+        <SavedRoutineLibraryContent key={libraryRevision} services={savedRoutineReaderServices}
           expectedOwnerId={currentOwnerId} sessionGeneration={sessionGeneration}
           suggestion={coachSuggestion} onStartWorkout={onStartRoutineWorkout}/>:null}
       <View style={(certified||!!savedRoutineReaderServices&&routineView==='library')&&styles.hidden}
         accessibilityElementsHidden={certified||!!savedRoutineReaderServices&&routineView==='library'}
         importantForAccessibility={certified||!!savedRoutineReaderServices&&routineView==='library'
          ?'no-hide-descendants':'auto'}>
-        <RoutineBuilderContent />
+        <RoutineBuilderContent key={builderRevision}
+         onSave={savedRoutineMutationServices&&currentOwnerId&&sessionGeneration!==undefined
+          ?async(draft,actionId)=>{
+           await savedRoutineMutationServices.saveFromUserAction({
+            expectedOwnerId:currentOwnerId,sessionGeneration,routineId:null,
+            expectedVersion:0,actionId,draft,
+           });
+           setBuilderRevision(v=>v+1);
+           setLibraryRevision(v=>v+1);
+           setRoutineView('library');
+          }:undefined}/>
       </View>
       {!certified&&!savedRoutineReaderServices?<Text style={styles.muted}>Your saved routines have not been checked. This is an unsaved draft, not an accepted workout or persistent template.</Text>:null}
     </View>
