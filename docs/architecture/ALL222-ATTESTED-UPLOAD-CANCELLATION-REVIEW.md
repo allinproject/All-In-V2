@@ -109,3 +109,43 @@ of delayed-completion protection.
 Release gates: `uploadBarrierEnforced=false`,
 `completePrivateStorage=false`; account deletion worker OFF. PR #25
 remains draft, ALL-222 / ALL-251 remain open.
+
+
+## Offline disposable PostgreSQL replay — added, not yet executed
+
+The source-controlled local replay harness consists of:
+
+- `scripts/run-all222-cancel-isolated-replay.sh`
+- `scripts/fixtures/all222-cancel-replay-bootstrap.sql`
+- `docs/architecture/sql/ALL222-ATTESTED-LEASE-CANCEL-ISOLATED-REVIEW.sql`
+- `scripts/fixtures/all222-cancel-replay-assertions.sql`
+
+It starts a **new empty PostgreSQL 16 container**, with `--network=none`,
+`--read-only`, a tmpfs-only database and a read-only repository mount.
+It does not use remote PostgreSQL credentials or the independent production
+writer signer, and does not open a port. It does not automatically pull a
+Docker image. The container is destroyed after execution. Use only an
+isolated, reviewed PR checkout and the exact current branch files.
+
+Run from the repository root *only if Docker and postgres:16 are already
+present and approved*:
+
+```bash
+ALL222_ISOLATED_REPLAY_APPROVED=YES bash scripts/run-all222-cancel-isolated-replay.sh
+```
+
+This is **NOT** an instruction to run against a Supabase-hosted database.
+If the image is unavailable, stop. Do not substitute hosted SQL execution.
+A failure should be investigated before rerunning.
+
+The fixture starts from synthetic roles, schemas, Auth owners and leases,
+then applies the candidate SQL and asserts cancellation state transitions,
+replay rejection, HMAC verification, wrong-owner denial, completed-object
+protection, mutual exclusion, privilege restrictions, existing deletion
+guard and metadata writer fence. These tests do **not** cover actual
+provider TUS sessions, concurrent cross-session races, populated migration
+compatibility, or real Storage HTTP routes. Those remain separate gates.
+
+**As of the current update, the replay harness was committed and read back
+from GitHub, but has not been executed on PostgreSQL. No database PASS
+is claimed.**
