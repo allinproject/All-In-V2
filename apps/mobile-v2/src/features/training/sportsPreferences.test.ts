@@ -8,12 +8,13 @@ import {
 
 test('Training Focus preserves canonical V2 onboarding focus including noncompetitive goals', () => {
   assert.ok(SPORTS_FOCUS_OPTIONS.some(option => option.value === 'general_fitness'));
-  assert.ok(SPORTS_FOCUS_OPTIONS.some(option => option.value === 'nutrition_habits'));
+  assert.ok(SPORTS_FOCUS_OPTIONS.some(option => option.value === 'nutrition'));
   const initial = { primaryFocus: '', currentSports: ['running', 'strength'] };
-  const focused = chooseSportsFocus(initial, 'running');
+  const focused = chooseSportsFocus(initial, 'build_endurance');
   assert.deepEqual(focused.currentSports, initial.currentSports);
-  assert.equal(chooseSportsFocus(focused, 'running').primaryFocus, '');
+  assert.equal(chooseSportsFocus(focused, 'build_endurance').primaryFocus, '');
   assert.equal(chooseSportsFocus(focused, '').primaryFocus, '');
+  assert.throws(() => chooseSportsFocus(initial, 'running'), /Unsupported/);
   assert.throws(() => chooseSportsFocus(initial, 'racehub'), /Unsupported/);
 });
 
@@ -21,11 +22,11 @@ test('active activities reuse original onboarding values without Other Interests
   const labels = SPORTS_ACTIVITY_OPTIONS.map(x => x.value);
   assert.ok(labels.includes('running') && labels.includes('elliptical') && labels.includes('stair_stepper'));
   assert.ok(!labels.includes('racehub') && !labels.includes('meal_prep'));
-  const initial = { primaryFocus: 'strength', currentSports: ['running'] };
+  const initial = { primaryFocus: 'get_stronger', currentSports: ['running'] };
   const added = toggleActiveSport(initial, 'swimming');
   assert.deepEqual(added.currentSports, ['running', 'swimming']);
   assert.deepEqual(toggleActiveSport(added, 'running').currentSports, ['swimming']);
-  assert.equal(added.primaryFocus, 'strength');
+  assert.equal(added.primaryFocus, 'get_stronger');
   assert.throws(() => toggleActiveSport(initial, 'equipment'), /Unsupported/);
 });
 
@@ -38,8 +39,8 @@ test('newcomer preference is exclusive and switching to a sport removes it', () 
 });
 
 test('settings patch only modifies canonical training_focus and current_sports fields', () => {
-  assert.deepEqual(sportsPreferencesPatch({ primaryFocus: 'running', currentSports: ['running', 'strength'] }), {
-    primary_focus: 'running', current_sports: ['running', 'strength'],
+  assert.deepEqual(sportsPreferencesPatch({ primaryFocus: 'build_endurance', currentSports: ['running', 'strength'] }), {
+    primary_focus: 'build_endurance', current_sports: ['running', 'strength'],
   });
   assert.deepEqual(sportsPreferencesPatch({ primaryFocus: '', currentSports: [] }), {
     primary_focus: null, current_sports: [],
@@ -50,10 +51,10 @@ test('settings patch only modifies canonical training_focus and current_sports f
 
 test('read sanitizes unknown values without inventing sport selections', () => {
   assert.deepEqual(parseSportsPreferences(null), { primaryFocus: '', currentSports: [] });
-  assert.deepEqual(parseSportsPreferences({ primary_focus: 'cycling', current_sports: ['cycling', 'cycling', 'racehub'] }), {
-    primaryFocus: 'cycling', currentSports: ['cycling'],
+  assert.deepEqual(parseSportsPreferences({ primary_focus: 'build_endurance', current_sports: ['cycling', 'cycling', 'racehub'] }), {
+    primaryFocus: 'build_endurance', currentSports: ['cycling'],
   });
-  assert.deepEqual(parseSportsPreferences({ primary_focus: 'walking_hiking_rucking', current_sports: [NOT_TRAINING_YET] }), {
-    primaryFocus: 'walking_hiking_rucking', currentSports: [NOT_TRAINING_YET],
+  assert.deepEqual(parseSportsPreferences({ primary_focus: 'general_fitness', current_sports: [NOT_TRAINING_YET] }), {
+    primaryFocus: 'general_fitness', currentSports: [NOT_TRAINING_YET],
   });
 });
