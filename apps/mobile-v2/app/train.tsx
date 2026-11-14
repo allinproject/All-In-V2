@@ -136,18 +136,14 @@ function TrainingCalendarOwnerScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Link href="/home" asChild>
-          <Pressable accessibilityRole="button" style={styles.back}>
-            <Text style={styles.muted}>‹ Today</Text>
-          </Pressable>
-        </Link>
-        <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-        <Text accessibilityRole="header" style={styles.title}>Train</Text>
-        <Link href="/goals" asChild>
-          <Pressable accessibilityRole="button" accessibilityLabel="Review your goals" style={styles.back}>
-            <Text style={styles.muted}>Review your goals ›</Text>
-          </Pressable>
-        </Link>
+        <View style={styles.topBar}>
+          <Text accessibilityRole="header" style={styles.title}>Train</Text>
+          <Link href="/goals" asChild>
+            <Pressable accessibilityRole="button" accessibilityLabel="Review your goals" style={styles.goalsAction}>
+              <Text style={styles.muted}>Goals ›</Text>
+            </Pressable>
+          </Link>
+        </View>
         <View style={styles.compactTabs} accessibilityRole="tablist">
           {([
             ['calendar', 'Calendar'], ['plans', 'Plans'], ['routes_routines', 'Routes/Routines'],
@@ -312,11 +308,10 @@ function TrainingCalendarOwnerScreen() {
 
 const styles = StyleSheet.create({
   safe: {flex:1,backgroundColor:colors.background},
-  content:{padding:24,gap:16,paddingBottom:52},
-  back:{minHeight:42,justifyContent:'center'},
-  brand:{fontSize:16,fontWeight:'800',color:colors.warmWhite},
-  gold:{color:colors.gold},
-  title:{fontSize:30,fontWeight:'800',color:colors.warmWhite},
+  content:{padding:20,gap:12,paddingBottom:52},
+  topBar:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:44,gap:12},
+  goalsAction:{minHeight:44,justifyContent:'center',paddingHorizontal:8},
+  title:{fontSize:24,fontWeight:'800',color:colors.warmWhite},
   muted:{color:colors.mutedText,fontSize:13,lineHeight:20},
   white:{color:colors.warmWhite,fontSize:15,fontWeight:'700'},
   header:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
