@@ -9,6 +9,7 @@ on:
       - 'scripts/all251-s3-sigv4.test.mjs'
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
+      - 'infra/cloudflare/all251-storage-staging/**'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
   pull_request:
     paths:
@@ -17,6 +18,7 @@ on:
       - 'scripts/all251-s3-sigv4.test.mjs'
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
       - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
+      - 'infra/cloudflare/all251-storage-staging/**'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
 permissions:
   contents: read
@@ -39,6 +41,11 @@ jobs:
         run: |
           node --check supabase/functions/_shared/all251R2StorageReviewAdapter.mjs
           node --test supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs
+      - name: Assert default-deny Cloudflare Worker and live-session guard (offline)
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/worker.mjs
+          node --check infra/cloudflare/all251-storage-staging/identity-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/worker.test.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
