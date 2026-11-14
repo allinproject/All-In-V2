@@ -1,15 +1,10 @@
 name: ALL-246 temporary staging real Auth and Routine HTTP acceptance
 
-# ALL-246 PT409 retry acceptance: DB/CAS correction tested in isolated PG17; run protected hosted JWT verification.
-# Default branch is main, so GitHub does not offer manual dispatch for
-# this integration-only workflow. Permit a ONE-TIME tightly path-scoped push
-# on the integration branch. The existing protected staging environment must
-# still be approved by its designated reviewer before any secret is released.
+# Hosted real-Auth acceptance PASSED in run 43545272920. Retire the
+# temporary push trigger; no repeat privileged staging test on ordinary pushes.
+# A future explicitly scheduled test requires controlled workflow enablement
+# and the existing protected staging environment approval.
 on:
-  push:
-    branches: [integration/v2-foundation]
-    paths:
-      - '.github/workflows/v2-all246-temporary-staging-auth.yml'
   workflow_dispatch:
 
 permissions:
