@@ -115,6 +115,30 @@ existing direct Supabase TUS routes. The synthetic tests must be executed
 and later replaced/supplemented with hosted concurrency and real HTTP evidence.
 Do not enable the endpoint or release deletion on this basis.
 
+### #4 private provider URL exposure guard — draft implementation
+
+PR #25 now extends the existing
+`scripts/test-all251-runtime-storage-writer-inventory.mjs` to reject new
+direct TUS session creation, raw resumable-upload routes and signed-upload
+bearer API calls inside the mobile/Edge runtime source tree. The existing
+owner-fenced operation wrapper returns only allowlisted public status and
+offset fields, never its trusted provider callback payload. The
+`scripts/test-all222-private-resumable-operation-boundary.test.mjs` suite
+also asserts that a synthetic malicious provider response containing a
+session URL, bearer data, and signing material does not leak in the receipt.
+
+**Important distinction:** source inventory and public response shaping
+reduce accidental exposure but **do not restrict direct network access** to
+Supabase Storage/TUS. The actual hosted cross-owner TUS HEAD remains an
+unresolved provider-side failure. A direct provider URL already known to a
+user could still bypass an ALL IN 365 gateway. Do not enable private
+resumable uploads until an independently verified provider ingress
+restriction or an alternative provider-private storage boundary removes
+that path. Direct provider REST, signed capability, S3/multipart, leaked
+TUS URL with and without JWT, and expiration/termination all need real
+hosted negative acceptance; source tests cannot provide that evidence.
+No project policy/grant changes or production deployment are approved.
+
 ### Required per-method decisions
 
 | Client action | Precondition before touching provider/session |
