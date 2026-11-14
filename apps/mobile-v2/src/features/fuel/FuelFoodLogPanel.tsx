@@ -189,10 +189,6 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
  const today=deviceLocalToday();
  return (
   <View style={styles.section}>
-   <View style={styles.heading}>
-    <Text accessibilityRole="header" style={styles.headingTitle}>Food Log</Text>
-    <Text style={styles.small}>{day}</Text>
-   </View>
    <View style={styles.metrics}>
     {['Calories','Protein','Carbs','Fat'].map(label=>(
      <View key={label} style={styles.metric}>
@@ -287,8 +283,6 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
 }
 const styles=StyleSheet.create({
  section:{gap:14},
- heading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
- headingTitle:{color:colors.warmWhite,fontSize:22,fontWeight:'800'},
  metric:{flex:1,alignItems:'center',paddingVertical:12,backgroundColor:colors.surfaceRaised,borderRadius:14},
  metrics:{flexDirection:'row',gap:6},
  metricValue:{color:colors.goldSoft,fontWeight:'800',fontSize:20},
