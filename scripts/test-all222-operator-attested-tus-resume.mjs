@@ -153,9 +153,11 @@ async function terminateActive(){
  const path=pathFor(owner.id,'terminate-active');
  // The deletion fence intentionally retains cancelled-but-unsettled leases.
  const scope={ownerId:owner.id,bucketId:bucket,path,operation:'create',bytes};
- users.pop();
  const started=await lease.begin(scope);
  assert(!started.error&&typeof started.data==='string','Attested TUS lease unavailable');
+ // Only retain the tagged owner when a real unresolved lease exists. If
+ // attested begin fails, ordinary cleanup must still remove the Auth fixture.
+ users.pop();
  checkpoint='unfinished TUS positive control';
  const url=await startTus(owner,path,bytes.length);
  const patch=(offset,body)=>callTus(url,'PATCH',owner.jwt,
@@ -325,7 +327,13 @@ try{await (terminationOnly?terminateActive():run());}catch(e){
  console.error('FAIL checkpoint: '+checkpoint+' ('+(!terminationOnly&&e?.code==='ERR_ASSERTION'?e.message:'request or assertion failed')+
   '; no credentials, file URLs or identities logged)');
 }finally{await cleanup();}
-if(!error)console.log(terminationOnly?
- 'PASS ALL-222 active TUS termination and lease cancellation; operator fixture cleanup pending':
- 'PASS ALL-222 positive Storage/TUS staging acceptance, cleanup confirmed');
+if(!error&&terminationOnly){
+ // A cancelled-but-unsettled lease still blocks Auth deletion by design.
+ // Retained synthetic owner/lease require explicit independent reconciliation.
+ // Never report complete hosted acceptance or a successful process exit.
+ console.log('PARTIAL: active TUS termination and attested cancellation verified; retained fixture cleanup NOT verified');
+ process.exitCode=2;
+}else if(!error){
+ console.log('PASS ALL-222 positive Storage/TUS staging acceptance, cleanup confirmed');
+}
 if(error)process.exitCode=1;
