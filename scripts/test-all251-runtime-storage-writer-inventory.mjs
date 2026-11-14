@@ -87,9 +87,9 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
  // The separate writer attestation signing key must never be provided to
  // GitHub Actions: a protected environment is not exclusive writer custody.
  for(const file of readdirSync(resolve(root,'.github/workflows'))){
-  if(!/\\.(?:yml|yaml)$/.test(file))continue;
+  if(!/\.(?:yml|yaml)$/.test(file))continue;
   const src=readFileSync(resolve(root,'.github/workflows',file),'utf8');
-  assert.equal(/(?:secrets|vars)\\.ALLIN_WRITER_ATTESTATION_SECRET_B64/.test(src),false,
+  assert.equal(/(?:secrets|vars)\.ALLIN_WRITER_ATTESTATION_SECRET_B64/.test(src),false,
    'ALL-251 signing key must never be exported to a GitHub workflow: '+file);
  }
  const rawProbe=readFileSync(resolve(root,
