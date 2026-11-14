@@ -613,6 +613,9 @@ jobs:
           # weaken the fail-closed production export contract.
           docker cp docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_bridge -v ON_ERROR_STOP=1 -f /tmp/allin/docs/architecture/sql/V2-SUBSCRIPTION-VERIFIED-LEDGER-CANDIDATE.sql
+          # Diagnostic only: log relation identities, not private rows, so a
+          # fail-closed ALL-251 table-registry mismatch can be reconciled.
+          docker exec "$PG_CONTAINER" psql -At -U "$PGUSER" -d training_export_bridge -c "SELECT n.nspname||'.'||c.relname FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid AND a.attname='user_id' AND a.attnum>0 AND NOT a.attisdropped WHERE n.nspname IN ('public','allin_private') AND c.relkind IN ('r','p') ORDER BY 1"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d training_export_bridge -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-account-export-training-integration-postgres.psql
       - name: Verify canonical ALL-251 snapshot with co-applied Saved Routine owner graph
         env:
