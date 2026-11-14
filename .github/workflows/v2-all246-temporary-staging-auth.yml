@@ -1,11 +1,8 @@
 name: ALL-246 temporary staging real Auth and Routine HTTP acceptance
 
+# Manual-only because this test provisions disposable Auth accounts using
+# a privileged staging service key. Never issue that credential on pushes.
 on:
-  push:
-    branches: [integration/v2-foundation]
-    paths:
-      - '.github/workflows/v2-all246-temporary-staging-auth.yml'
-      - 'scripts/test-all246-temporary-staging-real-auth.mjs'
   workflow_dispatch:
 
 permissions:
