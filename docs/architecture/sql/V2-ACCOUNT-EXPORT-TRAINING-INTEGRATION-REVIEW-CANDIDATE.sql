@@ -58,6 +58,7 @@ begin
        or (n.nspname='allin_private' and c.relname=any(array[
          'v2_training_action_receipts','v2_training_completion_outbox',
          'v2_coach_turn_claims',
+         'v2_coach_message_actions',
          'v2_training_plan_accept_receipts','v2_account_export_requests_candidate'
        ]))
      )
@@ -65,6 +66,10 @@ begin
    raise exception 'New personal data tables require export coverage' using errcode='42501';
  end if;
 
+ -- Coach's private append-action receipts are idempotency metadata, not a
+ -- second portable transcript; user-readable Coach threads/messages remain
+ -- included, and private actions cascade with the owning Auth identity.
+ -- ALL-251 must separately accept internal metadata retention/export policy.
  -- Future Nutrition, Progress, cookbook and equipment schemas are not
  -- covered merely because an author chose a different owner column name.
  -- Block new domain tables (including reference-like names) until each is
