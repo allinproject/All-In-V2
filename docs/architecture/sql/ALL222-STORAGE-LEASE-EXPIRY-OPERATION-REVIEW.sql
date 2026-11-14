@@ -15,7 +15,7 @@ BEGIN
 END $$;
 
 ALTER TABLE allin_private.v2_privileged_storage_write_leases_review
-  ADD COLUMN expires_at timestamptz NOT NULL DEFAULT (clock_timestamp() + interval '30 minutes');
+  ADD COLUMN expires_at timestamptz NOT NULL DEFAULT (now() + interval '30 minutes');
 
 ALTER TABLE allin_private.v2_privileged_storage_write_leases_review
   ADD CONSTRAINT v2_privileged_storage_lease_expiry_review_check
@@ -53,7 +53,7 @@ BEGIN
  INSERT INTO allin_private.v2_privileged_storage_write_leases_review
    (owner_id,bucket_id,object_path,operation,expires_at)
  VALUES(p_owner_id,p_bucket_id,p_object_path,p_operation,
-        pg_catalog.clock_timestamp()+interval '30 minutes')
+        now()+interval '30 minutes')
  RETURNING lease_id INTO v_id;
  RETURN v_id;
 END $$;
