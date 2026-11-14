@@ -13,6 +13,7 @@ DECLARE
  v_session_id uuid;
  v_activity public.v2_completed_activities%ROWTYPE;
  v_sources jsonb;
+ v_primary_source_id uuid;
  v_definitions jsonb;
  v_segments jsonb;
  v_strength jsonb;
@@ -83,6 +84,12 @@ BEGIN
  ) ORDER BY provider,source_kind,id),'[]'::jsonb)
  INTO v_sources FROM public.v2_activity_sources
  WHERE activity_id=p_activity_id AND user_id=v_user;
+ -- No guessed provider priority: only a unique eligible source may be primary.
+ -- Multiple possible sources require explicit reconciliation by the owner.
+ SELECT CASE WHEN count(*)=1 THEN min(id::text)::uuid ELSE NULL END
+ INTO v_primary_source_id FROM public.v2_activity_sources
+ WHERE activity_id=p_activity_id AND user_id=v_user
+   AND quality IN ('trusted','partial');
  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
    'segmentId',seg.id,'sourceId',seg.source_id,'parentSegmentId',seg.parent_segment_id,
    'kind',seg.segment_kind,'sequence',seg.sequence_number,
@@ -141,7 +148,8 @@ BEGIN
    'elapsedSeconds',v_activity.elapsed_seconds,
    'captureKind',v_activity.capture_kind,
    'trainingSessionId',v_activity.training_session_instance_id,
-   'sources',v_sources,'definitions',v_definitions,
+   'sources',v_sources,'primarySourceId',v_primary_source_id,
+   'definitions',v_definitions,
    'activityMetrics',allin_private.v2_activity_scalar_evidence_projection_candidate(
       v_user,p_activity_id),
    'segments',v_segments,'strengthSets',v_strength,
