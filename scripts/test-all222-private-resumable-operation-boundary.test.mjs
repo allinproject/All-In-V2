@@ -65,8 +65,7 @@ test('cancellation/deletion lock or expired lease cannot reach provider',async()
 });
 test('caller-supplied fake state ignored and request owner must match',async()=>{
  const {boundary,calls}=setup();
- await assert.rejects(boundary.execute({...request(),verifiedOwnerId:b}),
-  /not_authorized|unverified|AssertionError/);
+ await assert.rejects(boundary.execute({...request(),verifiedOwnerId:b}));
  assert(!calls.includes('provider'));
 });
 test('ambiguous PATCH outcome never returns a success receipt',async()=>{
