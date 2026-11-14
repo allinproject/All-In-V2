@@ -1,11 +1,8 @@
 name: ALL-222 disposable staging Storage HTTP denial acceptance
 
+# Privileged temporary-staging credentials require explicit manual approval.
+# A repository push must never trigger real service-role Auth/Storage probes.
 on:
-  push:
-    branches:
-      - integration/v2-foundation
-    paths:
-      - .github/workflows/all222-storage-http-acceptance.yml
   workflow_dispatch:
 
 permissions:
@@ -17,7 +14,9 @@ concurrency:
 
 jobs:
   real-auth-upload-denials:
+    if: github.ref == 'refs/heads/integration/v2-foundation'
     runs-on: ubuntu-latest
+    environment: all251-temporary-staging
     timeout-minutes: 10
     env:
       CI: 'true'
