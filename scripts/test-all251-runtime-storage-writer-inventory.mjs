@@ -69,6 +69,7 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   'v2-all251-hosted-http-route-matrix.yml',
   'v2-all251-hosted-owner-rest-isolation.yml',
   'v2-all251-hosted-r2-byte-proof.yml',
+  'v2-all251-hosted-worker-session-gate.yml',
   'v2-all246-temporary-staging-auth.yml',
   'all222-storage-http-acceptance.yml',
  ]);
@@ -137,6 +138,23 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   'R2 byte proof must target disposable staging');
  assert.equal(r2Workflow.includes('ALLIN_WRITER_ATTESTATION_SECRET_B64'),false,
   'R2 proof must never receive writer signer');
+
+ // Hosted Worker session gate is a privileged Auth fixture, not Storage
+ // upload approval. Keep its environment, ref, and no-auto-run restrictions.
+ const sessionWorkflow=readFileSync(resolve(root,
+  '.github/workflows/v2-all251-hosted-worker-session-gate.yml'),'utf8');
+ assert(sessionWorkflow.includes('workflow_dispatch:'),
+  'Worker session gate requires explicit manual dispatch');
+ assert.equal(/^\\s*(?:push|pull_request|schedule|workflow_run)\\s*:/m.test(sessionWorkflow),false,
+  'Privileged Worker session gate must not auto-run');
+ assert(sessionWorkflow.includes("if: github.ref == 'refs/heads/integration/v2-foundation'"),
+  'Worker session gate must stay pinned to integration');
+ assert(sessionWorkflow.includes('environment: all251-temporary-staging'),
+  'Worker session gate must use protected staging');
+ assert(sessionWorkflow.includes('fbtgknlxjyeqrxemskbl'),
+  'Worker session gate must target disposable staging');
+ assert.equal(sessionWorkflow.includes('ALLIN_WRITER_ATTESTATION_SECRET_B64'),false,
+  'Worker session gate must never receive signer');
 
  // The separate writer attestation signing key must never be provided to
  // GitHub Actions: a protected environment is not exclusive writer custody.
