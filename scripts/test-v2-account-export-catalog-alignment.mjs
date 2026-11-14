@@ -30,6 +30,29 @@ test('all authoritative owner tables match the canonical snapshot and paginated 
  assert.deepEqual({missing,unexpected},{missing:[],unexpected:[]},
   'Unreviewed owner-domain drift: do not increase a fixed count or ignore internal Coach receipts; explicitly classify and reconcile ownership/privacy in both export contracts');
 });
+test('private Coach message-action idempotency receipts are tracked but never exported raw',()=>{
+ const table='allin_private.v2_coach_message_actions';
+ assert(sourceTables(source).includes(table),
+  'Canonical inline inventory must count owner-scoped Coach actions');
+ assert(candidateTables(reader).includes(table),
+  'Paginated owner registry must count Coach actions for completeness');
+ const inventory=reader.slice(0,reader.indexOf('$inventory$;'));
+ assert(inventory.includes("'internalOperationalTables',pg_catalog.jsonb_build_array("),
+  'Internal-only classification must remain explicit');
+ const internals=inventory.slice(inventory.indexOf("'internalOperationalTables'"));
+ assert(internals.includes("'"+table+"'"),
+  'Coach receipts must be classified internal-only');
+ const exportable=inventory.slice(inventory.indexOf("'collections',"),
+  inventory.indexOf("'ownerTableCount',"));
+ assert(exportable.includes("'"+table+"'"),
+  'Owner collection exclusion must name Coach receipts');
+ assert(exportable.includes('WHERE owner_collection NOT IN'),
+  'Internal Coach receipts must be excluded from export collections');
+ assert(!reader.includes("ELSIF p_collection='"+table+"'"),
+  'Do not introduce raw Coach action receipt page projection');
+ assert(reader.includes("'complete',false"),
+  'Classification must not enable full-account export');
+});
 test('Food/Hydration quartet joins the existing paginated registry only with complete Auth-owner protection',()=>{
  const inventory=reader.slice(0,reader.indexOf('$inventory$;'));
  const quartet=[
