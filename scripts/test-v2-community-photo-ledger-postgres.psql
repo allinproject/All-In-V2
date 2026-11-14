@@ -1,0 +1,111 @@
+\set ON_ERROR_STOP on
+-- Disposable PostgreSQL only; no hosted DB/bucket or Storage API involved.
+\ir test-v2-community-reader-postgres.psql
+\ir ../docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql
+\ir ../docs/architecture/sql/V2-COMMUNITY-POST-PHOTOS-LEDGER-REVIEW-CANDIDATE.sql
+
+DO $private_acl$
+BEGIN
+ IF NOT (SELECT relrowsecurity FROM pg_class
+  WHERE oid='allin_private.v2_community_post_photos'::regclass)
+ OR has_table_privilege('authenticated','allin_private.v2_community_post_photos','SELECT')
+ OR has_table_privilege('anon','allin_private.v2_community_post_photos','INSERT')
+ OR has_table_privilege('service_role','allin_private.v2_community_post_photos','INSERT')
+ OR EXISTS(SELECT 1 FROM pg_policy
+  WHERE polrelid='allin_private.v2_community_post_photos'::regclass)
+ THEN RAISE EXCEPTION 'Community photo ledger exposed by unapproved grants or RLS policy'; END IF;
+END $private_acl$;
+
+INSERT INTO allin_private.v2_community_posts
+(id,owner_id,kind,audience,title,source_id)
+VALUES
+('50000000-0000-4000-8000-000000000001',
+ '00000000-0000-0000-0000-000000000001','update','private','A photo',NULL),
+('50000000-0000-4000-8000-000000000002',
+ '00000000-0000-0000-0000-000000000002','update','public','B photo',NULL);
+
+INSERT INTO allin_private.v2_community_post_photos
+(id,post_id,owner_id,bucket_id,object_path,content_type,byte_length,width,height,sha256,post_version)
+VALUES
+('51000000-0000-4000-8000-000000000001',
+ '50000000-0000-4000-8000-000000000001',
+ '00000000-0000-0000-0000-000000000001',
+ 'v2-private-community-photos',
+ '00000000-0000-0000-0000-000000000001/posts/50000000-0000-4000-8000-000000000001/51000000-0000-4000-8000-000000000001.png',
+ 'image/png',256,100,100,repeat('a',64),1);
+
+DO $negative_cases$
+BEGIN
+ -- Owner B may NOT attach their path to A's canonical post.
+ BEGIN
+  INSERT INTO allin_private.v2_community_post_photos
+  (id,post_id,owner_id,bucket_id,object_path,content_type,byte_length,width,height,sha256,post_version)
+  VALUES('51000000-0000-4000-8000-000000000002',
+   '50000000-0000-4000-8000-000000000001',
+   '00000000-0000-0000-0000-000000000002',
+   'v2-private-community-photos',
+   '00000000-0000-0000-0000-000000000002/posts/foreign.png',
+   'image/png',256,100,100,repeat('b',64),1);
+  RAISE EXCEPTION 'cross-owner photo FK unexpectedly accepted';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ -- Correct post but foreign owner-prefixed path.
+ BEGIN
+  INSERT INTO allin_private.v2_community_post_photos
+  (id,post_id,owner_id,bucket_id,object_path,content_type,byte_length,width,height,sha256,post_version)
+  VALUES('51000000-0000-4000-8000-000000000003',
+   '50000000-0000-4000-8000-000000000002',
+   '00000000-0000-0000-0000-000000000002',
+   'v2-private-community-photos',
+   '00000000-0000-0000-0000-000000000001/posts/foreign.png',
+   'image/png',256,100,100,repeat('b',64),1);
+  RAISE EXCEPTION 'cross-owner path unexpectedly accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ -- Video bytes have no allowed media content type.
+ BEGIN
+  UPDATE allin_private.v2_community_post_photos
+    SET content_type='video/mp4'
+    WHERE id='51000000-0000-4000-8000-000000000001';
+  RAISE EXCEPTION 'video unexpectedly accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  UPDATE allin_private.v2_community_post_photos
+    SET sha256='wrong'
+    WHERE id='51000000-0000-4000-8000-000000000001';
+  RAISE EXCEPTION 'bad digest unexpectedly accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  UPDATE allin_private.v2_community_post_photos
+    SET width=200000,height=200000
+    WHERE id='51000000-0000-4000-8000-000000000001';
+  RAISE EXCEPTION 'oversize pixel dimensions accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+END $negative_cases$;
+
+-- Removing the parent deletes its metadata. This NEVER certifies R2/Supabase
+-- object-byte deletion; account-deletion readiness stays blocked.
+DELETE FROM allin_private.v2_community_posts
+ WHERE id='50000000-0000-4000-8000-000000000001';
+DO $post_cascade$
+BEGIN
+ IF EXISTS(SELECT 1 FROM allin_private.v2_community_post_photos
+  WHERE id='51000000-0000-4000-8000-000000000001')
+ THEN RAISE EXCEPTION 'parent post deletion retained photo metadata'; END IF;
+END $post_cascade$;
+
+INSERT INTO allin_private.v2_community_post_photos
+(id,post_id,owner_id,bucket_id,object_path,content_type,byte_length,width,height,sha256,post_version)
+VALUES
+('51000000-0000-4000-8000-000000000004',
+ '50000000-0000-4000-8000-000000000002',
+ '00000000-0000-0000-0000-000000000002',
+ 'v2-private-community-photos',
+ '00000000-0000-0000-0000-000000000002/posts/b-photo.png',
+ 'image/png',256,100,100,repeat('c',64),1);
+DELETE FROM auth.users WHERE id='00000000-0000-0000-0000-000000000002';
+DO $account_cascade$
+BEGIN
+ IF EXISTS(SELECT 1 FROM allin_private.v2_community_post_photos
+ WHERE owner_id='00000000-0000-0000-0000-000000000002')
+ THEN RAISE EXCEPTION 'account deletion retained photo metadata'; END IF;
+END $account_cascade$;
+\echo PASS: review-only canonical photo owner FK, private ACL, image constraints and SQL cascades (NOT provider byte deletion)
