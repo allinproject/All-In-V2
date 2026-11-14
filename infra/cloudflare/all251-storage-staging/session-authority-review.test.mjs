@@ -12,7 +12,7 @@ const env={
 const jwt='eyJhbGciOiJFUzI1NiJ9.'+'x'.repeat(60)+'.sig';
 const input={ownerId:A,accessToken:jwt};
 const req=()=>new Request('https://worker.example/staging',{headers:{authorization:'Bearer '+jwt}});
-const result=(status,body)=>new Response(JSON.stringify(body),{status});
+const result=(status,body)=>new Response(status===204?null:JSON.stringify(body),{status});
 function authority(response){
  return createAll251SessionAuthority({env,fetchImpl:async()=>response});
 }
