@@ -46,6 +46,10 @@ jobs:
           node --check infra/cloudflare/all251-storage-staging/worker.mjs
           node --check infra/cloudflare/all251-storage-staging/identity-review.mjs
           node --test infra/cloudflare/all251-storage-staging/worker.test.mjs
+      - name: Prove session RPC review guard denies stale and missing sessions
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/session-authority-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/session-authority-review.test.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
