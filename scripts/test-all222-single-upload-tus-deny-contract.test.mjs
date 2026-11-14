@@ -28,3 +28,14 @@ test('existing complete-upload authorization and durable attested barrier retain
   assert(source.includes("verifiedOwnerId:identity.data.user.id"));
   assert(source.includes("MAX_PRIVILEGED_STORAGE_BYTES"));
 });
+
+test('operator active-termination mode never marks acceptance before fixture cleanup',()=>{
+ const runner=readFileSync(new URL('./test-all222-operator-attested-tus-resume.mjs',import.meta.url),'utf8');
+ assert(runner.includes("ALL222_TERMINATION_FIXTURE_CLEANUP_ACK"),'Manual cleanup acknowledgement required');
+ assert(runner.includes("CHECKPOINT: provider TUS termination"),'Provider evidence remains provisional');
+ assert(runner.includes("BLOCKED: reconcile tagged synthetic lease"),'Retained fixture must be explicit');
+ assert(runner.includes("process.exitCode=2"),'Partial acceptance must exit nonzero');
+ assert(runner.includes("PARTIAL: active TUS termination"),'No complete PASS on retained fixture');
+ assert(!runner.includes("PASS ALL-222 active TUS termination and lease cancellation; operator fixture cleanup pending"),
+  'Misleading acceptance on unresolved cleanup is forbidden');
+});
