@@ -34,7 +34,7 @@ assert.ok(typeof anon==='string'&&anon.length>20);
 const nonce=randomBytes(8).toString('hex');
 const bucket='all251-community-photo-'+nonce;
 const users=[],objects=[];
-let bucketCreated=false,policyCreated=false,backupDirectory=null;
+let bucketCreated=false,policyCreated=false,backupDirectory=null,accepted=false;
 const containers=execFileSync('docker',['ps','--filter','name=supabase_db_','--format','{{.ID}}'],{
  encoding:'utf8',timeout:15000,
 }).trim().split(/\r?\n/).filter(Boolean);
@@ -171,7 +171,7 @@ try{
  assert.ok([400,401,403,404].includes(restoredForeign.status),
   'Foreign session read restored private photo');
  // Keep byte and owner deletion tests distinct from release authorization.
- console.log('PASS ALL-251 local-only Community PNG bytes: A read, B/anon denied, inventory, digest, provider byte absence, independent restore');
+ accepted=true;
 }finally{
  const problems=[];
  for(const path of [...objects].reverse()){
@@ -199,3 +199,5 @@ try{
  catch{problems.push('backup_cleanup');}
  assert.deepEqual(problems,[],'Disposable local photo fixture cleanup incomplete');
 }
+
+if(accepted)console.log('PASS ALL-251 local-only Community PNG bytes: A read, B/anon denied, inventory, digest, provider byte absence, independent restore and cleanup');
