@@ -154,7 +154,9 @@ try{
  assert.notEqual(foreign.status,200,'B read A private R2 checksum');
  passes.push('PASS cross-owner private R2 digest denied');
  await freeze(a);
- const frozenAttempt=await worker('POST',a,randomUUID(),{bytes:randomBytes(48)});
+ const frozenAttemptId=randomUUID();
+ objects.push({user:a,id:frozenAttemptId,expected:null});
+ const frozenAttempt=await worker('POST',a,frozenAttemptId,{bytes:randomBytes(48)});
  assert.notEqual(frozenAttempt.status,201,'Frozen A wrote after deletion request');
  const frozenRead=await digest(a,firstA.id);
  assert.notEqual(frozenRead.status,200,'Frozen A retained authenticated checksum');
@@ -177,6 +179,6 @@ if(failures.length){
  process.stderr.write('BLOCKED: inspect Cloudflare R2 bucket for orphaned disposable objects before retry\n');
  process.exitCode=1;
 }else{
- process.stdout.write('PASS synthetic DELETE receipts and Auth cleanup\n');
+ process.stdout.write('PASS synthetic DELETE receipts and Auth cleanup (independent R2 bucket inventory still required)\n');
  process.stdout.write('PARTIAL ACCEPTANCE: provider R2 A/B bytes, NOT in-flight race, multipart or account deletion release\n');
 }
