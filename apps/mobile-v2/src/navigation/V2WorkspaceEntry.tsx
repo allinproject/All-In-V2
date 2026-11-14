@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { useAccessGate } from '../auth/AccessGateProvider';
 import { colors } from '../theme/tokens';
 import { V2BottomNavigation } from './V2BottomNavigation';
+import { V2WorkspaceHeader } from './V2WorkspaceHeader';
 
 type WorkspaceName = 'Fuel' | 'Community' | 'Coach';
 
@@ -19,8 +20,7 @@ export function V2WorkspaceEntry({ title, contextDescription }: { title: Workspa
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.content}>
-        <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
-        <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+        <V2WorkspaceHeader title={title} />
         <Text style={styles.description}>This workspace is part of the approved V2 navigation. Its account-owned features are not connected yet. No records or activity are being reported as empty or complete.</Text>
         {contextDescription ? <Text style={styles.description}>{contextDescription}</Text> : null}
       </View>
@@ -32,8 +32,5 @@ export function V2WorkspaceEntry({ title, contextDescription }: { title: Workspa
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1, padding: 24, gap: 16 },
-  brand: { color: colors.warmWhite, fontSize: 16, fontWeight: '800' },
-  gold: { color: colors.gold },
-  title: { color: colors.warmWhite, fontSize: 30, fontWeight: '800' },
   description: { color: colors.mutedText, fontSize: 15, lineHeight: 23 },
 });
