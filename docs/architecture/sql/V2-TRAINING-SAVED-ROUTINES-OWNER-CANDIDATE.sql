@@ -106,13 +106,13 @@ BEGIN
   IF p_sport='strength' THEN
    IF NOT (b ?& ARRAY['id','kind','exercise','sets','reps','weight',
         'restSeconds','setType','equipment','notes','groupId']) THEN RETURN false; END IF;
-   IF b->>'kind'<>'strength'
+   IF b->>'kind' IS DISTINCT FROM 'strength'
      OR pg_catalog.jsonb_typeof(b->'exercise')<>'string'
      OR pg_catalog.length(pg_catalog.btrim(b->>'exercise')) NOT BETWEEN 1 AND 150
      OR pg_catalog.jsonb_typeof(b->'sets')<>'number'
      OR b->>'sets' !~ '^[0-9]+$'
      OR (b->>'sets')::integer NOT BETWEEN 1 AND 20
-     OR b->>'setType' NOT IN ('warmup','working','drop','failure')
+     OR (b->>'setType' IS NULL OR b->>'setType' NOT IN ('warmup','working','drop','failure'))
      THEN RETURN false; END IF;
    IF (b->'reps') IS NOT NULL AND pg_catalog.jsonb_typeof(b->'reps') NOT IN ('string','null')
       OR (b->'weight') IS NOT NULL AND pg_catalog.jsonb_typeof(b->'weight') NOT IN ('string','null')
@@ -130,8 +130,8 @@ BEGIN
   ELSE
    IF NOT (b ?& ARRAY['id','kind','phase','repetitions','durationSeconds',
         'distance','distanceUnit','effort','notes']) THEN RETURN false; END IF;
-   IF b->>'kind'<>'interval' OR
-      b->>'phase' NOT IN ('warmup','work','recovery','cooldown') OR
+   IF b->>'kind' IS DISTINCT FROM 'interval' OR
+      (b->>'phase' IS NULL OR b->>'phase' NOT IN ('warmup','work','recovery','cooldown')) OR
       pg_catalog.jsonb_typeof(b->'repetitions')<>'number' OR
       b->>'repetitions' !~ '^[0-9]+$' OR
       (b->>'repetitions')::integer NOT BETWEEN 1 AND 100 THEN RETURN false; END IF;
@@ -143,7 +143,7 @@ BEGIN
    END IF;
    IF pg_catalog.jsonb_typeof(b->'distance')='number' THEN
     v_num:=(b->>'distance')::numeric;
-    IF v_num<=0 OR v_num>500000 OR b->>'distanceUnit' NOT IN
+    IF v_num<=0 OR v_num>500000 OR b->>'distanceUnit' IS NULL OR b->>'distanceUnit' NOT IN
       ('meters','yards','kilometers','miles') THEN RETURN false; END IF;
    END IF;
    IF b->>'durationSeconds' IS NULL AND b->>'distance' IS NULL THEN RETURN false; END IF;
