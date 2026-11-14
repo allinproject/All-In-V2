@@ -81,6 +81,58 @@ BEGIN
  EXCEPTION WHEN check_violation THEN NULL; END;
 END $negative_cases$;
 
+-- Pinned canonical owner snapshot for the existing ALL-251 export/deletion
+-- inventory. No API grant or completed export claim.
+\ir ../docs/architecture/sql/V2-COMMUNITY-PHOTO-ALL251-SOURCE-REVIEW-CANDIDATE.sql
+DO $source_private$
+BEGIN
+ IF has_function_privilege('authenticated',
+ 'allin_private.v2_all251_community_photo_sources_review(uuid)','EXECUTE')
+ OR has_function_privilege('anon',
+ 'allin_private.v2_all251_community_photo_sources_review(uuid)','EXECUTE')
+ OR has_function_privilege('service_role',
+ 'allin_private.v2_all251_community_photo_sources_review(uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Photo source gained unapproved EXECUTE'; END IF;
+ BEGIN
+ PERFORM allin_private.v2_all251_community_photo_sources_review(
+  '00000000-0000-0000-0000-000000000001');
+ RAISE EXCEPTION 'Unpinned Community photo source accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $source_private$;
+BEGIN ISOLATION LEVEL REPEATABLE READ;
+DO $source_owner$
+DECLARE a jsonb; b jsonb;
+BEGIN
+ a:=allin_private.v2_all251_community_photo_sources_review(
+  '00000000-0000-0000-0000-000000000001');
+ b:=allin_private.v2_all251_community_photo_sources_review(
+  '00000000-0000-0000-0000-000000000002');
+ IF a->>'ownerId'<>'00000000-0000-0000-0000-000000000001'
+  OR a->>'complete'<>'true' OR a->>'reviewOnly'<>'true'
+  OR a->>'completeUserExport'<>'false'
+  OR a->>'accountDeletionReady'<>'false'
+  OR jsonb_array_length(a->'rows')<>1
+  OR jsonb_array_length(b->'rows')<>0
+  OR a->'rows'->0->>'post_owner_id'<>'00000000-0000-0000-0000-000000000001'
+  OR a->'rows'->0->>'post_id'<>'50000000-0000-4000-8000-000000000001'
+  OR a->'rows'->0->>'sha256'<>repeat('a',64)
+  OR a::text LIKE '%00000000-0000-0000-0000-000000000002%'
+ THEN RAISE EXCEPTION 'Canonical photo source owner or completeness mismatch'; END IF;
+END $source_owner$;
+UPDATE allin_private.v2_community_post_photos
+ SET lifecycle='delete_pending' WHERE id='51000000-0000-4000-8000-000000000001';
+DO $pending_source$
+DECLARE a jsonb;
+BEGIN
+ a:=allin_private.v2_all251_community_photo_sources_review(
+  '00000000-0000-0000-0000-000000000001');
+ IF jsonb_array_length(a->'rows')<>1
+  OR a->'rows'->0->>'lifecycle'<>'delete_pending'
+  OR a->>'completeUserExport'<>'false'
+ THEN RAISE EXCEPTION 'Pending photo silently omitted from export inventory'; END IF;
+END $pending_source$;
+COMMIT;
+
 -- Removing the parent deletes its metadata. This NEVER certifies R2/Supabase
 -- object-byte deletion; account-deletion readiness stays blocked.
 DELETE FROM allin_private.v2_community_posts
