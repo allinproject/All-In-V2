@@ -89,7 +89,7 @@ async function verifiedWriterUpload(owner,path,bytes){
 }
 let a=null,b=null;
 let signerToken=null,signedPath=null;
-let signedBaselinePassed=false;
+let signedBaselinePassed=false,tusBaselinePassed=false;
 const password=randomUUID()+'Aa!9';
 const prefix='all251-httpmatrix-'+randomUUID();
 const bucketPath=p=>BUCKET+'/'+p.split('/').map(encodeURIComponent).join('/');
@@ -279,6 +279,31 @@ try{
   else mark('pre-deletion signed URL minted','OBSERVED');
  }else mark('pre-deletion signed URL minting',denied(minted.status)?'RESTRICTED':'FAIL',(await statusDetail(minted))+' (no delayed token)');
 
+ // A TUS session that only creates but cannot finish is not a write
+ // positive control. Finish a separate session and verify its bytes.
+ const tusControlPath=addObject(a.id,'tus-control');
+ const tusControl=await tusCreate(tusControlPath);
+ if([201,204].includes(tusControl.status)){
+  const location=resumableLocation(tusControl);
+  if(location){
+   const sourceBytes=randomBytes(50);
+   const completed=await request(location,{method:'PATCH',origin:DIRECT,
+    headers:{'tus-resumable':'1.0.0','upload-offset':'0',
+     'content-type':'application/offset+octet-stream'},body:sourceBytes});
+   if(completed.ok){
+    const readback=await read(tusControlPath);
+    if(readback.ok&&sha(Buffer.from(await readback.arrayBuffer()))===sha(sourceBytes)){
+     tusBaselinePassed=true;
+     tusSessions.delete(location); // Fully completed; object cleanup owns bytes.
+    }else mark('pre-deletion TUS readback','FAIL','Provider bytes absent or changed');
+   }else mark('pre-deletion TUS completion',denied(completed.status)?'RESTRICTED':'FAIL',
+    await statusDetail(completed));
+  }else mark('pre-deletion TUS control','FAIL','No terminable Location');
+ }else mark('pre-deletion TUS creation',
+  denied(tusControl.status)?'RESTRICTED':'FAIL',await statusDetail(tusControl));
+ mark('pre-deletion TUS byte control',
+  tusBaselinePassed?'PASS':'RESTRICTED',tusBaselinePassed?'SHA256 matched':'no successful write baseline');
+
  const pendingTusPath=addObject(a.id,'tus-predelete-pending');
  const pendingTus=await tusCreate(pendingTusPath);
  let pendingTusLocation=null;
@@ -324,7 +349,9 @@ try{
    headers:{'tus-resumable':'1.0.0','upload-offset':'0',
     'content-type':'application/offset+octet-stream'},body:randomBytes(50)});
   if(result.ok)postFreezePaths.add(pendingTusPath);
-  mark('delayed pre-deletion TUS completion',denied(result.status)?'RESTRICTED':'FAIL',await statusDetail(result));
+  mark('delayed pre-deletion TUS completion',
+   denied(result.status)?(tusBaselinePassed?'PASS':'RESTRICTED'):'FAIL',
+   await statusDetail(result));
  }else mark('delayed pre-deletion TUS completion','UNTESTED','no pre-deletion session');
 
  const restPath=addObject(a.id,'privileged-rest-late');
@@ -359,7 +386,7 @@ try{
  postFreezePaths.add(tusPath);
  const tus=await tusCreate(tusPath);
  mark('post-deletion TUS resumable creation',
-  denied(tus.status)?'RESTRICTED':'FAIL',
+  denied(tus.status)?(tusBaselinePassed?'PASS':'RESTRICTED'):'FAIL',
   await statusDetail(tus));
  if([201,204].includes(tus.status)){
   const location=resumableLocation(tus);
