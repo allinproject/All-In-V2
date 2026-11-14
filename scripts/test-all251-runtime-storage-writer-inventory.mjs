@@ -92,6 +92,27 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   assert.equal(/(?:secrets|vars)\.ALLIN_WRITER_ATTESTATION_SECRET_B64/.test(src),false,
    'ALL-251 signing key must never be exported to a GitHub workflow: '+file);
  }
+ // Keep the positive-control REST harness manual-only and fail-closed:
+ // it must never turn an unavailable trusted writer into a fake PASS.
+ const ownerWorkflow=readFileSync(resolve(root,
+  '.github/workflows/v2-all251-hosted-owner-rest-isolation.yml'),'utf8');
+ const ownerHarness=readFileSync(resolve(root,
+  'scripts/test-all251-hosted-owner-rest-isolation.mjs'),'utf8');
+ assert(ownerWorkflow.includes('workflow_dispatch:'),
+  'Owner REST acceptance must be manually approved');
+ assert.equal(/^\\s*push\\s*:/m.test(ownerWorkflow),false,
+  'Owner REST acceptance must not execute on a repository push');
+ assert(ownerWorkflow.includes('environment: all251-temporary-staging'),
+  'Owner REST credential must remain inside protected staging');
+ assert(ownerHarness.includes('/functions/v1/v2-private-storage-writer'),
+  'Owner positive control must use the canonical trusted writer');
+ assert(ownerHarness.includes('assert.equal(written.status,201'),
+  'Owner positive control must require a successful real upload');
+ assert(ownerHarness.includes('assert(denied(bRead)'),
+  'B-to-A private Storage REST read denial must be verified');
+ assert.equal(ownerWorkflow.includes('ALLIN_WRITER_ATTESTATION_SECRET_B64'),false,
+  'Owner REST CI must never receive the writer signer');
+
  const rawProbe=readFileSync(resolve(root,
   '.github/workflows/v2-all251-hosted-privileged-writer.yml'),'utf8');
  assert(rawProbe.includes('workflow_dispatch:'),
