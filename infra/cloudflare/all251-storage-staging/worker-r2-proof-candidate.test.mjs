@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {holdSyntheticR2Put} from './r2-race-harness.test-helper.mjs';
 import {createAll251R2ProofCandidate} from './worker-r2-proof-candidate.mjs';
 
 const A='11111111-1111-4111-8111-111111111111';
@@ -91,22 +92,15 @@ test('synthetic user writes and exact R2 byte readback are lease protected',asyn
 test('fixture cleanup waits for an in-flight R2 write to settle',{timeout:2000},async()=>{
  let frozen=false;
  const f=fixture({cleanupAllowed:({begin,settle})=>frozen&&begin===settle});
- const binding=f.env.PRIVATE_STORAGE;
- const put=binding.put.bind(binding);
- const {promise:entered,resolve:markEntered}=Promise.withResolvers();
- const {promise:release,resolve:releasePut}=Promise.withResolvers();
  const cleanupRequest=()=>new Request(URL,{method:'DELETE',
   headers:{authorization:'Bearer '+JWT},
  });
  const path=A+'/'+OBJECT+'.bin';
- binding.put=async(...args)=>{
-  markEntered();
-  await release;
-  return put(...args);
- };
+ const pause=holdSyntheticR2Put(f.env.PRIVATE_STORAGE,path);
+ f.env.PRIVATE_STORAGE=pause.binding;
  const writing=f.candidate.fetch(request(),f.env);
  try{
-  await entered;
+  await Promise.race([pause.entered,writing.then(()=>{throw Error('Write never reached pause');})]);
   assert.equal(f.calls.begin,1);
   assert.equal(f.calls.settle,0);
   // Simulate the database refusing cleanup while the lease is unsettled.
@@ -116,7 +110,7 @@ test('fixture cleanup waits for an in-flight R2 write to settle',{timeout:2000},
   assert.deepEqual(await denied.json(),{code:'CLEANUP_DENIED'});
   assert.equal(f.stored.has(path),false);
  }finally{
-  releasePut();
+  pause.release();
   await writing;
  }
  assert.equal((await writing).status,201);
