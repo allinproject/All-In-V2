@@ -7,6 +7,7 @@
  */
 import assert from 'node:assert/strict';
 import {randomUUID,randomBytes,createHash} from 'node:crypto';
+import {signAll251S3} from './all251-s3-sigv4.mjs';
 import {createPrivilegedStorageWriter} from
  '../supabase/functions/_shared/trainingPrivilegedStorageWriter.mjs';
 import {createAttestedPrivilegedStorageLeaseAuthority} from
@@ -30,7 +31,7 @@ assert(/^sb_secret_[\w-]+$/.test(privileged??''),'Protected temporary staging se
 assert(/^sb_publishable_[\w-]+$/.test(publishable??''),'Approved staging publishable key required');
 
 const owners=[],objects=new Set(),postFreezePaths=new Set(),cleanupIssues=[],outcomes=[];
-const tusSessions=new Set();
+const tusSessions=new Set(),s3Multipart=new Map();
 let trustedWriter=null,signingKey=null;
 function verifiedSigner(){
  // The protected environment must provide the approved dedicated signer.
@@ -88,6 +89,8 @@ async function verifiedWriterUpload(owner,path,bytes){
  return result;
 }
 let a=null,b=null;
+let s3PreA=false,s3PreB=false,s3MultipartReady=false;
+let s3MultipartA=null;
 let signerToken=null,signedPath=null;
 let signedBaselinePassed=false,tusBaselinePassed=false;
 const password=randomUUID()+'Aa!9';
@@ -127,6 +130,16 @@ async function createOwner(){
  return {id:user.id,jwt:data.access_token};
 }
 async function cleanup(){
+ // Abort every unfinished privileged S3 multipart session before deleting
+ // synthetic users. Failed abort remains a visible cleanup FAILURE.
+ for(const [id,entry] of s3Multipart){
+  try{
+   const r=await s3Request('DELETE',entry.path,{query:{uploadId:id}});
+   if(![200,202,204,404,410].includes(r.status))
+    cleanupIssues.push('s3-multipart-abort-unconfirmed:'+r.status);
+   else s3Multipart.delete(id);
+  }catch{cleanupIssues.push('s3-multipart-abort-exception');}
+ }
  for(const location of tusSessions){
   try{
    const r=await request(location,{method:'DELETE',origin:DIRECT,
@@ -208,6 +221,42 @@ function resumableLocation(response){
  const result=url.pathname+url.search;
  tusSessions.add(result);
  return result;
+}
+// Generated S3 keys bypass provider RLS. These probes are deliberately
+// negative barriers, never a justification to enable account deletion.
+const s3AccessId=env.ALL251_TEMP_STAGING_S3_ACCESS_KEY_ID??'';
+const s3Secret=env.ALL251_TEMP_STAGING_S3_SECRET_ACCESS_KEY??'';
+const s3Region=env.ALL251_TEMP_STAGING_S3_REGION??'';
+const s3Available=Boolean(s3AccessId&&s3Secret&&s3Region);
+async function s3Request(method,p,{query={},bytes=Buffer.alloc(0),headers={}}={}){
+ if(!s3Available)throw Error('S3 SigV4 credentials not provisioned');
+ const host=REF+'.storage.supabase.co';
+ const signed=signAll251S3({
+  method,host,region:s3Region,accessKeyId:s3AccessId,
+  secretAccessKey:s3Secret,bucket:BUCKET,objectPath:p,
+  query,bytes
+ });
+ const res=await fetch(signed.url,{
+  method,redirect:'manual',signal:AbortSignal.timeout(25000),
+  headers:{...signed.headers,...headers},
+  ...(method==='GET'||method==='HEAD'?{}:{body:bytes})
+ });
+ assert(![301,302,303,307,308].includes(res.status),'S3 redirect forbidden');
+ return res;
+}
+async function s3UploadVerified(owner,label){
+ const p=addObject(owner,label),bytes=randomBytes(200);
+ const result=await s3Request('PUT',p,{bytes,
+  headers:{'content-type':'application/octet-stream'}});
+ if(!result.ok)return {success:false,response:result,path:p};
+ const observed=await read(p);
+ const valid=observed.ok&&sha(Buffer.from(await observed.arrayBuffer()))===sha(bytes);
+ if(!valid)mark('S3 credentialed byte readback','FAIL','Missing or changed bytes');
+ return {success:valid,response:result,path:p};
+}
+function s3UploadId(xml){
+ const match=xml.match(/<UploadId>([^<]{1,500})<\/UploadId>/);
+ return match?.[1]??null;
 }
 async function tusCreate(p,{key=privileged,jwt=null}={}){
  const m=[['bucketName',BUCKET],['objectName',p],['contentType','application/octet-stream']]
