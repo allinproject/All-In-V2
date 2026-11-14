@@ -17,6 +17,7 @@ const publishable=env.ALL251_TEMP_STAGING_PUBLISHABLE_KEY;
 assert(/^sb_secret_[A-Za-z0-9_-]+$/.test(privileged??''),'Protected staging secret required');
 assert(/^sb_publishable_[A-Za-z0-9_-]+$/.test(publishable??''),'Staging publishable key required');
 const owners=[],cleanupIssues=[],results=[];
+let syntheticRequest=null;
 const password=randomBytes(24).toString('base64url')+'Aa1!';
 async function post(path,body,{key=privileged,jwt=null}={}){
  const res=await fetch(ORIGIN+path,{method:'POST',redirect:'manual',
@@ -52,6 +53,15 @@ async function check(token){
  return {allowed:body===true,status:res.status};
 }
 async function cleanup(){
+ if(syntheticRequest){
+  try{
+   const res=await post('/rest/v1/rpc/v2_all251_http_matrix_cleanup_deletion',
+    {p_expected_user_id:syntheticRequest.id},
+    {key:publishable,jwt:syntheticRequest.jwt});
+   if(res.status!==200||await res.json()!==true)
+    cleanupIssues.push('synthetic-deletion-request-cleanup-denied:'+res.status);
+  }catch{cleanupIssues.push('synthetic-deletion-request-cleanup-exception');}
+ }
  for(const id of [...owners].reverse()){
   try{
    const res=await fetch(ORIGIN+'/auth/v1/admin/users/'+id,{
@@ -84,11 +94,17 @@ try{
  },{key:publishable,jwt:a.jwt});
  assert.equal(frozen.status,200,'A could not request own synthetic deletion');
  assert.equal(await frozen.json(),true,'A request failed');
+ syntheticRequest=a;
  const aAfter=await check(a.jwt),bAfter=await check(b.jwt);
  assert.equal(aAfter.allowed,false,'Frozen A session still authorized');
  assert.deepEqual(bAfter,{allowed:true,status:200},
   'B lost independently active session');
  results.push('PASS A deletion blocks A; B continues');
+ const crossCleanup=await post('/rest/v1/rpc/v2_all251_http_matrix_cleanup_deletion',
+  {p_expected_user_id:a.id},{key:publishable,jwt:b.jwt});
+ assert([401,403,404].includes(crossCleanup.status),
+  'B could clear A synthetic deletion state');
+ results.push('PASS cross-owner deletion fixture cleanup denied');
  const logout=await fetch(ORIGIN+'/auth/v1/logout',{method:'POST',redirect:'manual',
   signal:AbortSignal.timeout(20000),
   headers:{apikey:publishable,authorization:'Bearer '+b.jwt}});
