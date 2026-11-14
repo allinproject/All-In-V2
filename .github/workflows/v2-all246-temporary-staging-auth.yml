@@ -1,0 +1,39 @@
+name: ALL-246 temporary staging real Auth and Routine HTTP acceptance
+
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - '.github/workflows/v2-all246-temporary-staging-auth.yml'
+      - 'scripts/test-all246-temporary-staging-real-auth.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all246-temporary-staging-auth
+  cancel-in-progress: false
+
+jobs:
+  hosted-staging-only:
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    runs-on: ubuntu-latest
+    environment: all251-temporary-staging
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      ALL246_TEMP_STAGING_ALLOW: 'true'
+      ALL246_TEMP_STAGING_REF: fbtgknlxjyeqrxemskbl
+      ALL246_TEMP_STAGING_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
+      ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
+      ALL251_TEMP_STAGING_PUBLISHABLE_KEY: ${{ secrets.ALL251_TEMP_STAGING_PUBLISHABLE_KEY || 'sb_publishable_KxiqTVkZkWh1NUQhEMq_3A_594QKycX' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify hosted private Routine RPCs with actual staging Auth JWTs
+        run: node scripts/test-all246-temporary-staging-real-auth.mjs
