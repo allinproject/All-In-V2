@@ -3,6 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 
 const source=readFileSync(new URL('../supabase/functions/v2-private-storage-writer/index.ts',import.meta.url),'utf8');
 
@@ -79,4 +81,16 @@ test('isolated populated cleanup replay never contacts hosted Supabase',()=>{
  assert(fixture.includes('all222_fixture')&&fixture.includes('cancelled_at'));
  assert(!outer.includes('SUPABASE_SERVICE_ROLE_KEY')&&!inner.includes('SUPABASE_SERVICE_ROLE_KEY'));
  assert(!outer.includes('https://')&&!inner.includes('https://'));
+});
+
+test('isolated shell replay entrypoints are syntax-valid',t=>{
+ const shell=spawnSync('bash',['--version'],{encoding:'utf8'});
+ if(shell.error?.code==='ENOENT'){t.skip('bash not installed on this platform');return;}
+ assert.equal(shell.status,0,'bash required to parse isolated scripts');
+ for(const relative of ['./run-all222-hosted-cleanup-isolated-replay.sh',
+  './fixtures/all222-hosted-cleanup-replay-inside.sh']){
+  const path=fileURLToPath(new URL(relative,import.meta.url));
+  const checked=spawnSync('bash',['-n',path],{encoding:'utf8'});
+  assert.equal(checked.status,0,'Invalid isolated replay shell syntax: '+relative+' '+checked.stderr);
+ }
 });
