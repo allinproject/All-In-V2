@@ -1,0 +1,36 @@
+name: ALL-222 disposable staging Storage HTTP denial acceptance
+
+# Privileged temporary-staging credentials require explicit manual approval.
+# A repository push must never trigger real service-role Auth/Storage probes.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all222-storage-http-disposable-staging
+  cancel-in-progress: false
+
+jobs:
+  real-auth-upload-denials:
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    runs-on: ubuntu-latest
+    environment: all251-temporary-staging
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      ALL222_STORAGE_HTTP_ALLOW: 'true'
+      ALL251_STAGING_REF: fbtgknlxjyeqrxemskbl
+      ALL251_STAGING_URL: https://fbtgknlxjyeqrxemskbl.supabase.co
+      ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
+      ALL251_TEMP_STAGING_PUBLISHABLE_KEY: ${{ vars.ALL251_TEMP_STAGING_PUBLISHABLE_KEY }}
+    steps:
+      - name: Checkout exact integration commit
+        uses: actions/checkout@v4
+      - name: Install Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run isolated real-GoTrue Storage bypass probes
+        run: node scripts/test-v2-all222-storage-http-denials.mjs
