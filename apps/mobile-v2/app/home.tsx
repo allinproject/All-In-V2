@@ -144,10 +144,12 @@ function HomeOwnerScreen() {
           <Text style={styles.weather}>{weatherGlance.label}</Text>
         </View>
 
-        <View style={styles.hero}>
-          <View style={styles.heroTopLine}>
-            <View style={styles.heroGoldLine} />
-            <Text style={styles.sectionLabel}>TODAY'S TRAINING</Text>
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleGroup}>
+              <View style={styles.sectionAccent} />
+              <Text accessibilityRole="header" style={styles.sectionTitle}>Today's Training</Text>
+            </View>
           </View>
           <Text style={styles.heroTitle}>{trainingCard.title}</Text>
           <Text style={styles.help}>{trainingCard.detail}</Text>
@@ -158,23 +160,12 @@ function HomeOwnerScreen() {
           </Link>
         </View>
 
-        <View style={styles.goalFeature}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.goalTitleGroup}>
-              <View style={styles.goalAccent} />
-              <Text accessibilityRole="header" style={styles.sectionTitle}>Goals &amp; Milestones</Text>
-            </View>
-            <Link href="/goals" asChild>
-              <Pressable accessibilityRole="button" accessibilityLabel="View goals and milestones" style={styles.inlineAction}>
-                <Text style={styles.actionText}>View more ›</Text>
-              </Pressable>
-            </Link>
-          </View>
-        </View>
-
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>Daily Energy</Text>
+            <View style={styles.sectionTitleGroup}>
+              <View style={styles.sectionAccent} />
+              <Text accessibilityRole="header" style={styles.sectionTitle}>Daily Energy</Text>
+            </View>
             <Link href={dailyDestination} asChild>
               <Pressable accessibilityRole="button" accessibilityLabel="View daily nutrition details" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View more ›</Text>
@@ -191,7 +182,10 @@ function HomeOwnerScreen() {
 
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>Food Log</Text>
+            <View style={styles.sectionTitleGroup}>
+              <View style={styles.sectionAccent} />
+              <Text accessibilityRole="header" style={styles.sectionTitle}>Food Log</Text>
+            </View>
             <Link href={foodLogDestination} asChild>
               <Pressable accessibilityRole="button" accessibilityLabel="Open this day's food log" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View log ›</Text>
@@ -231,7 +225,10 @@ function HomeOwnerScreen() {
           <View style={styles.card}>
             {dueKitchen.map(item => (
               <View key={item.id}>
-                <Text style={styles.sectionLabel}>{item.label}</Text>
+                <View style={styles.sectionTitleGroup}>
+                  <View style={styles.sectionAccent} />
+                  <Text style={styles.sectionTitle}>{item.label}</Text>
+                </View>
                 <Text style={styles.help}>{item.title}</Text>
               </View>
             ))}
@@ -240,7 +237,10 @@ function HomeOwnerScreen() {
 
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>Progress</Text>
+            <View style={styles.sectionTitleGroup}>
+              <View style={styles.sectionAccent} />
+              <Text accessibilityRole="header" style={styles.sectionTitle}>Progress</Text>
+            </View>
             <Link href="/progress" asChild>
               <Pressable accessibilityRole="button" accessibilityLabel="View progress details" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View more ›</Text>
@@ -252,7 +252,10 @@ function HomeOwnerScreen() {
 
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>Recovery</Text>
+            <View style={styles.sectionTitleGroup}>
+              <View style={styles.sectionAccent} />
+              <Text accessibilityRole="header" style={styles.sectionTitle}>Recovery</Text>
+            </View>
             <Link href="/recovery" asChild>
               <Pressable accessibilityRole="button" accessibilityLabel="View recovery details" style={styles.inlineAction}>
                 <Text style={styles.actionText}>View more ›</Text>
@@ -279,12 +282,9 @@ const styles = StyleSheet.create({
   heading: {color: colors.warmWhite, fontSize: 31, lineHeight: 36, fontWeight: '900'},
   profile: {paddingHorizontal: 8, minHeight: 44, justifyContent: 'center'},
   profileText: {color: colors.goldSoft, fontWeight: '800', fontSize: 13},
-  dayStrip: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', minHeight: 42, paddingHorizontal: 12, borderBottomColor: colors.border, borderBottomWidth: 1, gap: 6},
+  dayStrip: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', minHeight: 42, paddingHorizontal: 2, borderBottomColor: colors.border, borderBottomWidth: 1, gap: 6},
   dayLabel: {color: colors.mutedText, fontSize: 13, fontWeight: '600'},
   weather: {color: colors.mutedText, fontSize: 12},
-  hero: {backgroundColor: colors.background, borderTopColor: colors.gold, borderTopWidth: 2, borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 20, paddingHorizontal: 2, gap: 12, marginTop: 3},
-  heroTopLine: {flexDirection: 'row', alignItems: 'center', gap: 9},
-  heroGoldLine: {width: 4, height: 20, backgroundColor: colors.gold, borderRadius: 3},
   sectionLabel: {fontSize: 11, color: colors.goldSoft, fontWeight: '900', letterSpacing: 1.2},
   heroTitle: {fontSize: 25, lineHeight: 30, color: colors.warmWhite, fontWeight: '900'},
   help: {color: colors.mutedText, fontSize: 13, lineHeight: 20},
@@ -296,9 +296,8 @@ const styles = StyleSheet.create({
   quickActionText: {color: colors.goldSoft, fontSize: 15, fontWeight: '800'},
   quickActionHint: {color: colors.mutedText, fontSize: 11},
   card: {backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 18, paddingHorizontal: 2, gap: 12},
-  goalFeature: {backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 18, paddingHorizontal: 2},
-  goalTitleGroup: {flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 10},
-  goalAccent: {width: 4, height: 23, backgroundColor: colors.gold},
+  sectionTitleGroup: {flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 10},
+  sectionAccent: {width: 4, height: 20, borderRadius: 2, backgroundColor: colors.gold},
   sectionHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8},
   sectionTitle: {color: colors.warmWhite, fontSize: 17, fontWeight: '800'},
   inlineAction: {minHeight: 44, justifyContent: 'center', paddingHorizontal: 4},
