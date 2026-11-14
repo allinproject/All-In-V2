@@ -1,0 +1,38 @@
+name: ALL-251 protected owner REST isolation (two real staging accounts)
+# Manual-only. Never ship attestation signing secret to this runner.
+# This test requires an independently approved/deployed trusted writer;
+# otherwise the positive control intentionally fails closed.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: all251-staging-owner-rest-isolation
+  cancel-in-progress: false
+jobs:
+  hosted-owner-rest:
+    if: github.ref == 'refs/heads/integration/v2-foundation'
+    runs-on: ubuntu-latest
+    environment: all251-temporary-staging
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      ALL251_OWNER_REST_APPROVED: 'true'
+      ALL251_OWNER_REST_STAGING_REF: fbtgknlxjyeqrxemskbl
+      ALL251_TEMP_STAGING_SECRET_KEY: ${{ secrets.ALL251_TEMP_STAGING_SECRET_KEY }}
+      ALL251_TEMP_STAGING_PUBLISHABLE_KEY: ${{ vars.ALL251_TEMP_STAGING_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify staging-only test and protected prerequisites
+        run: |
+          test -n "$ALL251_TEMP_STAGING_SECRET_KEY"
+          test -n "$ALL251_TEMP_STAGING_PUBLISHABLE_KEY"
+          test "$ALL251_OWNER_REST_STAGING_REF" = fbtgknlxjyeqrxemskbl
+          node --check scripts/test-all251-hosted-owner-rest-isolation.mjs
+      - name: Prove owner REST positive controls and B-to-A denial
+        run: node scripts/test-all251-hosted-owner-rest-isolation.mjs
+# Not release authorization; ALL-222 and ALL-251 remain blocked until
+# the provider-level privileged REST, signed, S3 and TUS routes are accepted.
