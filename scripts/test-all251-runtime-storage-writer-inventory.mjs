@@ -69,6 +69,7 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   'v2-all251-hosted-http-route-matrix.yml',
   'v2-all251-hosted-owner-rest-isolation.yml',
   'v2-all246-temporary-staging-auth.yml',
+  'all222-storage-http-acceptance.yml',
  ]);
  const seen=new Set();
  for(const file of readdirSync(resolve(root,'.github/workflows'))){
@@ -100,6 +101,24 @@ test('protected ALL-251 staging Storage secret stays in approved staging workflo
   'ALL-246 Auth acceptance must target only disposable staging');
  assert.equal(routineAuthWorkflow.includes('ALLIN_WRITER_ATTESTATION_SECRET_B64'),false,
   'ALL-246 Auth probe must not hold writer signing key');
+
+ // ALL-222 direct Storage-denial HTTP probe carries a project privileged
+ // secret for synthetic Auth creation and cleanup. It must never auto-run,
+ // bypass the environment reviewer, or obtain the writer signer.
+ const all222Workflow=readFileSync(resolve(root,
+  '.github/workflows/all222-storage-http-acceptance.yml'),'utf8');
+ assert(all222Workflow.includes('workflow_dispatch:'),
+  'ALL-222 Storage HTTP acceptance must require manual dispatch');
+ assert.equal(/^\s*(?:push|pull_request|schedule|workflow_run)\s*:/m.test(all222Workflow),false,
+  'ALL-222 privileged Storage probe must not run automatically');
+ assert(all222Workflow.includes("if: github.ref == 'refs/heads/integration/v2-foundation'"),
+  'ALL-222 must run only on the integration foundation branch');
+ assert(all222Workflow.includes('environment: all251-temporary-staging'),
+  'ALL-222 secret must remain behind protected staging');
+ assert(all222Workflow.includes('fbtgknlxjyeqrxemskbl'),
+  'ALL-222 must target the disposable staging project');
+ assert.equal(all222Workflow.includes('ALLIN_WRITER_ATTESTATION_SECRET_B64'),false,
+  'ALL-222 HTTP probe must never receive the writer signer');
 
  // The separate writer attestation signing key must never be provided to
  // GitHub Actions: a protected environment is not exclusive writer custody.
