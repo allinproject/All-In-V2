@@ -336,19 +336,32 @@ try{
  // B must have a valid positive control before A is frozen. Otherwise B's
  // post-freeze 400 is a blanket-denial baseline, NOT proof of independence.
  const bPrePath=addObject(b.id,'independent-before-freeze');
- const bPre=await upload(bPrePath,{key:publishable,jwt:b.jwt});
+ const bPreBytes=randomBytes(40);
+ const bPre=await upload(bPrePath,{key:publishable,jwt:b.jwt,bytes:bPreBytes});
+ let bPreWorked=false;
+ if(bPre.ok){
+  const verify=await read(bPrePath);
+  bPreWorked=verify.ok&&sha(Buffer.from(await verify.arrayBuffer()))===sha(bPreBytes);
+ }
  mark('independent B user-scoped REST baseline',
-  bPre.ok?'OBSERVED':denied(bPre.status)?'RESTRICTED':'FAIL',
-  await statusDetail(bPre));
+  bPre.ok?(bPreWorked?'PASS':'FAIL'):denied(bPre.status)?'RESTRICTED':'FAIL',
+  bPre.ok?(bPreWorked?'SHA256 matched':'missing or mismatched bytes'):await statusDetail(bPre));
  const crossWritePath=addObject(a.id,'cross-owner-jwt');
  const crossWrite=await upload(crossWritePath,{key:publishable,jwt:b.jwt});
  mark('cross-owner JWT private upload denied',
-  denied(crossWrite.status)?(bPre.ok?'PASS':'RESTRICTED'):'FAIL',
+  denied(crossWrite.status)?(bPreWorked?'PASS':'RESTRICTED'):'FAIL',
   await statusDetail(crossWrite));
  const preRestPath=addObject(a.id,'privileged-rest-before-delete');
- const preRest=await upload(preRestPath);
+ const preRestBytes=randomBytes(40);
+ const preRest=await upload(preRestPath,{bytes:preRestBytes});
+ let preRestWorked=false;
+ if(preRest.ok){
+  const verify=await read(preRestPath);
+  preRestWorked=verify.ok&&sha(Buffer.from(await verify.arrayBuffer()))===sha(preRestBytes);
+ }
  mark('pre-deletion privileged REST upload baseline',
-  preRest.ok?'OBSERVED':denied(preRest.status)?'RESTRICTED':'FAIL',await statusDetail(preRest));
+  preRest.ok?(preRestWorked?'PASS':'FAIL'):denied(preRest.status)?'RESTRICTED':'FAIL',
+  preRest.ok?(preRestWorked?'SHA256 matched':'missing or mismatched bytes'):await statusDetail(preRest));
  await deletionRequest(a,b);
  mark('canonical synthetic deletion request','PASS');
  // Same verified attested writer must fail to acquire A's lease after the
@@ -380,8 +393,8 @@ try{
  postFreezePaths.add(restPath);
  const rest=await upload(restPath);
  mark('post-deletion privileged REST POST',
-  denied(rest.status)?(preRest.ok?'PASS':'RESTRICTED'):'FAIL',
-  (await statusDetail(rest))+(preRest.ok?' (baseline allowed)':' (baseline also denied)'));
+  denied(rest.status)?(preRestWorked?'PASS':'RESTRICTED'):'FAIL',
+  (await statusDetail(rest))+(preRestWorked?' (verified byte baseline)':' (no verified byte baseline)'));
 
  const ordinaryPath=addObject(a.id,'owner-jwt-rest-late');
  postFreezePaths.add(ordinaryPath);
@@ -427,10 +440,10 @@ try{
  const bPath=addObject(b.id,'independent-owner');
  const bUser=await upload(bPath,{key:publishable,jwt:b.jwt});
  mark('independent B user-scoped REST after A deletion',
-  bUser.ok?(bPre.ok?'PASS':'OBSERVED'):
+  bUser.ok?(bPreWorked?'PASS':'RESTRICTED'):
   denied(bUser.status)?'UNTESTED':'FAIL',
   (await statusDetail(bUser))+
-    (bPre.ok?' (B baseline worked)':' (B baseline not established)'));
+    (bPreWorked?' (B byte baseline worked)':' (B byte baseline not established)'));
 
  // A deletion REQUEST is not the deletion worker. Existing A objects must
  // remain readable until separately approved deletion runs; only newly
@@ -450,6 +463,6 @@ try{
 if(cleanupIssues.length)mark('cleanup','FAIL',cleanupIssues.join(','));
 else mark('cleanup','PASS','all synthetic object paths checked and disposable users removed');
 const failed=outcomes.filter(x=>x.status==='FAIL');
-const untested=outcomes.filter(x=>x.status==='UNTESTED'||x.status==='RESTRICTED');
+const untested=outcomes.filter(x=>x.status==='UNTESTED'||x.status==='RESTRICTED'||x.status==='OBSERVED');
 process.stdout.write('ALL-251 real HTTP route outcomes: '+outcomes.length+'; failures='+failed.length+'; not-proven='+untested.length+'\n');
 if(failed.length||untested.length)throw Error('ALL-251 hosted Storage exclusive security acceptance remains BLOCKED');
