@@ -214,6 +214,7 @@ async function run(){
    path,operation:'create',bytes:new Uint8Array(bytes)});
  assert(!settled.error&&settled.data===true,'TUS attested settlement failed');
  console.log('PASS: TUS resumed completion, exact bytes SHA-256 and attested settlement');
+ checkpoint='TUS cross-owner authorization assertions';
  assert(crossOwnerHeadDenied,'SECURITY FAIL: B can inspect A TUS session URL using its own JWT');
  assert(!foreignPatchAccepted,'SECURITY FAIL: B appended bytes to A TUS session using B JWT');
  console.log('PASS: cross-owner TUS HEAD and PATCH rejected');
