@@ -117,7 +117,7 @@ function OwnedFuelScreen(){
 }
 const styles=StyleSheet.create({
  safe:{flex:1,backgroundColor:colors.background},
- content:{padding:22,paddingBottom:50,gap:16},
+ content:{paddingHorizontal:20,paddingTop:10,paddingBottom:50,gap:12},
  description:{color:colors.mutedText,fontSize:14,lineHeight:22},
  tabs:{flexDirection:'row',gap:6,backgroundColor:colors.surface,padding:5,borderRadius:14},
  tab:{flex:1,paddingVertical:12,alignItems:'center',justifyContent:'center',borderRadius:10},
