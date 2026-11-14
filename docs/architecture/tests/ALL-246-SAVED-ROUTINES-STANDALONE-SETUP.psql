@@ -18,7 +18,7 @@ CREATE TABLE auth.sessions (
  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $uid$
- SELECT pg_catalog.nullif(
+ SELECT NULLIF(
    pg_catalog.current_setting('request.jwt.claim.sub',true),''
  )::uuid;
 $uid$;
