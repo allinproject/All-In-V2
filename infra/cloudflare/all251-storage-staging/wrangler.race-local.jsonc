@@ -1,0 +1,14 @@
+{
+  "name": "allin365-storage-race-local",
+  "main": "r2-race-loopback.mjs",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": false,
+  "preview_urls": false,
+  "dev": {"ip": "127.0.0.1"},
+  "vars": {
+    "SUPABASE_URL": "https://fbtgknlxjyeqrxemskbl.supabase.co"
+  },
+  "r2_buckets": [
+    {"binding": "PRIVATE_STORAGE", "bucket_name": "allin365-private-staging", "remote": true}
+  ]
+}
