@@ -86,9 +86,9 @@ BEGIN
   'c0000000-0000-4000-8000-000000000001',
   'public.v2_training_routine_versions',NULL,25);
  IF pg_catalog.jsonb_array_length(v->'rows')<>25 OR
-  NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(v->'rows') e
-   WHERE e->>'name' like 'All251 paginated authored %'
-     AND pg_catalog.jsonb_array_length(e->'blocks')=1)
+  NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(v->'rows') AS e(value)
+   WHERE e.value->>'name' like 'All251 paginated authored %'
+     AND pg_catalog.jsonb_array_length(e.value->'blocks')=1)
  THEN RAISE EXCEPTION 'FAIL: immutable routine version details not portable'; END IF;
  v:=public.v2_account_export_page_review_candidate(
   b,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
