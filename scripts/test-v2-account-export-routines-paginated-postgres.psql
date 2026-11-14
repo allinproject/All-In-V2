@@ -1,0 +1,150 @@
+\set ON_ERROR_STOP on
+-- ALL-251/246 disposable full-Training-graph paginated export acceptance.
+-- Source DB is cloned from training_routine_export in PG17 CI.
+-- All writes are rolled back; DO NOT execute against hosted Supabase.
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-SESSION-AUTH-REVIEW-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-REQUEST-OWNER-REVIEW-CANDIDATE.sql
+\i /tmp/allin/docs/architecture/sql/V2-ACCOUNT-EXPORT-PAGINATED-READER-REVIEW-CANDIDATE.sql
+BEGIN ISOLATION LEVEL REPEATABLE READ;
+INSERT INTO allin_private.v2_account_export_requests_candidate
+ (request_id,user_id,session_id,status,expires_at)
+VALUES
+ ('c0000000-0000-4000-8000-000000000001',
+  '11111111-1111-4111-8111-111111111111',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','approved',now()+interval '1 hour'),
+ ('c0000000-0000-4000-8000-000000000002',
+  '22222222-2222-4222-8222-222222222222',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','approved',now()+interval '1 hour');
+-- Include 32 authored routines (including the archived original) to prove
+-- paging, exact owner isolation, immutable version content and archive state.
+DO $populate$
+DECLARE v_id uuid; n integer;
+BEGIN
+ FOR n IN 1..31 LOOP
+  v_id:=pg_catalog.gen_random_uuid();
+  INSERT INTO public.v2_training_routines(id,user_id,current_version)
+   VALUES(v_id,'11111111-1111-4111-8111-111111111111',1);
+  INSERT INTO public.v2_training_routine_versions
+   (routine_id,user_id,version,name,sport,notes,blocks)
+   VALUES(v_id,'11111111-1111-4111-8111-111111111111',1,
+    'All251 paginated authored '||n,'strength','',
+    '[{"kind":"strength","id":"draft-1","exercise":"Squat",
+      "equipment":null,"notes":"","sets":3,"reps":"5","weight":null,
+      "restSeconds":90,"setType":"working","groupId":null}]'::jsonb);
+ END LOOP;
+END;
+$populate$;
+SET LOCAL ROLE service_role;
+DO $inventory$
+DECLARE i jsonb; b jsonb;
+BEGIN
+ i:=public.v2_account_export_inventory_review_candidate(
+  '11111111-1111-4111-8111-111111111111',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'c0000000-0000-4000-8000-000000000001');
+ IF i->>'complete'<>'false' OR
+  NOT (i->'collections' ? 'public.v2_training_routines') OR
+  NOT (i->'collections' ? 'public.v2_training_routine_versions') OR
+  (i->'collections' ? 'allin_private.v2_training_routine_actions') OR
+  (i->'collections' ? 'allin_private.v2_training_routine_owner_epochs') OR
+  NOT (i->'internalOperationalTables' ? 'allin_private.v2_training_routine_actions') OR
+  NOT (i->'internalOperationalTables' ? 'allin_private.v2_training_routine_owner_epochs')
+ THEN RAISE EXCEPTION 'FAIL: incomplete or unsafe Routine paginated export inventory'; END IF;
+ b:=public.v2_account_export_inventory_review_candidate(
+  '22222222-2222-4222-8222-222222222222',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  'c0000000-0000-4000-8000-000000000002');
+ IF b->>'complete'<>'false' OR
+  (b->'collections' ? 'allin_private.v2_training_routine_actions')
+ THEN RAISE EXCEPTION 'FAIL: owner B inventory exposed internal receipts'; END IF;
+END;
+$inventory$;
+DO $pages$
+DECLARE p jsonb; q jsonb; v jsonb; a uuid:='11111111-1111-4111-8111-111111111111';
+ b uuid:='22222222-2222-4222-8222-222222222222';
+BEGIN
+ p:=public.v2_account_export_page_review_candidate(
+  a,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'c0000000-0000-4000-8000-000000000001',
+  'public.v2_training_routines',NULL,25);
+ IF pg_catalog.jsonb_array_length(p->'rows')<>25 OR p->>'done'<>'false'
+   OR p->>'nextCursor'<>'25'
+ THEN RAISE EXCEPTION 'FAIL: Routine page one incomplete'; END IF;
+ q:=public.v2_account_export_page_review_candidate(
+  a,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'c0000000-0000-4000-8000-000000000001',
+  'public.v2_training_routines','25',25);
+ IF pg_catalog.jsonb_array_length(q->'rows')<>7 OR q->>'done'<>'true'
+   OR q->>'nextCursor' IS NOT NULL
+ THEN RAISE EXCEPTION 'FAIL: Routine page two incomplete'; END IF;
+ IF EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(
+    p->'rows'||q->'rows') AS e(value)
+   WHERE e.value->>'user_id'<>a::text)
+ THEN RAISE EXCEPTION 'FAIL: Routine page leaked other owner'; END IF;
+ v:=public.v2_account_export_page_review_candidate(
+  a,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'c0000000-0000-4000-8000-000000000001',
+  'public.v2_training_routine_versions',NULL,25);
+ IF pg_catalog.jsonb_array_length(v->'rows')<>25 OR
+  NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(v->'rows') e
+   WHERE e->>'name' like 'All251 paginated authored %'
+     AND pg_catalog.jsonb_array_length(e->'blocks')=1)
+ THEN RAISE EXCEPTION 'FAIL: immutable routine version details not portable'; END IF;
+ v:=public.v2_account_export_page_review_candidate(
+  b,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  'c0000000-0000-4000-8000-000000000002',
+  'public.v2_training_routines',NULL,25);
+ IF pg_catalog.jsonb_array_length(v->'rows')<>1 OR
+   v#>>'{rows,0,user_id}'<>b::text
+ THEN RAISE EXCEPTION 'FAIL: owner B routine export leakage'; END IF;
+ BEGIN
+  PERFORM public.v2_account_export_page_review_candidate(
+   a,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'c0000000-0000-4000-8000-000000000001',
+   'allin_private.v2_training_routine_actions',NULL,25);
+  RAISE EXCEPTION 'FAIL: private idempotency hashes downloadable';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.v2_account_export_page_review_candidate(
+   b,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'c0000000-0000-4000-8000-000000000001',
+   'public.v2_training_routines',NULL,25);
+  RAISE EXCEPTION 'FAIL: foreign export request permitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END;
+$pages$;
+RESET ROLE;
+-- Partial Routine graph must fail closed (no silent pages missing data).
+ALTER TABLE allin_private.v2_training_routine_actions
+ RENAME TO v2_training_routine_actions_all251_probe;
+SET LOCAL ROLE service_role;
+DO $partial$
+BEGIN
+ BEGIN
+  PERFORM public.v2_account_export_inventory_review_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'c0000000-0000-4000-8000-000000000001');
+  RAISE EXCEPTION 'FAIL: partial Routine graph approved';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $partial$;
+RESET ROLE;
+ALTER TABLE allin_private.v2_training_routine_actions_all251_probe
+ RENAME TO v2_training_routine_actions;
+-- A future unclassified owner table must also fail closed.
+CREATE TABLE public.v2_all251_unreviewed_routine_owner_probe(
+ user_id uuid REFERENCES auth.users(id));
+SET LOCAL ROLE service_role;
+DO $unknown$
+BEGIN
+ BEGIN
+  PERFORM public.v2_account_export_inventory_review_candidate(
+   '11111111-1111-4111-8111-111111111111',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'c0000000-0000-4000-8000-000000000001');
+  RAISE EXCEPTION 'FAIL: unclassified owner table accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $unknown$;
+RESET ROLE;
+ROLLBACK;
+\echo 'PASS ALL-251: paginated Routine data + archived versions; private receipts excluded, owner and partial-graph denials'
