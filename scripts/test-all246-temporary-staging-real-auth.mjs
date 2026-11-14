@@ -103,7 +103,7 @@ try{
  step='stale-version CAS rejection';
  expectedSqlRejection(
   await save(a,routine,1,randomUUID(),'Stale change'),
-  '40001','Stale CAS');
+  'PT409','Stale CAS');
  step='immutable version and archive';
  assert.equal((await read(a,routine,1)).body?.name,'Staged Auth Routine');
  const archived=await rpc('v2_training_routine_archive_owner_candidate',
