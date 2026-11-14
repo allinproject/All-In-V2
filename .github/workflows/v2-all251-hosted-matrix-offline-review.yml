@@ -5,10 +5,14 @@ on:
       - review/all251-hosted-route-matrix-baselines-20261113
     paths:
       - 'scripts/test-all251-hosted-storage-http-routes.mjs'
+      - 'scripts/all251-s3-sigv4.mjs'
+      - 'scripts/all251-s3-sigv4.test.mjs'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
   pull_request:
     paths:
       - 'scripts/test-all251-hosted-storage-http-routes.mjs'
+      - 'scripts/all251-s3-sigv4.mjs'
+      - 'scripts/all251-s3-sigv4.test.mjs'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
 permissions:
   contents: read
@@ -23,6 +27,10 @@ jobs:
           node-version: '22.16.0'
       - name: Syntax validate hosted test with no protected credentials
         run: node --check scripts/test-all251-hosted-storage-http-routes.mjs
+      - name: Validate privileged S3 SigV4 construction without any secrets
+        run: |
+          node --check scripts/all251-s3-sigv4.mjs
+          node --test scripts/all251-s3-sigv4.test.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
