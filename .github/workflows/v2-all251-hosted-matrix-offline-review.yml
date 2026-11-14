@@ -50,6 +50,10 @@ jobs:
         run: |
           node --check infra/cloudflare/all251-storage-staging/session-authority-review.mjs
           node --test infra/cloudflare/all251-storage-staging/session-authority-review.test.mjs
+      - name: Verify composed Auth session and canonical R2 writer stay off public routes
+        run: |
+          node --check infra/cloudflare/all251-storage-staging/internal-writer-review.mjs
+          node --test infra/cloudflare/all251-storage-staging/internal-writer-review.test.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
