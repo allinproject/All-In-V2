@@ -7,12 +7,16 @@ on:
       - 'scripts/test-all251-hosted-storage-http-routes.mjs'
       - 'scripts/all251-s3-sigv4.mjs'
       - 'scripts/all251-s3-sigv4.test.mjs'
+      - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
+      - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
   pull_request:
     paths:
       - 'scripts/test-all251-hosted-storage-http-routes.mjs'
       - 'scripts/all251-s3-sigv4.mjs'
       - 'scripts/all251-s3-sigv4.test.mjs'
+      - 'supabase/functions/_shared/all251R2StorageReviewAdapter.mjs'
+      - 'supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs'
       - '.github/workflows/v2-all251-hosted-matrix-offline-review.yml'
 permissions:
   contents: read
@@ -31,6 +35,10 @@ jobs:
         run: |
           node --check scripts/all251-s3-sigv4.mjs
           node --test scripts/all251-s3-sigv4.test.mjs
+      - name: Validate non-deployed canonical R2 storage adapter
+        run: |
+          node --check supabase/functions/_shared/all251R2StorageReviewAdapter.mjs
+          node --test supabase/functions/_shared/all251R2StorageReviewAdapter.test.mjs
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
