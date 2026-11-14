@@ -172,7 +172,7 @@ async function run(){
  assert(location,'TUS server omitted session Location');
  const locationUrl=new URL(location,direct);
  assert.equal(locationUrl.origin,direct,'Unexpected TUS location origin');
- tusUrls.push(locationUrl.toString());
+ tusUrls.push({url:locationUrl.toString(),jwt:a.jwt});
  checkpoint='TUS first chunk';
  const split=6*1024*1024;
  const first=await callTus(locationUrl,'PATCH',a.jwt,
@@ -203,20 +203,34 @@ async function run(){
  console.log('PASS: cross-owner TUS session HEAD rejected');
 }
 async function cleanup(){
- for(const url of tusUrls){
-  try{await callTus(url,'DELETE',null);}catch{ /* provider may not support TUS terminate */ }
+ for(const {url,jwt} of tusUrls){
+  try{
+   const terminated=await callTus(url,'DELETE',jwt);
+   if(![200,202,204,404,410].includes(terminated.status)){
+    // HEAD is evidence only when the endpoint definitively reports absence.
+    const again=await callTus(url,'HEAD',jwt);
+    if(![404,410].includes(again.status))throw Error('TUS session still active or unverified');
+   }
+  }catch{
+   error=true;console.error('CLEANUP FAIL: TUS session termination requires inspection');
+  }
  }
  for(const path of [...new Set(created)].reverse()){
   try{
    const deleted=await fetchStaging('/storage/v1/object/'+bucket+'/'+enc(path),{
      method:'DELETE',admin:true});
-   if(![200,204].includes(deleted.status))throw Error('Storage delete not acknowledged');
+   if(![200,204,400,404].includes(deleted.status))throw Error('Storage delete rejected');
    const read=await fetchStaging('/storage/v1/object/authenticated/'+bucket+'/'+enc(path),{admin:true});
    if(read.ok)throw Error('Bytes remain readable');
    const missing=await read.clone().json().catch(()=>null);
    if(![400,404].includes(read.status)||!missing||
       !(missing.code==='NoSuchKey'||missing.error==='not_found')||
       missing.message!=='Object not found')throw Error('Storage byte absence unconfirmed');
+   const info=await fetchStaging('/storage/v1/object/info/'+bucket+'/'+enc(path),{admin:true});
+   const metaMissing=await info.clone().json().catch(()=>null);
+   if(![400,404].includes(info.status)||!metaMissing||
+      !(metaMissing.code==='NoSuchKey'||metaMissing.error==='not_found')||
+      metaMissing.message!=='Object not found')throw Error('Storage metadata absence unconfirmed');
   }catch{error=true;console.error('CLEANUP FAIL: synthetic Storage object requires inspection');}
  }
  for(const id of users.reverse()){
