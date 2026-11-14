@@ -142,6 +142,11 @@ function TrainingCalendarOwnerScreen() {
         </Link>
         <Text style={styles.brand}>ALL IN <Text style={styles.gold}>365</Text></Text>
         <Text accessibilityRole="header" style={styles.title}>Train</Text>
+        <Link href="/goals" asChild>
+          <Pressable accessibilityRole="button" accessibilityLabel="Review your goals" style={styles.back}>
+            <Text style={styles.muted}>Review your goals ›</Text>
+          </Pressable>
+        </Link>
         <View style={styles.compactTabs} accessibilityRole="tablist">
           {([
             ['calendar', 'Calendar'], ['plans', 'Plans'], ['routes_routines', 'Routes/Routines'],
