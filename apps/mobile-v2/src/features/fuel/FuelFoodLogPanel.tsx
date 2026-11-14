@@ -40,8 +40,9 @@ function rowForm(row:EditableFoodRow):FoodFormInput{
 type Editor={kind:'add'}|{kind:'edit';row:EditableFoodRow}|null;
 const unavailableText='Food Log data is not available yet. Existing meals are not assumed missing.';
 
-export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
+export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange,onOpenNutrition}:{
  ownerId:string;day:string;accessReady:boolean;onDayChange:(newDay:string)=>void;
+ onOpenNutrition:()=>void;
 }){
  const [snapshot,setSnapshot]=useState<EditableFoodDay|null>(null);
  const [loading,setLoading]=useState(false);
@@ -189,14 +190,24 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
  const today=deviceLocalToday();
  return (
   <View style={styles.section}>
-   <View style={styles.metrics}>
-    {['Calories','Protein','Carbs','Fat'].map(label=>(
-     <View key={label} style={styles.metric}>
-      <Text style={styles.metricValue}>—</Text><Text style={styles.small}>{label}</Text>
+   <Pressable accessibilityRole="button" accessibilityLabel="Open nutrition details for the selected day"
+    onPress={onOpenNutrition} style={styles.nutritionWidget}>
+    <View style={styles.nutritionHeading}>
+     <View style={styles.nutritionTitleGroup}>
+      <View style={styles.goldAccent}/>
+      <Text style={styles.nutritionTitle}>Nutrition</Text>
      </View>
-    ))}
-   </View>
-   <Text style={styles.note}>Nutrition totals are not connected yet. Logged foods can exist even when totals are unavailable.</Text>
+     <Text style={styles.linkText}>View more ›</Text>
+    </View>
+    <View style={styles.metrics}>
+     {['Calories','Protein','Carbs','Fat'].map(label=>(
+      <View key={label} style={styles.metric}>
+       <Text style={styles.metricValue}>—</Text>
+       <Text style={styles.small}>{label}</Text>
+      </View>
+     ))}
+    </View>
+   </Pressable>
    {loading?<Text style={styles.small}>Loading your Food Log…</Text>:
     snapshot===null?<Text style={styles.small}>{unavailableText}</Text>:
     currentRows.length===0?<Text style={styles.small}>No entries in the verified log for this day.</Text>:
@@ -283,9 +294,16 @@ export function FuelFoodLogPanel({ownerId,day,accessReady,onDayChange}:{
 }
 const styles=StyleSheet.create({
  section:{gap:14},
- metric:{flex:1,alignItems:'center',paddingVertical:12,backgroundColor:colors.surfaceRaised,borderRadius:14},
- metrics:{flexDirection:'row',gap:6},
- metricValue:{color:colors.goldSoft,fontWeight:'800',fontSize:20},
+ nutritionWidget:{backgroundColor:colors.background,borderBottomColor:colors.border,borderBottomWidth:1,
+  paddingVertical:18,paddingHorizontal:2,gap:12,minHeight:100},
+ nutritionHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
+ nutritionTitleGroup:{flexDirection:'row',alignItems:'center',gap:10},
+ goldAccent:{width:4,height:20,borderRadius:2,backgroundColor:colors.gold},
+ nutritionTitle:{color:colors.warmWhite,fontSize:17,fontWeight:'800'},
+ linkText:{color:colors.goldSoft,fontSize:13,fontWeight:'700'},
+ metric:{flex:1,minWidth:0,alignItems:'center',paddingVertical:8,gap:7},
+ metrics:{flexDirection:'row',gap:8},
+ metricValue:{color:colors.warmWhite,fontWeight:'800',fontSize:21},
  small:{color:colors.mutedText,fontSize:12,lineHeight:18},
  note:{color:colors.mutedText,fontSize:13,lineHeight:20},
  mealGroup:{gap:8},
