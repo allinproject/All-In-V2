@@ -351,6 +351,21 @@ try{
  mark('cross-owner JWT private upload denied',
   denied(crossWrite.status)?(bPreWorked?'PASS':'RESTRICTED'):'FAIL',
   await statusDetail(crossWrite));
+ // Match the owner's post-freeze JWT route to an actual completed,
+ // byte-verified owner JWT upload before the deletion request.
+ const aJwtPrePath=addObject(a.id,'owner-jwt-rest-before-delete');
+ const aJwtPreBytes=randomBytes(40);
+ const aJwtPre=await upload(aJwtPrePath,{key:publishable,jwt:a.jwt,bytes:aJwtPreBytes});
+ let aJwtPreWorked=false;
+ if(aJwtPre.ok){
+  const verify=await read(aJwtPrePath);
+  aJwtPreWorked=verify.ok&&sha(Buffer.from(await verify.arrayBuffer()))===sha(aJwtPreBytes);
+ }
+ mark('owner A pre-deletion JWT REST byte baseline',
+  aJwtPre.ok?(aJwtPreWorked?'PASS':'FAIL'):
+   denied(aJwtPre.status)?'RESTRICTED':'FAIL',
+  aJwtPre.ok?(aJwtPreWorked?'SHA256 matched':'missing or mismatched bytes'):
+   await statusDetail(aJwtPre));
  const preRestPath=addObject(a.id,'privileged-rest-before-delete');
  const preRestBytes=randomBytes(40);
  const preRest=await upload(preRestPath,{bytes:preRestBytes});
@@ -399,7 +414,9 @@ try{
  const ordinaryPath=addObject(a.id,'owner-jwt-rest-late');
  postFreezePaths.add(ordinaryPath);
  const ordinary=await upload(ordinaryPath,{key:publishable,jwt:a.jwt});
- mark('post-deletion user JWT REST POST',denied(ordinary.status)?'RESTRICTED':'FAIL',await statusDetail(ordinary));
+ mark('post-deletion user JWT REST POST',
+  denied(ordinary.status)?(aJwtPreWorked?'PASS':'RESTRICTED'):'FAIL',
+  await statusDetail(ordinary));
 
  const freshSignedPath=addObject(a.id,'signed-mint-late');
  postFreezePaths.add(freshSignedPath);
