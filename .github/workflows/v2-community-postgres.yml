@@ -17,6 +17,8 @@ on:
       - 'scripts/test-v2-community-public-identity-postgres.psql'
       - 'docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql'
       - 'scripts/test-v2-community-posts-postgres.psql'
+      - 'docs/architecture/sql/V2-COMMUNITY-POST-PHOTOS-LEDGER-REVIEW-CANDIDATE.sql'
+      - 'scripts/test-v2-community-photo-ledger-postgres.psql'
       - 'docs/architecture/sql/V2-COMMUNITY-POST-UPDATE-WRITER-CANDIDATE.sql'
       - 'docs/architecture/sql/V2-COMMUNITY-MODERATION-WORKFLOW-REVIEW-CANDIDATE.sql'
       - 'scripts/test-v2-community-post-writer-postgres.psql'
@@ -92,6 +94,15 @@ jobs:
           docker cp docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-CANONICAL-POSTS-OWNER-CANDIDATE.sql"
           docker cp scripts/test-v2-community-posts-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-community-posts-postgres.psql"
           docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d community_posts -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-posts-postgres.psql
+
+      - name: Validate review-only post-owned photo ledger in isolated DB
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" createdb -U "$PGUSER" community_photo_ledger
+          docker cp docs/architecture/sql/V2-COMMUNITY-POST-PHOTOS-LEDGER-REVIEW-CANDIDATE.sql "$PG_CONTAINER:/tmp/allin/docs/architecture/sql/V2-COMMUNITY-POST-PHOTOS-LEDGER-REVIEW-CANDIDATE.sql"
+          docker cp scripts/test-v2-community-photo-ledger-postgres.psql "$PG_CONTAINER:/tmp/allin/scripts/test-v2-community-photo-ledger-postgres.psql"
+          docker exec "$PG_CONTAINER" psql -U "$PGUSER" -d community_photo_ledger -v ON_ERROR_STOP=1 -f /tmp/allin/scripts/test-v2-community-photo-ledger-postgres.psql
 
       - name: Validate canonical update post creation and versioned editing in separate DB
         env:
