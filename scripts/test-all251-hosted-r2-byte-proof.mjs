@@ -147,6 +147,13 @@ async function cleanup(){
  }
 }
 try{
+ // The Worker must explicitly be deployed AND activated before creating
+ // synthetic Auth accounts. The deny-only live entry returns 403 here.
+ const ready=await fetch(WORKER+'/__all251_proof_ready',{
+  method:'HEAD',redirect:'manual',signal:AbortSignal.timeout(12000),
+ });
+ assert.equal(ready.status,204,
+  'R2 Worker proof not explicitly activated; no test users created');
  const a=await createUser('A'),b=await createUser('B');
  const firstA=await write(a),firstB=await write(b);
  passes.push('PASS real synthetic A/B R2 writes and SHA-256 byte readback');
