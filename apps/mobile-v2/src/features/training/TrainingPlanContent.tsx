@@ -12,10 +12,6 @@ export function TrainingPlanContent({ evidence }: {
   const plans = safe ? evidence.plans : [];
   return (
     <View style={styles.container}>
-      <View style={styles.head}>
-        <Text accessibilityRole="header" style={styles.title}>Training Plan</Text>
-        <Text style={styles.eyebrow}>YOUR TRAINING</Text>
-      </View>
       {!safe ? (
         <View style={styles.message}>
           <Text style={styles.heading}>Plan not available</Text>
@@ -61,9 +57,6 @@ export function TrainingPlanContent({ evidence }: {
 }
 const styles = StyleSheet.create({
   container: { gap: 16, paddingTop: 10 },
-  head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
-  title: { fontSize: 22, fontWeight: '900', color: colors.warmWhite },
-  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4, color: colors.goldSoft },
   message: { paddingVertical: 20, borderTopWidth: 2, borderTopColor: colors.gold, gap: 10 },
   heading: { fontSize: 20, fontWeight: '800', color: colors.warmWhite },
   muted: { color: colors.mutedText, fontSize: 13, lineHeight: 20 },
