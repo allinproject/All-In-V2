@@ -74,6 +74,12 @@ BEGIN
           AND r.definition_version=g.definition_version
           AND r.quality='partial') THEN 'partial' ELSE 'trusted' END,
    'sourceCount',g.evidence_count,
+   -- Only a single owner-bound source may be attributed to a displayed metric.
+   -- Coincident values from several sources never justify an invented primary.
+   'sourceId',(SELECT CASE WHEN count(DISTINCT r.source_id)=1
+       THEN min(r.source_id::text)::uuid ELSE NULL END
+     FROM rows r WHERE r.metric_code=g.metric_code
+       AND r.definition_version=g.definition_version),
    'valueNumeric',(SELECT r.value_numeric FROM rows r
       WHERE r.metric_code=g.metric_code AND r.definition_version=g.definition_version LIMIT 1),
    'valueText',(SELECT r.value_text FROM rows r
