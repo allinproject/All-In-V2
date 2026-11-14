@@ -129,6 +129,29 @@ async function run(){
   await verifyReadback(path,bytes);
  }
  console.log('PASS: A/B authorized attested create, real bytes, SHA-256 and lease settlement');
+ checkpoint='signed URL attested lease';
+ const signedBytes=randomBytes(4096);
+ const signedPath=pathFor(a.id,'signed');
+ created.push(signedPath);
+ const authorized=await lease.begin({ownerId:a.id,bucketId:bucket,path:signedPath,
+   operation:'create',bytes:new Uint8Array(signedBytes)});
+ assert(!authorized.error&&typeof authorized.data==='string','Signed URL lease unavailable');
+ checkpoint='signed URL issuance and upload';
+ const issued=await fetchStaging('/storage/v1/object/upload/sign/'+bucket+'/'+enc(signedPath),{
+  method:'POST',jwt:a.jwt,headers:{'content-type':'application/json'},body:'{}'});
+ assert([200,201].includes(issued.status),'Authorized signed URL mint denied');
+ const capability=await issued.json();
+ assert(typeof capability.token==='string'&&capability.token.length>8,
+  'Signed URL bearer token absent');
+ const signedWritten=await fetchStaging('/storage/v1/object/upload/sign/'+bucket+'/'+enc(signedPath)+
+  '?token='+encodeURIComponent(capability.token),{
+   method:'PUT',body:signedBytes,headers:{'content-type':'application/octet-stream'}});
+ assert([200,201].includes(signedWritten.status),'Authorized signed upload failed');
+ await verifyReadback(signedPath,signedBytes);
+ const signedSettle=await lease.settle({ownerId:a.id,leaseId:authorized.data,
+   bucketId:bucket,path:signedPath,operation:'create',bytes:new Uint8Array(signedBytes)});
+ assert(!signedSettle.error&&signedSettle.data===true,'Signed upload settlement failed');
+ console.log('PASS: signed capability upload, exact SHA-256 bytes and attested settlement');
  checkpoint='TUS attested lease begin';
  // 6 MiB first chunk plus remainder: a meaningful pause and resume.
  const bytes=randomBytes(6*1024*1024+1024);
@@ -187,9 +210,13 @@ async function cleanup(){
   try{
    const deleted=await fetchStaging('/storage/v1/object/'+bucket+'/'+enc(path),{
      method:'DELETE',admin:true});
-   if(![200,204,400,404].includes(deleted.status))throw Error('Delete failed');
+   if(![200,204].includes(deleted.status))throw Error('Storage delete not acknowledged');
    const read=await fetchStaging('/storage/v1/object/authenticated/'+bucket+'/'+enc(path),{admin:true});
    if(read.ok)throw Error('Bytes remain readable');
+   const missing=await read.clone().json().catch(()=>null);
+   if(![400,404].includes(read.status)||!missing||
+      !(missing.code==='NoSuchKey'||missing.error==='not_found')||
+      missing.message!=='Object not found')throw Error('Storage byte absence unconfirmed');
   }catch{error=true;console.error('CLEANUP FAIL: synthetic Storage object requires inspection');}
  }
  for(const id of users.reverse()){
