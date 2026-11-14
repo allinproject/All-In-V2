@@ -10,6 +10,7 @@
  * Only pre-authorized *synthetic* Supabase Auth accounts may POST small bytes.
  */
 import {createAll251InternalWriterReview} from './internal-writer-review.mjs';
+import {verifyAll251OwnerSession} from './identity-review.mjs';
 import {createAll251UploadIngressReview} from './upload-ingress-review.mjs';
 import {createAll251OwnerJwtAttestedRpcReview} from './owner-jwt-attested-rpc-review.mjs';
 import {createAttestedPrivilegedStorageLeaseAuthority}
@@ -50,8 +51,12 @@ export function createAll251R2ProofCandidate({
     return deny();
    try{
     const uri=new URL(request.url);
-    if(request.method!=='POST'||!/^\/v1\/workouts\/[0-9a-f-]{36}$/i.test(uri.pathname)||
-      uri.search||request.headers.get('content-type')!=='application/octet-stream')
+    const writing=request.method==='POST'&&
+     /^\/v1\/workouts\/[0-9a-f-]{36}$/i.test(uri.pathname);
+    const reading=request.method==='GET'&&
+     /^\/v1\/workouts\/[0-9a-f-]{36}\/checksum$/i.test(uri.pathname);
+    if((!writing&&!reading)||uri.search||
+       (writing&&request.headers.get('content-type')!=='application/octet-stream'))
      return deny('ROUTE_DENIED');
     const bearer=request.headers.get('authorization')??'';
     if(!/^Bearer [A-Za-z0-9._~-]{20,4096}$/.test(bearer))
@@ -68,6 +73,33 @@ export function createAll251R2ProofCandidate({
     if(profile?.app_metadata?.all251_httpmatrix!==true||
        typeof profile?.email!=='string'||!RESTRICTED.test(profile.email))
      return deny('SYNTHETIC_ONLY');
+    if(reading){
+     const id=uri.pathname.split('/')[3].toLowerCase();
+     const {verifiedOwnerId}=await verifyAll251OwnerSession({
+      request,env,fetchImpl,
+      sessionIsActive:async({accessToken})=>{
+       const check=await fetchImpl(EXPECTED+
+        '/rest/v1/rpc/v2_all251_worker_session_check_review',{
+        method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+        headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,
+         authorization:'Bearer '+accessToken,
+         'content-type':'application/json',accept:'application/json'},
+        body:'{}',
+       });
+       return check.status===200&&(await check.json())===true;
+      },
+     });
+     const object=await env.PRIVATE_STORAGE.get(verifiedOwnerId+'/'+id+'.bin');
+     if(!object)return deny('OBJECT_NOT_FOUND');
+     const bytes=await object.arrayBuffer();
+     const digest=Array.from(new Uint8Array(
+       await crypto.subtle.digest('SHA-256',bytes)),
+       x=>x.toString(16).padStart(2,'0')).join('');
+     return new Response(JSON.stringify({sha256:digest,length:bytes.byteLength}),{
+      status:200,headers:{'content-type':'application/json',
+       'cache-control':'no-store','x-content-type-options':'nosniff'},
+     });
+    }
     // Separate session/deletion-state RPC is checked again by canonical
     // internal writer *before* reading any request bytes.
     const signing=signerBytes(env.ALL251_WRITER_SIGNER_B64);
