@@ -1,0 +1,49 @@
+name: ALL-246 Saved Routines isolated PostgreSQL 17 acceptance (no deploy)
+
+on:
+  push:
+    branches: [integration/v2-foundation]
+    paths:
+      - '.github/workflows/v2-saved-routines-isolated-postgres.yml'
+      - 'docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-*.sql'
+      - 'docs/architecture/tests/ALL-246-SAVED-ROUTINES-*.psql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  routines-owner-isolation:
+    name: Disposable two-owner Routine read, write, archive, session and CAS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: all246_disposable
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d all246_disposable"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Run isolated saved Routine SQL and owner denial assertions
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /tmp/allin/docs/architecture/{sql,tests}
+          sudo cp docs/architecture/sql/V2-TRAINING-SAVED-ROUTINES-*.sql /tmp/allin/docs/architecture/sql/
+          sudo cp docs/architecture/tests/ALL-246-SAVED-ROUTINES-*.psql /tmp/allin/docs/architecture/tests/
+          psql -X -h localhost -U postgres -d all246_disposable -v ON_ERROR_STOP=1 -v disposable_test=1 \
+            -f /tmp/allin/docs/architecture/tests/ALL-246-SAVED-ROUTINES-STANDALONE-SETUP.psql
