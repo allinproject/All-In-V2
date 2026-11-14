@@ -137,6 +137,37 @@ test('missing or incorrect signer, binding, configuration deny without a write',
  }
 });
 
+test('real byte check is returned only to active synthetic owner',async()=>{
+ const f=fixture();
+ assert.equal((await f.candidate.fetch(request(),f.env)).status,201);
+ const res=await f.candidate.fetch(
+  new Request(URL+'/checksum',{headers:{authorization:'Bearer '+JWT}}),f.env);
+ assert.equal(res.status,200);
+ const body=await res.json();
+ const expected=Array.from(new Uint8Array(
+  await crypto.subtle.digest('SHA-256',data)),
+  x=>x.toString(16).padStart(2,'0')).join('');
+ assert.deepEqual(body,{sha256:expected,length:data.length});
+ assert.equal(f.calls.get,2);
+});
+
+test('checksum route does not disclose raw bytes or permit cross-owner read',async()=>{
+ const a=fixture();
+ assert.equal((await a.candidate.fetch(request(),a.env)).status,201);
+ const b=fixture({owner:B});
+ const missing=await b.candidate.fetch(
+  new Request(URL+'/checksum',{headers:{authorization:'Bearer '+JWT}}),b.env);
+ assert.equal(missing.status,403);
+ assert.deepEqual(await missing.json(),{code:'OBJECT_NOT_FOUND'});
+ assert.equal(b.calls.get,1);
+ const revoked=fixture({active:false});
+ const res=await revoked.candidate.fetch(
+  new Request(URL+'/checksum',{headers:{authorization:'Bearer '+JWT}}),
+  revoked.env);
+ assert.equal(res.status,403);
+ assert.equal(revoked.calls.get,0);
+});
+
 test('default test Worker remains deny-only, not the proof candidate',async()=>{
  const worker=(await import('./worker.mjs')).default;
  const f=fixture();
