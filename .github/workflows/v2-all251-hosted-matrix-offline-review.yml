@@ -29,7 +29,7 @@ permissions:
 jobs:
   static-review:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -76,6 +76,11 @@ jobs:
         run: |
           node --check infra/cloudflare/all251-storage-staging/owner-jwt-attested-rpc-review.mjs
           node --test infra/cloudflare/all251-storage-staging/owner-jwt-attested-rpc-review.test.mjs
+      - name: Build Cloudflare synthetic R2 proof candidate without deploying
+        env:
+          CLOUDFLARE_SEND_METRICS: 'false'
+        run: |
+          npx --yes wrangler@4.136.0 deploy --dry-run --config infra/cloudflare/all251-storage-staging/wrangler.proof.jsonc --outdir /tmp/all251-r2-proof-build
       - name: Require correct pre-freeze and post-freeze positive controls
         run: |
           node --input-type=module <<'NODE'
