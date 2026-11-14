@@ -34,7 +34,7 @@ test('only an exact object-ID POST route may enter the canonical writer',async()
   'https://worker.example/v1/workouts/not-a-uuid',
   'https://worker.example/v1/exports/'+ID,
  ]){
-  assert.equal((await f.fn(req({url})).status),404);
+  assert.equal((await f.fn(req({url}))).status,404);
  }
  assert.equal(f.calls.length,0);
 });
@@ -61,12 +61,14 @@ test('unauthorized sessions are denied BEFORE calling loadBytes',async()=>{
    throw Error('AUTH_DENIED');
   },
  }});
- const body=new ReadableStream({pull(controller){
-  readCount++;
-  controller.enqueue(bytes);
-  controller.close();
- }});
- const response=await f(req({body}));
+ // A hand-built request fixture proves the handler does not touch the
+ // stream. Native Request may eagerly pull during construction.
+ const requestObject={
+  method:'POST',url:URL,
+  headers:new Headers({'content-type':'application/octet-stream'}),
+  body:{getReader(){readCount++;throw Error('body read before Auth');}},
+ };
+ const response=await f(requestObject);
  assert.equal(response.status,401);
  assert.equal(readCount,0);
 });
