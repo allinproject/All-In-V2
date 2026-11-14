@@ -170,7 +170,7 @@ DECLARE v_user uuid:=auth.uid(); v_claim text; v_sid uuid;
 BEGIN
  IF v_user IS NULL OR v_user IS DISTINCT FROM p_expected_user_id THEN
   RAISE EXCEPTION 'Saved Routine owner mismatch' USING ERRCODE='42501'; END IF;
- v_claim:=pg_catalog.current_setting('request.jwt.claim.session_id',true);
+ v_claim:=auth.jwt()->>'session_id';
  IF v_claim IS NULL OR v_claim='' THEN
   RAISE EXCEPTION 'Current authenticated session required' USING ERRCODE='42501'; END IF;
  BEGIN v_sid:=v_claim::uuid;
