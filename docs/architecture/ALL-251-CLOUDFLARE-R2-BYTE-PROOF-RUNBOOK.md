@@ -137,9 +137,14 @@ run a separately approved protected disposable staging HTTP test:
   exact-path one-time integration push trigger only AFTER the Worker
   is verified active. No trigger/marker is currently approved.
 - A passing sequential R2 upload/delete test does not cover the in-flight deletion race.
-- Test an in-flight A upload begun before the freeze separately with
-  controllable, safe scheduling; a simple sequential post-freeze denial
-  does NOT prove the in-flight race.
+- For the hosted race, pause synthetic A after its attested lease begins and
+  before its R2 write completes. A slow request body cannot prove this
+  ordering because the Worker reads the entire body before lease acquisition.
+  Use an isolated staging harness with a bounded, fail-closed pause and no
+  public pause control. Confirm the lease is open before freezing A. Require
+  cleanup to be denied while the lease is open, resume the write, confirm the
+  resulting state and lease settlement, then clean up and reconcile the bucket.
+  If the harness cannot confirm that ordering, report the race as unverified.
 
 All testing remains disposable. Do not treat offline CI, a worker deploy,
 201 status alone, or a checksum read without owner/session checks as

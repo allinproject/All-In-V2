@@ -15,7 +15,7 @@ const request=()=>new Request(URL,{method:'POST',
  body:data,
 });
 function fixture({enabled=true,owner=A,synthetic=true,active=true,
- frozen=false,corrupt=false,cleanupAllowed=false}={}){
+ frozen=false,corrupt=false,cleanupAllowed=()=>false}={}){
  const stored=new Map(),calls={auth:0,session:0,begin:0,settle:0,put:0,get:0,rpc:0};
  const binding={
   async put(path,bytes,{onlyIf}){
@@ -48,7 +48,7 @@ function fixture({enabled=true,owner=A,synthetic=true,active=true,
    return new Response(active?'true':'false',{status:200});
   }
   if(url.endsWith('/v2_all251_owner_r2_fixture_cleanup_allowed_review'))
-   return new Response(cleanupAllowed?'true':'false',{status:cleanupAllowed?200:403});
+   return Response.json(typeof cleanupAllowed==='function'?cleanupAllowed(calls):cleanupAllowed);
   throw Error('Unexpected network destination');
  };
  const authority={
@@ -89,7 +89,8 @@ test('synthetic user writes and exact R2 byte readback are lease protected',asyn
 });
 
 test('fixture cleanup waits for an in-flight R2 write to settle',{timeout:2000},async()=>{
- const f=fixture({cleanupAllowed:true});
+ let frozen=false;
+ const f=fixture({cleanupAllowed:({begin,settle})=>frozen&&begin===settle});
  const binding=f.env.PRIVATE_STORAGE;
  const put=binding.put.bind(binding);
  const {promise:entered,resolve:markEntered}=Promise.withResolvers();
@@ -109,9 +110,10 @@ test('fixture cleanup waits for an in-flight R2 write to settle',{timeout:2000},
   assert.equal(f.calls.begin,1);
   assert.equal(f.calls.settle,0);
   // Simulate the database refusing cleanup while the lease is unsettled.
-  const pending=fixture({cleanupAllowed:false});
-  pending.env.PRIVATE_STORAGE=binding;
-  assert.equal((await pending.candidate.fetch(cleanupRequest(),pending.env)).status,403);
+  frozen=true;
+  const denied=await f.candidate.fetch(cleanupRequest(),f.env);
+  assert.equal(denied.status,403);
+  assert.deepEqual(await denied.json(),{code:'CLEANUP_DENIED'});
   assert.equal(f.stored.has(path),false);
  }finally{
   releasePut();
