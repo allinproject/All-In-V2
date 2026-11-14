@@ -27,7 +27,6 @@ jobs:
       - run: |
           node --check scripts/test-all251-hosted-storage-http-routes.mjs
           node --check scripts/all251-s3-sigv4.mjs
-          node --check scripts/all251-s3-sigv4.mjs
   protected-disposable-staging-only:
     needs: offline-script-syntax-only
     if: github.ref == 'refs/heads/integration/v2-foundation'
@@ -58,6 +57,7 @@ jobs:
           test -n "${ALL251_TEMP_STAGING_SECRET_KEY}"
           test -n "${ALL251_TEMP_STAGING_PUBLISHABLE_KEY}"
           node --check scripts/test-all251-hosted-storage-http-routes.mjs
+          node --check scripts/all251-s3-sigv4.mjs
       - name: Exercise disposable hosted Storage REST, signed, S3 unsigned, TUS and delayed upload checks
         run: node scripts/test-all251-hosted-storage-http-routes.mjs
 # Do not interpret a green unsigned-S3 probe as credentialed S3 acceptance.
