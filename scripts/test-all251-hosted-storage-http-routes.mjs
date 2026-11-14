@@ -309,7 +309,46 @@ try{
  // untested if no generated keypair exists, and must NEVER be marked PASS.
  const s3=await request(API+'s3/'+BUCKET,{method:'HEAD',key:publishable,origin:DIRECT});
  mark('S3 unsigned endpoint',denied(s3.status)?'PASS':'FAIL','HTTP '+s3.status);
- mark('S3 privileged SigV4 / multipart','UNTESTED','no generated S3 credentials provisioned');
+ if(!s3Available){
+  mark('S3 privileged SigV4 PUT','UNTESTED','no reviewed disposable S3 credentials');
+  mark('S3 privileged SigV4 multipart','UNTESTED','no reviewed disposable S3 credentials');
+ }else{
+  // Complete byte-positive controls BEFORE freezing A; these credentials
+  // are explicitly privileged/RLS-bypassing, not owner-scoped.
+  const s3A=await s3UploadVerified(a.id,'s3-credentialed-a-pre');
+  s3PreA=s3A.success;
+  mark('S3 credentialed A pre-deletion byte baseline',
+   s3A.success?'PASS':s3A.response.ok?'FAIL':
+    denied(s3A.response.status)?'RESTRICTED':'FAIL','HTTP '+s3A.response.status);
+  const s3B=await s3UploadVerified(b.id,'s3-credentialed-b-pre');
+  s3PreB=s3B.success;
+  mark('S3 credentialed B pre-deletion byte baseline',
+   s3B.success?'PASS':s3B.response.ok?'FAIL':
+    denied(s3B.response.status)?'RESTRICTED':'FAIL','HTTP '+s3B.response.status);
+  // Create the multipart lease before A's deletion request, upload a part,
+  // but do not complete it until A has been frozen. Track for safe abort.
+  const mpPath=addObject(a.id,'s3-pending-multipart');
+  const init=await s3Request('POST',mpPath,{query:{uploads:''}});
+  if(init.ok){
+   const uploadId=s3UploadId(await init.text());
+   if(uploadId){
+    s3Multipart.set(uploadId,{path:mpPath});
+    const partBytes=randomBytes(8192);
+    const part=await s3Request('PUT',mpPath,{
+     query:{partNumber:'1',uploadId},bytes:partBytes});
+    const etag=part.headers.get('etag');
+    if(part.ok&&etag&&/^"?[0-9a-fA-F-]{16,64}"?$/.test(etag)){
+     s3MultipartReady=true;
+     s3MultipartA={id:uploadId,path:mpPath,etag,bytes:partBytes};
+     mark('S3 multipart pre-deletion part baseline','PASS','part accepted');
+    }else mark('S3 multipart pre-deletion part baseline',
+     part.ok?'FAIL':denied(part.status)?'RESTRICTED':'FAIL',
+     'HTTP '+part.status);
+   }else mark('S3 multipart initiation','FAIL','Missing UploadId');
+  }else mark('S3 multipart initiation',
+   denied(init.status)?'RESTRICTED':'FAIL','HTTP '+init.status);
+ }
+
 
  // A successful token mint alone does not prove signed upload writes work.
  // Require a separate, completed, byte-verified pre-freeze signed upload.
@@ -428,6 +467,46 @@ try{
   preRest.ok?(preRestWorked?'SHA256 matched':'missing or mismatched bytes'):await statusDetail(preRest));
  await deletionRequest(a,b);
  mark('canonical synthetic deletion request','PASS');
+ // Privileged generated S3 keypair may bypass all Storage RLS. If A can
+ // create ANY new object after freeze, this is a confirmed FAIL.
+ if(s3Available){
+  const s3AfterA=await s3UploadVerified(a.id,'s3-credentialed-a-after');
+  postFreezePaths.add(s3AfterA.path);
+  mark('S3 credentialed A post-deletion write denied',
+   s3AfterA.response.ok?'FAIL':
+    denied(s3AfterA.response.status)?(s3PreA?'PASS':'RESTRICTED'):'FAIL',
+   'HTTP '+s3AfterA.response.status);
+  const s3AfterB=await s3UploadVerified(b.id,'s3-credentialed-b-after');
+  mark('S3 credentialed B continuity',
+   s3AfterB.success?(s3PreB?'PASS':'RESTRICTED'):'FAIL',
+   'HTTP '+s3AfterB.response.status);
+  if(s3MultipartA){
+   const {id,path,etag}=s3MultipartA;
+   const xml='<CompleteMultipartUpload><Part><PartNumber>1</PartNumber>'+
+    '<ETag>'+etag+'</ETag></Part></CompleteMultipartUpload>';
+   const complete=await s3Request('POST',path,{
+    query:{uploadId:id},bytes:Buffer.from(xml),
+    headers:{'content-type':'application/xml'}});
+   postFreezePaths.add(path);
+   if(complete.ok)s3Multipart.delete(id);
+   mark('S3 credentialed delayed multipart completion denied',
+    complete.ok?'FAIL':
+     denied(complete.status)?(s3MultipartReady?'PASS':'RESTRICTED'):'FAIL',
+    'HTTP '+complete.status);
+  }else mark('S3 credentialed delayed multipart completion',
+   'UNTESTED','no completed pre-freeze multipart part baseline');
+  const mpLate=addObject(a.id,'s3-new-multipart-after');
+  const lateInit=await s3Request('POST',mpLate,{query:{uploads:''}});
+  if(lateInit.ok){
+   const lateId=s3UploadId(await lateInit.text());
+   if(lateId)s3Multipart.set(lateId,{path:mpLate});
+   else cleanupIssues.push('post-freeze-s3-multipart-without-uploadid');
+  }
+  mark('S3 credentialed new multipart initiation denied',
+   lateInit.ok?'FAIL':denied(lateInit.status)?(s3MultipartReady?'PASS':'RESTRICTED'):'FAIL',
+   'HTTP '+lateInit.status);
+ }
+
  // Same verified attested writer must fail to acquire A's lease after the
  // freeze, while B retains the ability to write and read original bytes.
  const aAfter=addObject(a.id,'attested-post-freeze');
